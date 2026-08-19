@@ -1,0 +1,6 @@
+.DS_Store
+*.zip
+uploadPath/
+logs/
+**/logs/
+**/.DS_Store
