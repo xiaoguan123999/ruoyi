@@ -1,5 +1,6 @@
 package com.ruoyi.web.controller.common;
 
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
@@ -8,17 +9,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.HandlerMapping;
+import com.ruoyi.common.annotation.Anonymous;
 import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.utils.StringUtils;
-import com.ruoyi.common.utils.file.FileUploadUtils;
 import com.ruoyi.common.utils.file.FileUtils;
-import com.ruoyi.framework.config.ServerConfig;
+import com.ruoyi.framework.storage.FileStorageService;
+import com.ruoyi.framework.storage.StoredFile;
 
 /**
  * 通用请求处理
@@ -32,9 +36,11 @@ public class CommonController
     private static final Logger log = LoggerFactory.getLogger(CommonController.class);
 
     @Autowired
-    private ServerConfig serverConfig;
+    private FileStorageService fileStorageService;
 
     private static final String FILE_DELIMITER = ",";
+
+    private static final AntPathMatcher R2_PATH_MATCHER = new AntPathMatcher();
 
     /**
      * 通用下载请求
@@ -76,17 +82,8 @@ public class CommonController
     {
         try
         {
-            // 上传文件路径
-            String filePath = RuoYiConfig.getUploadPath();
-            // 上传并返回新文件名称
-            String fileName = FileUploadUtils.upload(filePath, file);
-            String url = serverConfig.getUrl() + fileName;
-            AjaxResult ajax = AjaxResult.success();
-            ajax.put("url", url);
-            ajax.put("fileName", fileName);
-            ajax.put("newFileName", FileUtils.getName(fileName));
-            ajax.put("originalFilename", file.getOriginalFilename());
-            return ajax;
+            StoredFile stored = fileStorageService.upload(file);
+            return toUploadResult(stored);
         }
         catch (Exception e)
         {
@@ -102,20 +99,16 @@ public class CommonController
     {
         try
         {
-            // 上传文件路径
-            String filePath = RuoYiConfig.getUploadPath();
             List<String> urls = new ArrayList<String>();
             List<String> fileNames = new ArrayList<String>();
             List<String> newFileNames = new ArrayList<String>();
             List<String> originalFilenames = new ArrayList<String>();
             for (MultipartFile file : files)
             {
-                // 上传并返回新文件名称
-                String fileName = FileUploadUtils.upload(filePath, file);
-                String url = serverConfig.getUrl() + fileName;
-                urls.add(url);
-                fileNames.add(fileName);
-                newFileNames.add(FileUtils.getName(fileName));
+                StoredFile stored = fileStorageService.upload(file);
+                urls.add(stored.getUrl());
+                fileNames.add(stored.getFileName());
+                newFileNames.add(FileUtils.getName(stored.getFileName()));
                 originalFilenames.add(file.getOriginalFilename());
             }
             AjaxResult ajax = AjaxResult.success();
@@ -158,5 +151,37 @@ public class CommonController
         {
             log.error("下载文件失败", e);
         }
+    }
+
+    /**
+     * Proxy GET for private R2 objects. Used when ruoyi.r2.public-url is empty.
+     */
+    @Anonymous
+    @GetMapping("/r2/**")
+    public void r2Preview(HttpServletRequest request, HttpServletResponse response) throws Exception
+    {
+        if (!fileStorageService.isR2Ready())
+        {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+        String pattern = (String) request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        String path = (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
+        String key = R2_PATH_MATCHER.extractPathWithinPattern(pattern, path);
+        if (StringUtils.isNotEmpty(key))
+        {
+            key = URLDecoder.decode(key, "UTF-8");
+        }
+        fileStorageService.writeR2(key, response);
+    }
+
+    private AjaxResult toUploadResult(StoredFile stored)
+    {
+        AjaxResult ajax = AjaxResult.success();
+        ajax.put("url", stored.getUrl());
+        ajax.put("fileName", stored.getFileName());
+        ajax.put("newFileName", FileUtils.getName(stored.getFileName()));
+        ajax.put("originalFilename", stored.getOriginalFilename());
+        return ajax;
     }
 }

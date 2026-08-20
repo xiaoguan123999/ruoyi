@@ -4,3 +4,4 @@ uploadPath/
 logs/
 **/logs/
 **/.DS_Store
+.r2.env

@@ -122,7 +122,7 @@ public class SecurityConfig
                     .antMatchers("/app/auth/**", "/dev-api/app/auth/**").permitAll()
                     .antMatchers("/dev-api/login", "/dev-api/register", "/dev-api/captchaImage").permitAll()
                     // 静态资源，可匿名访问
-                    .antMatchers(HttpMethod.GET, "/", "/*.html", "/**/*.html", "/**/*.css", "/**/*.js", "/profile/**").permitAll()
+                    .antMatchers(HttpMethod.GET, "/", "/*.html", "/**/*.html", "/**/*.css", "/**/*.js", "/profile/**", "/common/r2/**").permitAll()
                     .antMatchers("/swagger-ui.html", "/swagger-resources/**", "/webjars/**", "/*/api-docs", "/druid/**").permitAll()
                     // 除上面外的所有请求全部需要鉴权认证
                     .anyRequest().authenticated();

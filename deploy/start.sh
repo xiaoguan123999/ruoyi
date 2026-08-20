@@ -49,6 +49,13 @@ fi
 mkdir -p "$UPLOAD_DIR"
 cd "$APP_DIR" || exit 1
 
+if [ -f "$APP_DIR/.r2.env" ]; then
+  set -a
+  . "$APP_DIR/.r2.env"
+  set +a
+  echo "已加载 R2 环境变量"
+fi
+
 nohup "$JAVA_CMD" -Xms256m -Xmx512m -jar "$JAR" \
   --spring.profiles.active=druid \
   --server.port=8080 \

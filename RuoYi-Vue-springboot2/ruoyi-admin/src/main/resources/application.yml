@@ -12,6 +12,17 @@ ruoyi:
   addressEnabled: false
   # 验证码类型 math 数字计算 char 字符验证
   captchaType: math
+  # Cloudflare R2 对象存储。密钥走环境变量，不要写进仓库
+  r2:
+    enabled: true
+    endpoint: https://fab2563769f5e069a1bc345664a969e5.r2.cloudflarestorage.com
+    bucket: xfzl
+    region: auto
+    access-key: ${R2_ACCESS_KEY:${AWS_ACCESS_KEY_ID:}}
+    secret-key: ${R2_SECRET_KEY:${AWS_SECRET_ACCESS_KEY:}}
+    # 开启 r2.dev / 自定义域后填写，例如 https://pub-xxxx.r2.dev；空则走 /common/r2/ 代理
+    public-url: ${R2_PUBLIC_URL:}
+    prefix: upload
 
 # 开发环境配置
 server:

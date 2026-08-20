@@ -354,6 +354,28 @@ CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币
 
 `GET /app/withdraw?pageNum=1&pageSize=10` 我的提现单。
 
+### 16. 上传图片（Cloudflare R2）
+
+`POST /app/upload`  multipart，字段名 `file`。需要会员 token。
+
+后台通用上传仍是 `POST /common/upload`（若依后台 token）。配好 R2 后文件进桶 `xfzl`，目录：
+
+- 后台通用：`upload/yyyy/MM/dd/`
+- 后台头像：`avatar/yyyy/MM/dd/`
+- App：`app/yyyy/MM/dd/`
+
+未配置 `R2_PUBLIC_URL` 时，返回的 `fileName` 形如 `/common/r2/upload/...`，浏览器走后端代理读文件。开启 R2 公开访问 / r2.dev 后，把公开域名写进环境变量 `R2_PUBLIC_URL`，就会直接返回 `https://pub-xxxx.r2.dev/...`。
+
+密钥不要写进 yml，用环境变量（或服务器上的 `.r2.env`，`start.sh` 会自动加载）。本地 `.r2.env` 里的 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` 也可以：
+
+```
+R2_ACCESS_KEY=...          # 或 AWS_ACCESS_KEY_ID
+R2_SECRET_KEY=...          # 或 AWS_SECRET_ACCESS_KEY
+R2_PUBLIC_URL=https://pub-xxxx.r2.dev
+```
+
+没配密钥时自动退回本地磁盘 `ruoyi.profile`。
+
 ---
 
 ## 二、建议联调顺序
