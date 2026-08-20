@@ -29,7 +29,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   const theme = 'dark';
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, position: 'relative' }}>
       <KeyboardGate>
         <QueryClientProvider client={queryClient}>
           <TamaguiProvider config={tamaguiConfig} defaultTheme={theme}>

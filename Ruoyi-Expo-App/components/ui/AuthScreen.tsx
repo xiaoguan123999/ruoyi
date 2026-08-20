@@ -14,7 +14,6 @@ import { colors } from '@/theme/colors';
 
 type Props = {
   children: React.ReactNode;
-  /** 表单从屏幕高度的该比例处开始，随手机尺寸变化 */
   formStart?: number;
 };
 

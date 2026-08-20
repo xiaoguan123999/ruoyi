@@ -56,7 +56,6 @@ export async function logout(): Promise<void> {
   try {
     await request('/logout', { method: 'POST' });
   } catch {
-    // Always clear the local session.
   } finally {
     await removeToken();
     clearCurrentUser();

@@ -4,16 +4,17 @@ type Props = {
   title: string;
   onPress?: () => void;
   disabled?: boolean;
+  compact?: boolean;
 };
 
-export function PrimaryButton({ title, onPress, disabled }: Props) {
+export function PrimaryButton({ title, onPress, disabled, compact }: Props) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [styles.btn, pressed && styles.pressed, disabled && styles.disabled]}
     >
-      <Text style={styles.text}>{title}</Text>
+      <Text style={[styles.text, compact && styles.textCompact]}>{title}</Text>
     </Pressable>
   );
 }
@@ -33,5 +34,9 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: 10,
+  },
+  textCompact: {
+    letterSpacing: 2,
+    fontSize: 16,
   },
 });

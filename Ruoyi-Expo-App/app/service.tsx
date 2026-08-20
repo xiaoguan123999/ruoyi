@@ -5,7 +5,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
-import { toast } from '@/utils/toast';
+import { modalWarning } from '@/utils/toast';
 
 export default function ServiceScreen() {
   return (
@@ -16,7 +16,7 @@ export default function ServiceScreen() {
           <Text style={styles.title}>在线客服</Text>
           <Text style={styles.p}>工作时间 09:00 - 21:00，演示环境仅展示入口。</Text>
           <View style={{ marginTop: 16 }}>
-            <PrimaryButton title="联系客服" onPress={() => toast('客服功能开发中')} />
+            <PrimaryButton title="联系客服" onPress={() => modalWarning('客服功能开发中')} />
           </View>
         </GlassCard>
       </View>

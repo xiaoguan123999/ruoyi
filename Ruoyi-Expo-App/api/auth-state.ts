@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 
 import type { RuoyiUser } from '@/api/types';
 import { getTokenSync, removeToken } from '@/utils/storage';
+import { toastThenNavigate } from '@/utils/toast';
 
 type AuthSnapshot = {
   token: string | null;
@@ -11,6 +12,8 @@ type AuthSnapshot = {
 };
 
 type Listener = () => void;
+
+const PUBLIC_AUTH_SEGMENTS = new Set(['sign-in', 'sign-up', 'splash']);
 
 const listeners = new Set<Listener>();
 
@@ -62,7 +65,15 @@ export function markAuthenticated(): void {
   notifyAuthChanged();
 }
 
-export async function handleUnauthorized(): Promise<void> {
+export function isPublicAuthRoute(segments: string[]): boolean {
+  const root = segments[0];
+  if (!root || root === 'index') {
+    return true;
+  }
+  return PUBLIC_AUTH_SEGMENTS.has(root);
+}
+
+export async function handleUnauthorized(message = '登录已过期，请重新登录'): Promise<void> {
   if (Date.now() < ignoreUnauthorizedUntil) {
     return;
   }
@@ -73,8 +84,15 @@ export async function handleUnauthorized(): Promise<void> {
   try {
     await removeToken();
     clearCurrentUser();
-    router.replace('/sign-in');
-  } finally {
+    toastThenNavigate(
+      message,
+      () => {
+        router.replace('/sign-in');
+        redirecting = false;
+      },
+      { type: 'warning' },
+    );
+  } catch {
     redirecting = false;
   }
 }

@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
+import { isPublicAuthRoute } from '@/api/auth-state';
 import { useAuth } from '@/hooks/useAuth';
 import { AppProviders } from '@/providers/AppProviders';
 
@@ -35,8 +36,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
     const root = segments[0];
-    const inTabs = root === '(tabs)';
-    if (!isLoggedIn && inTabs) {
+    const publicRoute = isPublicAuthRoute(segments);
+    if (!isLoggedIn && !publicRoute) {
       router.replace('/sign-in');
       return;
     }

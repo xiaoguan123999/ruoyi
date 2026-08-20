@@ -12,8 +12,8 @@ export const colors = {
   danger: '#FF5A5A',
   success: '#3DDC84',
   gold: '#E8C36A',
-  inputBg: 'rgba(8, 22, 52, 0.78)',
-  inputBorder: 'rgba(110, 170, 235, 0.55)',
+  inputBg: 'rgba(12, 36, 78, 0.92)',
+  inputBorder: 'rgba(110, 185, 255, 0.85)',
   tabBar: '#071226',
   overlay: 'rgba(5, 11, 28, 0.45)',
 };

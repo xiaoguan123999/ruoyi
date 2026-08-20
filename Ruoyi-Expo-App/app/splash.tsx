@@ -2,9 +2,11 @@ import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 
+import { fetchAppProfile } from '@/api/app-auth';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { images } from '@/constants/images';
-import { getToken } from '@/utils/storage';
+import { getToken, removeToken } from '@/utils/storage';
+import { toastThenNavigate } from '@/utils/toast';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -17,7 +19,23 @@ export default function SplashScreen() {
       if (cancelled) {
         return;
       }
-      router.replace(token ? '/(tabs)' : '/sign-in');
+      if (!token) {
+        router.replace('/sign-in');
+        return;
+      }
+      try {
+        await fetchAppProfile();
+        if (!cancelled) {
+          router.replace('/(tabs)');
+        }
+      } catch {
+        await removeToken();
+        if (!cancelled) {
+          toastThenNavigate('登录已失效，请重新登录', () => router.replace('/sign-in'), {
+            type: 'warning',
+          });
+        }
+      }
     };
     void run();
     return () => {

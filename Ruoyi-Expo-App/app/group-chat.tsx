@@ -1,36 +1,55 @@
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AppBackground } from '@/components/ui/AppBackground';
-import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
-import { toast } from '@/utils/toast';
 
 export default function GroupChatScreen() {
   return (
-    <AppBackground>
+    <AppBackground source={images.pageBg} dim={false} contentPosition="top right">
       <PageHeader title="官方群聊" />
-      <View style={{ paddingHorizontal: 16 }}>
-        <GlassCard>
-          <Text style={styles.title}>星帆智联官方交流群</Text>
-          <Text style={styles.desc}>加入官方群获取项目动态、收益说明与客服支持。演示环境不会跳转真实社群。</Text>
-          <View style={{ marginTop: 16 }}>
-            <PrimaryButton
-              title="立即加入"
-              onPress={() => {
-                toast('演示环境，暂不跳转');
-                void Linking.canOpenURL('https://example.com');
-              }}
-            />
-          </View>
-        </GlassCard>
+      <View style={styles.body}>
+        <View style={styles.card}>
+          <View style={styles.qrPlaceholder} />
+          <Text style={styles.hint}>扫码进群</Text>
+        </View>
       </View>
     </AppBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { color: colors.text, fontSize: 18, fontWeight: '700' },
-  desc: { color: colors.muted, marginTop: 10, lineHeight: 22 },
+  body: {
+    flex: 1,
+    paddingHorizontal: 28,
+    paddingTop: 24,
+    alignItems: 'center',
+  },
+  card: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 14,
+    paddingHorizontal: 28,
+    paddingTop: 28,
+    paddingBottom: 24,
+    alignItems: 'center',
+    backgroundColor: 'rgba(10, 24, 52, 0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(110, 185, 255, 0.28)',
+  },
+  qrPlaceholder: {
+    width: '100%',
+    aspectRatio: 1,
+    maxWidth: 240,
+    borderRadius: 8,
+    backgroundColor: '#C9CED6',
+  },
+  hint: {
+    marginTop: 18,
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
 });

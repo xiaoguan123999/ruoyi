@@ -1,12 +1,15 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { appRegister, fetchAppCaptcha } from '@/api/app-auth';
+import { ApiError } from '@/api/request';
+import { AuthCaptchaRow } from '@/components/ui/AuthCaptchaRow';
 import { AuthField } from '@/components/ui/AuthField';
 import { AuthScreen } from '@/components/ui/AuthScreen';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { images } from '@/constants/images';
-import { toast } from '@/utils/toast';
+import { modalError, modalWarning, toastThenNavigate } from '@/utils/toast';
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -16,26 +19,69 @@ export default function SignUpScreen() {
   const [payPassword, setPayPassword] = useState('');
   const [invite, setInvite] = useState('');
   const [code, setCode] = useState('');
-  const [captcha, setCaptcha] = useState(() => String(Math.floor(1000 + Math.random() * 9000)));
+  const [uuid, setUuid] = useState('');
+  const [captchaUri, setCaptchaUri] = useState('');
+  const [captchaEnabled, setCaptchaEnabled] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  const refreshCaptcha = () => setCaptcha(String(Math.floor(1000 + Math.random() * 9000)));
+  const loadCaptcha = useCallback(async () => {
+    try {
+      const res = await fetchAppCaptcha();
+      setCaptchaEnabled(res.enabled);
+      setUuid(res.uuid);
+      setCaptchaUri(res.img);
+      setCode('');
+    } catch (error) {
+      modalError(error instanceof ApiError ? error.message : '验证码加载失败');
+    }
+  }, []);
 
-  const onSubmit = () => {
-    if (!phone || !password || !confirm || !payPassword || !invite || !code) {
-      toast('请填写完整信息');
+  useEffect(() => {
+    void loadCaptcha();
+  }, [loadCaptcha]);
+
+  const canSubmit = useMemo(() => {
+    const base =
+      phone.trim().length >= 6 &&
+      password.length >= 4 &&
+      confirm.length >= 4 &&
+      payPassword.length >= 4 &&
+      invite.trim().length > 0;
+    if (!captchaEnabled) {
+      return base;
+    }
+    return base && code.trim().length >= 1 && uuid.length > 0;
+  }, [phone, password, confirm, payPassword, invite, code, uuid, captchaEnabled]);
+
+  const onSubmit = async () => {
+    if (!phone || !password || !confirm || !payPassword || !invite) {
+      modalWarning('请填写完整信息');
       return;
     }
     if (password !== confirm) {
-      toast('两次密码不一致');
+      modalWarning('两次密码不一致');
       return;
     }
-    if (code !== captcha) {
-      toast('验证码不正确');
-      refreshCaptcha();
+    if (captchaEnabled && (!code.trim() || !uuid)) {
+      modalWarning('请填写验证码');
       return;
     }
-    toast('注册成功，请登录');
-    router.replace('/sign-in');
+    setLoading(true);
+    try {
+      await appRegister({
+        phone: phone.trim(),
+        password,
+        code: code.trim(),
+        uuid,
+        inviteCode: invite.trim() || undefined,
+      });
+      toastThenNavigate('注册成功', () => router.replace('/(tabs)'), { type: 'success' });
+    } catch (error) {
+      modalError(error instanceof ApiError ? error.message : '注册失败');
+      void loadCaptcha();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -74,22 +120,16 @@ export default function SignUpScreen() {
         value={invite}
         onChangeText={setInvite}
       />
-      <View style={styles.captchaRow}>
-        <View style={{ flex: 1 }}>
-          <AuthField
-            icon={images.iconCaptcha}
-            placeholder="请输入验证码"
-            value={code}
-            onChangeText={setCode}
-            keyboardType="number-pad"
-          />
-        </View>
-        <Pressable onPress={refreshCaptcha} style={styles.captchaBox}>
-          <Text style={styles.captchaText}>{captcha}</Text>
-        </Pressable>
-      </View>
+      {captchaEnabled ? (
+        <AuthCaptchaRow
+          value={code}
+          onChangeText={setCode}
+          captchaUri={captchaUri}
+          onRefresh={() => void loadCaptcha()}
+        />
+      ) : null}
       <View style={{ marginTop: 8 }}>
-        <PrimaryButton title="注 册" onPress={onSubmit} />
+        <PrimaryButton title="注 册" onPress={() => void onSubmit()} disabled={loading || !canSubmit} />
       </View>
       <Pressable onPress={() => router.replace('/sign-in')} style={styles.loginLink}>
         <Text style={styles.loginLinkText}>已有账号，返回登录</Text>
@@ -99,18 +139,6 @@ export default function SignUpScreen() {
 }
 
 const styles = StyleSheet.create({
-  captchaRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  captchaBox: {
-    width: 88,
-    height: 46,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(140, 190, 255, 0.45)',
-    backgroundColor: 'rgba(8, 28, 68, 0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  captchaText: { color: '#FFFFFF', fontSize: 22, fontWeight: '700', letterSpacing: 2 },
   loginLink: {
     alignSelf: 'center',
     marginTop: 4,

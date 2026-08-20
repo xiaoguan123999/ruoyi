@@ -15,6 +15,8 @@ export function WebShell({ children }: { children: React.ReactNode }) {
         alignSelf: 'center',
         minHeight: '100%',
         backgroundColor: '#050B1C',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
       {children}

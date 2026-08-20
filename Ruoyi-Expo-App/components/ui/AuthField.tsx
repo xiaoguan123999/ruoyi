@@ -28,11 +28,15 @@ export function AuthField({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="rgba(170, 198, 230, 0.55)"
+        placeholderTextColor={colors.placeholder}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         autoCapitalize="none"
         autoCorrect={false}
+        autoComplete="off"
+        textContentType="none"
+        underlineColorAndroid="transparent"
+        selectionColor="#8BB8FF"
         style={styles.input}
       />
     </View>
@@ -42,15 +46,24 @@ export function AuthField({
 const styles = StyleSheet.create({
   row: {
     height: 46,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: 'rgba(140, 190, 255, 0.45)',
-    backgroundColor: 'rgba(6, 22, 56, 0.42)',
+    borderColor: colors.inputBorder,
+    backgroundColor: colors.inputBg,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
     gap: 10,
   },
   icon: { width: 18, height: 18 },
-  input: { flex: 1, color: colors.text, fontSize: 14, paddingVertical: 0 },
+  input: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 14,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    margin: 0,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+  },
 });

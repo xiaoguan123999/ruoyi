@@ -6,7 +6,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
-import { toast } from '@/utils/toast';
+import { modalInfo, modalWarning } from '@/utils/toast';
 
 export default function PasswordScreen() {
   const [oldPwd, setOldPwd] = useState('');
@@ -27,14 +27,14 @@ export default function PasswordScreen() {
             title="保存"
             onPress={() => {
               if (!oldPwd || !nextPwd || !confirm) {
-                toast('请填写完整信息');
+                modalWarning('请填写完整信息');
                 return;
               }
               if (nextPwd !== confirm) {
-                toast('两次密码不一致');
+                modalWarning('两次密码不一致');
                 return;
               }
-              toast('演示环境，密码未真正修改');
+              modalInfo('演示环境，密码未真正修改');
             }}
           />
         </View>

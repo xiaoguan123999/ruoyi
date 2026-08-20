@@ -1,26 +1,78 @@
-import { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { fetchAppProfile, formatBalance } from '@/api/app-auth';
+import { ApiError } from '@/api/request';
+import { applyAppRecharge, fetchAppWallet, parseAmountInput } from '@/api/app-trade';
+import type { AppWallet } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { useAuth } from '@/hooks/useAuth';
 import { images } from '@/constants/images';
-import { mockUser } from '@/constants/mock';
 import { colors } from '@/theme/colors';
-import { toast } from '@/utils/toast';
+import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
 
 const methods = [
-  { key: 'wechat', label: '微信', icon: images.payWechat },
-  { key: 'alipay', label: '支付宝', icon: images.payAlipay },
-  { key: 'usdt', label: 'USDT', icon: images.payUsdt },
-  { key: 'bank', label: '银行卡（客服）', icon: images.payCard },
+  { key: 'wechat', label: '微信', icon: images.payWechat, currency: 'CNY' as const },
+  { key: 'alipay', label: '支付宝', icon: images.payAlipay, currency: 'CNY' as const },
+  { key: 'usdt', label: 'USDT', icon: images.payUsdt, currency: 'USDT' as const },
+  { key: 'bank', label: '银行卡（客服）', icon: images.payCard, currency: 'CNY' as const },
 ];
 
 export default function RechargeScreen() {
-  const [amount, setAmount] = useState('0');
+  const router = useRouter();
+  const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('wechat');
+  const [submitting, setSubmitting] = useState(false);
+  const [wallet, setWallet] = useState<AppWallet | null>(null);
+  const { user } = useAuth();
+
+  const load = useCallback(async () => {
+    try {
+      const [nextWallet] = await Promise.all([fetchAppWallet(), fetchAppProfile()]);
+      setWallet(nextWallet);
+    } catch {
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
+
+  const cny = wallet?.cnyAvailable ?? user?.cnyAvailable;
+  const usdt = wallet?.usdtAvailable ?? user?.usdtAvailable;
+  const selected = methods.find((item) => item.key === method) ?? methods[0];
+
+  const onSubmit = async () => {
+    const value = parseAmountInput(amount);
+    if (value <= 0) {
+      modalWarning('请输入有效充值金额');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const message = await applyAppRecharge({
+        amount: value,
+        currency: selected.currency,
+        remark: selected.label,
+      });
+      modalSuccess(message);
+      setAmount('');
+      await load();
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 401) {
+        modalError(error instanceof ApiError ? error.message : '充值申请失败');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <AppBackground>
@@ -29,10 +81,12 @@ export default function RechargeScreen() {
         <GlassCard>
           <View style={styles.row}>
             <Text style={styles.label}>账户可用余额</Text>
-            <Text style={styles.link}>充值记录 ›</Text>
+            <Pressable onPress={() => router.push('/fund-details')}>
+              <Text style={styles.link}>充值记录 ›</Text>
+            </Pressable>
           </View>
-          <Text style={styles.money}>¥ {mockUser.balanceCny}</Text>
-          <Text style={styles.sub}>USDT {mockUser.balanceUsdt}</Text>
+          <Text style={styles.money}>¥ {formatBalance(cny)}</Text>
+          <Text style={styles.sub}>USDT {formatBalance(usdt)}</Text>
         </GlassCard>
         <GlassCard>
           <Text style={styles.label}>
@@ -43,7 +97,7 @@ export default function RechargeScreen() {
             onChangeText={setAmount}
             keyboardType="numeric"
             style={styles.input}
-            placeholder="¥ 0"
+            placeholder={selected.currency === 'USDT' ? 'USDT 0' : '¥ 0'}
             placeholderTextColor={colors.placeholder}
           />
         </GlassCard>
@@ -57,7 +111,7 @@ export default function RechargeScreen() {
             </Pressable>
           ))}
         </GlassCard>
-        <PrimaryButton title="充 值" onPress={() => toast('演示环境，暂不发起支付')} />
+        <PrimaryButton title="充 值" onPress={() => void onSubmit()} disabled={submitting} />
       </View>
     </AppBackground>
   );

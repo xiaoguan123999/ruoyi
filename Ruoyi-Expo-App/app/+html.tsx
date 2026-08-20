@@ -25,6 +25,14 @@ html, body, #root {
 body {
   background-color: #050B1C;
 }
+input, textarea {
+  outline: none !important;
+  box-shadow: none !important;
+}
+input:focus, textarea:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
 @media (min-width: 481px) {
   #root {
     max-width: 480px;
