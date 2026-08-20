@@ -12,7 +12,7 @@ public class AppRegisterBody
     @ApiModelProperty(value = "密码", required = true, example = "admin123")
     private String password;
 
-    @ApiModelProperty(value = "邀请码，上级会员ID", example = "1001")
+    @ApiModelProperty(value = "邀请码，7位数字", example = "5839201")
     private String inviteCode;
 
     @ApiModelProperty(value = "验证码", required = true, example = "3")

@@ -76,6 +76,35 @@ public class BizConfigServiceImpl implements IBizConfigService
         }
     }
 
+    @Override
+    public boolean isGoogleEnabled()
+    {
+        return bool(BizConstants.CONFIG_GOOGLE_ENABLED, true);
+    }
+
+    @Override
+    public boolean isGoogleRequiredForWithdraw()
+    {
+        return bool(BizConstants.CONFIG_GOOGLE_REQUIRE_WITHDRAW, true);
+    }
+
+    @Override
+    public String getGoogleIssuer()
+    {
+        String value = configService.selectConfigByKey(BizConstants.CONFIG_GOOGLE_ISSUER);
+        return StringUtils.isEmpty(value) ? "App" : value;
+    }
+
+    private boolean bool(String key, boolean defaultValue)
+    {
+        String value = configService.selectConfigByKey(key);
+        if (StringUtils.isEmpty(value))
+        {
+            return defaultValue;
+        }
+        return "true".equalsIgnoreCase(value) || "1".equals(value);
+    }
+
     private BigDecimal decimal(String key, String defaultValue)
     {
         String value = configService.selectConfigByKey(key);

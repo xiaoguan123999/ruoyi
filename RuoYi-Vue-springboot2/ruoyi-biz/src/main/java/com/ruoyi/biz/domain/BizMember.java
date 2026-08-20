@@ -49,6 +49,13 @@ public class BizMember extends BaseEntity
     /** 状态 */
     private String status;
 
+    /** 谷歌验证密钥 */
+    @JsonIgnore
+    private String gaSecret;
+
+    /** 谷歌验证 0未绑定 1已绑定 */
+    private String gaStatus;
+
     /** 人民币可用 */
     private BigDecimal cnyAvailable;
 
@@ -179,6 +186,26 @@ public class BizMember extends BaseEntity
     public void setStatus(String status)
     {
         this.status = status;
+    }
+
+    public String getGaSecret()
+    {
+        return gaSecret;
+    }
+
+    public void setGaSecret(String gaSecret)
+    {
+        this.gaSecret = gaSecret;
+    }
+
+    public String getGaStatus()
+    {
+        return gaStatus;
+    }
+
+    public void setGaStatus(String gaStatus)
+    {
+        this.gaStatus = gaStatus;
     }
 
     public BigDecimal getCnyAvailable()

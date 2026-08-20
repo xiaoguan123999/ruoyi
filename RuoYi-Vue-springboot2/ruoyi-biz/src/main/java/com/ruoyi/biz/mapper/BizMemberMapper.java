@@ -18,6 +18,8 @@ public interface BizMemberMapper
 
     int updateMember(BizMember member);
 
+    int updateGoogleAuth(@Param("memberId") Long memberId, @Param("gaSecret") String gaSecret, @Param("gaStatus") String gaStatus);
+
     int countValidTeamMembers(Long memberId);
 
     int countDirectMembers(Long memberId);

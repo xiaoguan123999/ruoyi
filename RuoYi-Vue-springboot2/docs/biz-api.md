@@ -33,14 +33,14 @@ token 来自注册或登录返回。
 先调 `GET /app/auth/captcha` 拿到图和 uuid，再提交：
 
 ```json
-{ "phone": "13800000001", "password": "123456", "inviteCode": "10001", "code": "3", "uuid": "验证码uuid" }
+{ "phone": "13800000001", "password": "123456", "inviteCode": "5839201", "code": "3", "uuid": "验证码uuid" }
 ```
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
 | phone | 是 | 手机号，唯一 |
 | password | 是 | 密码 |
-| inviteCode | 否 | 上级邀请码，等于上级 `memberId` |
+| inviteCode | 否 | 上级邀请码，7 位数字，注册时系统生成且不重复 |
 | code | 是 | 验证码答案 |
 | uuid | 是 | `/app/auth/captcha` 返回的 uuid |
 
@@ -52,11 +52,11 @@ token 来自注册或登录返回。
   "msg": "操作成功",
   "token": "eyJ...",
   "memberId": 10001,
-  "inviteCode": "10001"
+  "inviteCode": "5839201"
 }
 ```
 
-邀请码就是会员数字 ID。
+邀请码是 7 位随机数字（1000000–9999999），全表唯一，不等于会员 ID。已有会员可执行 sql/biz_invite_code_patch.sql。
 
 ### 2. 登录验证码
 
@@ -90,8 +90,31 @@ token 来自注册或登录返回。
 | password | 是 | 密码 |
 | code | 是 | 验证码答案 |
 | uuid | 是 | `/app/auth/captcha` 返回的 uuid |
+| googleCode | 已绑定则必填 | 谷歌验证器 6 位数字 |
 
-返回字段同注册。验证码错误或过期会返回 `code=500`。
+返回字段同注册，另有 `gaBound`（是否已绑定谷歌验证）。已绑定但未传或传错 `googleCode` 会失败。
+
+### 3.1 谷歌验证器
+
+需登录。App 用返回的 `otpauthUrl` 生成二维码，用 Google Authenticator / 微软 Authenticator 扫码。
+
+`GET /app/google/status`
+
+```json
+{ "bound": false, "enabled": true, "requireWithdraw": true, "issuer": "App" }
+```
+
+`GET /app/google/bind` 开始绑定，返回 `secret`、`otpauthUrl`（10 分钟内有效，需再确认）。
+
+`POST /app/google/bind`
+
+```json
+{ "googleCode": "123456" }
+```
+
+`POST /app/google/unbind` body 同上，解绑也要当前验证码。
+
+资料接口 `GET /app/profile` 增加 `gaStatus`：`0` 未绑定，`1` 已绑定。密钥不会返回。
 
 ### 4. 退出登录
 
@@ -110,7 +133,7 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
   "data": {
     "memberId": 10001,
     "phone": "13800000001",
-    "inviteCode": "10001",
+    "inviteCode": "5839201",
     "parentId": null,
     "realName": "",
     "idCard": "",
@@ -146,7 +169,7 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 ```json
 {
   "data": {
-    "inviteCode": "10001",
+    "inviteCode": "5839201",
     "inviteCount": 2,
     "reward": 0
   }
@@ -193,7 +216,38 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 
 `POST /app/checkin`
 
-一天一次，成功入账 CNY 2 元（参数 `biz.checkin.amount` 可改）。
+每个账户每天只能签到一次（库表唯一约束）。成功入账 CNY（默认 2 元，后台「签到规则」可改）。
+
+连续签到刚好达到配置天数时抽奖一次：默认满 180 天有机会获得华为手机（默认概率 1%），满 365 天有机会获得华硕 ROG 笔记本电脑（默认概率 0.5%）。天数、奖品名、概率、开关均后台可配。
+
+返回示例：
+
+```json
+{
+  "data": {
+    "checkinId": 1,
+    "checkinDate": "2026-08-20",
+    "amount": 2,
+    "currency": "CNY",
+    "streakDays": 180,
+    "checkedToday": true,
+    "prizeDrawn": true,
+    "prizeWon": false,
+    "prizeName": "华为手机",
+    "prizeDays": 180,
+    "rule": {
+      "amount": 2,
+      "oncePerDay": true,
+      "prizes": [
+        { "days": 180, "name": "华为手机", "rate": 1, "enabled": true },
+        { "days": 365, "name": "华硕ROG笔记本电脑", "rate": 0.5, "enabled": true }
+      ]
+    }
+  }
+}
+```
+
+`GET /app/checkin/info` 今日是否已签、当前连续天数、现行规则（不签到）。
 
 `GET /app/checkin/list?pageNum=1&pageSize=10` 签到记录。
 
@@ -282,6 +336,8 @@ CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币
 
 `POST /app/withdraw`
 
+已绑定谷歌验证，或后台开启「提现必须谷歌验证」时，body 需带 `googleCode`。未绑定且强制开启时会提示先绑定。
+
 ```json
 { "currency": "CNY", "amount": 105, "accountInfo": "银行卡/收款信息占位", "remark": "" }
 ```
@@ -303,8 +359,8 @@ CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币
 ## 二、建议联调顺序
 
 1. 注册 A（不填邀请码）
-2. 注册 B，`inviteCode = A.memberId`
-3. 注册 C，`inviteCode = B.memberId`
+2. 注册 B，`inviteCode = A` 的 7 位邀请码
+3. 注册 C，`inviteCode = B` 的 7 位邀请码
 4. C 实名
 5. C 申请充值 300
 6. 后台「充值审核」通过 → B 到账 27，A 到账 9
@@ -326,12 +382,15 @@ CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币
 | GET | `/biz/member/{memberId}` | 会员详情 |
 | POST | `/biz/member` | 后台新增**顶级会员** `{phone, password}`，无上级，返回 `memberId`/`inviteCode` |
 | PUT | `/biz/member` | 改实名、身份证、状态、密码（密码留空不改） |
+| PUT | `/biz/member/{memberId}/google/reset` | 后台解绑该会员谷歌验证 |
 | GET | `/biz/member/team/{memberId}?teamLevel=1` | 某会员的 1/2/3 级或全部下线 |
 | GET/POST/PUT | `/biz/product` | 产品列表/新增/修改 |
 | GET | `/biz/product/{productId}` | 产品详情 |
 | DELETE | `/biz/product/{ids}` | 删除产品 |
 | GET | `/biz/order/list` | 认购订单 |
 | GET | `/biz/checkin/list` | 签到记录 |
+| GET/PUT | `/biz/checkin/rule` | 签到规则（金额、连续天数、奖品、概率） |
+| GET | `/biz/checkin/prize/list` | 签到中奖记录 |
 | GET | `/biz/recharge/list` | 充值列表 |
 | POST | `/biz/recharge` | 后台代提充值单 `{memberId, currency, amount, remark}` |
 | PUT | `/biz/recharge/audit` | 审核 `{id, status, auditRemark}`，`status`：`1` 通过 `2` 拒绝 |
@@ -363,12 +422,17 @@ CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币
 
 | 键 | 当前值 | 说明 |
 |---|---|---|
-| biz.checkin.amount | 2 | 每日签到金额（CNY） |
+| biz.checkin.amount | 2 | 每日签到金额（CNY），建议走后台「签到规则」 |
+| biz.checkin.prize1.days / name / rate / enabled | 180 / 华为手机 / 1 / true | 连续签到第一档抽奖 |
+| biz.checkin.prize2.days / name / rate / enabled | 365 / 华硕ROG笔记本电脑 / 0.5 / true | 连续签到第二档抽奖 |
 | biz.withdraw.minAmount | 105 | 人民币最低提现 |
 | biz.withdraw.minAmount.usdt | 105 | USDT 最低提现 |
 | biz.team.rate.l1 / l2 / l3 | 9 / 3 / 1 | 充值分佣百分比（同币种） |
 | biz.invite.reward | 0 | 邀请奖励，暂未发放 |
 | biz.usdt.enabled | true | USDT 开关 |
+| biz.google.enabled | true | 谷歌验证总开关 |
+| biz.google.requireWithdraw | true | 提现必须先绑定谷歌验证 |
+| biz.google.issuer | App | 验证器里显示的名称 |
 
 每日返利任务：定时任务里「产品每日返利」，`dailyRebateTask.execute()`，cron `0 5 0 * * ?`。
 

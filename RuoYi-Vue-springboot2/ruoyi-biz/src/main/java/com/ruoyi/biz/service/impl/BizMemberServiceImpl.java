@@ -2,6 +2,7 @@ package com.ruoyi.biz.service.impl;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,7 +85,7 @@ public class BizMemberServiceImpl implements IBizMemberService
         BizMember member = new BizMember();
         member.setPhone(body.getPhone());
         member.setPassword(SecurityUtils.encryptPassword(body.getPassword()));
-        member.setInviteCode("TMP" + System.nanoTime());
+        member.setInviteCode(nextInviteCode());
         member.setKycStatus(BizConstants.KYC_NONE);
         member.setLevelId(1L);
         member.setStatus(BizConstants.STATUS_OK);
@@ -100,8 +101,6 @@ public class BizMemberServiceImpl implements IBizMemberService
             member.setAncestors("0");
         }
         memberMapper.insertMember(member);
-        member.setInviteCode(String.valueOf(member.getMemberId()));
-        memberMapper.updateMember(member);
         walletService.initWallets(member.getMemberId());
         return memberMapper.selectMemberById(member.getMemberId());
     }
@@ -204,6 +203,19 @@ public class BizMemberServiceImpl implements IBizMemberService
             update.setLevelId(matched.getLevelId());
             memberMapper.updateMember(update);
         }
+    }
+
+    private String nextInviteCode()
+    {
+        for (int i = 0; i < 30; i++)
+        {
+            String code = String.valueOf(ThreadLocalRandom.current().nextInt(1000000, 10000000));
+            if (memberMapper.selectMemberByInviteCode(code) == null)
+            {
+                return code;
+            }
+        }
+        throw new ServiceException("邀请码生成失败，请重试");
     }
 
     private Long parseLong(String value)

@@ -11,7 +11,7 @@ import com.ruoyi.common.constant.Constants;
 
 /**
  * Redis使用FastJson序列化
- * 
+ *
  * @author ruoyi
  */
 public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T>
@@ -35,7 +35,7 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T>
         {
             return new byte[0];
         }
-        return JSON.toJSONString(t, JSONWriter.Feature.WriteClassName).getBytes(DEFAULT_CHARSET);
+        return JSON.toJSONString(t, JSONWriter.Feature.WriteClassName, JSONWriter.Feature.FieldBased).getBytes(DEFAULT_CHARSET);
     }
 
     @Override
@@ -46,7 +46,13 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T>
             return null;
         }
         String str = new String(bytes, DEFAULT_CHARSET);
-
-        return JSON.parseObject(str, clazz, AUTO_TYPE_FILTER);
+        try
+        {
+            return JSON.parseObject(str, clazz, AUTO_TYPE_FILTER, JSONReader.Feature.FieldBased);
+        }
+        catch (Exception ex)
+        {
+            return JSON.parseObject(str, clazz, AUTO_TYPE_FILTER);
+        }
     }
 }

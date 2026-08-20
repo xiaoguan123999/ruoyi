@@ -15,6 +15,8 @@
         <result property="levelId"      column="level_id"/>
         <result property="levelName"    column="level_name"/>
         <result property="status"       column="status"/>
+        <result property="gaSecret"     column="ga_secret"/>
+        <result property="gaStatus"     column="ga_status"/>
         <result property="cnyAvailable" column="cny_available"/>
         <result property="cnyFrozen"    column="cny_frozen"/>
         <result property="usdtAvailable" column="usdt_available"/>
@@ -28,7 +30,7 @@
 
     <sql id="selectMemberVo">
         select m.member_id, m.phone, m.password, m.invite_code, m.parent_id, m.ancestors,
-               m.real_name, m.id_card, m.kyc_status, m.level_id, l.level_name, m.status,
+               m.real_name, m.id_card, m.kyc_status, m.level_id, l.level_name, m.status, m.ga_secret, m.ga_status,
                m.create_by, m.create_time, m.update_by, m.update_time, m.remark,
                (select w.available from biz_wallet w where w.member_id = m.member_id and w.currency = 'CNY') as cny_available,
                (select w.frozen from biz_wallet w where w.member_id = m.member_id and w.currency = 'CNY') as cny_frozen,
@@ -61,6 +63,7 @@
             <if test="parentId != null">and m.parent_id = #{parentId}</if>
             <if test="kycStatus != null and kycStatus != ''">and m.kyc_status = #{kycStatus}</if>
             <if test="status != null and status != ''">and m.status = #{status}</if>
+            <if test="gaStatus != null and gaStatus != ''">and m.ga_status = #{gaStatus}</if>
             <if test="realName != null and realName != ''">and m.real_name like concat('%', #{realName}, '%')</if>
             <if test="memberId != null">and m.member_id = #{memberId}</if>
         </where>
@@ -94,6 +97,12 @@
             <if test="remark != null">remark = #{remark},</if>
             update_time = sysdate()
         </set>
+        where member_id = #{memberId}
+    </update>
+
+    <update id="updateGoogleAuth">
+        update biz_member
+        set ga_secret = #{gaSecret}, ga_status = #{gaStatus}, update_time = sysdate()
         where member_id = #{memberId}
     </update>
 

@@ -5,12 +5,18 @@
         <el-input v-model="queryParams.phone" placeholder="请输入手机号" clearable style="width: 200px" @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item label="邀请码" prop="inviteCode">
-        <el-input v-model="queryParams.inviteCode" placeholder="会员ID/邀请码" clearable style="width: 200px" @keyup.enter="handleQuery" />
+        <el-input v-model="queryParams.inviteCode" placeholder="邀请码" clearable style="width: 200px" @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item label="实名" prop="kycStatus">
         <el-select v-model="queryParams.kycStatus" placeholder="实名状态" clearable style="width: 160px">
           <el-option label="未实名" value="0" />
           <el-option label="已实名" value="1" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="谷歌验证" prop="gaStatus">
+        <el-select v-model="queryParams.gaStatus" placeholder="谷歌验证" clearable style="width: 160px">
+          <el-option label="未绑定" value="0" />
+          <el-option label="已绑定" value="1" />
         </el-select>
       </el-form-item>
       <el-form-item label="状态" prop="status">
@@ -33,10 +39,16 @@
     </el-row>
 
     <el-table v-loading="loading" :data="memberList">
-      <el-table-column label="ID/邀请码" align="center" prop="memberId" width="100" />
+      <el-table-column label="ID" align="center" prop="memberId" width="90" />
+      <el-table-column label="邀请码" align="center" prop="inviteCode" width="110" />
       <el-table-column label="手机号" align="center" prop="phone" width="120" />
       <el-table-column label="姓名" align="center" prop="realName" />
       <el-table-column label="身份证" align="center" prop="idCard" width="180" />
+      <el-table-column label="谷歌验证" align="center" prop="gaStatus" width="100">
+        <template #default="scope">
+          <el-tag :type="scope.row.gaStatus === '1' ? 'success' : 'info'">{{ scope.row.gaStatus === '1' ? '已绑定' : '未绑定' }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="实名" align="center" prop="kycStatus" width="80">
         <template #default="scope">
           <el-tag :type="scope.row.kycStatus === '1' ? 'success' : 'info'">{{ scope.row.kycStatus === '1' ? '已实名' : '未实名' }}</el-tag>
@@ -56,9 +68,10 @@
           <span>{{ parseTime(scope.row.createTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="120" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="200" class-name="small-padding fixed-width">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:member:edit']">修改</el-button>
+          <el-button v-if="scope.row.gaStatus === '1'" link type="primary" icon="Unlock" @click="handleResetGoogle(scope.row)" v-hasPermi="['biz:member:edit']">解绑谷歌</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -76,7 +89,7 @@
           <el-form-item label="登录密码" prop="password">
             <el-input v-model="form.password" type="password" placeholder="请输入登录密码" show-password />
           </el-form-item>
-          <el-alert title="开通后没有上级，邀请码等于新会员ID，可发给后续用户填写。" type="info" :closable="false" show-icon style="margin-bottom: 12px" />
+          <el-alert title="开通后没有上级，系统生成7位不重复邀请码，发给后续用户填写。" type="info" :closable="false" show-icon style="margin-bottom: 12px" />
         </template>
         <template v-else>
           <el-form-item label="真实姓名" prop="realName">
@@ -116,7 +129,7 @@
 </template>
 
 <script setup lang="ts" name="BizMember">
-import { listMember, getMember, addMember, updateMember } from "@/api/biz"
+import { listMember, getMember, addMember, updateMember, resetMemberGoogle } from "@/api/biz"
 
 const { proxy } = getCurrentInstance() as any
 const memberList = ref<any[]>([])
@@ -135,7 +148,8 @@ const data = reactive({
     phone: undefined,
     inviteCode: undefined,
     kycStatus: undefined,
-    status: undefined
+    status: undefined,
+    gaStatus: undefined
   },
   rules: {
     phone: [{ required: true, message: "请输入手机号", trigger: "blur" }],
@@ -179,6 +193,14 @@ function handleUpdate(row: any) {
     open.value = true
     title.value = "修改会员"
   })
+}
+function handleResetGoogle(row: any) {
+  proxy.$modal.confirm('确认解绑会员 ' + row.phone + ' 的谷歌验证器？解绑后需重新绑定。').then(() => {
+    return resetMemberGoogle(row.memberId)
+  }).then(() => {
+    proxy.$modal.msgSuccess("已解绑")
+    getList()
+  }).catch(() => {})
 }
 function submitForm() {
   proxy.$refs["formRef"].validate((valid: boolean) => {

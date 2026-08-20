@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizCheckinPrizeMapper">
+
+    <resultMap type="BizCheckinPrize" id="BizCheckinPrizeResult">
+        <id     property="prizeLogId"   column="prize_log_id"/>
+        <result property="memberId"     column="member_id"/>
+        <result property="phone"        column="phone"/>
+        <result property="checkinId"    column="checkin_id"/>
+        <result property="streakDays"   column="streak_days"/>
+        <result property="prizeName"    column="prize_name"/>
+        <result property="won"          column="won"/>
+        <result property="createTime"   column="create_time"/>
+    </resultMap>
+
+    <select id="selectPrizeList" parameterType="BizCheckinPrize" resultMap="BizCheckinPrizeResult">
+        select p.prize_log_id, p.member_id, m.phone, p.checkin_id, p.streak_days, p.prize_name, p.won, p.create_time
+        from biz_checkin_prize p
+        left join biz_member m on m.member_id = p.member_id
+        <where>
+            <if test="memberId != null">and p.member_id = #{memberId}</if>
+            <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
+            <if test="won != null and won != ''">and p.won = #{won}</if>
+            <if test="prizeName != null and prizeName != ''">and p.prize_name like concat('%', #{prizeName}, '%')</if>
+        </where>
+        order by p.prize_log_id desc
+    </select>
+
+    <insert id="insertPrize" parameterType="BizCheckinPrize" useGeneratedKeys="true" keyProperty="prizeLogId">
+        insert into biz_checkin_prize (member_id, checkin_id, streak_days, prize_name, won, create_time)
+        values (#{memberId}, #{checkinId}, #{streakDays}, #{prizeName}, #{won}, sysdate())
+    </insert>
+</mapper>

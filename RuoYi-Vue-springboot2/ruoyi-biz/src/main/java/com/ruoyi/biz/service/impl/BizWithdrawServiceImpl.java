@@ -11,6 +11,7 @@ import com.ruoyi.biz.domain.BizWithdraw;
 import com.ruoyi.biz.mapper.BizOrderMapper;
 import com.ruoyi.biz.mapper.BizWithdrawMapper;
 import com.ruoyi.biz.service.IBizConfigService;
+import com.ruoyi.biz.service.IBizGoogleAuthService;
 import com.ruoyi.biz.service.IBizWalletService;
 import com.ruoyi.biz.service.IBizWithdrawService;
 import com.ruoyi.common.exception.ServiceException;
@@ -30,6 +31,9 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
     @Autowired
     private IBizConfigService configService;
 
+    @Autowired
+    private IBizGoogleAuthService googleAuthService;
+
     @Override
     public BizWithdraw selectWithdrawById(Long withdrawId)
     {
@@ -44,8 +48,9 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public BizWithdraw apply(Long memberId, String currency, BigDecimal amount, String accountInfo, String remark)
+    public BizWithdraw apply(Long memberId, String currency, BigDecimal amount, String accountInfo, String remark, String googleCode)
     {
+        googleAuthService.assertForWithdraw(memberId, googleCode);
         configService.assertCurrencyEnabled(currency);
         String payCurrency = currency.toUpperCase();
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)

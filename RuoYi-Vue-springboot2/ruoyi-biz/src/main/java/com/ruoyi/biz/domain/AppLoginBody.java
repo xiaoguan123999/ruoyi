@@ -18,6 +18,8 @@ public class AppLoginBody
     @ApiModelProperty(value = "验证码uuid，来自 /app/auth/captcha", required = true)
     private String uuid;
 
+    private String googleCode;
+
     public String getPhone()
     {
         return phone;
@@ -56,5 +58,15 @@ public class AppLoginBody
     public void setUuid(String uuid)
     {
         this.uuid = uuid;
+    }
+
+    public String getGoogleCode()
+    {
+        return googleCode;
+    }
+
+    public void setGoogleCode(String googleCode)
+    {
+        this.googleCode = googleCode;
     }
 }

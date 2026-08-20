@@ -29,6 +29,14 @@
         order by c.checkin_id desc
     </select>
 
+    <select id="selectDatesByMemberId" resultType="java.util.Date">
+        select checkin_date
+        from biz_checkin
+        where member_id = #{memberId}
+        order by checkin_date desc
+        limit 400
+    </select>
+
     <insert id="insertCheckin" parameterType="BizCheckin" useGeneratedKeys="true" keyProperty="checkinId">
         insert into biz_checkin (member_id, checkin_date, amount, currency, create_time)
         values (#{memberId}, #{checkinDate}, #{amount}, #{currency}, sysdate())

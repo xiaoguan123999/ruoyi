@@ -22,6 +22,8 @@ public class AppAmountBody
     @ApiModelProperty(value = "备注")
     private String remark;
 
+    private String googleCode;
+
     public Long getProductId()
     {
         return productId;
@@ -70,5 +72,15 @@ public class AppAmountBody
     public void setRemark(String remark)
     {
         this.remark = remark;
+    }
+
+    public String getGoogleCode()
+    {
+        return googleCode;
+    }
+
+    public void setGoogleCode(String googleCode)
+    {
+        this.googleCode = googleCode;
     }
 }

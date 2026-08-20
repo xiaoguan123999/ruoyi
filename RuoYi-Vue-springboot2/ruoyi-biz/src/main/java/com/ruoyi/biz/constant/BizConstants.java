@@ -15,6 +15,10 @@ public class BizConstants
     /** 已实名 */
     public static final String KYC_DONE = "1";
 
+    public static final String GA_NONE = "0";
+
+    public static final String GA_BOUND = "1";
+
     /** 正常 */
     public static final String STATUS_OK = "0";
 
@@ -67,4 +71,19 @@ public class BizConstants
     public static final String CONFIG_INVITE_REWARD = "biz.invite.reward";
 
     public static final String CONFIG_USDT_ENABLED = "biz.usdt.enabled";
+
+    public static final String CONFIG_CHECKIN_PRIZE1_DAYS = "biz.checkin.prize1.days";
+    public static final String CONFIG_CHECKIN_PRIZE1_NAME = "biz.checkin.prize1.name";
+    public static final String CONFIG_CHECKIN_PRIZE1_RATE = "biz.checkin.prize1.rate";
+    public static final String CONFIG_CHECKIN_PRIZE1_ENABLED = "biz.checkin.prize1.enabled";
+    public static final String CONFIG_CHECKIN_PRIZE2_DAYS = "biz.checkin.prize2.days";
+    public static final String CONFIG_CHECKIN_PRIZE2_NAME = "biz.checkin.prize2.name";
+    public static final String CONFIG_CHECKIN_PRIZE2_RATE = "biz.checkin.prize2.rate";
+    public static final String CONFIG_CHECKIN_PRIZE2_ENABLED = "biz.checkin.prize2.enabled";
+
+    public static final String CONFIG_GOOGLE_ENABLED = "biz.google.enabled";
+    public static final String CONFIG_GOOGLE_REQUIRE_WITHDRAW = "biz.google.requireWithdraw";
+    public static final String CONFIG_GOOGLE_ISSUER = "biz.google.issuer";
 }
+
+

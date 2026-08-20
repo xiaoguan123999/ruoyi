@@ -15,4 +15,11 @@ public interface IBizConfigService
     boolean isUsdtEnabled();
 
     void assertCurrencyEnabled(String currency);
+
+    boolean isGoogleEnabled();
+
+    boolean isGoogleRequiredForWithdraw();
+
+    String getGoogleIssuer();
 }
+

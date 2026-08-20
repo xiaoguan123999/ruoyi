@@ -11,5 +11,7 @@ public interface BizCheckinMapper
 
     List<BizCheckin> selectCheckinList(BizCheckin checkin);
 
+    List<Date> selectDatesByMemberId(@Param("memberId") Long memberId);
+
     int insertCheckin(BizCheckin checkin);
 }

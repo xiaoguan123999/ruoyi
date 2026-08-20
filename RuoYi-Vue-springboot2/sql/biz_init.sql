@@ -8,7 +8,7 @@ create table biz_member (
   member_id         bigint(20)      not null auto_increment    comment '会员ID/邀请码',
   phone             varchar(20)     not null                   comment '手机号',
   password          varchar(100)    not null                   comment '密码',
-  invite_code       varchar(32)     default ''                 comment '邀请码(=会员ID)',
+  invite_code       varchar(32)     default ''                 comment '邀请码(7位随机数字)',
   parent_id         bigint(20)      default null               comment '上级会员ID',
   ancestors         varchar(500)    default '0'                comment '祖级列表',
   real_name         varchar(50)     default ''                 comment '真实姓名',
@@ -16,6 +16,8 @@ create table biz_member (
   kyc_status        char(1)         default '0'                comment '实名状态（0未实名 1已实名）',
   level_id          bigint(20)      default 1                  comment '会员等级ID',
   status            char(1)         default '0'                comment '状态（0正常 1停用）',
+  ga_secret         varchar(64)     default ''                 comment '谷歌验证密钥',
+  ga_status         char(1)         default '0'                comment '谷歌验证（0未绑定 1已绑定）',
   create_by         varchar(64)     default ''                 comment '创建者',
   create_time       datetime                                   comment '创建时间',
   update_by         varchar(64)     default ''                 comment '更新者',
@@ -72,6 +74,23 @@ create table biz_checkin (
   primary key (checkin_id),
   unique key uk_biz_checkin_member_date (member_id, checkin_date)
 ) engine=innodb comment = '每日签到';
+
+-- 签到连续抽奖
+drop table if exists biz_checkin_prize;
+create table biz_checkin_prize (
+  prize_log_id      bigint(20)      not null auto_increment    comment '抽奖记录ID',
+  member_id         bigint(20)      not null                   comment '会员ID',
+  checkin_id        bigint(20)      not null                   comment '签到ID',
+  streak_days       int(11)         not null                   comment '连续签到天数',
+  prize_name        varchar(100)    not null                   comment '奖品名称',
+  won               char(1)         not null default '0'       comment '是否中奖（0未中 1已中）',
+  create_time       datetime                                   comment '创建时间',
+  primary key (prize_log_id),
+  unique key uk_biz_checkin_prize_once (member_id, checkin_id, streak_days),
+  key idx_biz_checkin_prize_member (member_id, won)
+) engine=innodb comment = '签到连续抽奖记录';
+
+
 
 -- 产品
 drop table if exists biz_product;
@@ -213,7 +232,7 @@ insert into biz_product values(1, '提现指定产品', 'CNY', 100.0000, 5.0000,
 insert into biz_product values(2, 'USDT Product', 'USDT', 100.0000, 5.0000, 30, '1', '0', 2, 'admin', sysdate(), '', null, 'USDT withdraw required');
 
 -- 业务参数（可重复执行）
-delete from sys_config where config_id between 20 and 27;
+delete from sys_config where config_id between 20 and 38;
 insert into sys_config values(20, '签到奖励金额', 'biz.checkin.amount', '2', 'N', 'admin', sysdate(), '', null, '每日签到奖励人民币金额');
 insert into sys_config values(21, '提现最低金额', 'biz.withdraw.minAmount', '105', 'N', 'admin', sysdate(), '', null, '人民币最低提现金额');
 insert into sys_config values(22, '团队一级分佣比例', 'biz.team.rate.l1', '9', 'N', 'admin', sysdate(), '', null, '充值一级分佣百分比');
@@ -222,6 +241,17 @@ insert into sys_config values(24, '团队三级分佣比例', 'biz.team.rate.l3'
 insert into sys_config values(25, '邀请奖励金额', 'biz.invite.reward', '0', 'N', 'admin', sysdate(), '', null, '邀请好友奖励，0表示暂无奖励');
 insert into sys_config values(26, 'USDT业务开关', 'biz.usdt.enabled', 'true', 'N', 'admin', sysdate(), '', null, 'false表示USDT充提暂未开放');
 insert into sys_config values(27, 'USDT min withdraw', 'biz.withdraw.minAmount.usdt', '105', 'N', 'admin', sysdate(), '', null, 'USDT min withdraw');
+insert into sys_config values(28, '签到第一档连续天数', 'biz.checkin.prize1.days', '180', 'N', 'admin', sysdate(), '', null, '连续签到满该天数触发抽奖');
+insert into sys_config values(29, '签到第一档奖品', 'biz.checkin.prize1.name', '华为手机', 'N', 'admin', sysdate(), '', null, '连续签到奖品名称');
+insert into sys_config values(30, '签到第一档中奖概率', 'biz.checkin.prize1.rate', '1', 'N', 'admin', sysdate(), '', null, '百分数，1表示1%，100表示必中');
+insert into sys_config values(31, '签到第一档开关', 'biz.checkin.prize1.enabled', 'true', 'N', 'admin', sysdate(), '', null, 'false表示关闭该档抽奖');
+insert into sys_config values(32, '签到第二档连续天数', 'biz.checkin.prize2.days', '365', 'N', 'admin', sysdate(), '', null, '连续签到满该天数触发抽奖');
+insert into sys_config values(33, '签到第二档奖品', 'biz.checkin.prize2.name', '华硕ROG笔记本电脑', 'N', 'admin', sysdate(), '', null, '连续签到奖品名称');
+insert into sys_config values(34, '签到第二档中奖概率', 'biz.checkin.prize2.rate', '0.5', 'N', 'admin', sysdate(), '', null, '百分数，0.5表示0.5%，100表示必中');
+insert into sys_config values(35, '签到第二档开关', 'biz.checkin.prize2.enabled', 'true', 'N', 'admin', sysdate(), '', null, 'false表示关闭该档抽奖');
+insert into sys_config values(36, '谷歌验证开关', 'biz.google.enabled', 'true', 'N', 'admin', sysdate(), '', null, 'false表示关闭谷歌验证');
+insert into sys_config values(37, '提现必须谷歌验证', 'biz.google.requireWithdraw', 'true', 'N', 'admin', sysdate(), '', null, 'true表示未绑定不能提现');
+insert into sys_config values(38, '谷歌验证器名称', 'biz.google.issuer', 'App', 'N', 'admin', sysdate(), '', null, '显示在谷歌验证器中的名称');
 
 -- 每日返利任务（默认开启）
 delete from sys_job where job_id = 100;
@@ -243,6 +273,8 @@ insert into sys_menu values('2007', '资金流水', '2000', '7', 'walletLog', 'b
 insert into sys_menu values('2008', '团队关系', '2000', '8', 'team', 'biz/team/index', '', '', 1, 0, 'C', '0', '0', 'biz:team:list', 'tree', 'admin', sysdate(), '', null, '团队关系');
 insert into sys_menu values('2009', '会员等级', '2000', '9', 'level', 'biz/level/index', '', '', 1, 0, 'C', '0', '0', 'biz:level:list', 'peoples', 'admin', sysdate(), '', null, '会员等级');
 insert into sys_menu values('2010', '分佣记录', '2000', '10', 'commission', 'biz/commission/index', '', '', 1, 0, 'C', '0', '0', 'biz:commission:list', 'form', 'admin', sysdate(), '', null, '分佣记录');
+insert into sys_menu values('2011', '签到规则', '2000', '4', 'checkinRule', 'biz/checkin/rule', '', '', 1, 0, 'C', '0', '0', 'biz:checkin:rule', 'edit', 'admin', sysdate(), '', null, '签到金额与连续抽奖规则');
+insert into sys_menu values('2012', '签到中奖', '2000', '4', 'checkinPrize', 'biz/checkin/prize', '', '', 1, 0, 'C', '0', '0', 'biz:checkin:prize', 'star', 'admin', sysdate(), '', null, '连续签到抽奖记录');
 
 -- 按钮权限
 insert into sys_menu values('2101', '会员查询', '2001', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:member:query', '#', 'admin', sysdate(), '', null, '');
@@ -254,6 +286,8 @@ insert into sys_menu values('2113', '产品修改', '2002', '3', '', '', '', '',
 insert into sys_menu values('2114', '产品删除', '2002', '4', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:product:remove', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2121', '订单查询', '2003', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:order:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2131', '签到查询', '2004', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:checkin:query', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2132', '签到规则保存', '2011', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:checkin:rule', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2133', '签到中奖查询', '2012', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:checkin:prize', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2141', '充值查询', '2005', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:recharge:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2142', '充值新增', '2005', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:recharge:add', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2143', '充值审核', '2005', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:recharge:audit', '#', 'admin', sysdate(), '', null, '');

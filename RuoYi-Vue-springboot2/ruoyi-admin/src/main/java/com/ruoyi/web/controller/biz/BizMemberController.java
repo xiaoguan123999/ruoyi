@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.biz.domain.BizMember;
+import com.ruoyi.biz.service.IBizGoogleAuthService;
 import com.ruoyi.biz.service.IBizMemberService;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
@@ -27,6 +28,9 @@ public class BizMemberController extends BaseController
 {
     @Autowired
     private IBizMemberService memberService;
+
+    @Autowired
+    private IBizGoogleAuthService googleAuthService;
 
     @ApiOperation("会员列表")
     @PreAuthorize("@ss.hasPermi('biz:member:list')")
@@ -67,6 +71,16 @@ public class BizMemberController extends BaseController
     {
         member.setUpdateBy(getUsername());
         memberService.updateMember(member);
+        return success();
+    }
+
+    @ApiOperation("重置谷歌验证")
+    @PreAuthorize("@ss.hasPermi('biz:member:edit')")
+    @Log(title = "重置谷歌验证", businessType = BusinessType.UPDATE)
+    @PutMapping("/{memberId}/google/reset")
+    public AjaxResult resetGoogle(@PathVariable Long memberId)
+    {
+        googleAuthService.reset(memberId);
         return success();
     }
 

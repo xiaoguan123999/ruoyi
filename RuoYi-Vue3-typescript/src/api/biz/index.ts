@@ -17,6 +17,10 @@ export function updateMember(data: any): Promise<AjaxResult> {
   return request({ url: '/biz/member', method: 'put', data })
 }
 
+export function resetMemberGoogle(memberId: number): Promise<AjaxResult> {
+  return request({ url: '/biz/member/' + memberId + '/google/reset', method: 'put' })
+}
+
 export function listMemberTeam(memberId: number, teamLevel?: number): Promise<AjaxResult<any[]>> {
   return request({ url: '/biz/member/team/' + memberId, method: 'get', params: { teamLevel } })
 }
@@ -99,4 +103,16 @@ export function delLevel(levelId: number | number[]): Promise<AjaxResult> {
 
 export function listCommission(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/commission/list', method: 'get', params: query })
+}
+
+export function getCheckinRule(): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/checkin/rule', method: 'get' })
+}
+
+export function saveCheckinRule(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/checkin/rule', method: 'put', data })
+}
+
+export function listCheckinPrize(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/checkin/prize/list', method: 'get', params: query })
 }

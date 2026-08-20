@@ -67,6 +67,13 @@ public class AppBizController extends BaseController
         return getDataTable(checkinService.selectCheckinList(query));
     }
 
+    @ApiOperation("签到状态与规则")
+    @GetMapping("/checkin/info")
+    public AjaxResult checkinInfo()
+    {
+        return success(checkinService.getCheckinInfo(AppSecurityUtils.getMemberId()));
+    }
+
     @ApiOperation("产品列表")
     @GetMapping("/products")
     public AjaxResult products()
@@ -128,7 +135,7 @@ public class AppBizController extends BaseController
     {
         String currency = StringUtils.isEmpty(body.getCurrency()) ? BizConstants.CURRENCY_CNY : body.getCurrency();
         return success(withdrawService.apply(AppSecurityUtils.getMemberId(), currency, body.getAmount(),
-                body.getAccountInfo(), body.getRemark()));
+                body.getAccountInfo(), body.getRemark(), body.getGoogleCode()));
     }
 
     @ApiOperation("提现记录")

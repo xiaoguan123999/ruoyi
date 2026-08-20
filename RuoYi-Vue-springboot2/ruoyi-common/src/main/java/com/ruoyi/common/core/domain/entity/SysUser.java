@@ -6,6 +6,7 @@ import javax.validation.constraints.*;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.alibaba.fastjson2.annotation.JSONField;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ruoyi.common.annotation.Excel;
 import com.ruoyi.common.annotation.Excel.ColumnType;
@@ -116,6 +117,7 @@ public class SysUser extends BaseEntity
         this.userId = userId;
     }
 
+    @JSONField(serialize = false, deserialize = false)
     public boolean isAdmin()
     {
         return SecurityUtils.isAdmin(this.userId);

@@ -18,6 +18,7 @@ import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.AppLoginBody;
 import com.ruoyi.biz.domain.AppRegisterBody;
 import com.ruoyi.biz.domain.BizMember;
+import com.ruoyi.biz.service.IBizGoogleAuthService;
 import com.ruoyi.biz.service.IBizMemberService;
 import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.constant.CacheConstants;
@@ -54,6 +55,9 @@ public class AppAuthController extends BaseController
 
     @Autowired
     private AppTokenService appTokenService;
+
+    @Autowired
+    private IBizGoogleAuthService googleAuthService;
 
     @ApiOperation("获取登录验证码")
     @GetMapping("/captcha")
@@ -126,6 +130,7 @@ public class AppAuthController extends BaseController
         {
             throw new ServiceException("账号已停用");
         }
+        googleAuthService.assertForLogin(member, body.getGoogleCode());
         return buildToken(member);
     }
 
@@ -166,6 +171,7 @@ public class AppAuthController extends BaseController
         ajax.put(Constants.TOKEN, token);
         ajax.put("memberId", member.getMemberId());
         ajax.put("inviteCode", member.getInviteCode());
+        ajax.put("gaBound", BizConstants.GA_BOUND.equals(member.getGaStatus()));
         return ajax;
     }
 }
