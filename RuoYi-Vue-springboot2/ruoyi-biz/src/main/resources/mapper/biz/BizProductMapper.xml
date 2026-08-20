@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizProductMapper">
+
+    <resultMap type="BizProduct" id="BizProductResult">
+        <id     property="productId"         column="product_id"/>
+        <result property="productName"       column="product_name"/>
+        <result property="currency"          column="currency"/>
+        <result property="price"             column="price"/>
+        <result property="dailyRebate"       column="daily_rebate"/>
+        <result property="durationDays"      column="duration_days"/>
+        <result property="withdrawRequired"  column="withdraw_required"/>
+        <result property="status"            column="status"/>
+        <result property="sort"              column="sort"/>
+        <result property="createBy"          column="create_by"/>
+        <result property="createTime"        column="create_time"/>
+        <result property="updateBy"          column="update_by"/>
+        <result property="updateTime"        column="update_time"/>
+        <result property="remark"            column="remark"/>
+    </resultMap>
+
+    <sql id="selectProductVo">
+        select product_id, product_name, currency, price, daily_rebate, duration_days, withdraw_required,
+               status, sort, create_by, create_time, update_by, update_time, remark
+        from biz_product
+    </sql>
+
+    <select id="selectProductById" parameterType="Long" resultMap="BizProductResult">
+        <include refid="selectProductVo"/>
+        where product_id = #{productId}
+    </select>
+
+    <select id="selectProductList" parameterType="BizProduct" resultMap="BizProductResult">
+        <include refid="selectProductVo"/>
+        <where>
+            <if test="productName != null and productName != ''">and product_name like concat('%', #{productName}, '%')</if>
+            <if test="currency != null and currency != ''">and currency = #{currency}</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+            <if test="withdrawRequired != null and withdrawRequired != ''">and withdraw_required = #{withdrawRequired}</if>
+        </where>
+        order by sort asc, product_id desc
+    </select>
+
+    <insert id="insertProduct" parameterType="BizProduct" useGeneratedKeys="true" keyProperty="productId">
+        insert into biz_product (
+            product_name, currency, price, daily_rebate, duration_days, withdraw_required,
+            status, sort, create_by, create_time, remark
+        ) values (
+            #{productName}, #{currency}, #{price}, #{dailyRebate}, #{durationDays}, #{withdrawRequired},
+            #{status}, #{sort}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateProduct" parameterType="BizProduct">
+        update biz_product
+        <set>
+            <if test="productName != null and productName != ''">product_name = #{productName},</if>
+            <if test="currency != null and currency != ''">currency = #{currency},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="dailyRebate != null">daily_rebate = #{dailyRebate},</if>
+            <if test="durationDays != null">duration_days = #{durationDays},</if>
+            <if test="withdrawRequired != null">withdraw_required = #{withdrawRequired},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where product_id = #{productId}
+    </update>
+
+    <delete id="deleteProductByIds" parameterType="Long">
+        delete from biz_product where product_id in
+        <foreach collection="array" item="productId" open="(" separator="," close=")">
+            #{productId}
+        </foreach>
+    </delete>
+</mapper>

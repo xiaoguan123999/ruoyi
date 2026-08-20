@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizMemberMapper">
+
+    <resultMap type="BizMember" id="BizMemberResult">
+        <id     property="memberId"     column="member_id"/>
+        <result property="phone"        column="phone"/>
+        <result property="password"     column="password"/>
+        <result property="inviteCode"   column="invite_code"/>
+        <result property="parentId"     column="parent_id"/>
+        <result property="ancestors"    column="ancestors"/>
+        <result property="realName"     column="real_name"/>
+        <result property="idCard"       column="id_card"/>
+        <result property="kycStatus"    column="kyc_status"/>
+        <result property="levelId"      column="level_id"/>
+        <result property="levelName"    column="level_name"/>
+        <result property="status"       column="status"/>
+        <result property="cnyAvailable" column="cny_available"/>
+        <result property="cnyFrozen"    column="cny_frozen"/>
+        <result property="usdtAvailable" column="usdt_available"/>
+        <result property="teamCount"    column="team_count"/>
+        <result property="createBy"     column="create_by"/>
+        <result property="createTime"   column="create_time"/>
+        <result property="updateBy"     column="update_by"/>
+        <result property="updateTime"   column="update_time"/>
+        <result property="remark"       column="remark"/>
+    </resultMap>
+
+    <sql id="selectMemberVo">
+        select m.member_id, m.phone, m.password, m.invite_code, m.parent_id, m.ancestors,
+               m.real_name, m.id_card, m.kyc_status, m.level_id, l.level_name, m.status,
+               m.create_by, m.create_time, m.update_by, m.update_time, m.remark,
+               (select w.available from biz_wallet w where w.member_id = m.member_id and w.currency = 'CNY') as cny_available,
+               (select w.frozen from biz_wallet w where w.member_id = m.member_id and w.currency = 'CNY') as cny_frozen,
+               (select w.available from biz_wallet w where w.member_id = m.member_id and w.currency = 'USDT') as usdt_available,
+               (select count(1) from biz_member t where find_in_set(m.member_id, t.ancestors)) as team_count
+        from biz_member m
+        left join biz_level l on l.level_id = m.level_id
+    </sql>
+
+    <select id="selectMemberById" parameterType="Long" resultMap="BizMemberResult">
+        <include refid="selectMemberVo"/>
+        where m.member_id = #{memberId}
+    </select>
+
+    <select id="selectMemberByPhone" parameterType="String" resultMap="BizMemberResult">
+        <include refid="selectMemberVo"/>
+        where m.phone = #{phone}
+    </select>
+
+    <select id="selectMemberByInviteCode" parameterType="String" resultMap="BizMemberResult">
+        <include refid="selectMemberVo"/>
+        where m.invite_code = #{inviteCode}
+    </select>
+
+    <select id="selectMemberList" parameterType="BizMember" resultMap="BizMemberResult">
+        <include refid="selectMemberVo"/>
+        <where>
+            <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
+            <if test="inviteCode != null and inviteCode != ''">and m.invite_code = #{inviteCode}</if>
+            <if test="parentId != null">and m.parent_id = #{parentId}</if>
+            <if test="kycStatus != null and kycStatus != ''">and m.kyc_status = #{kycStatus}</if>
+            <if test="status != null and status != ''">and m.status = #{status}</if>
+            <if test="realName != null and realName != ''">and m.real_name like concat('%', #{realName}, '%')</if>
+            <if test="memberId != null">and m.member_id = #{memberId}</if>
+        </where>
+        order by m.member_id desc
+    </select>
+
+    <insert id="insertMember" parameterType="BizMember" useGeneratedKeys="true" keyProperty="memberId">
+        insert into biz_member (
+            phone, password, invite_code, parent_id, ancestors, real_name, id_card,
+            kyc_status, level_id, status, create_by, create_time, remark
+        ) values (
+            #{phone}, #{password}, #{inviteCode}, #{parentId}, #{ancestors}, #{realName}, #{idCard},
+            #{kycStatus}, #{levelId}, #{status}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateMember" parameterType="BizMember">
+        update biz_member
+        <set>
+            <if test="phone != null and phone != ''">phone = #{phone},</if>
+            <if test="password != null and password != ''">password = #{password},</if>
+            <if test="inviteCode != null and inviteCode != ''">invite_code = #{inviteCode},</if>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="ancestors != null">ancestors = #{ancestors},</if>
+            <if test="realName != null">real_name = #{realName},</if>
+            <if test="idCard != null">id_card = #{idCard},</if>
+            <if test="kycStatus != null">kyc_status = #{kycStatus},</if>
+            <if test="levelId != null">level_id = #{levelId},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where member_id = #{memberId}
+    </update>
+
+    <select id="countValidTeamMembers" parameterType="Long" resultType="int">
+        select count(1)
+        from biz_member m
+        where find_in_set(#{memberId}, m.ancestors)
+          and m.kyc_status = '1'
+          and exists (select 1 from biz_order o where o.member_id = m.member_id)
+    </select>
+
+    <select id="countDirectMembers" parameterType="Long" resultType="int">
+        select count(1) from biz_member where parent_id = #{memberId}
+    </select>
+
+    <select id="selectTeamMembers" resultMap="BizMemberResult">
+        <include refid="selectMemberVo"/>
+        <where>
+            <choose>
+                <when test="teamLevel != null and teamLevel == 1">
+                    and m.parent_id = #{memberId}
+                </when>
+                <when test="teamLevel != null and teamLevel == 2">
+                    and m.parent_id in (select member_id from biz_member where parent_id = #{memberId})
+                </when>
+                <when test="teamLevel != null and teamLevel == 3">
+                    and m.parent_id in (
+                        select member_id from biz_member
+                        where parent_id in (select member_id from biz_member where parent_id = #{memberId})
+                    )
+                </when>
+                <otherwise>
+                    and find_in_set(#{memberId}, m.ancestors)
+                </otherwise>
+            </choose>
+        </where>
+        order by m.member_id desc
+    </select>
+</mapper>

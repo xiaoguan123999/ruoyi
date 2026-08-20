@@ -80,4 +80,52 @@ public class CaptchaConfig
         defaultKaptcha.setConfig(config);
         return defaultKaptcha;
     }
+
+    /**
+     * App 深色验证码，匹配星帆智联登录页
+     */
+    @Bean(name = "appCaptchaProducer")
+    public DefaultKaptcha getAppKaptchaBean()
+    {
+        DefaultKaptcha defaultKaptcha = new DefaultKaptcha();
+        defaultKaptcha.setConfig(new Config(appCaptchaProperties(false)));
+        return defaultKaptcha;
+    }
+
+    @Bean(name = "appCaptchaProducerMath")
+    public DefaultKaptcha getAppKaptchaBeanMath()
+    {
+        DefaultKaptcha defaultKaptcha = new DefaultKaptcha();
+        defaultKaptcha.setConfig(new Config(appCaptchaProperties(true)));
+        return defaultKaptcha;
+    }
+
+    private Properties appCaptchaProperties(boolean math)
+    {
+        Properties properties = new Properties();
+        properties.setProperty(KAPTCHA_BORDER, "yes");
+        properties.setProperty(KAPTCHA_BORDER_COLOR, "64,156,255");
+        properties.setProperty(KAPTCHA_TEXTPRODUCER_FONT_COLOR, "220,240,255");
+        properties.setProperty(KAPTCHA_IMAGE_WIDTH, "150");
+        properties.setProperty(KAPTCHA_IMAGE_HEIGHT, "48");
+        properties.setProperty(KAPTCHA_TEXTPRODUCER_FONT_SIZE, "32");
+        properties.setProperty(KAPTCHA_TEXTPRODUCER_FONT_NAMES, "Arial,Courier");
+        properties.setProperty(KAPTCHA_TEXTPRODUCER_CHAR_SPACE, "2");
+        properties.setProperty(KAPTCHA_NOISE_IMPL, "com.google.code.kaptcha.impl.NoNoise");
+        properties.setProperty(KAPTCHA_OBSCURIFICATOR_IMPL, "com.google.code.kaptcha.impl.WaterRipple");
+        properties.setProperty(KAPTCHA_BACKGROUND_CLR_FROM, "10,24,52");
+        properties.setProperty(KAPTCHA_BACKGROUND_CLR_TO, "8,18,40");
+        if (math)
+        {
+            properties.setProperty(KAPTCHA_SESSION_CONFIG_KEY, "appKaptchaCodeMath");
+            properties.setProperty(KAPTCHA_TEXTPRODUCER_IMPL, "com.ruoyi.framework.config.KaptchaTextCreator");
+            properties.setProperty(KAPTCHA_TEXTPRODUCER_CHAR_LENGTH, "6");
+        }
+        else
+        {
+            properties.setProperty(KAPTCHA_SESSION_CONFIG_KEY, "appKaptchaCode");
+            properties.setProperty(KAPTCHA_TEXTPRODUCER_CHAR_LENGTH, "4");
+        }
+        return properties;
+    }
 }

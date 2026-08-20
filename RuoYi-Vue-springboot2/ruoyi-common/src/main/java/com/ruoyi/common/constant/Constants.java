@@ -111,6 +111,11 @@ public class Constants
     public static final String LOGIN_USER_KEY = "login_user_key";
 
     /**
+     * App会员令牌
+     */
+    public static final String LOGIN_APP_MEMBER_KEY = "login_app_member_key";
+
+    /**
      * 用户ID
      */
     public static final String JWT_USERID = "userid";

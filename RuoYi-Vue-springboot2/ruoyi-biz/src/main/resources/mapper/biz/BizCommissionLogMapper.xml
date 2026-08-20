@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizCommissionLogMapper">
+
+    <resultMap type="BizCommissionLog" id="BizCommissionLogResult">
+        <id     property="commissionId" column="commission_id"/>
+        <result property="fromMemberId" column="from_member_id"/>
+        <result property="fromPhone"    column="from_phone"/>
+        <result property="toMemberId"   column="to_member_id"/>
+        <result property="toPhone"      column="to_phone"/>
+        <result property="teamLevel"    column="team_level"/>
+        <result property="currency"     column="currency"/>
+        <result property="baseAmount"   column="base_amount"/>
+        <result property="rate"         column="rate"/>
+        <result property="amount"       column="amount"/>
+        <result property="rechargeId"   column="recharge_id"/>
+        <result property="createTime"   column="create_time"/>
+    </resultMap>
+
+    <select id="selectCommissionList" parameterType="BizCommissionLog" resultMap="BizCommissionLogResult">
+        select c.commission_id, c.from_member_id, fm.phone as from_phone, c.to_member_id, tm.phone as to_phone,
+               c.team_level, c.currency, c.base_amount, c.rate, c.amount, c.recharge_id, c.create_time
+        from biz_commission_log c
+        left join biz_member fm on fm.member_id = c.from_member_id
+        left join biz_member tm on tm.member_id = c.to_member_id
+        <where>
+            <if test="fromMemberId != null">and c.from_member_id = #{fromMemberId}</if>
+            <if test="toMemberId != null">and c.to_member_id = #{toMemberId}</if>
+            <if test="currency != null and currency != ''">and c.currency = #{currency}</if>
+            <if test="teamLevel != null">and c.team_level = #{teamLevel}</if>
+        </where>
+        order by c.commission_id desc
+    </select>
+
+    <insert id="insertCommissionLog" parameterType="BizCommissionLog" useGeneratedKeys="true" keyProperty="commissionId">
+        insert into biz_commission_log (
+            from_member_id, to_member_id, team_level, currency, base_amount, rate, amount, recharge_id, create_time
+        ) values (
+            #{fromMemberId}, #{toMemberId}, #{teamLevel}, #{currency}, #{baseAmount}, #{rate}, #{amount}, #{rechargeId}, sysdate()
+        )
+    </insert>
+</mapper>

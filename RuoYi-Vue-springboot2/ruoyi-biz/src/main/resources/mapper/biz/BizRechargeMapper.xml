@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizRechargeMapper">
+
+    <resultMap type="BizRecharge" id="BizRechargeResult">
+        <id     property="rechargeId"   column="recharge_id"/>
+        <result property="memberId"     column="member_id"/>
+        <result property="phone"        column="phone"/>
+        <result property="currency"     column="currency"/>
+        <result property="amount"       column="amount"/>
+        <result property="status"       column="status"/>
+        <result property="auditBy"      column="audit_by"/>
+        <result property="auditTime"    column="audit_time"/>
+        <result property="auditRemark"  column="audit_remark"/>
+        <result property="createTime"   column="create_time"/>
+        <result property="remark"       column="remark"/>
+    </resultMap>
+
+    <select id="selectRechargeById" parameterType="Long" resultMap="BizRechargeResult">
+        select r.recharge_id, r.member_id, m.phone, r.currency, r.amount, r.status,
+               r.audit_by, r.audit_time, r.audit_remark, r.create_time, r.remark
+        from biz_recharge r
+        left join biz_member m on m.member_id = r.member_id
+        where r.recharge_id = #{rechargeId}
+    </select>
+
+    <select id="selectRechargeList" parameterType="BizRecharge" resultMap="BizRechargeResult">
+        select r.recharge_id, r.member_id, m.phone, r.currency, r.amount, r.status,
+               r.audit_by, r.audit_time, r.audit_remark, r.create_time, r.remark
+        from biz_recharge r
+        left join biz_member m on m.member_id = r.member_id
+        <where>
+            <if test="memberId != null">and r.member_id = #{memberId}</if>
+            <if test="currency != null and currency != ''">and r.currency = #{currency}</if>
+            <if test="status != null and status != ''">and r.status = #{status}</if>
+            <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
+        </where>
+        order by r.recharge_id desc
+    </select>
+
+    <select id="sumPassedRecharge" resultType="java.math.BigDecimal">
+        select ifnull(sum(amount), 0) from biz_recharge
+        where member_id = #{memberId} and currency = #{currency} and status = '1'
+    </select>
+
+    <insert id="insertRecharge" parameterType="BizRecharge" useGeneratedKeys="true" keyProperty="rechargeId">
+        insert into biz_recharge (member_id, currency, amount, status, create_time, remark)
+        values (#{memberId}, #{currency}, #{amount}, #{status}, sysdate(), #{remark})
+    </insert>
+
+    <update id="updateRecharge" parameterType="BizRecharge">
+        update biz_recharge
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="auditBy != null">audit_by = #{auditBy},</if>
+            <if test="auditTime != null">audit_time = #{auditTime},</if>
+            <if test="auditRemark != null">audit_remark = #{auditRemark},</if>
+        </set>
+        where recharge_id = #{rechargeId}
+    </update>
+</mapper>
