@@ -516,6 +516,42 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 
 可返回多条（微信群、QQ群等），按 `sort` 排序。隐藏的不返回。初始化脚本：`sql/biz_group_chat_patch.sql`
 
+### 21. 新闻资讯
+
+后台在 **业务管理 → 新闻资讯** 新增。给 App 底部「新闻」Tab 用，和首页「公告」不是同一套。
+
+不需要登录。
+
+`GET /app/news` 列表（不含正文）：
+
+```json
+{
+  "code": 200,
+  "data": [
+    {
+      "newsId": 1,
+      "title": "俄罗斯近24小时遥感卫星观测任务与行业应用动态",
+      "summary": "俄罗斯近24小时遥感卫星观测任务与行业应用动态",
+      "coverUrl": "",
+      "publishDate": "2026-08-18",
+      "sort": 1
+    }
+  ]
+}
+```
+
+`GET /app/news/{newsId}` 详情，多返回 `content`（已去掉 HTML，可直接展示）。隐藏或不存在时失败。
+
+| 字段 | 说明 |
+|---|---|
+| title | 标题 |
+| summary | 列表摘要 |
+| coverUrl | 封面完整 URL，空字符串表示用 App 本地默认图 |
+| publishDate | `yyyy-MM-dd` |
+| content | 仅详情有，纯文本 |
+
+初始化脚本：`sql/biz_news_patch.sql`
+
 
 ---
 
@@ -572,6 +608,7 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | GET/POST/PUT/DELETE | `/biz/overview` | App 运行概览（手改展示数字） |
 | GET/POST/PUT/DELETE | `/biz/about` | App 关于我们（手改展示内容） |
 | GET/POST/PUT/DELETE | `/biz/group` | App 官方群聊（上传二维码） |
+| GET/POST/PUT/DELETE | `/biz/news` | App 新闻资讯 |
 | GET | `/biz/commission/list` | 分佣记录 |
 
 列表查询通用分页：`pageNum`、`pageSize`。

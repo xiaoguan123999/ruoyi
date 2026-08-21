@@ -176,3 +176,23 @@ export function updateGroupChat(data: any): Promise<AjaxResult> {
 export function delGroupChat(groupId: number | number[]): Promise<AjaxResult> {
   return request({ url: '/biz/group/' + groupId, method: 'delete' })
 }
+
+export function listNews(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/news/list', method: 'get', params: query })
+}
+
+export function getNews(newsId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/news/' + newsId, method: 'get' })
+}
+
+export function addNews(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/news', method: 'post', data })
+}
+
+export function updateNews(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/news', method: 'put', data })
+}
+
+export function delNews(newsId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/news/' + newsId, method: 'delete' })
+}

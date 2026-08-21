@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizNewsMapper">
+
+    <resultMap type="BizNews" id="BizNewsResult">
+        <id     property="newsId"        column="news_id"/>
+        <result property="title"         column="title"/>
+        <result property="summary"       column="summary"/>
+        <result property="coverUrl"      column="cover_url"/>
+        <result property="content"       column="content"/>
+        <result property="publishTime"   column="publish_time"/>
+        <result property="sort"          column="sort"/>
+        <result property="status"        column="status"/>
+        <result property="createBy"      column="create_by"/>
+        <result property="createTime"    column="create_time"/>
+        <result property="updateBy"      column="update_by"/>
+        <result property="updateTime"    column="update_time"/>
+        <result property="remark"        column="remark"/>
+    </resultMap>
+
+    <sql id="selectNewsVo">
+        select news_id, title, summary, cover_url, content, publish_time, sort, status,
+               create_by, create_time, update_by, update_time, remark
+        from biz_news
+    </sql>
+
+    <select id="selectNewsById" parameterType="Long" resultMap="BizNewsResult">
+        <include refid="selectNewsVo"/>
+        where news_id = #{newsId}
+    </select>
+
+    <select id="selectNewsList" parameterType="BizNews" resultMap="BizNewsResult">
+        <include refid="selectNewsVo"/>
+        <where>
+            <if test="title != null and title != ''">and title like concat('%', #{title}, '%')</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+        </where>
+        order by publish_time desc, sort asc, news_id desc
+    </select>
+
+    <insert id="insertNews" parameterType="BizNews" useGeneratedKeys="true" keyProperty="newsId">
+        insert into biz_news (
+            title, summary, cover_url, content, publish_time, sort, status, create_by, create_time, remark
+        ) values (
+            #{title}, #{summary}, #{coverUrl}, #{content}, #{publishTime}, #{sort}, #{status}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateNews" parameterType="BizNews">
+        update biz_news
+        <set>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="summary != null">summary = #{summary},</if>
+            <if test="coverUrl != null">cover_url = #{coverUrl},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="publishTime != null">publish_time = #{publishTime},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where news_id = #{newsId}
+    </update>
+
+    <delete id="deleteNewsByIds" parameterType="Long">
+        delete from biz_news where news_id in
+        <foreach collection="array" item="newsId" open="(" separator="," close=")">
+            #{newsId}
+        </foreach>
+    </delete>
+</mapper>
