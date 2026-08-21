@@ -1,4 +1,4 @@
-package com.ruoyi.biz.util;
+package com.ruoyi.common.utils;
 
 import java.net.URLEncoder;
 import java.nio.ByteBuffer;

@@ -47,4 +47,5 @@ export interface LoginForm {
   rememberMe?: boolean | string
   code: string
   uuid: string
+  googleCode?: string
 }

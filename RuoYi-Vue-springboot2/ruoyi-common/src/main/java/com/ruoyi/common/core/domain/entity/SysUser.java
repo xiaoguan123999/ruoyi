@@ -63,6 +63,12 @@ public class SysUser extends BaseEntity
     @Excel(name = "账号状态", readConverterExp = "0=正常,1=停用")
     private String status;
 
+    /** 谷歌验证密钥 */
+    private String gaSecret;
+
+    /** 谷歌验证（0未绑定 1已绑定） */
+    private String gaStatus;
+
     /** 删除标志（0代表存在 2代表删除） */
     private String delFlag;
 
@@ -220,6 +226,28 @@ public class SysUser extends BaseEntity
     public void setStatus(String status)
     {
         this.status = status;
+    }
+
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @JSONField(serialize = false)
+    public String getGaSecret()
+    {
+        return gaSecret;
+    }
+
+    public void setGaSecret(String gaSecret)
+    {
+        this.gaSecret = gaSecret;
+    }
+
+    public String getGaStatus()
+    {
+        return gaStatus;
+    }
+
+    public void setGaStatus(String gaStatus)
+    {
+        this.gaStatus = gaStatus;
     }
 
     public String getDelFlag()

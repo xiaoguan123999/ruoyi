@@ -112,11 +112,11 @@ service.interceptors.response.use((res: any) => {
     console.log('err' + error)
     let { message } = error
     if (message == "Network Error") {
-      message = "后端接口连接异常"
+      message = "网络开小差了，请稍后再试"
     } else if (message.includes("timeout")) {
-      message = "系统接口请求超时"
+      message = "网络开小差了，请稍后再试"
     } else if (message.includes("Request failed with status code")) {
-      message = "系统接口" + message.slice(-3) + "异常"
+      message = "网络开小差了，请稍后再试"
     }
     ElMessage({ message: message, type: 'error', duration: 5 * 1000 })
     return Promise.reject(error)

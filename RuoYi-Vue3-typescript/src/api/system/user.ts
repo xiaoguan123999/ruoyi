@@ -135,3 +135,23 @@ export function deptTreeSelect(): Promise<AjaxResult<TreeSelect>> {
     method: 'get'
   })
 }
+
+export function getGoogleStatus(): Promise<AjaxResult> {
+  return request({ url: '/system/user/profile/google', method: 'get' })
+}
+
+export function startGoogleBind(): Promise<AjaxResult> {
+  return request({ url: '/system/user/profile/google/bind', method: 'get' })
+}
+
+export function confirmGoogleBind(googleCode: string): Promise<AjaxResult> {
+  return request({ url: '/system/user/profile/google/bind', method: 'post', data: { googleCode } })
+}
+
+export function unbindGoogle(googleCode: string): Promise<AjaxResult> {
+  return request({ url: '/system/user/profile/google/unbind', method: 'post', data: { googleCode } })
+}
+
+export function resetUserGoogle(userId: number): Promise<AjaxResult> {
+  return request({ url: '/system/user/' + userId + '/google/reset', method: 'put' })
+}

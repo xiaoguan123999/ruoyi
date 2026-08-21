@@ -3,6 +3,9 @@ package com.ruoyi.framework.web.exception;
 import javax.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -11,6 +14,7 @@ import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.constant.HttpStatus;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.text.Convert;
@@ -28,6 +32,7 @@ import com.ruoyi.common.utils.html.EscapeUtil;
 public class GlobalExceptionHandler
 {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
 
     /**
      * 权限校验异常
@@ -49,7 +54,7 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',不支持'{}'请求", requestURI, e.getMethod());
-        return AjaxResult.error(e.getMessage());
+        return AjaxResult.error("请求方式不支持");
     }
 
     /**
@@ -61,6 +66,36 @@ public class GlobalExceptionHandler
         log.error(e.getMessage(), e);
         Integer code = e.getCode();
         return StringUtils.isNotNull(code) ? AjaxResult.error(code, e.getMessage()) : AjaxResult.error(e.getMessage());
+    }
+
+    /**
+     * 主键/唯一索引冲突
+     */
+    @ExceptionHandler(DuplicateKeyException.class)
+    public AjaxResult handleDuplicateKeyException(DuplicateKeyException e, HttpServletRequest request)
+    {
+        log.error("请求地址'{}',发生唯一约束冲突.", request.getRequestURI(), e);
+        return AjaxResult.error("数据已存在，请勿重复提交");
+    }
+
+    /**
+     * 数据完整性异常
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public AjaxResult handleDataIntegrityViolationException(DataIntegrityViolationException e, HttpServletRequest request)
+    {
+        log.error("请求地址'{}',发生数据完整性异常.", request.getRequestURI(), e);
+        return AjaxResult.error("数据不完整或存在关联，无法完成操作");
+    }
+
+    /**
+     * 数据库/SQL 异常（不把 SQL 原文返回前端）
+     */
+    @ExceptionHandler(DataAccessException.class)
+    public AjaxResult handleDataAccessException(DataAccessException e, HttpServletRequest request)
+    {
+        log.error("请求地址'{}',发生数据库异常.", request.getRequestURI(), e);
+        return AjaxResult.error(Constants.NETWORK_RETRY);
     }
 
     /**
@@ -87,7 +122,7 @@ public class GlobalExceptionHandler
             value = EscapeUtil.clean(value);
         }
         log.error("请求参数类型不匹配'{}',发生系统异常.", requestURI, e);
-        return AjaxResult.error(String.format("请求参数类型不匹配，参数[%s]要求类型为：'%s'，但输入值为：'%s'", e.getName(), e.getRequiredType().getName(), value));
+        return AjaxResult.error("请求参数不正确");
     }
 
     /**
@@ -98,7 +133,7 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生未知异常.", requestURI, e);
-        return AjaxResult.error(e.getMessage());
+        return AjaxResult.error(safeClientMessage(e));
     }
 
     /**
@@ -109,7 +144,7 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生系统异常.", requestURI, e);
-        return AjaxResult.error(e.getMessage());
+        return AjaxResult.error(safeClientMessage(e));
     }
 
     /**
@@ -141,5 +176,31 @@ public class GlobalExceptionHandler
     public AjaxResult handleDemoModeException(DemoModeException e)
     {
         return AjaxResult.error("演示模式，不允许操作");
+    }
+
+    private String safeClientMessage(Throwable e)
+    {
+        String msg = e.getMessage();
+        if (StringUtils.isEmpty(msg) || isInternalErrorMessage(msg))
+        {
+            return Constants.NETWORK_RETRY;
+        }
+        return msg;
+    }
+
+    private boolean isInternalErrorMessage(String msg)
+    {
+        String lower = msg.toLowerCase();
+        return msg.length() > 120
+                || msg.contains("###")
+                || msg.contains("Cause:")
+                || msg.contains("nested exception")
+                || lower.contains("sql")
+                || lower.contains("jdbc")
+                || lower.contains("mybatis")
+                || lower.contains("unknown column")
+                || lower.contains("exception")
+                || msg.contains("at org.")
+                || msg.contains("at com.mysql");
     }
 }

@@ -55,6 +55,9 @@
                   <el-tab-pane label="修改密码" name="resetPwd">
                      <resetPwd />
                   </el-tab-pane>
+                  <el-tab-pane label="谷歌验证" name="googleAuth">
+                     <googleAuth />
+                  </el-tab-pane>
                </el-tabs>
             </el-card>
          </el-col>
@@ -66,6 +69,7 @@
 import userAvatar from "./userAvatar.vue"
 import userInfo from "./userInfo.vue"
 import resetPwd from "./resetPwd.vue"
+import googleAuth from "./googleAuth.vue"
 import { getUserProfile } from "@/api/system/user"
 import type { SysUser } from '@/types/api/system/user'
 

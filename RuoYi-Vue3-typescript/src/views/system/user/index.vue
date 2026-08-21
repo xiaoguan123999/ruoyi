@@ -15,6 +15,12 @@
               <el-option v-for="dict in sys_normal_disable" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
+          <el-form-item label="谷歌验证" prop="gaStatus">
+            <el-select v-model="queryParams.gaStatus" placeholder="谷歌验证" clearable style="width: 160px">
+              <el-option label="未绑定" value="0" />
+              <el-option label="已绑定" value="1" />
+            </el-select>
+          </el-form-item>
           <el-form-item label="创建时间" style="width: 308px">
             <el-date-picker v-model="dateRange" value-format="YYYY-MM-DD" type="daterange" range-separator="-" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
           </el-form-item>
@@ -54,6 +60,11 @@
           <el-table-column label="用户昵称" align="center" key="nickName" prop="nickName" v-if="columns.nickName.visible" :show-overflow-tooltip="true" />
           <el-table-column label="部门" align="center" key="deptName" prop="dept.deptName" v-if="columns.deptName.visible" :show-overflow-tooltip="true" />
           <el-table-column label="手机号码" align="center" key="phonenumber" prop="phonenumber" v-if="columns.phonenumber.visible" width="120" />
+          <el-table-column label="谷歌验证" align="center" key="gaStatus" v-if="columns.gaStatus.visible" width="100">
+            <template #default="scope">
+              <el-tag :type="scope.row.gaStatus === '1' ? 'success' : 'info'">{{ scope.row.gaStatus === '1' ? '已绑定' : '未绑定' }}</el-tag>
+            </template>
+          </el-table-column>
           <el-table-column label="状态" align="center" key="status" v-if="columns.status.visible">
             <template #default="scope">
               <el-switch
@@ -69,7 +80,7 @@
               <span>{{ parseTime(scope.row.createTime) }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" align="center" width="150" class-name="small-padding fixed-width">
+          <el-table-column label="操作" align="center" width="180" class-name="small-padding fixed-width">
             <template #default="scope">
               <el-tooltip content="修改" placement="top" v-if="scope.row.userId !== 1">
                 <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['system:user:edit']"></el-button>
@@ -79,6 +90,9 @@
               </el-tooltip>
               <el-tooltip content="重置密码" placement="top" v-if="scope.row.userId !== 1">
                 <el-button link type="primary" icon="Key" @click="handleResetPwd(scope.row)" v-hasPermi="['system:user:resetPwd']"></el-button>
+              </el-tooltip>
+              <el-tooltip content="解绑谷歌" placement="top" v-if="scope.row.gaStatus === '1'">
+                <el-button link type="primary" icon="Unlock" @click="handleResetGoogle(scope.row)" v-hasPermi="['system:user:edit']"></el-button>
               </el-tooltip>
               <el-tooltip content="分配角色" placement="top" v-if="scope.row.userId !== 1">
                 <el-button link type="primary" icon="CircleCheck" @click="handleAuthRole(scope.row)" v-hasPermi="['system:user:edit']"></el-button>
@@ -188,7 +202,7 @@ import TreePanel from "@/components/TreePanel/index.vue"
 import ExcelImportDialog from "@/components/ExcelImportDialog/index.vue"
 import UserViewDrawer from "./view.vue"
 import { usePasswordRule } from "@/utils/passwordRule"
-import { changeUserStatus, listUser, resetUserPwd, delUser, getUser, updateUser, addUser, deptTreeSelect } from "@/api/system/user"
+import { changeUserStatus, listUser, resetUserPwd, resetUserGoogle, delUser, getUser, updateUser, addUser, deptTreeSelect } from "@/api/system/user"
 import type { SysUser, UserQueryParams, UserFormDataResult } from '@/types/api/system/user'
 import type { SysRole } from '@/types/api/system/role'
 import type { SysPost } from '@/types/api/system/post'
@@ -221,6 +235,7 @@ const columns = ref<Record<string, TableShowColumns>>({
   nickName: { label: '用户昵称', visible: true },
   deptName: { label: '部门', visible: true },
   phonenumber: { label: '手机号码', visible: true },
+  gaStatus: { label: '谷歌验证', visible: true },
   status: { label: '状态', visible: true },
   createTime: { label: '创建时间', visible: true }
 })
@@ -233,6 +248,7 @@ const data = reactive({
     userName: undefined,
     phonenumber: undefined,
     status: undefined,
+    gaStatus: undefined,
     deptId: undefined
   } as UserQueryParams,
   rules: {
@@ -345,6 +361,16 @@ function handleCommand(command: string, row: SysUser) {
 function handleAuthRole(row: SysUser) {
   const userId = row.userId
   router.push("/system/user-auth/role/" + userId)
+}
+
+/** 解绑谷歌验证 */
+function handleResetGoogle(row: SysUser) {
+  proxy.$modal.confirm('确认解绑用户「' + row.userName + '」的谷歌验证器？解绑后该账号登录将不再需要动态码。').then(() => {
+    return resetUserGoogle(row.userId!)
+  }).then(() => {
+    getList()
+    proxy.$modal.msgSuccess("已解绑谷歌验证")
+  }).catch(() => {})
 }
 
 /** 重置密码按钮操作 */

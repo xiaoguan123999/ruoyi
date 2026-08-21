@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Resource;
 import javax.imageio.ImageIO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.FastByteArrayOutputStream;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,6 +43,8 @@ import io.swagger.annotations.ApiOperation;
 @RequestMapping("/app/auth")
 public class AppAuthController extends BaseController
 {
+    private static final Logger log = LoggerFactory.getLogger(AppAuthController.class);
+
     @Resource(name = "appCaptchaProducer")
     private Producer captchaProducer;
 
@@ -121,7 +125,20 @@ public class AppAuthController extends BaseController
             throw new ServiceException("手机号和密码不能为空");
         }
         validateCaptcha(body.getCode(), body.getUuid());
-        BizMember member = memberService.selectMemberByPhone(body.getPhone());
+        BizMember member;
+        try
+        {
+            member = memberService.selectMemberByPhone(body.getPhone());
+        }
+        catch (ServiceException e)
+        {
+            throw e;
+        }
+        catch (RuntimeException e)
+        {
+            log.error("App login query failed", e);
+            throw new ServiceException(Constants.NETWORK_RETRY);
+        }
         if (member == null || !SecurityUtils.matchesPassword(body.getPassword(), member.getPassword()))
         {
             throw new ServiceException("手机号或密码错误");

@@ -26,6 +26,7 @@ import com.ruoyi.framework.manager.AsyncManager;
 import com.ruoyi.framework.manager.factory.AsyncFactory;
 import com.ruoyi.framework.security.context.AuthenticationContextHolder;
 import com.ruoyi.system.service.ISysConfigService;
+import com.ruoyi.system.service.ISysGoogleAuthService;
 import com.ruoyi.system.service.ISysUserService;
 
 /**
@@ -51,6 +52,9 @@ public class SysLoginService
     @Autowired
     private ISysConfigService configService;
 
+    @Autowired
+    private ISysGoogleAuthService googleAuthService;
+
     /**
      * 登录验证
      * 
@@ -58,9 +62,10 @@ public class SysLoginService
      * @param password 密码
      * @param code 验证码
      * @param uuid 唯一标识
+     * @param googleCode 谷歌验证码（已绑定才需要）
      * @return 结果
      */
-    public String login(String username, String password, String code, String uuid)
+    public String login(String username, String password, String code, String uuid, String googleCode)
     {
         // 验证码校验
         validateCaptcha(username, code, uuid);
@@ -92,8 +97,17 @@ public class SysLoginService
         {
             AuthenticationContextHolder.clearContext();
         }
-        AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success")));
         LoginUser loginUser = (LoginUser) authentication.getPrincipal();
+        try
+        {
+            googleAuthService.assertForLogin(loginUser.getUser(), googleCode);
+        }
+        catch (ServiceException e)
+        {
+            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, e.getMessage()));
+            throw e;
+        }
+        AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success")));
         recordLoginInfo(loginUser.getUserId());
         // 生成token
         return tokenService.createToken(loginUser);

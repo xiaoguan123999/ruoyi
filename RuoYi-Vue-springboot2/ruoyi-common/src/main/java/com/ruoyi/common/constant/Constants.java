@@ -35,6 +35,9 @@ public class Constants
      */
     public static final String HTTP = "http://";
 
+    /** 系统内部异常给前端的提示，不暴露 SQL / 堆栈 */
+    public static final String NETWORK_RETRY = "网络开小差了，请稍后再试";
+
     /**
      * https请求
      */

@@ -11,6 +11,8 @@ export interface UserQueryParams extends PageDomain {
   phonenumber?: string;
   /** 状态（0正常 1停用） */
   status?: '0' | '1';
+  /** 谷歌验证（0未绑定 1已绑定） */
+  gaStatus?: '0' | '1';
   /** 部门编号 */
   deptId?: number;
   /** 创建时间 */
@@ -48,6 +50,8 @@ export interface SysUser extends BaseEntity {
   password?: string;
   /** 账号状态（0正常 1停用） */
   status?: '0' | '1';
+  /** 谷歌验证（0未绑定 1已绑定） */
+  gaStatus?: '0' | '1';
   /** 部门对象 */
   dept?: SysDept;
   /** 角色对象 */

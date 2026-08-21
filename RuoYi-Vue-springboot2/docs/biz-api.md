@@ -376,6 +376,27 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 
 没配密钥时自动退回本地磁盘 `ruoyi.profile`。
 
+### 17. 公告
+
+后台在 **系统管理 → 通知公告** 新增。类型选「公告」、状态选「正常」，才会出现在 App 首页公告条。类型「通知」只给后台右上角铃铛用。
+
+不需要登录。
+
+`GET /app/notices`
+
+返回最新 20 条：
+
+```json
+{
+  "code": 200,
+  "data": [
+    { "noticeId": 1, "noticeTitle": "这是一条公告", "createTime": "2026-08-21 12:00:00" }
+  ]
+}
+```
+
+`GET /app/notices/{noticeId}` 详情，`noticeContent` 已去掉 HTML，可直接展示。关闭或类型不是「公告」时返回失败。
+
 ---
 
 ## 二、建议联调顺序
@@ -405,7 +426,14 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | POST | `/biz/member` | 后台新增**顶级会员** `{phone, password}`，无上级，返回 `memberId`/`inviteCode` |
 | PUT | `/biz/member` | 改实名、身份证、状态、密码（密码留空不改） |
 | PUT | `/biz/member/{memberId}/google/reset` | 后台解绑该会员谷歌验证 |
+| GET | `/system/user/profile/google` | 当前后台账号谷歌验证状态 |
+| GET | `/system/user/profile/google/bind` | 开始绑定，返回 secret、otpauthUrl |
+| POST | `/system/user/profile/google/bind` | 确认绑定 `{googleCode}` |
+| POST | `/system/user/profile/google/unbind` | 解绑 `{googleCode}` |
+| PUT | `/system/user/{userId}/google/reset` | 管理员给后台账号解绑谷歌验证 |
+| POST | `/login` | 后台登录，已绑定则 body 需带 `googleCode` |
 | GET | `/biz/member/team/{memberId}?teamLevel=1` | 某会员的 1/2/3 级或全部下线 |
+| GET/POST/PUT | `/system/notice` | 通知公告（系统管理菜单，类型选「公告」会展示到 App） |
 | GET/POST/PUT | `/biz/product` | 产品列表/新增/修改 |
 | GET | `/biz/product/{productId}` | 产品详情 |
 | DELETE | `/biz/product/{ids}` | 删除产品 |

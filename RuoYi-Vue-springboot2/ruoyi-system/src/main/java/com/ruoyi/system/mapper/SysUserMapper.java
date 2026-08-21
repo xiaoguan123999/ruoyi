@@ -105,6 +105,8 @@ public interface SysUserMapper
      */
     public int resetUserPwd(@Param("userId") Long userId, @Param("password") String password);
 
+    public int updateGoogleAuth(@Param("userId") Long userId, @Param("gaSecret") String gaSecret, @Param("gaStatus") String gaStatus);
+
     /**
      * 通过用户ID删除用户
      * 

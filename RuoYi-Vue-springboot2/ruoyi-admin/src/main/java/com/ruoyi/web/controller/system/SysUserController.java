@@ -28,6 +28,7 @@ import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.system.service.ISysDeptService;
+import com.ruoyi.system.service.ISysGoogleAuthService;
 import com.ruoyi.system.service.ISysPostService;
 import com.ruoyi.system.service.ISysRoleService;
 import com.ruoyi.system.service.ISysUserService;
@@ -52,6 +53,9 @@ public class SysUserController extends BaseController
 
     @Autowired
     private ISysPostService postService;
+
+    @Autowired
+    private ISysGoogleAuthService googleAuthService;
 
     /**
      * 获取用户列表
@@ -241,6 +245,19 @@ public class SysUserController extends BaseController
         userService.checkUserDataScope(userId);
         roleService.checkRoleDataScope(roleIds);
         userService.insertUserAuth(userId, roleIds);
+        return success();
+    }
+
+    /**
+     * 后台解绑用户谷歌验证
+     */
+    @PreAuthorize("@ss.hasPermi('system:user:edit')")
+    @Log(title = "用户管理", businessType = BusinessType.UPDATE)
+    @PutMapping("/{userId}/google/reset")
+    public AjaxResult resetGoogle(@PathVariable Long userId)
+    {
+        userService.checkUserDataScope(userId);
+        googleAuthService.reset(userId);
         return success();
     }
 

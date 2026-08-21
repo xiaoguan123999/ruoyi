@@ -111,6 +111,7 @@
 
       <!-- 添加或修改公告对话框 -->
       <el-dialog :title="title" v-model="open" width="780px" append-to-body>
+         <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px" title="类型请选「公告」、状态选「正常」，才会出现在 App 首页公告条。类型「通知」只给后台右上角铃铛用。" />
          <el-form ref="noticeRef" :model="form" :rules="rules" label-width="80px">
             <el-row>
                <el-col :span="12">
@@ -217,7 +218,7 @@ function reset() {
   form.value = {
     noticeId: undefined,
     noticeTitle: undefined,
-    noticeType: undefined,
+    noticeType: "2",
     noticeContent: undefined,
     status: "0"
   }

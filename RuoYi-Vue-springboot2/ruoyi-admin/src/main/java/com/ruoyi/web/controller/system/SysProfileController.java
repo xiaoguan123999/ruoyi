@@ -22,6 +22,8 @@ import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.framework.storage.FileStorageService;
 import com.ruoyi.framework.storage.StoredFile;
 import com.ruoyi.framework.web.service.TokenService;
+import com.ruoyi.system.domain.SysGoogleCodeBody;
+import com.ruoyi.system.service.ISysGoogleAuthService;
 import com.ruoyi.system.service.ISysUserService;
 
 /**
@@ -41,6 +43,9 @@ public class SysProfileController extends BaseController
 
     @Autowired
     private FileStorageService fileStorageService;
+
+    @Autowired
+    private ISysGoogleAuthService googleAuthService;
 
     /**
      * 个人信息
@@ -147,5 +152,42 @@ public class SysProfileController extends BaseController
             }
         }
         return error("上传图片异常，请联系管理员");
+    }
+
+    @GetMapping("/google")
+    public AjaxResult googleStatus()
+    {
+        return success(googleAuthService.status(getUserId()));
+    }
+
+    @GetMapping("/google/bind")
+    public AjaxResult startGoogleBind()
+    {
+        return success(googleAuthService.startBind(getUserId()));
+    }
+
+    @PostMapping("/google/bind")
+    public AjaxResult confirmGoogleBind(@RequestBody SysGoogleCodeBody body)
+    {
+        googleAuthService.confirmBind(getUserId(), body == null ? null : body.getGoogleCode());
+        refreshLoginGoogle();
+        return success();
+    }
+
+    @PostMapping("/google/unbind")
+    public AjaxResult unbindGoogle(@RequestBody SysGoogleCodeBody body)
+    {
+        googleAuthService.unbind(getUserId(), body == null ? null : body.getGoogleCode());
+        refreshLoginGoogle();
+        return success();
+    }
+
+    private void refreshLoginGoogle()
+    {
+        LoginUser loginUser = getLoginUser();
+        SysUser dbUser = userService.selectUserById(loginUser.getUserId());
+        loginUser.getUser().setGaStatus(dbUser.getGaStatus());
+        loginUser.getUser().setGaSecret(dbUser.getGaSecret());
+        tokenService.setLoginUser(loginUser);
     }
 }

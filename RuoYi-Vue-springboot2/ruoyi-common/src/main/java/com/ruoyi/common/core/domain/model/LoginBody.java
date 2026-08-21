@@ -27,6 +27,11 @@ public class LoginBody
      */
     private String uuid;
 
+    /**
+     * 谷歌验证码（已绑定才需要）
+     */
+    private String googleCode;
+
     public String getUsername()
     {
         return username;
@@ -65,5 +70,15 @@ public class LoginBody
     public void setUuid(String uuid)
     {
         this.uuid = uuid;
+    }
+
+    public String getGoogleCode()
+    {
+        return googleCode;
+    }
+
+    public void setGoogleCode(String googleCode)
+    {
+        this.googleCode = googleCode;
     }
 }

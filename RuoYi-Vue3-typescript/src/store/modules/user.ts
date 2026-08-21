@@ -31,13 +31,14 @@ const useUserStore = defineStore(
     }),
     actions: {
       // 登录
-      login(userInfo: { username: string; password: string; code: string; uuid: string }) {
+      login(userInfo: { username: string; password: string; code: string; uuid: string; googleCode?: string }) {
         const username = userInfo.username.trim()
         const password = userInfo.password
         const code = userInfo.code
         const uuid = userInfo.uuid
+        const googleCode = userInfo.googleCode
         return new Promise<void>((resolve, reject) => {
-          login(username, password, code, uuid).then(res => {
+          login(username, password, code, uuid, googleCode).then(res => {
             setToken(res.token)
             this.token = res.token
             useLockStore().unlockScreen()

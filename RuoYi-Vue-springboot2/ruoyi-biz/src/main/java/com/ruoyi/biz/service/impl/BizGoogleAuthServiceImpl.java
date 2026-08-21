@@ -9,7 +9,7 @@ import com.ruoyi.biz.domain.GoogleBindInfo;
 import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.service.IBizConfigService;
 import com.ruoyi.biz.service.IBizGoogleAuthService;
-import com.ruoyi.biz.util.GoogleAuthUtils;
+import com.ruoyi.common.utils.GoogleAuthUtils;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;

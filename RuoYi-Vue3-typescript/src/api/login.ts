@@ -2,12 +2,13 @@ import request from '@/utils/request'
 import type { SysRegister, LoginInfoResult, UserInfoResult, CaptchaInfoResult, AjaxResult } from '@/types'
 
 // 登录方法
-export function login(username: string, password: string, code: string, uuid: string): Promise<LoginInfoResult> {
+export function login(username: string, password: string, code: string, uuid: string, googleCode?: string): Promise<LoginInfoResult> {
   const data = {
     username,
     password,
     code,
-    uuid
+    uuid,
+    googleCode
   }
   return request({
     url: '/login',

@@ -25,6 +25,17 @@
           <template #prefix><svg-icon icon-class="password" class="el-input__icon input-icon" /></template>
         </el-input>
       </el-form-item>
+      <el-form-item prop="googleCode">
+        <el-input
+          v-model="loginForm.googleCode"
+          size="large"
+          auto-complete="off"
+          placeholder="谷歌验证码（未绑定可留空）"
+          @keyup.enter="handleLogin"
+        >
+          <template #prefix><svg-icon icon-class="validCode" class="el-input__icon input-icon" /></template>
+        </el-input>
+      </el-form-item>
       <el-form-item prop="code" v-if="captchaEnabled">
         <el-input
           v-model="loginForm.code"
@@ -85,7 +96,8 @@ const loginForm = ref<LoginForm>({
   password: "admin123",
   rememberMe: false,
   code: "",
-  uuid: ""
+  uuid: "",
+  googleCode: ""
 })
 
 const loginRules = {
@@ -159,7 +171,10 @@ function getCookie(): void {
   loginForm.value = {
     username: username === undefined ? loginForm.value.username : username,
     password: password === undefined ? loginForm.value.password : decrypt(password),
-    rememberMe: rememberMe === undefined ? false : Boolean(rememberMe)
+    rememberMe: rememberMe === undefined ? false : Boolean(rememberMe),
+    code: loginForm.value.code,
+    uuid: loginForm.value.uuid,
+    googleCode: loginForm.value.googleCode || ""
   }
 }
 
