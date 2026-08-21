@@ -116,3 +116,63 @@ export function saveCheckinRule(data: any): Promise<AjaxResult> {
 export function listCheckinPrize(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/checkin/prize/list', method: 'get', params: query })
 }
+
+export function listOverview(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/overview/list', method: 'get', params: query })
+}
+
+export function getOverview(itemId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/overview/' + itemId, method: 'get' })
+}
+
+export function addOverview(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/overview', method: 'post', data })
+}
+
+export function updateOverview(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/overview', method: 'put', data })
+}
+
+export function delOverview(itemId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/overview/' + itemId, method: 'delete' })
+}
+
+export function listAbout(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/about/list', method: 'get', params: query })
+}
+
+export function getAbout(aboutId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/about/' + aboutId, method: 'get' })
+}
+
+export function addAbout(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/about', method: 'post', data })
+}
+
+export function updateAbout(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/about', method: 'put', data })
+}
+
+export function delAbout(aboutId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/about/' + aboutId, method: 'delete' })
+}
+
+export function listGroupChat(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/group/list', method: 'get', params: query })
+}
+
+export function getGroupChat(groupId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/group/' + groupId, method: 'get' })
+}
+
+export function addGroupChat(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/group', method: 'post', data })
+}
+
+export function updateGroupChat(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/group', method: 'put', data })
+}
+
+export function delGroupChat(groupId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/group/' + groupId, method: 'delete' })
+}

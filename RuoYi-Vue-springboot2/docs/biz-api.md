@@ -396,6 +396,126 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 ```
 
 `GET /app/notices/{noticeId}` 详情，`noticeContent` 已去掉 HTML，可直接展示。关闭或类型不是「公告」时返回失败。
+### 18. 运行概览
+
+后台在 **业务管理 → 运行概览** 手改数字。没有真实统计，只给 App 首页展示。
+
+不需要登录。
+
+`GET /app/overview`
+
+```json
+{
+  "code": 200,
+  "data": [
+    {
+      "itemKey": "satellite",
+      "title": "在轨卫星",
+      "displayValue": "320 颗",
+      "statusText": "正常运行",
+      "statusColor": "#3DDC84",
+      "imageUrl": "",
+      "sort": 1
+    },
+    {
+      "itemKey": "coverage",
+      "title": "覆盖国家/地区",
+      "displayValue": "150+",
+      "statusText": "正常运行",
+      "statusColor": "#4DA3FF",
+      "imageUrl": "",
+      "sort": 2
+    },
+    {
+      "itemKey": "terminal",
+      "title": "在线终端",
+      "displayValue": "1256000+",
+      "statusText": "稳定连接",
+      "statusColor": "#4DA3FF",
+      "imageUrl": "",
+      "sort": 3
+    }
+  ]
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| itemKey | 卡片标识。预置 `satellite` / `coverage` / `terminal`，App 用它匹配本地 3D 图 |
+| title | 小标题 |
+| displayValue | 大数字，已含单位，直接展示 |
+| statusText | 状态文案 |
+| statusColor | 状态点颜色 |
+| imageUrl | 可选配图 URL，空字符串表示用 App 本地图 |
+
+停用的卡片不会返回。初始化脚本：`sql/biz_overview_patch.sql`
+
+### 19. 关于我们
+
+后台在 **业务管理 → 关于我们** 新增/修改。可多段内容，按 `sort` 排序后给 App 展示。没有真实业务逻辑。
+
+不需要登录。
+
+`GET /app/about`
+
+```json
+{
+  "code": 200,
+  "data": [
+    {
+      "aboutId": 1,
+      "title": "星帆智联",
+      "subtitle": "连接星空 · 智联未来",
+      "content": "星帆智联聚焦商业航天与卫星互联网应用，以科技连接万物，让星辰触手可及。",
+      "imageUrl": "",
+      "sort": 1
+    }
+  ]
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| title | 大标题 |
+| subtitle | 副标题，可空 |
+| content | 正文，已去掉 HTML，可直接展示 |
+| imageUrl | 可选配图 URL |
+
+隐藏的内容不会返回。初始化脚本：`sql/biz_about_patch.sql`
+
+### 20. 官方群聊
+
+后台在 **业务管理 → 官方群聊** 上传群二维码。没有真实进群逻辑，App 只展示图片。
+
+不需要登录。
+
+`GET /app/group-chat`
+
+```json
+{
+  "code": 200,
+  "data": [
+    {
+      "groupId": 1,
+      "title": "官方群聊",
+      "hint": "扫码进群",
+      "qrUrl": "https://example.com/qr.png",
+      "remark": "",
+      "sort": 1
+    }
+  ]
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| title | 标题 |
+| hint | 二维码下方文案，默认「扫码进群」 |
+| qrUrl | 二维码图片完整 URL，直接用 Image 展示 |
+| remark | 补充说明，可空 |
+
+可返回多条（微信群、QQ群等），按 `sort` 排序。隐藏的不返回。初始化脚本：`sql/biz_group_chat_patch.sql`
+
 
 ---
 
@@ -449,6 +569,9 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | GET | `/biz/walletLog/list` | 资金流水 |
 | GET | `/biz/team/list` | 团队关系（会员列表视角） |
 | GET/POST/PUT/DELETE | `/biz/level` | 会员等级配置 |
+| GET/POST/PUT/DELETE | `/biz/overview` | App 运行概览（手改展示数字） |
+| GET/POST/PUT/DELETE | `/biz/about` | App 关于我们（手改展示内容） |
+| GET/POST/PUT/DELETE | `/biz/group` | App 官方群聊（上传二维码） |
 | GET | `/biz/commission/list` | 分佣记录 |
 
 列表查询通用分页：`pageNum`、`pageSize`。

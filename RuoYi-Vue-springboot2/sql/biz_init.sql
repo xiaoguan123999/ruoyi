@@ -257,6 +257,73 @@ insert into sys_config values(38, '谷歌验证器名称', 'biz.google.issuer', 
 delete from sys_job where job_id = 100;
 insert into sys_job values(100, '产品每日返利', 'DEFAULT', 'dailyRebateTask.execute()', '0 5 0 * * ?', '3', '1', '0', 'admin', sysdate(), '', null, '持仓订单每日返利');
 
+
+-- App首页运行概览（展示用，后台手改）
+drop table if exists biz_overview;
+create table biz_overview (
+  item_id           bigint(20)      not null auto_increment    comment '卡片ID',
+  item_key          varchar(32)     not null                   comment '卡片标识，App用它匹配本地图',
+  title             varchar(64)     not null                   comment '标题',
+  display_value     varchar(64)     not null                   comment '展示数值，含单位',
+  status_text       varchar(64)     default ''                 comment '状态文案',
+  status_color      varchar(16)     default '#4DA3FF'          comment '状态点颜色',
+  image_url         varchar(500)    default ''                 comment '可选配图，空则App用本地图',
+  sort              int(4)          default 0                  comment '排序',
+  status            char(1)         default '0'                comment '状态（0显示 1隐藏）',
+  create_by         varchar(64)     default ''                 comment '创建者',
+  create_time       datetime                                   comment '创建时间',
+  update_by         varchar(64)     default ''                 comment '更新者',
+  update_time       datetime                                   comment '更新时间',
+  remark            varchar(500)    default null               comment '备注',
+  primary key (item_id),
+  unique key uk_biz_overview_key (item_key)
+) engine=innodb comment = 'App运行概览';
+
+insert into biz_overview values(1, 'satellite', '在轨卫星', '320 颗', '正常运行', '#3DDC84', '', 1, '0', 'admin', sysdate(), '', null, null);
+insert into biz_overview values(2, 'coverage', '覆盖国家/地区', '150+', '正常运行', '#4DA3FF', '', 2, '0', 'admin', sysdate(), '', null, null);
+insert into biz_overview values(3, 'terminal', '在线终端', '1256000+', '稳定连接', '#4DA3FF', '', 3, '0', 'admin', sysdate(), '', null, null);
+
+
+-- App关于我们（展示用，后台手改）
+drop table if exists biz_about;
+create table biz_about (
+  about_id          bigint(20)      not null auto_increment    comment '内容ID',
+  title             varchar(100)    not null                   comment '标题',
+  subtitle          varchar(200)    default ''                 comment '副标题',
+  content           mediumtext                                 comment '正文，后台富文本',
+  image_url         varchar(500)    default ''                 comment '可选配图',
+  sort              int(4)          default 0                  comment '排序',
+  status            char(1)         default '0'                comment '状态（0显示 1隐藏）',
+  create_by         varchar(64)     default ''                 comment '创建者',
+  create_time       datetime                                   comment '创建时间',
+  update_by         varchar(64)     default ''                 comment '更新者',
+  update_time       datetime                                   comment '更新时间',
+  remark            varchar(500)    default null               comment '备注',
+  primary key (about_id)
+) engine=innodb comment = 'App关于我们';
+
+insert into biz_about values(1, '星帆智联', '连接星空 · 智联未来', '<p>星帆智联聚焦商业航天与卫星互联网应用，以科技连接万物，让星辰触手可及。</p>', '', 1, '0', 'admin', sysdate(), '', null, null);
+
+
+-- App官方群聊（展示用，后台上传二维码）
+drop table if exists biz_group_chat;
+create table biz_group_chat (
+  group_id          bigint(20)      not null auto_increment    comment '群聊ID',
+  title             varchar(100)    not null                   comment '标题',
+  hint              varchar(100)    default '扫码进群'          comment '二维码下方提示',
+  qr_url            varchar(500)    default ''                 comment '群聊二维码图片地址',
+  remark            varchar(500)    default ''                 comment '补充说明',
+  sort              int(4)          default 0                  comment '排序',
+  status            char(1)         default '0'                comment '状态（0显示 1隐藏）',
+  create_by         varchar(64)     default ''                 comment '创建者',
+  create_time       datetime                                   comment '创建时间',
+  update_by         varchar(64)     default ''                 comment '更新者',
+  update_time       datetime                                   comment '更新时间',
+  primary key (group_id)
+) engine=innodb comment = 'App官方群聊';
+
+insert into biz_group_chat values(1, '官方群聊', '扫码进群', '', '', 1, '0', 'admin', sysdate(), '', null);
+
 -- ----------------------------
 -- 业务菜单
 -- ----------------------------
@@ -275,6 +342,9 @@ insert into sys_menu values('2009', '会员等级', '2000', '9', 'level', 'biz/l
 insert into sys_menu values('2010', '分佣记录', '2000', '10', 'commission', 'biz/commission/index', '', '', 1, 0, 'C', '0', '0', 'biz:commission:list', 'form', 'admin', sysdate(), '', null, '分佣记录');
 insert into sys_menu values('2011', '签到规则', '2000', '4', 'checkinRule', 'biz/checkin/rule', '', '', 1, 0, 'C', '0', '0', 'biz:checkin:rule', 'edit', 'admin', sysdate(), '', null, '签到金额与连续抽奖规则');
 insert into sys_menu values('2012', '签到中奖', '2000', '4', 'checkinPrize', 'biz/checkin/prize', '', '', 1, 0, 'C', '0', '0', 'biz:checkin:prize', 'star', 'admin', sysdate(), '', null, '连续签到抽奖记录');
+insert into sys_menu values('2013', '运行概览', '2000', '0', 'overview', 'biz/overview/index', '', '', 1, 0, 'C', '0', '0', 'biz:overview:list', 'dashboard', 'admin', sysdate(), '', null, 'App首页展示数字，后台手改');
+insert into sys_menu values('2014', '关于我们', '2000', '0', 'about', 'biz/about/index', '', '', 1, 0, 'C', '0', '0', 'biz:about:list', 'guide', 'admin', sysdate(), '', null, 'App关于我们，后台手改');
+insert into sys_menu values('2015', '官方群聊', '2000', '0', 'groupChat', 'biz/groupChat/index', '', '', 1, 0, 'C', '0', '0', 'biz:group:list', 'message', 'admin', sysdate(), '', null, 'App官方群聊二维码，后台手改');
 
 -- 按钮权限
 insert into sys_menu values('2101', '会员查询', '2001', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:member:query', '#', 'admin', sysdate(), '', null, '');
@@ -300,3 +370,15 @@ insert into sys_menu values('2182', '等级新增', '2009', '2', '', '', '', '',
 insert into sys_menu values('2183', '等级修改', '2009', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:level:edit', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2184', '等级删除', '2009', '4', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:level:remove', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2191', '分佣查询', '2010', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:commission:query', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2201', '概览查询', '2013', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:overview:query', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2202', '概览新增', '2013', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:overview:add', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2203', '概览修改', '2013', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:overview:edit', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2204', '概览删除', '2013', '4', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:overview:remove', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2211', '关于查询', '2014', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:about:query', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2212', '关于新增', '2014', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:about:add', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2213', '关于修改', '2014', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:about:edit', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2214', '关于删除', '2014', '4', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:about:remove', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2221', '群聊查询', '2015', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:group:query', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2222', '群聊新增', '2015', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:group:add', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2223', '群聊修改', '2015', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:group:edit', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2224', '群聊删除', '2015', '4', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:group:remove', '#', 'admin', sysdate(), '', null, '');

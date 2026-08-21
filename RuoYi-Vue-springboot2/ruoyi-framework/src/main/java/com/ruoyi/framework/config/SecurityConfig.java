@@ -121,6 +121,9 @@ public class SecurityConfig
                 requests.antMatchers("/login", "/register", "/captchaImage").permitAll()
                     .antMatchers("/app/auth/**", "/dev-api/app/auth/**").permitAll()
                     .antMatchers(HttpMethod.GET, "/app/notices", "/app/notices/**", "/dev-api/app/notices", "/dev-api/app/notices/**").permitAll()
+                    .antMatchers(HttpMethod.GET, "/app/overview", "/dev-api/app/overview").permitAll()
+                    .antMatchers(HttpMethod.GET, "/app/about", "/dev-api/app/about").permitAll()
+                    .antMatchers(HttpMethod.GET, "/app/group-chat", "/dev-api/app/group-chat").permitAll()
                     .antMatchers("/dev-api/login", "/dev-api/register", "/dev-api/captchaImage").permitAll()
                     // 静态资源，可匿名访问
                     .antMatchers(HttpMethod.GET, "/", "/*.html", "/**/*.html", "/**/*.css", "/**/*.js", "/profile/**", "/common/r2/**").permitAll()
