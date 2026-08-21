@@ -1,5 +1,6 @@
 package com.ruoyi.biz.service.impl;
 
+import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -7,6 +8,7 @@ import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.BizProduct;
 import com.ruoyi.biz.mapper.BizProductMapper;
 import com.ruoyi.biz.service.IBizProductService;
+import com.ruoyi.common.exception.ServiceException;
 
 @Service
 public class BizProductServiceImpl implements IBizProductService
@@ -37,24 +39,22 @@ public class BizProductServiceImpl implements IBizProductService
         {
             product.setWithdrawRequired("0");
         }
-        if (product.getCurrency() == null || product.getCurrency().isEmpty())
+        if (product.getNameEn() == null)
         {
-            product.setCurrency(BizConstants.CURRENCY_CNY);
+            product.setNameEn("");
         }
-        else
+        if (product.getCoverUrl() == null)
         {
-            product.setCurrency(product.getCurrency().toUpperCase());
+            product.setCoverUrl("");
         }
+        fillDualPrices(product);
         return productMapper.insertProduct(product);
     }
 
     @Override
     public int updateProduct(BizProduct product)
     {
-        if (product.getCurrency() != null && !product.getCurrency().isEmpty())
-        {
-            product.setCurrency(product.getCurrency().toUpperCase());
-        }
+        fillDualPrices(product);
         return productMapper.updateProduct(product);
     }
 
@@ -62,5 +62,35 @@ public class BizProductServiceImpl implements IBizProductService
     public int deleteProductByIds(Long[] productIds)
     {
         return productMapper.deleteProductByIds(productIds);
+    }
+
+    private void fillDualPrices(BizProduct product)
+    {
+        boolean cny = BizProduct.hasPrice(product.getPriceCny());
+        boolean usdt = BizProduct.hasPrice(product.getPriceUsdt());
+        if (!cny && !usdt)
+        {
+            throw new ServiceException("请至少配置人民币或USDT认购价格");
+        }
+        if (cny && product.getDailyRebateCny() == null)
+        {
+            product.setDailyRebateCny(BigDecimal.ZERO);
+        }
+        if (usdt && product.getDailyRebateUsdt() == null)
+        {
+            product.setDailyRebateUsdt(BigDecimal.ZERO);
+        }
+        if (cny)
+        {
+            product.setPrice(product.getPriceCny());
+            product.setDailyRebate(product.getDailyRebateCny());
+            product.setCurrency(BizConstants.CURRENCY_CNY);
+        }
+        else
+        {
+            product.setPrice(product.getPriceUsdt());
+            product.setDailyRebate(product.getDailyRebateUsdt());
+            product.setCurrency(BizConstants.CURRENCY_USDT);
+        }
     }
 }

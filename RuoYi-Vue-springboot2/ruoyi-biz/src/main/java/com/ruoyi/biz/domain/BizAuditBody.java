@@ -15,6 +15,9 @@ public class BizAuditBody
     @ApiModelProperty(value = "审核备注")
     private String auditRemark;
 
+    @ApiModelProperty(value = "打款凭证图片URL")
+    private String payProofUrl;
+
     public Long getId()
     {
         return id;
@@ -43,5 +46,15 @@ public class BizAuditBody
     public void setAuditRemark(String auditRemark)
     {
         this.auditRemark = auditRemark;
+    }
+
+    public String getPayProofUrl()
+    {
+        return payProofUrl;
+    }
+
+    public void setPayProofUrl(String payProofUrl)
+    {
+        this.payProofUrl = payProofUrl;
     }
 }

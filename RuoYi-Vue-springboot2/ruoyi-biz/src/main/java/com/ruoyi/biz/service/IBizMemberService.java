@@ -21,6 +21,8 @@ public interface IBizMemberService
 
     void submitKyc(Long memberId, AppKycBody body);
 
+    void changePassword(Long memberId, String oldPassword, String newPassword, String confirmPassword);
+
     List<BizMember> selectTeamMembers(Long memberId, Integer teamLevel);
 
     void refreshLevel(Long memberId);

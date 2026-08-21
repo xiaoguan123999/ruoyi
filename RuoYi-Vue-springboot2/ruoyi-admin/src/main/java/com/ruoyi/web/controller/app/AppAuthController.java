@@ -26,7 +26,9 @@ import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.controller.BaseController;
-import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.biz.api.AppCaptchaResult;
+import com.ruoyi.biz.api.AppLoginResult;
+import com.ruoyi.biz.api.AppOkResult;
 import com.ruoyi.common.core.domain.model.AppLoginMember;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.ServiceException;
@@ -65,7 +67,7 @@ public class AppAuthController extends BaseController
 
     @ApiOperation("获取登录验证码")
     @GetMapping("/captcha")
-    public AjaxResult captcha()
+    public AppCaptchaResult captcha()
     {
         String uuid = IdUtils.simpleUUID();
         String verifyKey = CacheConstants.CAPTCHA_CODE_KEY + uuid;
@@ -95,17 +97,12 @@ public class AppAuthController extends BaseController
         {
             throw new ServiceException("验证码生成失败");
         }
-        AjaxResult ajax = AjaxResult.success();
-        ajax.put("uuid", uuid);
-        ajax.put("img", Base64.encode(os.toByteArray()));
-        ajax.put("imgType", "png");
-        ajax.put("captchaEnabled", true);
-        return ajax;
+        return AppCaptchaResult.of(uuid, Base64.encode(os.toByteArray()));
     }
 
     @ApiOperation("会员注册")
     @PostMapping("/register")
-    public AjaxResult register(@RequestBody AppRegisterBody body)
+    public AppLoginResult register(@RequestBody AppRegisterBody body)
     {
         if (body == null)
         {
@@ -118,7 +115,7 @@ public class AppAuthController extends BaseController
 
     @ApiOperation("会员登录")
     @PostMapping("/login")
-    public AjaxResult login(@RequestBody AppLoginBody body)
+    public AppLoginResult login(@RequestBody AppLoginBody body)
     {
         if (body == null || StringUtils.isEmpty(body.getPhone()) || StringUtils.isEmpty(body.getPassword()))
         {
@@ -153,10 +150,10 @@ public class AppAuthController extends BaseController
 
     @ApiOperation("会员退出")
     @PostMapping("/logout")
-    public AjaxResult logout(HttpServletRequest request)
+    public AppOkResult logout(HttpServletRequest request)
     {
         appTokenService.delLoginMember(request);
-        return success();
+        return AppOkResult.ok();
     }
 
     private void validateCaptcha(String code, String uuid)
@@ -178,17 +175,13 @@ public class AppAuthController extends BaseController
         }
     }
 
-    private AjaxResult buildToken(BizMember member)
+    private AppLoginResult buildToken(BizMember member)
     {
         AppLoginMember loginMember = new AppLoginMember();
         loginMember.setMemberId(member.getMemberId());
         loginMember.setPhone(member.getPhone());
         String token = appTokenService.createToken(loginMember);
-        AjaxResult ajax = AjaxResult.success();
-        ajax.put(Constants.TOKEN, token);
-        ajax.put("memberId", member.getMemberId());
-        ajax.put("inviteCode", member.getInviteCode());
-        ajax.put("gaBound", BizConstants.GA_BOUND.equals(member.getGaStatus()));
-        return ajax;
+        return AppLoginResult.of(token, member.getMemberId(), member.getInviteCode(),
+                BizConstants.GA_BOUND.equals(member.getGaStatus()));
     }
 }

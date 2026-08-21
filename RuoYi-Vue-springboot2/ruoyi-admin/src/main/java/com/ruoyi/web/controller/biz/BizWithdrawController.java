@@ -52,7 +52,7 @@ public class BizWithdrawController extends BaseController
     @PutMapping("/audit")
     public AjaxResult audit(@RequestBody BizAuditBody body)
     {
-        withdrawService.audit(body.getId(), body.getStatus(), getUsername(), body.getAuditRemark());
+        withdrawService.audit(body.getId(), body.getStatus(), getUsername(), body.getAuditRemark(), body.getPayProofUrl());
         return success();
     }
 }

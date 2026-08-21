@@ -54,6 +54,10 @@ public class BizConstants
 
     public static final String BIZ_WITHDRAW_REJECT = "WITHDRAW_REJECT";
 
+    public static final String PAY_ALIPAY = "ALIPAY";
+
+    public static final String PAY_USDT = "USDT";
+
     public static final String BIZ_COMMISSION = "COMMISSION";
 
     public static final String CONFIG_CHECKIN_AMOUNT = "biz.checkin.amount";

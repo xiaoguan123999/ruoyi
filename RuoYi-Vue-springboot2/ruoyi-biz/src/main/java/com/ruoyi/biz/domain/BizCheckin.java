@@ -4,21 +4,27 @@ import java.math.BigDecimal;
 import java.util.Date;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ruoyi.common.core.domain.BaseEntity;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
 
 /**
  * 签到记录
  */
+@ApiModel("签到记录")
 public class BizCheckin extends BaseEntity
 {
     private static final long serialVersionUID = 1L;
 
     /** 签到ID */
+    @ApiModelProperty("签到ID")
     private Long checkinId;
 
     /** 会员ID */
+    @ApiModelProperty("会员ID")
     private Long memberId;
 
     /** 手机号 */
+    @ApiModelProperty("手机号")
     private String phone;
 
     /** 签到日期 */
@@ -26,9 +32,11 @@ public class BizCheckin extends BaseEntity
     private Date checkinDate;
 
     /** 奖励金额 */
+    @ApiModelProperty("奖励金额")
     private BigDecimal amount;
 
     /** 币种 */
+    @ApiModelProperty("币种")
     private String currency;
 
     public Long getCheckinId()

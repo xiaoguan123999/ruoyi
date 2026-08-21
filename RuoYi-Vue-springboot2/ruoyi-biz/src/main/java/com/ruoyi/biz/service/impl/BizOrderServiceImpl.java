@@ -1,5 +1,6 @@
 package com.ruoyi.biz.service.impl;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import org.slf4j.Logger;
@@ -62,7 +63,7 @@ public class BizOrderServiceImpl implements IBizOrderService
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public BizOrder subscribe(Long memberId, Long productId)
+    public BizOrder subscribe(Long memberId, Long productId, String payCurrency)
     {
         BizMember member = memberService.selectMemberById(memberId);
         if (member == null)
@@ -78,11 +79,20 @@ public class BizOrderServiceImpl implements IBizOrderService
         {
             throw new ServiceException("产品不存在或已下架");
         }
-        String currency = StringUtils.isEmpty(product.getCurrency())
-                ? BizConstants.CURRENCY_CNY : product.getCurrency().toUpperCase();
+        String currency = resolvePayCurrency(product, payCurrency);
         configService.assertCurrencyEnabled(currency);
+        BigDecimal price = product.priceOf(currency);
+        if (!BizProduct.hasPrice(price))
+        {
+            throw new ServiceException("USDT".equals(currency) ? "该产品不支持USDT认购" : "该产品不支持人民币认购");
+        }
+        BigDecimal rebate = product.rebateOf(currency);
+        if (rebate == null)
+        {
+            rebate = BigDecimal.ZERO;
+        }
 
-        walletService.debit(memberId, currency, product.getPrice(), BizConstants.BIZ_SUBSCRIBE,
+        walletService.debit(memberId, currency, price, BizConstants.BIZ_SUBSCRIBE,
                 productId, "认购产品:" + product.getProductName());
 
         BizOrder order = new BizOrder();
@@ -91,8 +101,8 @@ public class BizOrderServiceImpl implements IBizOrderService
         order.setProductId(product.getProductId());
         order.setProductName(product.getProductName());
         order.setCurrency(currency);
-        order.setPrice(product.getPrice());
-        order.setDailyRebate(product.getDailyRebate());
+        order.setPrice(price);
+        order.setDailyRebate(rebate);
         order.setDurationDays(product.getDurationDays());
         order.setRemainingDays(product.getDurationDays());
         order.setWithdrawRequired(product.getWithdrawRequired());
@@ -104,7 +114,31 @@ public class BizOrderServiceImpl implements IBizOrderService
         {
             memberService.refreshLevel(member.getParentId());
         }
-        return order;
+        BizOrder created = orderMapper.selectOrderById(order.getOrderId());
+        return created != null ? created : order;
+    }
+
+
+    private String resolvePayCurrency(BizProduct product, String payCurrency)
+    {
+        if (StringUtils.isEmpty(payCurrency))
+        {
+            if (BizProduct.hasPrice(product.getPriceCny()))
+            {
+                return BizConstants.CURRENCY_CNY;
+            }
+            if (BizProduct.hasPrice(product.getPriceUsdt()))
+            {
+                return BizConstants.CURRENCY_USDT;
+            }
+            throw new ServiceException("产品未配置认购价格");
+        }
+        String currency = payCurrency.toUpperCase();
+        if (!BizConstants.CURRENCY_CNY.equals(currency) && !BizConstants.CURRENCY_USDT.equals(currency))
+        {
+            throw new ServiceException("请选择人民币或USDT认购");
+        }
+        return currency;
     }
 
     @Override

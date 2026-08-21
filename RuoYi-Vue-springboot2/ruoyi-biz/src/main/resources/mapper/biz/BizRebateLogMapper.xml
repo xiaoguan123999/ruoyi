@@ -6,4 +6,10 @@
         insert into biz_rebate_log (order_id, member_id, currency, amount, rebate_date, create_time)
         values (#{orderId}, #{memberId}, #{currency}, #{amount}, #{rebateDate}, sysdate())
     </insert>
+
+    <select id="sumAmountByMemberAndCurrency" resultType="java.math.BigDecimal">
+        select ifnull(sum(amount), 0)
+        from biz_rebate_log
+        where member_id = #{memberId} and currency = #{currency}
+    </select>
 </mapper>

@@ -4,33 +4,43 @@ import java.math.BigDecimal;
 import java.util.Date;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ruoyi.common.core.domain.BaseEntity;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
 
 /**
  * 充值申请
  */
+@ApiModel("充值单")
 public class BizRecharge extends BaseEntity
 {
     private static final long serialVersionUID = 1L;
 
     /** 充值ID */
+    @ApiModelProperty("充值ID")
     private Long rechargeId;
 
     /** 会员ID */
+    @ApiModelProperty("会员ID")
     private Long memberId;
 
     /** 手机号 */
+    @ApiModelProperty("手机号")
     private String phone;
 
     /** 币种 */
+    @ApiModelProperty("币种")
     private String currency;
 
     /** 金额 */
+    @ApiModelProperty("金额")
     private BigDecimal amount;
 
     /** 状态 */
+    @ApiModelProperty("审核状态：0待审 1通过已入账 2拒绝")
     private String status;
 
     /** 审核人 */
+    @ApiModelProperty("审核人")
     private String auditBy;
 
     /** 审核时间 */
@@ -38,6 +48,7 @@ public class BizRecharge extends BaseEntity
     private Date auditTime;
 
     /** 审核备注 */
+    @ApiModelProperty("审核备注")
     private String auditRemark;
 
     public Long getRechargeId()

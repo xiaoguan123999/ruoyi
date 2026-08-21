@@ -12,5 +12,5 @@ public interface IBizWithdrawService
 
     BizWithdraw apply(Long memberId, String currency, BigDecimal amount, String accountInfo, String remark, String googleCode);
 
-    void audit(Long withdrawId, String status, String auditBy, String auditRemark);
+    void audit(Long withdrawId, String status, String auditBy, String auditRemark, String payProofUrl);
 }

@@ -9,25 +9,27 @@
         <result property="currency"     column="currency"/>
         <result property="amount"       column="amount"/>
         <result property="accountInfo"  column="account_info"/>
+        <result property="payMethod"    column="pay_method"/>
         <result property="status"       column="status"/>
         <result property="auditBy"      column="audit_by"/>
         <result property="auditTime"    column="audit_time"/>
         <result property="auditRemark"  column="audit_remark"/>
+        <result property="payProofUrl"  column="pay_proof_url"/>
         <result property="createTime"   column="create_time"/>
         <result property="remark"       column="remark"/>
     </resultMap>
 
     <select id="selectWithdrawById" parameterType="Long" resultMap="BizWithdrawResult">
-        select w.withdraw_id, w.member_id, m.phone, w.currency, w.amount, w.account_info, w.status,
-               w.audit_by, w.audit_time, w.audit_remark, w.create_time, w.remark
+        select w.withdraw_id, w.member_id, m.phone, w.currency, w.amount, w.account_info, w.pay_method, w.status,
+               w.audit_by, w.audit_time, w.audit_remark, w.pay_proof_url, w.create_time, w.remark
         from biz_withdraw w
         left join biz_member m on m.member_id = w.member_id
         where w.withdraw_id = #{withdrawId}
     </select>
 
     <select id="selectWithdrawList" parameterType="BizWithdraw" resultMap="BizWithdrawResult">
-        select w.withdraw_id, w.member_id, m.phone, w.currency, w.amount, w.account_info, w.status,
-               w.audit_by, w.audit_time, w.audit_remark, w.create_time, w.remark
+        select w.withdraw_id, w.member_id, m.phone, w.currency, w.amount, w.account_info, w.pay_method, w.status,
+               w.audit_by, w.audit_time, w.audit_remark, w.pay_proof_url, w.create_time, w.remark
         from biz_withdraw w
         left join biz_member m on m.member_id = w.member_id
         <where>
@@ -40,8 +42,8 @@
     </select>
 
     <insert id="insertWithdraw" parameterType="BizWithdraw" useGeneratedKeys="true" keyProperty="withdrawId">
-        insert into biz_withdraw (member_id, currency, amount, account_info, status, create_time, remark)
-        values (#{memberId}, #{currency}, #{amount}, #{accountInfo}, #{status}, sysdate(), #{remark})
+        insert into biz_withdraw (member_id, currency, amount, account_info, pay_method, status, create_time, remark)
+        values (#{memberId}, #{currency}, #{amount}, #{accountInfo}, #{payMethod}, #{status}, sysdate(), #{remark})
     </insert>
 
     <update id="updateWithdraw" parameterType="BizWithdraw">
@@ -51,7 +53,18 @@
             <if test="auditBy != null">audit_by = #{auditBy},</if>
             <if test="auditTime != null">audit_time = #{auditTime},</if>
             <if test="auditRemark != null">audit_remark = #{auditRemark},</if>
+            <if test="payProofUrl != null">pay_proof_url = #{payProofUrl},</if>
         </set>
         where withdraw_id = #{withdrawId}
+    </update>
+
+    <update id="updateWithdrawIfPending" parameterType="BizWithdraw">
+        update biz_withdraw
+        set status = #{status},
+            audit_by = #{auditBy},
+            audit_time = #{auditTime},
+            audit_remark = #{auditRemark},
+            pay_proof_url = #{payProofUrl}
+        where withdraw_id = #{withdrawId} and status = '0'
     </update>
 </mapper>

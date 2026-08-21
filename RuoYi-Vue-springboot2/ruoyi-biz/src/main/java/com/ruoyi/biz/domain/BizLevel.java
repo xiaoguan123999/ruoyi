@@ -2,33 +2,43 @@ package com.ruoyi.biz.domain;
 
 import java.math.BigDecimal;
 import com.ruoyi.common.core.domain.BaseEntity;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
 
 /**
  * 会员等级
  */
+@ApiModel("会员等级")
 public class BizLevel extends BaseEntity
 {
     private static final long serialVersionUID = 1L;
 
     /** 等级ID */
+    @ApiModelProperty("等级ID")
     private Long levelId;
 
     /** 等级名称 */
+    @ApiModelProperty("等级名称")
     private String levelName;
 
     /** 最低有效会员人数 */
+    @ApiModelProperty("最低有效会员人数")
     private Integer minValidMembers;
 
     /** 最低累计充值CNY */
+    @ApiModelProperty("最低累计充值CNY")
     private BigDecimal minRechargeCny;
 
     /** 最低累计充值USDT */
+    @ApiModelProperty("最低累计充值USDT")
     private BigDecimal minRechargeUsdt;
 
     /** 排序 */
+    @ApiModelProperty("排序")
     private Integer sort;
 
     /** 状态 */
+    @ApiModelProperty("状态")
     private String status;
 
     public Long getLevelId()

@@ -16,6 +16,8 @@ import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.mapper.BizRechargeMapper;
 import com.ruoyi.biz.service.IBizMemberService;
 import com.ruoyi.biz.service.IBizWalletService;
+import com.ruoyi.biz.util.KycUtils;
+import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
@@ -38,13 +40,17 @@ public class BizMemberServiceImpl implements IBizMemberService
     @Override
     public BizMember selectMemberById(Long memberId)
     {
-        return memberMapper.selectMemberById(memberId);
+        BizMember member = memberMapper.selectMemberById(memberId);
+        walletService.fillAssetSummary(member);
+        return member;
     }
 
     @Override
     public BizMember selectMemberByPhone(String phone)
     {
-        return memberMapper.selectMemberByPhone(phone);
+        BizMember member = memberMapper.selectMemberByPhone(phone);
+        walletService.fillAssetSummary(member);
+        return member;
     }
 
     @Override
@@ -102,7 +108,7 @@ public class BizMemberServiceImpl implements IBizMemberService
         }
         memberMapper.insertMember(member);
         walletService.initWallets(member.getMemberId());
-        return memberMapper.selectMemberById(member.getMemberId());
+        return selectMemberById(member.getMemberId());
     }
 
     @Override
@@ -134,19 +140,41 @@ public class BizMemberServiceImpl implements IBizMemberService
     @Transactional(rollbackFor = Exception.class)
     public void submitKyc(Long memberId, AppKycBody body)
     {
-        if (body == null || StringUtils.isEmpty(body.getRealName()) || StringUtils.isEmpty(body.getIdCard()))
+        if (body == null)
         {
-            throw new ServiceException("姓名和身份证号不能为空");
+            throw new ServiceException("请填写姓名和身份证号");
+        }
+        String realName = KycUtils.normalizeName(body.getRealName());
+        String idCard = KycUtils.normalizeIdCard(body.getIdCard());
+        if (StringUtils.isEmpty(realName) || StringUtils.isEmpty(idCard))
+        {
+            throw new ServiceException("请填写姓名和身份证号");
+        }
+        if (!KycUtils.isValidName(realName))
+        {
+            throw new ServiceException("姓名须为2-20个中文，可含间隔号·");
+        }
+        if (!KycUtils.isValidIdCard(idCard))
+        {
+            throw new ServiceException("身份证号不正确");
         }
         BizMember exist = memberMapper.selectMemberById(memberId);
         if (exist == null)
         {
             throw new ServiceException("会员不存在");
         }
+        if (BizConstants.KYC_DONE.equals(exist.getKycStatus()))
+        {
+            throw new ServiceException("已实名，不能重复提交");
+        }
+        if (memberMapper.countByIdCard(idCard, memberId) > 0)
+        {
+            throw new ServiceException("该身份证号已被使用");
+        }
         BizMember update = new BizMember();
         update.setMemberId(memberId);
-        update.setRealName(body.getRealName());
-        update.setIdCard(body.getIdCard());
+        update.setRealName(realName);
+        update.setIdCard(idCard);
         update.setKycStatus(BizConstants.KYC_DONE);
         memberMapper.updateMember(update);
         refreshLevel(memberId);
@@ -154,6 +182,42 @@ public class BizMemberServiceImpl implements IBizMemberService
         {
             refreshLevel(exist.getParentId());
         }
+    }
+
+    @Override
+    public void changePassword(Long memberId, String oldPassword, String newPassword, String confirmPassword)
+    {
+        if (StringUtils.isEmpty(oldPassword) || StringUtils.isEmpty(newPassword))
+        {
+            throw new ServiceException("请填写原密码和新密码");
+        }
+        if (StringUtils.isEmpty(confirmPassword) || !newPassword.equals(confirmPassword))
+        {
+            throw new ServiceException("两次密码不一致");
+        }
+        if (newPassword.length() < UserConstants.PASSWORD_MIN_LENGTH
+                || newPassword.length() > UserConstants.PASSWORD_MAX_LENGTH)
+        {
+            throw new ServiceException("新密码长度必须为" + UserConstants.PASSWORD_MIN_LENGTH + "-"
+                    + UserConstants.PASSWORD_MAX_LENGTH + "位");
+        }
+        BizMember member = memberMapper.selectMemberById(memberId);
+        if (member == null)
+        {
+            throw new ServiceException("会员不存在");
+        }
+        if (!SecurityUtils.matchesPassword(oldPassword, member.getPassword()))
+        {
+            throw new ServiceException("原密码错误");
+        }
+        if (SecurityUtils.matchesPassword(newPassword, member.getPassword()))
+        {
+            throw new ServiceException("新密码不能与原密码相同");
+        }
+        BizMember update = new BizMember();
+        update.setMemberId(memberId);
+        update.setPassword(SecurityUtils.encryptPassword(newPassword));
+        memberMapper.updateMember(update);
     }
 
     @Override

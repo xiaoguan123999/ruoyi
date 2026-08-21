@@ -14,4 +14,6 @@ public interface BizProductMapper
     int updateProduct(BizProduct product);
 
     int deleteProductByIds(Long[] productIds);
+
+    int countByCategoryId(Long categoryId);
 }

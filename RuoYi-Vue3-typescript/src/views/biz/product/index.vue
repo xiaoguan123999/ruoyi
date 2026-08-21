@@ -1,11 +1,23 @@
 <template>
   <div class="app-container">
+    <el-alert
+      title="同一产品可同时配人民币和 USDT 价格。App 认购页两个按钮：用人民币扣 CNY 钱包，用 USDT 扣 USDT 钱包，日返跟下单币种走。价格填 0 或不填表示不支持该币种。"
+      type="info"
+      :closable="false"
+      show-icon
+      class="mb8"
+    />
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
       <el-form-item label="产品名称" prop="productName">
         <el-input v-model="queryParams.productName" placeholder="请输入产品名称" clearable style="width: 200px" @keyup.enter="handleQuery" />
       </el-form-item>
-      <el-form-item label="币种" prop="currency">
-        <el-select v-model="queryParams.currency" placeholder="币种" clearable style="width: 140px">
+      <el-form-item label="所属系列" prop="categoryId">
+        <el-select v-model="queryParams.categoryId" placeholder="系列" clearable style="width: 200px">
+          <el-option v-for="item in categoryOptions" :key="item.categoryId" :label="item.categoryName" :value="item.categoryId" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="支持币种" prop="currency">
+        <el-select v-model="queryParams.currency" placeholder="支持币种" clearable style="width: 140px">
           <el-option label="人民币" value="CNY" />
           <el-option label="USDT" value="USDT" />
         </el-select>
@@ -28,12 +40,14 @@
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
     <el-table v-loading="loading" :data="productList">
-      <el-table-column label="ID" align="center" prop="productId" width="80" />
-      <el-table-column label="产品名称" align="center" prop="productName" />
-      <el-table-column label="币种" align="center" prop="currency" width="90" />
-      <el-table-column label="价格" align="center" prop="price" />
-      <el-table-column label="日返" align="center" prop="dailyRebate" />
-      <el-table-column label="天数" align="center" prop="durationDays" />
+      <el-table-column label="ID" align="center" prop="productId" width="70" />
+      <el-table-column label="系列" align="center" prop="categoryName" min-width="140" show-overflow-tooltip />
+      <el-table-column label="产品名称" align="center" prop="productName" min-width="120" />
+      <el-table-column label="人民币价" align="center" prop="priceCny" width="100" />
+      <el-table-column label="人民币日返" align="center" prop="dailyRebateCny" width="110" />
+      <el-table-column label="USDT价" align="center" prop="priceUsdt" width="90" />
+      <el-table-column label="USDT日返" align="center" prop="dailyRebateUsdt" width="100" />
+      <el-table-column label="天数" align="center" prop="durationDays" width="70" />
       <el-table-column label="提现指定" align="center" prop="withdrawRequired" width="90">
         <template #default="scope">
           <el-tag :type="scope.row.withdrawRequired === '1' ? 'warning' : 'info'">{{ scope.row.withdrawRequired === '1' ? '是' : '否' }}</el-tag>
@@ -53,22 +67,30 @@
     </el-table>
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
-    <el-dialog :title="title" v-model="open" width="520px" append-to-body>
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
+    <el-dialog :title="title" v-model="open" width="560px" append-to-body>
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+        <el-form-item label="所属系列" prop="categoryId">
+          <el-select v-model="form.categoryId" placeholder="请选择系列" style="width: 100%">
+            <el-option v-for="item in categoryOptions" :key="item.categoryId" :label="item.categoryName" :value="item.categoryId" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="产品名称" prop="productName">
           <el-input v-model="form.productName" />
         </el-form-item>
-        <el-form-item label="结算币种" prop="currency">
-          <el-select v-model="form.currency" style="width: 100%">
-            <el-option label="人民币 CNY" value="CNY" />
-            <el-option label="USDT" value="USDT" />
-          </el-select>
+        <el-form-item label="英文名" prop="nameEn">
+          <el-input v-model="form.nameEn" placeholder="App 卡片副标题，可空" />
         </el-form-item>
-        <el-form-item label="价格" prop="price">
-          <el-input-number v-model="form.price" :min="0" :precision="2" style="width: 100%" />
+        <el-form-item label="人民币价格" prop="priceCny">
+          <el-input-number v-model="form.priceCny" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="每日返利" prop="dailyRebate">
-          <el-input-number v-model="form.dailyRebate" :min="0" :precision="2" style="width: 100%" />
+        <el-form-item label="人民币日返" prop="dailyRebateCny">
+          <el-input-number v-model="form.dailyRebateCny" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="USDT价格" prop="priceUsdt">
+          <el-input-number v-model="form.priceUsdt" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="USDT日返" prop="dailyRebateUsdt">
+          <el-input-number v-model="form.dailyRebateUsdt" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
         <el-form-item label="返利天数" prop="durationDays">
           <el-input-number v-model="form.durationDays" :min="1" style="width: 100%" />
@@ -88,6 +110,9 @@
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" style="width: 100%" />
         </el-form-item>
+        <el-form-item label="封面">
+          <image-upload v-model="form.coverUrl" :limit="1" />
+        </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="form.remark" type="textarea" />
         </el-form-item>
@@ -103,10 +128,11 @@
 </template>
 
 <script setup lang="ts" name="BizProduct">
-import { listProduct, getProduct, addProduct, updateProduct, delProduct } from "@/api/biz"
+import { listProduct, getProduct, addProduct, updateProduct, delProduct, listProductCategoryOptions } from "@/api/biz"
 
 const { proxy } = getCurrentInstance() as any
 const productList = ref<any[]>([])
+const categoryOptions = ref<any[]>([])
 const open = ref(false)
 const loading = ref(true)
 const showSearch = ref(true)
@@ -114,17 +140,20 @@ const total = ref(0)
 const title = ref("")
 const data = reactive({
   form: {} as any,
-  queryParams: { pageNum: 1, pageSize: 10, productName: undefined, currency: undefined, status: undefined },
+  queryParams: { pageNum: 1, pageSize: 10, productName: undefined, currency: undefined, status: undefined, categoryId: undefined },
   rules: {
+    categoryId: [{ required: true, message: "请选择所属系列", trigger: "change" }],
     productName: [{ required: true, message: "产品名称不能为空", trigger: "blur" }],
-    currency: [{ required: true, message: "请选择币种", trigger: "change" }],
-    price: [{ required: true, message: "价格不能为空", trigger: "blur" }],
-    dailyRebate: [{ required: true, message: "日返不能为空", trigger: "blur" }],
     durationDays: [{ required: true, message: "天数不能为空", trigger: "blur" }]
   }
 })
 const { queryParams, form, rules } = toRefs(data)
 
+function loadCategories() {
+  listProductCategoryOptions().then((res: any) => {
+    categoryOptions.value = res.data || []
+  })
+}
 function getList() {
   loading.value = true
   listProduct(queryParams.value).then((res: any) => {
@@ -136,7 +165,18 @@ function getList() {
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
 function reset() {
-  form.value = { status: "0", withdrawRequired: "0", sort: 0, currency: "CNY" }
+  form.value = {
+    status: "0",
+    withdrawRequired: "0",
+    sort: 0,
+    categoryId: undefined,
+    nameEn: "",
+    coverUrl: "",
+    priceCny: undefined,
+    dailyRebateCny: undefined,
+    priceUsdt: undefined,
+    dailyRebateUsdt: undefined
+  }
   proxy.resetForm("formRef")
 }
 function handleAdd() { reset(); open.value = true; title.value = "新增产品" }
@@ -151,6 +191,12 @@ function handleUpdate(row: any) {
 function submitForm() {
   proxy.$refs["formRef"].validate((valid: boolean) => {
     if (!valid) return
+    const cny = Number(form.value.priceCny || 0)
+    const usdt = Number(form.value.priceUsdt || 0)
+    if (cny <= 0 && usdt <= 0) {
+      proxy.$modal.msgError("请至少配置人民币或USDT认购价格")
+      return
+    }
     const req = form.value.productId ? updateProduct(form.value) : addProduct(form.value)
     req.then(() => {
       proxy.$modal.msgSuccess("保存成功")
@@ -165,5 +211,6 @@ function handleDelete(row: any) {
     proxy.$modal.msgSuccess("删除成功")
   }).catch(() => {})
 }
+loadCategories()
 getList()
 </script>

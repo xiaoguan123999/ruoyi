@@ -12,4 +12,6 @@ public interface BizWithdrawMapper
     int insertWithdraw(BizWithdraw withdraw);
 
     int updateWithdraw(BizWithdraw withdraw);
+
+    int updateWithdrawIfPending(BizWithdraw withdraw);
 }

@@ -1,13 +1,18 @@
 package com.ruoyi.biz.service.impl;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.ruoyi.biz.api.AppWalletCard;
+import com.ruoyi.biz.api.AppWalletRow;
 import com.ruoyi.biz.constant.BizConstants;
+import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizWallet;
 import com.ruoyi.biz.domain.BizWalletLog;
+import com.ruoyi.biz.mapper.BizRebateLogMapper;
 import com.ruoyi.biz.mapper.BizWalletLogMapper;
 import com.ruoyi.biz.mapper.BizWalletMapper;
 import com.ruoyi.biz.service.IBizWalletService;
@@ -21,6 +26,9 @@ public class BizWalletServiceImpl implements IBizWalletService
 
     @Autowired
     private BizWalletLogMapper walletLogMapper;
+
+    @Autowired
+    private BizRebateLogMapper rebateLogMapper;
 
     @Override
     public List<BizWallet> selectWalletsByMemberId(Long memberId)
@@ -93,6 +101,66 @@ public class BizWalletServiceImpl implements IBizWalletService
     public List<BizWalletLog> selectWalletLogList(BizWalletLog log)
     {
         return walletLogMapper.selectWalletLogList(log);
+    }
+
+    @Override
+    public AppWalletCard selectAppWalletCard(Long memberId)
+    {
+        initWallets(memberId);
+        AppWalletRow cny = currencyRow(memberId, BizConstants.CURRENCY_CNY);
+        AppWalletRow usdt = currencyRow(memberId, BizConstants.CURRENCY_USDT);
+        List<AppWalletRow> wallets = new ArrayList<AppWalletRow>();
+        wallets.add(cny);
+        wallets.add(usdt);
+
+        AppWalletCard data = new AppWalletCard();
+        data.setCnyAvailable(cny.getAvailable());
+        data.setCnyFrozen(cny.getFrozen());
+        data.setCnyProductIncome(cny.getProductIncome());
+        data.setCnyAssistValue(cny.getAssistValue());
+        data.setUsdtAvailable(usdt.getAvailable());
+        data.setUsdtFrozen(usdt.getFrozen());
+        data.setUsdtProductIncome(usdt.getProductIncome());
+        data.setUsdtAssistValue(usdt.getAssistValue());
+        data.setCny(cny);
+        data.setUsdt(usdt);
+        data.setWallets(wallets);
+        return data;
+    }
+
+    @Override
+    public void fillAssetSummary(BizMember member)
+    {
+        if (member == null || member.getMemberId() == null)
+        {
+            return;
+        }
+        AppWalletCard card = selectAppWalletCard(member.getMemberId());
+        member.setCnyAvailable(card.getCnyAvailable());
+        member.setCnyFrozen(card.getCnyFrozen());
+        member.setCnyProductIncome(card.getCnyProductIncome());
+        member.setCnyAssistValue(card.getCnyAssistValue());
+        member.setUsdtAvailable(card.getUsdtAvailable());
+        member.setUsdtFrozen(card.getUsdtFrozen());
+        member.setUsdtProductIncome(card.getUsdtProductIncome());
+        member.setUsdtAssistValue(card.getUsdtAssistValue());
+    }
+
+    private AppWalletRow currencyRow(Long memberId, String currency)
+    {
+        BizWallet wallet = walletMapper.selectWallet(memberId, currency);
+        AppWalletRow row = new AppWalletRow();
+        row.setCurrency(currency);
+        row.setAvailable(nvl(wallet == null ? null : wallet.getAvailable()));
+        row.setFrozen(nvl(wallet == null ? null : wallet.getFrozen()));
+        row.setProductIncome(nvl(rebateLogMapper.sumAmountByMemberAndCurrency(memberId, currency)));
+        row.setAssistValue(BigDecimal.ZERO);
+        return row;
+    }
+
+    private BigDecimal nvl(BigDecimal value)
+    {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     private void change(Long memberId, String currency, BigDecimal availableDelta, BigDecimal frozenDelta,

@@ -20,6 +20,7 @@
         <result property="cnyAvailable" column="cny_available"/>
         <result property="cnyFrozen"    column="cny_frozen"/>
         <result property="usdtAvailable" column="usdt_available"/>
+        <result property="usdtFrozen"   column="usdt_frozen"/>
         <result property="teamCount"    column="team_count"/>
         <result property="createBy"     column="create_by"/>
         <result property="createTime"   column="create_time"/>
@@ -35,6 +36,7 @@
                (select w.available from biz_wallet w where w.member_id = m.member_id and w.currency = 'CNY') as cny_available,
                (select w.frozen from biz_wallet w where w.member_id = m.member_id and w.currency = 'CNY') as cny_frozen,
                (select w.available from biz_wallet w where w.member_id = m.member_id and w.currency = 'USDT') as usdt_available,
+               (select w.frozen from biz_wallet w where w.member_id = m.member_id and w.currency = 'USDT') as usdt_frozen,
                (select count(1) from biz_member t where find_in_set(m.member_id, t.ancestors)) as team_count
         from biz_member m
         left join biz_level l on l.level_id = m.level_id
@@ -140,5 +142,15 @@
             </choose>
         </where>
         order by m.member_id desc
+    </select>
+
+    <select id="countByIdCard" resultType="int">
+        select count(1)
+        from biz_member
+        where id_card is not null and id_card != ''
+          and upper(id_card) = #{idCard}
+        <if test="excludeMemberId != null">
+            and member_id &lt;&gt; #{excludeMemberId}
+        </if>
     </select>
 </mapper>

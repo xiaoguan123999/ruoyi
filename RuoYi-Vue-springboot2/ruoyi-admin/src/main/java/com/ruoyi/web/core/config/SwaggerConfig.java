@@ -65,6 +65,7 @@ public class SwaggerConfig
                 /* 设置安全模式，swagger可以设置访问token */
                 .securitySchemes(securitySchemes())
                 .securityContexts(securityContexts())
+                .useDefaultResponseMessages(false)
                 .pathMapping(pathMapping);
     }
 
@@ -115,7 +116,7 @@ public class SwaggerConfig
                 // 设置标题
                 .title("标题：若依管理系统_接口文档")
                 // 描述
-                .description("若依后台接口 + App会员认购返利业务（/app、/biz）")
+                .description("若依后台接口 + App 业务。App 接口看分组「App-*」。响应模型里每个字段都有中文说明，不要看 additionalProp。")
                 // 作者信息
                 .contact(new Contact(ruoyiConfig.getName(), null, null))
                 // 版本

@@ -25,4 +25,6 @@ public interface BizMemberMapper
     int countDirectMembers(Long memberId);
 
     List<BizMember> selectTeamMembers(@Param("memberId") Long memberId, @Param("teamLevel") Integer teamLevel);
+
+    int countByIdCard(@Param("idCard") String idCard, @Param("excludeMemberId") Long excludeMemberId);
 }

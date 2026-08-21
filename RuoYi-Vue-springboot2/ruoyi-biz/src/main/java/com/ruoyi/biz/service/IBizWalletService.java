@@ -2,6 +2,8 @@ package com.ruoyi.biz.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import com.ruoyi.biz.api.AppWalletCard;
+import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizWallet;
 import com.ruoyi.biz.domain.BizWalletLog;
 
@@ -24,4 +26,8 @@ public interface IBizWalletService
     void unfreezeReject(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark);
 
     List<BizWalletLog> selectWalletLogList(BizWalletLog log);
+
+    AppWalletCard selectAppWalletCard(Long memberId);
+
+    void fillAssetSummary(BizMember member);
 }

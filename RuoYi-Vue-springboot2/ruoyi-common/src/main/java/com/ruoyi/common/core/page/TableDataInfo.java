@@ -12,16 +12,16 @@ public class TableDataInfo implements Serializable
 {
     private static final long serialVersionUID = 1L;
 
-    /** 总记录数 */
+    /** 总条数 */
     private long total;
 
-    /** 列表数据 */
+    /** 当前页数据 */
     private List<?> rows;
 
-    /** 消息状态码 */
+    /** 状态码，200成功 */
     private int code;
 
-    /** 消息内容 */
+    /** 提示文案 */
     private String msg;
 
     /**

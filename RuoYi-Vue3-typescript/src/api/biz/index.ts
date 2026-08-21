@@ -45,6 +45,30 @@ export function delProduct(productId: number | number[]): Promise<AjaxResult> {
   return request({ url: '/biz/product/' + productId, method: 'delete' })
 }
 
+export function listProductCategory(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/productCategory/list', method: 'get', params: query })
+}
+
+export function listProductCategoryOptions(): Promise<AjaxResult<any[]>> {
+  return request({ url: '/biz/productCategory/options', method: 'get' })
+}
+
+export function getProductCategory(categoryId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/productCategory/' + categoryId, method: 'get' })
+}
+
+export function addProductCategory(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/productCategory', method: 'post', data })
+}
+
+export function updateProductCategory(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/productCategory', method: 'put', data })
+}
+
+export function delProductCategory(categoryId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/productCategory/' + categoryId, method: 'delete' })
+}
+
 export function listOrder(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/order/list', method: 'get', params: query })
 }

@@ -1,26 +1,22 @@
 package com.ruoyi.web.controller.app;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.HtmlUtils;
+import com.ruoyi.biz.api.AppAboutItem;
+import com.ruoyi.biz.api.AppAboutResult;
 import com.ruoyi.biz.domain.BizAbout;
 import com.ruoyi.biz.service.IBizAboutService;
 import com.ruoyi.common.annotation.Anonymous;
 import com.ruoyi.common.core.controller.BaseController;
-import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.utils.StringUtils;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
-/**
- * App 关于我们（展示内容，后台手改）
- */
 @Api(tags = "App-关于我们")
 @RestController
 @RequestMapping("/app/about")
@@ -30,24 +26,24 @@ public class AppAboutController extends BaseController
     private IBizAboutService aboutService;
 
     @Anonymous
-    @ApiOperation("关于我们")
+    @ApiOperation(value = "关于我们", notes = "data 为数组。content 已转成纯文本。")
     @GetMapping
-    public AjaxResult list()
+    public AppAboutResult list()
     {
         List<BizAbout> items = aboutService.selectAppAboutList();
-        List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
+        List<AppAboutItem> rows = new ArrayList<AppAboutItem>();
         for (BizAbout item : items)
         {
-            Map<String, Object> row = new HashMap<String, Object>();
-            row.put("aboutId", item.getAboutId());
-            row.put("title", item.getTitle());
-            row.put("subtitle", item.getSubtitle() == null ? "" : item.getSubtitle());
-            row.put("content", toPlainText(item.getContent()));
-            row.put("imageUrl", item.getImageUrl() == null ? "" : item.getImageUrl());
-            row.put("sort", item.getSort());
+            AppAboutItem row = new AppAboutItem();
+            row.setAboutId(item.getAboutId());
+            row.setTitle(item.getTitle());
+            row.setSubtitle(item.getSubtitle() == null ? "" : item.getSubtitle());
+            row.setContent(toPlainText(item.getContent()));
+            row.setImageUrl(item.getImageUrl() == null ? "" : item.getImageUrl());
+            row.setSort(item.getSort());
             rows.add(row);
         }
-        return success(rows);
+        return AppAboutResult.ok(rows);
     }
 
     private String toPlainText(String html)

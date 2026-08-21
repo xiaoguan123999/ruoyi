@@ -9,6 +9,9 @@
         <result property="phone"             column="phone"/>
         <result property="productId"         column="product_id"/>
         <result property="productName"       column="product_name"/>
+        <result property="categoryId"        column="category_id"/>
+        <result property="categoryName"      column="category_name"/>
+        <result property="seriesCoverUrl"    column="series_cover_url"/>
         <result property="currency"          column="currency"/>
         <result property="price"             column="price"/>
         <result property="dailyRebate"       column="daily_rebate"/>
@@ -23,11 +26,15 @@
     </resultMap>
 
     <sql id="selectOrderVo">
-        select o.order_id, o.order_no, o.member_id, m.phone, o.product_id, o.product_name, o.currency, o.price,
+        select o.order_id, o.order_no, o.member_id, m.phone, o.product_id, o.product_name,
+               p.category_id, c.category_name, c.cover_url as series_cover_url,
+               o.currency, o.price,
                o.daily_rebate, o.duration_days, o.remaining_days, o.last_rebate_date,
                o.withdraw_required, o.status, o.create_time, o.update_time, o.remark
         from biz_order o
         left join biz_member m on m.member_id = o.member_id
+        left join biz_product p on p.product_id = o.product_id
+        left join biz_product_category c on c.category_id = p.category_id
     </sql>
 
     <select id="selectOrderById" parameterType="Long" resultMap="BizOrderResult">

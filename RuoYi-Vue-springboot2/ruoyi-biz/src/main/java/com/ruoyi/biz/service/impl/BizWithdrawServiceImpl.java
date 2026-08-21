@@ -15,6 +15,7 @@ import com.ruoyi.biz.service.IBizGoogleAuthService;
 import com.ruoyi.biz.service.IBizWalletService;
 import com.ruoyi.biz.service.IBizWithdrawService;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.StringUtils;
 
 @Service
 public class BizWithdrawServiceImpl implements IBizWithdrawService
@@ -57,6 +58,10 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
         {
             throw new ServiceException("提现金额必须大于0");
         }
+        if (StringUtils.isEmpty(accountInfo))
+        {
+            throw new ServiceException(BizConstants.CURRENCY_USDT.equals(payCurrency) ? "请填写USDT收款地址" : "请填写收款账户");
+        }
         BigDecimal minAmount = configService.getWithdrawMinAmount(payCurrency);
         if (amount.compareTo(minAmount) < 0)
         {
@@ -66,21 +71,23 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
         {
             throw new ServiceException("请先认购对应币种的指定产品后再提现");
         }
-        walletService.freeze(memberId, payCurrency, amount, BizConstants.BIZ_WITHDRAW_FREEZE, null, "提现冻结");
         BizWithdraw withdraw = new BizWithdraw();
         withdraw.setMemberId(memberId);
         withdraw.setCurrency(payCurrency);
         withdraw.setAmount(amount);
-        withdraw.setAccountInfo(accountInfo);
+        withdraw.setAccountInfo(accountInfo.trim());
+        withdraw.setPayMethod(BizConstants.CURRENCY_USDT.equals(payCurrency) ? BizConstants.PAY_USDT : BizConstants.PAY_ALIPAY);
         withdraw.setStatus(BizConstants.AUDIT_PENDING);
         withdraw.setRemark(remark);
         withdrawMapper.insertWithdraw(withdraw);
+        walletService.freeze(memberId, payCurrency, amount, BizConstants.BIZ_WITHDRAW_FREEZE,
+                withdraw.getWithdrawId(), "提现冻结");
         return withdraw;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void audit(Long withdrawId, String status, String auditBy, String auditRemark)
+    public void audit(Long withdrawId, String status, String auditBy, String auditRemark, String payProofUrl)
     {
         BizWithdraw withdraw = withdrawMapper.selectWithdrawById(withdrawId);
         if (withdraw == null)
@@ -89,21 +96,29 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
         }
         if (!BizConstants.AUDIT_PENDING.equals(withdraw.getStatus()))
         {
-            throw new ServiceException("该提现单已审核");
+            throw new ServiceException("该提现单已处理");
         }
         if (!BizConstants.AUDIT_PASS.equals(status) && !BizConstants.AUDIT_REJECT.equals(status))
         {
             throw new ServiceException("审核状态不正确");
         }
+        if (BizConstants.AUDIT_REJECT.equals(status) && StringUtils.isEmpty(auditRemark))
+        {
+            throw new ServiceException("请填写拒绝原因");
+        }
         withdraw.setStatus(status);
         withdraw.setAuditBy(auditBy);
         withdraw.setAuditTime(new Date());
         withdraw.setAuditRemark(auditRemark);
-        withdrawMapper.updateWithdraw(withdraw);
+        withdraw.setPayProofUrl(payProofUrl);
+        if (withdrawMapper.updateWithdrawIfPending(withdraw) <= 0)
+        {
+            throw new ServiceException("该提现单已处理");
+        }
         if (BizConstants.AUDIT_PASS.equals(status))
         {
             walletService.unfreezeSuccess(withdraw.getMemberId(), withdraw.getCurrency(), withdraw.getAmount(),
-                    BizConstants.BIZ_WITHDRAW_SUCCESS, withdraw.getWithdrawId(), "提现成功");
+                    BizConstants.BIZ_WITHDRAW_SUCCESS, withdraw.getWithdrawId(), "提现已打款");
         }
         else
         {

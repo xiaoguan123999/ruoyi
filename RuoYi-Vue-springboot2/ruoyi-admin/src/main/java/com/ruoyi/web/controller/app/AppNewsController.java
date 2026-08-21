@@ -1,30 +1,27 @@
 package com.ruoyi.web.controller.app;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.HtmlUtils;
+import com.ruoyi.biz.api.AppNewsDetailResult;
+import com.ruoyi.biz.api.AppNewsItem;
+import com.ruoyi.biz.api.AppNewsListResult;
 import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.BizNews;
 import com.ruoyi.biz.service.IBizNewsService;
 import com.ruoyi.common.annotation.Anonymous;
 import com.ruoyi.common.core.controller.BaseController;
-import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.framework.config.ServerConfig;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
-/**
- * App 新闻资讯（展示用，后台手改）
- */
 @Api(tags = "App-新闻资讯")
 @RestController
 @RequestMapping("/app/news")
@@ -37,44 +34,44 @@ public class AppNewsController extends BaseController
     private ServerConfig serverConfig;
 
     @Anonymous
-    @ApiOperation("新闻列表")
+    @ApiOperation(value = "新闻列表", notes = "data 为数组。列表没有 content，详情才有。coverUrl 为空时 App 用本地默认封面。")
     @GetMapping
-    public AjaxResult list()
+    public AppNewsListResult list()
     {
         List<BizNews> items = newsService.selectAppNewsList();
-        List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
+        List<AppNewsItem> rows = new ArrayList<AppNewsItem>();
         for (BizNews item : items)
         {
             rows.add(toItem(item, false));
         }
-        return success(rows);
+        return AppNewsListResult.ok(rows);
     }
 
     @Anonymous
-    @ApiOperation("新闻详情")
+    @ApiOperation(value = "新闻详情", notes = "data.content 是纯文本。不存在或已隐藏返回 code=500。")
     @GetMapping("/{newsId}")
-    public AjaxResult detail(@PathVariable Long newsId)
+    public AppNewsDetailResult detail(@PathVariable Long newsId)
     {
         BizNews news = newsService.selectNewsById(newsId);
         if (news == null || !BizConstants.STATUS_OK.equals(news.getStatus()))
         {
-            return error("新闻不存在或已关闭");
+            return AppNewsDetailResult.fail("新闻不存在或已关闭");
         }
-        return success(toItem(news, true));
+        return AppNewsDetailResult.ok(toItem(news, true));
     }
 
-    private Map<String, Object> toItem(BizNews news, boolean withContent)
+    private AppNewsItem toItem(BizNews news, boolean withContent)
     {
-        Map<String, Object> item = new HashMap<String, Object>();
-        item.put("newsId", news.getNewsId());
-        item.put("title", news.getTitle());
-        item.put("summary", news.getSummary() == null ? "" : news.getSummary());
-        item.put("coverUrl", toPublicUrl(news.getCoverUrl()));
-        item.put("publishDate", news.getPublishTime() == null ? "" : DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD, news.getPublishTime()));
-        item.put("sort", news.getSort());
+        AppNewsItem item = new AppNewsItem();
+        item.setNewsId(news.getNewsId());
+        item.setTitle(news.getTitle());
+        item.setSummary(news.getSummary() == null ? "" : news.getSummary());
+        item.setCoverUrl(toPublicUrl(news.getCoverUrl()));
+        item.setPublishDate(news.getPublishTime() == null ? "" : DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD, news.getPublishTime()));
+        item.setSort(news.getSort());
         if (withContent)
         {
-            item.put("content", toPlainText(news.getContent()));
+            item.setContent(toPlainText(news.getContent()));
         }
         return item;
     }
