@@ -6,6 +6,7 @@ type Props = {
   title: string;
   variant: Variant;
   onPress?: () => void;
+  disabled?: boolean;
 };
 
 const VARIANT_STYLES: Record<Variant, { bg: string; text: string; border: string }> = {
@@ -21,19 +22,21 @@ const VARIANT_STYLES: Record<Variant, { bg: string; text: string; border: string
   },
 };
 
-export function SubscribeButton({ title, variant, onPress }: Props) {
+export function SubscribeButton({ title, variant, onPress, disabled }: Props) {
   const palette = VARIANT_STYLES[variant];
 
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       style={({ pressed }) => [
         styles.btn,
         {
           backgroundColor: palette.bg,
           borderColor: palette.border,
         },
-        pressed && styles.pressed,
+        pressed && !disabled && styles.pressed,
+        disabled && styles.disabled,
       ]}
     >
       <Text style={[styles.text, { color: palette.text }]}>{title}</Text>
@@ -51,6 +54,9 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.9,
+  },
+  disabled: {
+    opacity: 0.5,
   },
   text: {
     fontSize: 17,

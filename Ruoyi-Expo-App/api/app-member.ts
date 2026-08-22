@@ -1,6 +1,6 @@
 import { fetchAppProfile } from '@/api/app-auth';
 import { request } from '@/api/request';
-import type { AppInviteInfo, AppKycBody, AppLevel } from '@/api/types';
+import type { AppInviteInfo, AppKycBody, AppLevel, AppPasswordBody } from '@/api/types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -114,16 +114,29 @@ export async function fetchAppInvite(): Promise<AppInviteInfo> {
   };
 }
 
+/** POST /app/kyc — 提交即已实名，成功后资料 kycStatus=1 */
 export async function submitAppKyc(body: AppKycBody): Promise<string> {
   const res = await request('/app/kyc', {
     method: 'POST',
     body: {
       realName: body.realName.trim(),
-      idCard: body.idCard.trim(),
+      idCard: body.idCard.trim().toUpperCase(),
     },
   });
   await fetchAppProfile().catch(() => {});
   return res.msg || '实名认证提交成功';
+}
+
+export async function updateAppPassword(body: AppPasswordBody): Promise<string> {
+  const res = await request('/app/password', {
+    method: 'PUT',
+    body: {
+      oldPassword: body.oldPassword,
+      newPassword: body.newPassword,
+      confirmPassword: body.confirmPassword,
+    },
+  });
+  return res.msg || '密码修改成功';
 }
 
 export async function fetchAppLevels(): Promise<AppLevel[]> {

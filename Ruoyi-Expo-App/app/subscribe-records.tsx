@@ -3,7 +3,6 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -15,6 +14,7 @@ import type { AppOrderRecord } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
 import { modalError } from '@/utils/toast';
@@ -33,7 +33,6 @@ export default function SubscribeRecordsScreen() {
   const [orders, setOrders] = useState<AppOrderRecord[]>([]);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const list = await fetchAppOrders();
       setOrders(list);
@@ -82,13 +81,17 @@ export default function SubscribeRecordsScreen() {
           <ActivityIndicator color={colors.accent} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <RefreshableScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          onRefresh={load}
+        >
           {list.length === 0 ? (
             <Text style={styles.empty}>暂无认购记录</Text>
           ) : (
             list.map((item) => <RecordCard key={item.orderId} item={item} />)
           )}
-        </ScrollView>
+        </RefreshableScrollView>
       )}
     </AppBackground>
   );

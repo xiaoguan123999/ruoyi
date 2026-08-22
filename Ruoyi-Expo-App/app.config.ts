@@ -125,6 +125,7 @@ const config: ExpoConfig = {
   extra: {
     appEnv,
     apiUrl: process.env.EXPO_PUBLIC_API_URL ?? '',
+    h5Url: process.env.EXPO_PUBLIC_H5_URL ?? '',
   },
   experiments: {
     typedRoutes: true,

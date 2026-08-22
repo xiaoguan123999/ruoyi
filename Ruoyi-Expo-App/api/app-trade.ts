@@ -1,17 +1,13 @@
-import { fetchAppProfile, formatBalance } from '@/api/app-auth';
+import { displayText, formatBalance } from '@/api/app-auth';
 import { ApiError, request } from '@/api/request';
 import type {
   AppAmountBody,
   AppCheckinRecord,
   AppFundRecord,
   AppOrderRecord,
-  AppProduct,
+  AppSubscribeBody,
   AppWallet,
 } from '@/api/types';
-import type { ProductItem } from '@/constants/mock';
-import { images } from '@/constants/images';
-
-const PRODUCT_COVERS = [images.product1, images.product2, images.product3, images.productIntro];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -75,7 +71,7 @@ function extractRows(res: { rows?: unknown[]; data?: unknown; total?: number }):
 function formatDateTime(value: unknown): string {
   const raw = toString(value);
   if (!raw) {
-    return '—';
+    return displayText();
   }
   return raw.replace('T', ' ').slice(0, 19).replace(/:/g, '：');
 }
@@ -96,87 +92,15 @@ function normalizeCurrency(value: unknown): string {
   return 'CNY';
 }
 
-function mapProduct(raw: unknown, index: number): AppProduct | null {
-  if (!isRecord(raw)) {
-    return null;
-  }
-  const productId = pickNumber(raw, ['productId', 'id']);
-  if (!productId) {
-    return null;
-  }
-  return {
-    productId,
-    productName: pickString(raw, ['productName', 'name', 'title'], `产品${productId}`),
-    price: pickNumber(raw, ['price', 'amount', 'joinAmount']),
-    currency: normalizeCurrency(raw.currency),
-    dailyRebate: pickNumber(raw, ['dailyRebate', 'daily', 'dailyIncome']),
-    durationDays: pickNumber(raw, ['durationDays', 'termDays', 'cycleDays']),
-    remark: pickString(raw, ['remark', 'desc', 'description']),
-    status: pickString(raw, ['status']),
-    sort: pickNumber(raw, ['sort']),
-    withdrawRequired: pickString(raw, ['withdrawRequired']),
-  };
-}
-
-export function mapAppProductToItem(product: AppProduct, index = 0): ProductItem {
-  const isUsdt = normalizeCurrency(product.currency) === 'USDT';
-  const price = product.price;
-  const daily = product.dailyRebate ?? 0;
-  const days = product.durationDays ?? 0;
-  const cycle =
-    days >= 365 ? `${Math.round(days / 365)}年` : days > 0 ? `${days}天` : '—';
-
-  return {
-    id: String(product.productId),
-    name: product.productName,
-    enName: product.remark || `PRODUCT • ${String(product.productId).padStart(2, '0')}`,
-    amount: isUsdt ? price : Number((price / 7).toFixed(2)),
-    amountCny: isUsdt ? Number((price * 7).toFixed(2)) : price,
-    daily: isUsdt ? daily : Number((daily / 7).toFixed(2)),
-    dailyCny: isUsdt ? Number((daily * 7).toFixed(2)) : daily,
-    cycle,
-    termDays: days || 1825,
-    tag: '商业航天参与计划',
-    desc: product.remark || '参与计划 · 共享发展红利',
-    cover: PRODUCT_COVERS[index % PRODUCT_COVERS.length],
-    titleTone: index % 2 === 1 ? 'purple' : 'blue',
-    payoutMethod: '每日回报（次日发放）',
-    currencies: 'USDT / RMB',
-    riskLevel: 'R2 中低风险',
-  };
-}
-
-export async function fetchAppProducts(): Promise<AppProduct[]> {
-  const res = await request<unknown>('/app/products');
-  const root = extractDataRoot(res as Record<string, unknown>);
-  let list: unknown[] = [];
-  if (Array.isArray(root)) {
-    list = root;
-  } else if (isRecord(root)) {
-    const nested = root.list ?? root.rows ?? root.products ?? root.records;
-    if (Array.isArray(nested)) {
-      list = nested;
-    } else if (Array.isArray(root.data)) {
-      list = root.data;
-    }
-  }
-  if (!list.length && Array.isArray(res.rows)) {
-    list = res.rows;
-  }
-
-  return list
-    .map((item, index) => mapProduct(item, index))
-    .filter((item): item is AppProduct => item !== null)
-    .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
-}
-
-export async function fetchAppProductItems(): Promise<ProductItem[]> {
-  const products = await fetchAppProducts();
-  return products.map((p, i) => mapAppProductToItem(p, i));
-}
-
-export async function subscribeAppProduct(body: AppAmountBody): Promise<string> {
-  const res = await request('/app/orders', { method: 'POST', body });
+/** 认购：只传 productId + currency，金额以后台配置为准 */
+export async function subscribeAppProduct(body: AppSubscribeBody): Promise<string> {
+  const res = await request('/app/orders', {
+    method: 'POST',
+    body: {
+      productId: body.productId,
+      currency: body.currency,
+    },
+  });
   return res.msg || '认购成功';
 }
 
@@ -219,8 +143,8 @@ function mapOrder(raw: unknown): AppOrderRecord | null {
   return {
     orderId,
     productId: pickNumber(raw, ['productId']) || undefined,
-    productName: pickString(raw, ['productName', 'name'], '认购产品'),
-    planName: pickString(raw, ['planName', 'seriesName', 'plan'], '「星帆·天启计划」'),
+    productName: pickString(raw, ['productName', 'name'], '--'),
+    planName: pickString(raw, ['planName', 'seriesName', 'plan'], '--'),
     amount: pickNumber(raw, ['amount', 'price', 'payAmount']),
     currency: normalizeCurrency(raw.currency),
     status: mapped.status,
@@ -237,36 +161,149 @@ export async function fetchAppOrders(): Promise<AppOrderRecord[]> {
     .filter((item): item is AppOrderRecord => item !== null);
 }
 
-function mapWallet(raw: unknown): AppWallet {
-  if (!isRecord(raw)) {
-    return { usdtAvailable: 0, cnyAvailable: 0, cnyFrozen: 0 };
-  }
+function emptyWallet(): AppWallet {
   return {
-    usdtAvailable: pickNumber(raw, ['usdtAvailable', 'usdtBalance', 'balanceUsdt']),
-    cnyAvailable: pickNumber(raw, ['cnyAvailable', 'cnyBalance', 'balanceCny']),
-    cnyFrozen: pickNumber(raw, ['cnyFrozen', 'frozenCny']),
+    usdtAvailable: 0,
+    cnyAvailable: 0,
+    cnyFrozen: 0,
+    cnyProductIncome: 0,
+    usdtProductIncome: 0,
+    cnyAssistValue: 0,
+    usdtAssistValue: 0,
   };
 }
 
-export async function fetchAppWallet(): Promise<AppWallet> {
-  try {
-    const res = await request<unknown>('/app/wallet');
-    const root = extractDataRoot(res as Record<string, unknown>);
-    if (root) {
-      return mapWallet(root);
-    }
-    return mapWallet(res);
-  } catch (error) {
-    if (error instanceof ApiError && error.code === 401) {
-      throw error;
-    }
-    const profile = await fetchAppProfile();
-    return {
-      usdtAvailable: profile.usdtAvailable ?? 0,
-      cnyAvailable: profile.cnyAvailable ?? 0,
-      cnyFrozen: profile.cnyFrozen ?? 0,
-    };
+function isUsdtCurrency(currency: string): boolean {
+  const upper = currency.toUpperCase();
+  return upper === 'USDT' || upper === 'USD' || upper === 'U';
+}
+
+function isCnyCurrency(currency: string): boolean {
+  const upper = currency.toUpperCase();
+  return upper === 'CNY' || upper === 'RMB' || upper === '¥';
+}
+
+/** 兼容对象形态 / 币种列表形态的钱包数据 */
+function mapWallet(raw: unknown): AppWallet | null {
+  if (Array.isArray(raw)) {
+    return mapWalletList(raw);
   }
+  if (!isRecord(raw)) {
+    return null;
+  }
+
+  // data: { list: [...] } / { wallets: [...] }
+  const nestedList = raw.list ?? raw.wallets ?? raw.records ?? raw.rows;
+  if (Array.isArray(nestedList)) {
+    const fromList = mapWalletList(nestedList);
+    if (fromList) {
+      return {
+        ...fromList,
+        ...pickIncomeFields(raw),
+      };
+    }
+  }
+
+  const nested = [raw.wallet, raw.member, raw.account, raw.balance].find(isRecord);
+  const source = nested ?? raw;
+  const hasBalanceKey = [
+    'cnyAvailable',
+    'usdtAvailable',
+    'cnyBalance',
+    'usdtBalance',
+    'balanceCny',
+    'balanceUsdt',
+    'cny',
+    'usdt',
+    'cnyFrozen',
+    'available',
+    'currency',
+  ].some((key) => source[key] !== undefined && source[key] !== null);
+
+  // 单条 { currency, available, frozen }
+  if (pickString(source, ['currency'])) {
+    return mapWalletList([source]);
+  }
+
+  if (!hasBalanceKey) {
+    return null;
+  }
+
+  return {
+    ...emptyWallet(),
+    usdtAvailable: pickNumber(source, ['usdtAvailable', 'usdtBalance', 'balanceUsdt', 'usdt']),
+    cnyAvailable: pickNumber(source, ['cnyAvailable', 'cnyBalance', 'balanceCny', 'cny']),
+    cnyFrozen: pickNumber(source, ['cnyFrozen', 'frozenCny']),
+    ...pickIncomeFields(source),
+  };
+}
+
+function pickIncomeFields(source: Record<string, unknown>): Pick<
+  AppWallet,
+  'cnyProductIncome' | 'usdtProductIncome' | 'cnyAssistValue' | 'usdtAssistValue'
+> {
+  return {
+    cnyProductIncome: pickNumber(source, [
+      'cnyProductIncome',
+      'productIncomeCny',
+      'productIncome',
+      'cnyIncome',
+    ]),
+    usdtProductIncome: pickNumber(source, [
+      'usdtProductIncome',
+      'productIncomeUsdt',
+      'usdtIncome',
+    ]),
+    cnyAssistValue: pickNumber(source, [
+      'cnyAssistValue',
+      'assistValueCny',
+      'assistValue',
+      'cnyAssist',
+    ]),
+    usdtAssistValue: pickNumber(source, [
+      'usdtAssistValue',
+      'assistValueUsdt',
+      'usdtAssist',
+    ]),
+  };
+}
+
+function mapWalletList(list: unknown[]): AppWallet | null {
+  const wallet = emptyWallet();
+  let found = false;
+  for (const item of list) {
+    if (!isRecord(item)) {
+      continue;
+    }
+    const currency = pickString(item, ['currency', 'coin', 'asset']);
+    const available = pickNumber(item, ['available', 'balance', 'amount', 'cnyAvailable', 'usdtAvailable']);
+    const frozen = pickNumber(item, ['frozen', 'cnyFrozen', 'freeze']);
+    if (isCnyCurrency(currency)) {
+      wallet.cnyAvailable = available;
+      wallet.cnyFrozen = frozen;
+      found = true;
+    } else if (isUsdtCurrency(currency)) {
+      wallet.usdtAvailable = available;
+      found = true;
+    } else if (!currency) {
+      if (item.cnyAvailable !== undefined || item.cnyBalance !== undefined) {
+        wallet.cnyAvailable = pickNumber(item, ['cnyAvailable', 'cnyBalance', 'cny']);
+        found = true;
+      }
+      if (item.usdtAvailable !== undefined || item.usdtBalance !== undefined) {
+        wallet.usdtAvailable = pickNumber(item, ['usdtAvailable', 'usdtBalance', 'usdt']);
+        found = true;
+      }
+    }
+  }
+  return found ? wallet : null;
+}
+
+export async function fetchAppWallet(): Promise<AppWallet> {
+  const res = await request<unknown>('/app/wallet');
+  const root = extractDataRoot(res as Record<string, unknown>);
+  const mapped = mapWallet(root) ?? mapWallet(res);
+  return mapped ?? emptyWallet();
 }
 
 export async function applyAppRecharge(body: AppAmountBody): Promise<string> {
@@ -277,6 +314,38 @@ export async function applyAppRecharge(body: AppAmountBody): Promise<string> {
 export async function applyAppWithdraw(body: AppAmountBody): Promise<string> {
   const res = await request('/app/withdraw', { method: 'POST', body });
   return res.msg || '提现申请已提交';
+}
+
+function mapFundStatusLabel(kind: 'recharge' | 'withdraw', status: string): string {
+  const raw = status.trim();
+  const lower = raw.toLowerCase();
+  const prefix = kind === 'recharge' ? '充值' : '提现';
+
+  if (
+    ['1', 'success', 'approved', 'pass', 'passed', '成功', '已通过', '已成功'].includes(lower) ||
+    raw === '成功' ||
+    raw === '已通过'
+  ) {
+    return `${prefix}成功`;
+  }
+  if (['2', 'reject', 'rejected', 'fail', 'failed', '拒绝', '已拒绝', '失败'].includes(lower)) {
+    return `${prefix}失败`;
+  }
+  if (
+    ['0', 'pending', 'processing', 'audit', 'waiting', '申请中', '审核中', '处理中'].includes(lower) ||
+    raw === '申请中' ||
+    raw === '审核中'
+  ) {
+    return '申请中';
+  }
+  if (!raw) {
+    return `${prefix}记录`;
+  }
+  // 已是中文文案则直接用，避免再拼出「充值0」这类状态码
+  if (/[\u4e00-\u9fff]/.test(raw)) {
+    return raw;
+  }
+  return '申请中';
 }
 
 function mapFundRecord(
@@ -290,22 +359,7 @@ function mapFundRecord(
   const amount = pickNumber(raw, ['amount']);
   const currency = normalizeCurrency(raw.currency);
   const status = pickString(raw, ['status', 'auditStatus'], '');
-  const success =
-    ['1', '2', 'success', 'approved', 'pass', '成功', '已通过'].includes(status.toLowerCase()) ||
-    status === '成功' ||
-    status === '已通过';
-  const title =
-    kind === 'recharge'
-      ? success
-        ? '充值成功'
-        : status
-          ? `充值${status}`
-          : '充值记录'
-      : success
-        ? '提现成功'
-        : status
-          ? `提现${status}`
-          : '提现记录';
+  const title = mapFundStatusLabel(kind, status);
 
   return {
     id: String(id || `${kind}-${pickString(raw, ['createTime'])}-${amount}`),

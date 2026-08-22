@@ -1,17 +1,17 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { fetchAppProfile, formatBalance } from '@/api/app-auth';
 import { ApiError } from '@/api/request';
 import { applyAppRecharge, fetchAppWallet, parseAmountInput } from '@/api/app-trade';
 import type { AppWallet } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
+import { DualBalance } from '@/components/ui/DualBalance';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
-import { useAuth } from '@/hooks/useAuth';
+import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
 import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
@@ -25,15 +25,15 @@ const methods = [
 
 export default function RechargeScreen() {
   const router = useRouter();
+  const amountRef = useRef<TextInput>(null);
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('wechat');
   const [submitting, setSubmitting] = useState(false);
   const [wallet, setWallet] = useState<AppWallet | null>(null);
-  const { user } = useAuth();
 
   const load = useCallback(async () => {
     try {
-      const [nextWallet] = await Promise.all([fetchAppWallet(), fetchAppProfile()]);
+      const nextWallet = await fetchAppWallet();
       setWallet(nextWallet);
     } catch {
     }
@@ -42,11 +42,13 @@ export default function RechargeScreen() {
   useFocusEffect(
     useCallback(() => {
       void load();
+      const timer = setTimeout(() => amountRef.current?.focus(), 100);
+      return () => clearTimeout(timer);
     }, [load]),
   );
 
-  const cny = wallet?.cnyAvailable ?? user?.cnyAvailable;
-  const usdt = wallet?.usdtAvailable ?? user?.usdtAvailable;
+  const cny = wallet?.cnyAvailable ?? 0;
+  const usdt = wallet?.usdtAvailable ?? 0;
   const selected = methods.find((item) => item.key === method) ?? methods[0];
 
   const onSubmit = async () => {
@@ -77,28 +79,37 @@ export default function RechargeScreen() {
   return (
     <AppBackground>
       <PageHeader title="充值" />
-      <View style={{ paddingHorizontal: 16, gap: 12 }}>
+      <RefreshableScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 28, gap: 12 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        onRefresh={load}
+      >
         <GlassCard>
           <View style={styles.row}>
             <Text style={styles.label}>账户可用余额</Text>
-            <Pressable onPress={() => router.push('/fund-details')}>
+            <Pressable onPress={() => router.push('/fund-details?tab=recharge')}>
               <Text style={styles.link}>充值记录 ›</Text>
             </Pressable>
           </View>
-          <Text style={styles.money}>¥ {formatBalance(cny)}</Text>
-          <Text style={styles.sub}>USDT {formatBalance(usdt)}</Text>
+          <View style={[styles.balanceWrap]}>
+            <DualBalance cny={cny} usdt={usdt} />
+          </View>
         </GlassCard>
         <GlassCard>
           <Text style={styles.label}>
             充值金额 <Text style={{ color: colors.danger }}>（通道拥堵可联系在线客服充值）</Text>
           </Text>
           <TextInput
+            ref={amountRef}
             value={amount}
             onChangeText={setAmount}
             keyboardType="numeric"
             style={styles.input}
             placeholder={selected.currency === 'USDT' ? 'USDT 0' : '¥ 0'}
             placeholderTextColor={colors.placeholder}
+            autoFocus
           />
         </GlassCard>
         <GlassCard>
@@ -112,7 +123,7 @@ export default function RechargeScreen() {
           ))}
         </GlassCard>
         <PrimaryButton title="充 值" onPress={() => void onSubmit()} disabled={submitting} />
-      </View>
+      </RefreshableScrollView>
     </AppBackground>
   );
 }
@@ -121,8 +132,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   label: { color: colors.muted, fontSize: 13 },
   link: { color: colors.text, fontSize: 13 },
-  money: { color: colors.text, fontSize: 28, fontWeight: '800', marginTop: 8 },
-  sub: { color: colors.text, marginTop: 4 },
+  balanceWrap: { marginTop: 8 },
   input: {
     color: colors.text,
     fontSize: 24,

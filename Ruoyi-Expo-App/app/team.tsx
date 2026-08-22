@@ -3,7 +3,6 @@ import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -14,6 +13,7 @@ import { ApiError } from '@/api/request';
 import type { AppTeamMemberItem } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
 import { modalError } from '@/utils/toast';
@@ -24,7 +24,6 @@ export default function TeamScreen() {
   const [team, setTeam] = useState(emptyTeamView());
 
   const loadTeam = useCallback(async () => {
-    setLoading(true);
     try {
       const data = await fetchAppTeam();
       setTeam(data);
@@ -54,13 +53,15 @@ export default function TeamScreen() {
           <ActivityIndicator color={colors.accent} />
         </View>
       ) : (
-        <ScrollView
+        <RefreshableScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
+          onRefresh={loadTeam}
         >
           <View style={styles.card}>
             <View style={styles.summaryHead}>
               <View style={styles.labelSpacer} />
+              <View style={styles.unitCol} />
               <Text style={styles.levelHead}>一级</Text>
               <Text style={styles.levelHead}>二级</Text>
               <Text style={styles.levelHead}>三级</Text>
@@ -74,23 +75,21 @@ export default function TeamScreen() {
               label="激活人数"
               values={[summary.level1.active, summary.level2.active, summary.level3.active]}
             />
-            <SummaryRow
+            <MoneySummaryRow
               label="认购金额"
               values={[
                 { usd: summary.level1.subscribeUsd, cny: summary.level1.subscribeCny },
                 { usd: summary.level2.subscribeUsd, cny: summary.level2.subscribeCny },
                 { usd: summary.level3.subscribeUsd, cny: summary.level3.subscribeCny },
               ]}
-              money
             />
-            <SummaryRow
+            <MoneySummaryRow
               label="充值金额"
               values={[
                 { usd: summary.level1.rechargeUsd, cny: summary.level1.rechargeCny },
                 { usd: summary.level2.rechargeUsd, cny: summary.level2.rechargeCny },
                 { usd: summary.level3.rechargeUsd, cny: summary.level3.rechargeCny },
               ]}
-              money
             />
           </View>
 
@@ -124,7 +123,7 @@ export default function TeamScreen() {
               ))
             )}
           </View>
-        </ScrollView>
+        </RefreshableScrollView>
       )}
     </AppBackground>
   );
@@ -147,32 +146,53 @@ function MemberRow({ member }: { member: AppTeamMemberItem }) {
   );
 }
 
-function SummaryRow({
-  label,
-  values,
-  money,
-}: {
-  label: string;
-  values: Array<number | { usd: number; cny: number }>;
-  money?: boolean;
-}) {
+function SummaryRow({ label, values }: { label: string; values: number[] }) {
   return (
-    <View style={[styles.summaryRow, money && styles.summaryRowMoney]}>
+    <View style={styles.summaryRow}>
       <View style={styles.labelBox}>
         <Text style={styles.label}>{label}</Text>
       </View>
+      <View style={styles.unitCol} />
       {values.map((value, index) => (
         <View key={`${label}-${index}`} style={styles.valueCell}>
-          {typeof value === 'number' ? (
-            <Text style={styles.valueText}>{value}</Text>
-          ) : (
-            <>
-              <Text style={styles.moneyLine}>¥ {formatTeamAmount(value.cny ?? 0)}</Text>
-              <Text style={styles.moneyLine}>USDT {formatTeamAmount(value.usd ?? 0)}</Text>
-            </>
-          )}
+          <Text style={styles.valueText}>{value}</Text>
         </View>
       ))}
+    </View>
+  );
+}
+
+/** 左侧只显示一次 ¥ / USDT，一级二三级只显示数值 */
+function MoneySummaryRow({
+  label,
+  values,
+}: {
+  label: string;
+  values: Array<{ usd: number; cny: number }>;
+}) {
+  return (
+    <View style={[styles.summaryRow, styles.summaryRowMoney]}>
+      <View style={[styles.labelBox, styles.labelBoxMoney]}>
+        <Text style={styles.label}>{label}</Text>
+      </View>
+      <View style={styles.moneyBody}>
+        <View style={styles.moneyValueRow}>
+          <Text style={styles.moneyUnit}>¥</Text>
+          {values.map((value, index) => (
+            <Text key={`${label}-cny-${index}`} style={styles.moneyAmount}>
+              {formatTeamAmount(value.cny ?? 0)}
+            </Text>
+          ))}
+        </View>
+        <View style={styles.moneyValueRow}>
+          <Text style={styles.moneyUnit}>USDT</Text>
+          {values.map((value, index) => (
+            <Text key={`${label}-usd-${index}`} style={styles.moneyAmount}>
+              {formatTeamAmount(value.usd ?? 0)}
+            </Text>
+          ))}
+        </View>
+      </View>
     </View>
   );
 }
@@ -209,12 +229,17 @@ const styles = StyleSheet.create({
   labelSpacer: {
     width: 78,
   },
+  unitCol: {
+    width: 40,
+    marginRight: 2,
+  },
   levelHead: {
     flex: 1,
     color: colors.text,
-    textAlign: 'center',
+    textAlign: 'left',
     fontSize: 14,
     fontWeight: '600',
+    paddingLeft: 2,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -222,7 +247,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   summaryRowMoney: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   labelBox: {
     width: 78,
@@ -233,19 +258,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  labelBoxMoney: {
+    height: 40,
+  },
   label: {
     color: colors.text,
     fontSize: 12,
   },
   valueCell: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
     minHeight: 28,
+    paddingLeft: 2,
   },
   valueText: {
     color: colors.text,
     fontSize: 14,
+  },
+  moneyBody: {
+    flex: 1,
+  },
+  moneyValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 18,
+  },
+  moneyUnit: {
+    width: 40,
+    marginRight: 2,
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  moneyAmount: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'left',
+    paddingLeft: 2,
   },
   moneyLine: {
     color: colors.text,

@@ -2,19 +2,19 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 
-import { formatBalance } from '@/api/app-auth';
+import { displayText, formatBalance } from '@/api/app-auth';
 import { fetchAppLevels } from '@/api/app-member';
 import { ApiError } from '@/api/request';
 import type { AppLevel } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { useAuth } from '@/hooks/useAuth';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
@@ -26,7 +26,6 @@ export default function LevelsScreen() {
   const [levels, setLevels] = useState<AppLevel[]>([]);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const list = await fetchAppLevels();
       setLevels(list);
@@ -53,11 +52,15 @@ export default function LevelsScreen() {
           <ActivityIndicator color={colors.accent} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <RefreshableScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          onRefresh={load}
+        >
           {user?.levelName ? (
             <GlassCard style={styles.currentCard}>
               <Text style={styles.currentLabel}>当前等级</Text>
-              <Text style={styles.currentName}>{user.levelName}</Text>
+              <Text style={styles.currentName}>{displayText(user.levelName)}</Text>
             </GlassCard>
           ) : null}
 
@@ -90,7 +93,7 @@ export default function LevelsScreen() {
               );
             })
           )}
-        </ScrollView>
+        </RefreshableScrollView>
       )}
     </AppBackground>
   );

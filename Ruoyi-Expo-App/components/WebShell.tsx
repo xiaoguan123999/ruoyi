@@ -13,7 +13,7 @@ export function WebShell({ children }: { children: React.ReactNode }) {
         width: '100%',
         maxWidth: 480,
         alignSelf: 'center',
-        minHeight: '100%',
+        minHeight: '100dvh' as unknown as number,
         backgroundColor: '#050B1C',
         position: 'relative',
         overflow: 'hidden',

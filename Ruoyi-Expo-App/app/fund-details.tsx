@@ -1,9 +1,8 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -21,6 +20,7 @@ import type { AppFundRecord, AppWallet } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
 import { modalError } from '@/utils/toast';
@@ -33,15 +33,59 @@ const tabs: { key: FundTab; label: string }[] = [
   { key: 'balance', label: '充值余额' },
 ];
 
+function resolveTab(value: string | string[] | undefined): FundTab {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === 'withdraw' || raw === 'balance' || raw === 'recharge') {
+    return raw;
+  }
+  return 'recharge';
+}
+
+function isSuccessRecord(item: AppFundRecord) {
+  return item.title.includes('成功');
+}
+
+function sumByCurrency(records: AppFundRecord[]) {
+  return records.reduce(
+    (acc, item) => {
+      if (!isSuccessRecord(item)) {
+        return acc;
+      }
+      const currency = (item.currency || 'CNY').toUpperCase();
+      if (currency === 'USDT' || currency === 'USD' || currency === 'U') {
+        acc.usdt += item.amount;
+      } else {
+        acc.cny += item.amount;
+      }
+      return acc;
+    },
+    { cny: 0, usdt: 0 },
+  );
+}
+
+function DualSummary({ cny, usdt }: { cny: number; usdt: number }) {
+  return (
+    <View style={styles.summaryAmounts}>
+      <Text style={styles.summaryAmount}>¥{formatBalance(cny)}</Text>
+      <Text style={styles.summaryAmount}>USDT {formatBalance(usdt)}</Text>
+    </View>
+  );
+}
+
 export default function FundDetailsScreen() {
-  const [activeTab, setActiveTab] = useState<FundTab>('withdraw');
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
+  const [activeTab, setActiveTab] = useState<FundTab>(() => resolveTab(tab));
   const [loading, setLoading] = useState(true);
   const [wallet, setWallet] = useState<AppWallet | null>(null);
   const [recharges, setRecharges] = useState<AppFundRecord[]>([]);
   const [withdraws, setWithdraws] = useState<AppFundRecord[]>([]);
 
+  useFocusEffect(
+    useCallback(() => {
+      setActiveTab(resolveTab(tab));
+    }, [tab]),
+  );
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const [nextWallet, nextRecharges, nextWithdraws] = await Promise.all([
         fetchAppWallet(),
@@ -68,23 +112,32 @@ export default function FundDetailsScreen() {
 
   const content = useMemo(() => {
     if (activeTab === 'recharge') {
-      const total = recharges.reduce((sum, item) => sum + item.amount, 0);
+      const totals = sumByCurrency(recharges);
       return {
         summaryLabel: '累计充值',
-        summaryAmount: `¥${formatBalance(total)}`,
+        summaryNode: <DualSummary cny={totals.cny} usdt={totals.usdt} />,
         rows: recharges.map((item) => ({
           id: item.id,
           title: item.title,
           date: item.createTime.slice(0, 10),
           amount: formatMoneyLabel(item.amount, item.currency),
-          tone: styles.in,
+          tone: item.title.includes('成功')
+            ? styles.in
+            : item.title.includes('失败')
+              ? styles.fail
+              : styles.pending,
         })),
       };
     }
     if (activeTab === 'balance') {
       return {
         summaryLabel: '充值余额',
-        summaryAmount: `¥${formatBalance(wallet?.cnyAvailable)}`,
+        summaryNode: (
+          <DualSummary
+            cny={wallet?.cnyAvailable ?? 0}
+            usdt={wallet?.usdtAvailable ?? 0}
+          />
+        ),
         rows: [
           {
             id: 'cny',
@@ -103,16 +156,20 @@ export default function FundDetailsScreen() {
         ],
       };
     }
-    const total = withdraws.reduce((sum, item) => sum + item.amount, 0);
+    const totals = sumByCurrency(withdraws);
     return {
       summaryLabel: '累计提现',
-      summaryAmount: `¥${formatBalance(total)}`,
+      summaryNode: <DualSummary cny={totals.cny} usdt={totals.usdt} />,
       rows: withdraws.map((item) => ({
         id: item.id,
         title: item.title,
         date: item.createTime.slice(0, 10),
         amount: formatMoneyLabel(item.amount, item.currency),
-        tone: styles.in,
+        tone: item.title.includes('成功')
+          ? styles.in
+          : item.title.includes('失败')
+            ? styles.fail
+            : styles.pending,
       })),
     };
   }, [activeTab, recharges, wallet, withdraws]);
@@ -136,14 +193,18 @@ export default function FundDetailsScreen() {
           <ActivityIndicator color={colors.accent} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <RefreshableScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          onRefresh={load}
+        >
           <GlassCard style={styles.card}>
             <View style={styles.summaryRow}>
               <View style={styles.summaryLeft}>
                 <View style={styles.summaryMark} />
                 <Text style={styles.summaryLabel}>{content.summaryLabel}</Text>
               </View>
-              <Text style={styles.summaryAmount}>{content.summaryAmount}</Text>
+              {content.summaryNode}
             </View>
           </GlassCard>
 
@@ -162,7 +223,7 @@ export default function FundDetailsScreen() {
               </GlassCard>
             ))
           )}
-        </ScrollView>
+        </RefreshableScrollView>
       )}
     </AppBackground>
   );
@@ -220,11 +281,12 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   summaryLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingTop: 1,
   },
   summaryMark: {
     width: 3,
@@ -237,11 +299,17 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 15,
     fontWeight: '700',
+    lineHeight: 22,
+  },
+  summaryAmounts: {
+    alignItems: 'flex-end',
+    gap: 4,
   },
   summaryAmount: {
     color: colors.text,
     fontSize: 16,
     fontWeight: '500',
+    lineHeight: 22,
   },
   detailRow: {
     flexDirection: 'row',
@@ -262,5 +330,11 @@ const styles = StyleSheet.create({
   },
   in: {
     color: '#7CFF3B',
+  },
+  pending: {
+    color: '#FF9F43',
+  },
+  fail: {
+    color: colors.danger,
   },
 });

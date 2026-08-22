@@ -291,7 +291,7 @@ export function AppToast() {
 
 const styles = StyleSheet.create({
   lightHost: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 10000,
     elevation: 10000,
     alignItems: 'center',
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   modalHost: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 10000,
     elevation: 10000,
     alignItems: 'center',
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(2, 8, 20, 0.55)',
   },
   panel: {

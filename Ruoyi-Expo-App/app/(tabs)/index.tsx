@@ -1,8 +1,14 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { fetchAppNotices } from '@/api/app-notice';
+import { fetchAppOverview } from '@/api/app-overview';
+import type { AppNotice, AppOverviewItem } from '@/api/types';
+import { NoticeMarquee } from '@/components/ui/NoticeMarquee';
+import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
 
@@ -18,22 +24,37 @@ const services = [
   { key: 'service', label: '客服中心', icon: images.iconService, href: '/service' },
 ];
 
-const stats = [
-  { title: '在轨卫星', value: '320 颗', status: '正常运行', image: images.statSatellite, tone: '#3DDC84' },
-  { title: '覆盖国家/地区', value: '150 +', status: '正常运行', image: images.statGlobe, tone: '#4DA3FF' },
-  { title: '在线终端', value: '1256000 +', status: '稳定连接', image: images.statTerminal, tone: '#4DA3FF' },
-];
-
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const bannerH = Math.round(width * (194 / 402));
   const iconSize = Math.min(70, Math.max(56, Math.round(width * 0.155)));
+  const [notices, setNotices] = useState<AppNotice[]>([]);
+  const [overview, setOverview] = useState<AppOverviewItem[]>([]);
+
+  const load = useCallback(async () => {
+    const [nextNotices, nextOverview] = await Promise.all([
+      fetchAppNotices().catch(() => [] as AppNotice[]),
+      fetchAppOverview().catch(() => [] as AppOverviewItem[]),
+    ]);
+    setNotices(nextNotices);
+    setOverview(nextOverview);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   return (
     <View style={styles.page}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+      <RefreshableScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 16 }}
+        onRefresh={load}
+      >
         <View>
           <Image source={images.banner} style={{ width, height: bannerH }} contentFit="cover" />
           <View style={[styles.header, { top: insets.top + 4 }]}>
@@ -47,9 +68,10 @@ export default function HomeScreen() {
             <View style={styles.noticeTag}>
               <Text style={styles.noticeTagText}>公告</Text>
             </View>
-            <Text style={styles.noticeText} numberOfLines={1}>
-              这是一条公告
-            </Text>
+            <NoticeMarquee
+              texts={notices.map((item) => item.title)}
+              textStyle={styles.noticeText}
+            />
           </Pressable>
 
           <View style={styles.gridPanel}>
@@ -71,20 +93,25 @@ export default function HomeScreen() {
 
           <Text style={styles.section}>运行概览</Text>
           <View style={styles.statsRow}>
-            {stats.map((item) => (
-              <View key={item.title} style={styles.statCard}>
-                <Image source={item.image} style={StyleSheet.absoluteFill} contentFit="cover" />
+            {overview.map((item) => (
+              <View key={item.id} style={styles.statCard}>
+                <Image
+                  source={item.imageUrl ? { uri: item.imageUrl } : item.imageFallback}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  contentPosition="bottom right"
+                />
                 <Text style={styles.statTitle}>{item.title}</Text>
-                <Text style={styles.statValue}>{item.value}</Text>
+                <Text style={styles.statValue}>{item.displayValue}</Text>
                 <View style={styles.statusRow}>
-                  <View style={[styles.dot, { backgroundColor: item.tone }]} />
-                  <Text style={styles.statusText}>{item.status}</Text>
+                  <View style={[styles.dot, { backgroundColor: item.statusColor || '#4DA3FF' }]} />
+                  <Text style={styles.statusText}>{item.statusText}</Text>
                 </View>
               </View>
             ))}
           </View>
         </View>
-      </ScrollView>
+      </RefreshableScrollView>
     </View>
   );
 }
@@ -126,7 +153,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   noticeTagText: { color: colors.text, fontSize: 11, fontWeight: '700' },
-  noticeText: { color: colors.text, flex: 1, fontSize: 13 },
+  noticeText: { color: colors.text, fontSize: 13 },
   gridPanel: {
     marginHorizontal: 16,
     marginTop: 14,
@@ -158,14 +185,40 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    minHeight: 140,
-    padding: 10,
-    borderRadius: 14,
+    aspectRatio: 1,
+    paddingTop: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
     overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(90, 160, 230, 0.35)',
+    backgroundColor: '#0A1630',
   },
-  statTitle: { color: 'rgba(220, 230, 255, 0.9)', fontSize: 11 },
-  statValue: { color: colors.text, fontSize: 15, fontWeight: '800', marginTop: 6 },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { color: 'rgba(220, 230, 255, 0.85)', fontSize: 10 },
+  statTitle: {
+    color: 'rgba(180, 200, 230, 0.85)',
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  statValue: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    color: 'rgba(200, 215, 240, 0.88)',
+    fontSize: 10,
+  },
 });

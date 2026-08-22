@@ -1,27 +1,19 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
-import * as Clipboard from 'expo-clipboard';
 
+import { displayText } from '@/api/app-auth';
 import { fetchAppInvite } from '@/api/app-member';
-import { ApiError } from '@/api/request';
-import type { AppInviteInfo } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { useAuth } from '@/hooks/useAuth';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
-import { modalError, modalSuccess } from '@/utils/toast';
+import { buildInviteRegisterUrl } from '@/utils/invite';
 
 const softTitleFont = Platform.select({
   ios: 'PingFangSC-Medium',
@@ -31,24 +23,16 @@ const softTitleFont = Platform.select({
 
 export default function InviteScreen() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [invite, setInvite] = useState<AppInviteInfo>({
-    inviteCode: user?.inviteCode ?? '',
-  });
+  const [inviteCode, setInviteCode] = useState(displayText(user?.inviteCode));
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const data = await fetchAppInvite();
-      setInvite(data);
-    } catch (error) {
-      if (!(error instanceof ApiError) || error.code !== 401) {
-        modalError(error instanceof ApiError ? error.message : '获取邀请信息失败');
-      }
-    } finally {
-      setLoading(false);
+      setInviteCode(displayText(data.inviteCode || user?.inviteCode));
+    } catch {
+      setInviteCode(displayText(user?.inviteCode));
     }
-  }, []);
+  }, [user?.inviteCode]);
 
   useFocusEffect(
     useCallback(() => {
@@ -56,26 +40,19 @@ export default function InviteScreen() {
     }, [load]),
   );
 
-  const inviteCode = invite.inviteCode || user?.inviteCode || '—';
-
-  const onCopy = async () => {
-    if (!inviteCode || inviteCode === '—') {
-      return;
-    }
-    try {
-      await Clipboard.setStringAsync(invite.inviteUrl || inviteCode);
-      modalSuccess(invite.inviteUrl ? '邀请链接已复制' : '邀请码已复制');
-    } catch {
-      modalError('复制失败');
-    }
-  };
+  // 手机浏览器扫码 → H5 /sign-up，并回填邀请码（不用后端 API 地址）
+  const registerUrl = useMemo(
+    () => buildInviteRegisterUrl(inviteCode === '--' ? '' : inviteCode),
+    [inviteCode],
+  );
 
   return (
     <AppBackground source={images.pageBg} dim={false} contentPosition="top right">
       <PageHeader title="邀请好友" />
-      <ScrollView
+      <RefreshableScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
+        onRefresh={load}
       >
         <View style={styles.hero}>
           <Svg width="100%" height={40}>
@@ -122,30 +99,21 @@ export default function InviteScreen() {
             <View style={styles.captionLine} />
           </View>
 
-          {loading ? (
-            <ActivityIndicator color={colors.accent} style={{ marginVertical: 24 }} />
-          ) : (
-            <>
-              <Pressable style={styles.codeBox} onPress={() => void onCopy()}>
-                <Text style={styles.code}>{inviteCode}</Text>
-              </Pressable>
-              <Text style={styles.copyHint}>点击邀请码可复制</Text>
+          <View style={styles.codeBox}>
+            <Text style={styles.code}>{inviteCode}</Text>
+          </View>
 
-              {invite.qrCode ? (
-                <Image source={{ uri: invite.qrCode }} style={styles.qr} contentFit="contain" />
-              ) : (
-                <View style={styles.qr} />
-              )}
-
-              {invite.inviteCount !== undefined ? (
-                <Text style={styles.count}>已邀请 {invite.inviteCount} 人</Text>
-              ) : null}
-            </>
-          )}
+          <View style={styles.qrWrap}>
+            {registerUrl ? (
+              <QRCode value={registerUrl} size={132} backgroundColor="#FFFFFF" color="#0B1730" />
+            ) : (
+              <View style={styles.qrPlaceholder} />
+            )}
+          </View>
 
           <Image source={images.inviteFlow} style={styles.flow} contentFit="contain" />
         </View>
-      </ScrollView>
+      </RefreshableScrollView>
     </AppBackground>
   );
 }
@@ -203,23 +171,21 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 4,
   },
-  copyHint: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: 8,
+  qrWrap: {
+    width: 148,
+    height: 148,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    marginTop: 18,
+    marginBottom: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  qr: {
+  qrPlaceholder: {
     width: 148,
     height: 148,
     backgroundColor: '#D9D9D9',
-    borderRadius: 8,
-    marginTop: 18,
-    marginBottom: 12,
-  },
-  count: {
-    color: colors.muted,
-    fontSize: 13,
-    marginBottom: 8,
   },
   flow: {
     width: '100%',

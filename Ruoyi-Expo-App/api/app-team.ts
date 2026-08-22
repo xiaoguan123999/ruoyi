@@ -1,4 +1,4 @@
-import { maskPhone } from '@/api/app-auth';
+import { displayText, maskPhone } from '@/api/app-auth';
 import { ApiError, request } from '@/api/request';
 import type {
   AppTeamLevelStats,
@@ -165,14 +165,14 @@ function mapMemberItem(raw: unknown): AppTeamMemberItem | null {
     return null;
   }
   const phone = String(raw.phone ?? raw.mobile ?? raw.userName ?? '').trim();
-  const name = String(raw.realName ?? raw.name ?? raw.nickName ?? raw.userName ?? phone ?? '—').trim();
+  const name = String(raw.realName ?? raw.name ?? raw.nickName ?? raw.userName ?? phone).trim();
   if (!phone && !name) {
     return null;
   }
   return {
     memberId: raw.memberId !== undefined ? toNumber(raw.memberId) : undefined,
-    name: name || '—',
-    phone: phone ? maskPhone(phone) : '—',
+    name: displayText(name),
+    phone: displayText(phone ? maskPhone(phone) : undefined),
     usd: pickNumber(raw, [
       'usd',
       'usdt',

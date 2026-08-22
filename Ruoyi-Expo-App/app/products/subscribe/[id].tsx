@@ -1,41 +1,28 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
+import { fetchAppProductById } from '@/api/app-product';
+import { subscribeAppProduct } from '@/api/app-trade';
 import { ApiError } from '@/api/request';
-import { fetchAppProductItems, subscribeAppProduct } from '@/api/app-trade';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ProductSubscribePanel } from '@/components/ui/ProductSubscribePanel';
-import type { ProductItem } from '@/constants/mock';
-import { getProductItem } from '@/constants/mock';
+import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
+import type { ProductItem } from '@/types/product';
 import { images } from '@/constants/images';
-import { colors } from '@/theme/colors';
 import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
 
 export default function ProductSubscribeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [item, setItem] = useState<ProductItem | undefined>(() => getProductItem(id)?.item);
-  const [loading, setLoading] = useState(!item);
+  const [item, setItem] = useState<ProductItem | undefined>();
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
-      const list = await fetchAppProductItems();
-      const found = list.find((p) => p.id === String(id));
-      if (found) {
-        setItem(found);
-      } else {
-        setItem(getProductItem(id)?.item);
-      }
-    } catch (error) {
-      setItem(getProductItem(id)?.item);
-      if (!(error instanceof ApiError) || error.code !== 401) {
-        modalError(error instanceof ApiError ? error.message : '获取产品失败');
-      }
-    } finally {
-      setLoading(false);
+      setItem(await fetchAppProductById(id));
+    } catch {
+      setItem(undefined);
     }
   }, [id]);
 
@@ -47,23 +34,20 @@ export default function ProductSubscribeScreen() {
     if (!item || submitting) {
       return;
     }
-    const productId = Number(item.id);
+    const productId = item.apiId ?? Number(item.id);
     if (!Number.isFinite(productId) || productId <= 0) {
-      modalWarning('产品信息无效');
+      modalWarning('产品暂未开放认购');
       return;
     }
-    const amount = currency === 'USDT' ? item.amount : item.amountCny;
-    if (amount <= 0) {
-      modalWarning('认购金额无效');
+    // 0 / 空表示不支持该币种；金额由后台产品配置决定，客户端不传 amount
+    const supported = currency === 'USDT' ? item.amount > 0 : item.amountCny > 0;
+    if (!supported) {
+      modalWarning(currency === 'USDT' ? '该产品暂不支持 USDT 认购' : '该产品暂不支持 RMB 认购');
       return;
     }
     setSubmitting(true);
     try {
-      const message = await subscribeAppProduct({
-        productId,
-        amount,
-        currency,
-      });
+      const message = await subscribeAppProduct({ productId, currency });
       modalSuccess(message);
     } catch (error) {
       if (!(error instanceof ApiError) || error.code !== 401) {
@@ -74,22 +58,15 @@ export default function ProductSubscribeScreen() {
     }
   };
 
-  if (loading) {
-    return (
-      <AppBackground source={images.pageBg} dim={false}>
-        <PageHeader title="产品信息" />
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator color={colors.accent} />
-        </View>
-      </AppBackground>
-    );
-  }
-
   if (!item) {
     return (
       <AppBackground source={images.pageBg} dim={false}>
         <PageHeader title="产品信息" />
-        <View style={styles.empty} />
+        <RefreshableScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.empty}
+          onRefresh={load}
+        />
       </AppBackground>
     );
   }
@@ -97,16 +74,18 @@ export default function ProductSubscribeScreen() {
   return (
     <AppBackground source={images.pageBg} dim={false}>
       <PageHeader title="产品信息" />
-      <ScrollView
+      <RefreshableScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
+        onRefresh={load}
       >
         <ProductSubscribePanel
           item={item}
+          submitting={submitting}
           onSubscribeCny={() => void onSubscribe('CNY')}
           onSubscribeUsdt={() => void onSubscribe('USDT')}
         />
-      </ScrollView>
+      </RefreshableScrollView>
     </AppBackground>
   );
 }
@@ -118,10 +97,5 @@ const styles = StyleSheet.create({
   },
   empty: {
     flex: 1,
-  },
-  loadingWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

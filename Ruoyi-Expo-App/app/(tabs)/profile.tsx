@@ -1,33 +1,101 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Image } from 'expo-image';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   appLogout,
+  displayText,
   fetchAppProfile,
   formatBalance,
   isKycVerified,
   maskPhone,
+  toNumberOrZero,
 } from '@/api/app-auth';
-import { AppBackground } from '@/components/ui/AppBackground';
-import { GlassCard } from '@/components/ui/GlassCard';
+import { fetchAppWallet } from '@/api/app-trade';
+import type { AppWallet } from '@/api/types';
+import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { useAuth } from '@/hooks/useAuth';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
 import { toastThenNavigate } from '@/utils/toast';
 
+function GradientPill({
+  title,
+  onPress,
+}: {
+  title: string;
+  onPress: () => void;
+}) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const gradId = `pill-${title}`;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onLayout={(event) => {
+        const { width, height } = event.nativeEvent.layout;
+        setSize({ width, height });
+      }}
+      style={({ pressed }) => [styles.pill, pressed && styles.pillPressed]}
+    >
+      {size.width > 0 ? (
+        <Svg
+          width={size.width}
+          height={size.height}
+          style={StyleSheet.absoluteFill}
+        >
+          <Defs>
+            <LinearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0%" stopColor="#5BA8FF" />
+              <Stop offset="100%" stopColor="#2F7BFF" />
+            </LinearGradient>
+          </Defs>
+          <Rect
+            x="0"
+            y="0"
+            width={size.width}
+            height={size.height}
+            rx={21}
+            ry={21}
+            fill={`url(#${gradId})`}
+          />
+        </Svg>
+      ) : (
+        <View style={[StyleSheet.absoluteFill, styles.pillFallback]} />
+      )}
+      <Text style={styles.pillText}>{title}</Text>
+    </Pressable>
+  );
+}
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, hydrated } = useAuth();
+  const [wallet, setWallet] = useState<AppWallet | null>(null);
+
+  const load = useCallback(async () => {
+    const [, nextWallet] = await Promise.all([
+      fetchAppProfile().catch(() => null),
+      fetchAppWallet().catch(() => null),
+    ]);
+    if (nextWallet) {
+      setWallet(nextWallet);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      void fetchAppProfile().catch(() => {
-      });
-    }, []),
+      void load();
+    }, [load]),
   );
 
   const logout = async () => {
@@ -35,16 +103,36 @@ export default function ProfileScreen() {
     toastThenNavigate('已退出登录', () => router.replace('/sign-in'), { type: 'success' });
   };
 
-  const displayName = user?.nickName || user?.userName || '会员';
-  const displayPhone = maskPhone(user?.phone || user?.userName);
+  const displayName = displayText(user?.nickName || user?.userName);
+  const displayPhone = displayText(maskPhone(user?.phone || user?.userName));
   const verified = isKycVerified(user?.kycStatus);
+  const cnyAvailable = toNumberOrZero(wallet?.cnyAvailable);
+  const usdtAvailable = toNumberOrZero(wallet?.usdtAvailable);
+  const cnyProductIncome = toNumberOrZero(wallet?.cnyProductIncome);
+  const usdtProductIncome = toNumberOrZero(wallet?.usdtProductIncome);
+  const cnyAssistValue = toNumberOrZero(wallet?.cnyAssistValue);
+  const usdtAssistValue = toNumberOrZero(wallet?.usdtAssistValue);
 
   return (
-    <AppBackground>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: 28, paddingHorizontal: 16 }}>
+    <View style={styles.page}>
+      <Image
+        source={images.profileBg}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        contentPosition="top"
+      />
+      <RefreshableScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingTop: insets.top + 18,
+          paddingBottom: 24,
+          paddingHorizontal: 18,
+        }}
+        onRefresh={load}
+      >
         <View style={styles.user}>
           <Image source={images.avatar} style={styles.avatar} contentFit="cover" />
-          <View style={{ flex: 1 }}>
+          <View style={styles.userMeta}>
             <View style={styles.nameRow}>
               <Text style={styles.name}>{displayName}</Text>
               {verified ? (
@@ -52,13 +140,8 @@ export default function ProfileScreen() {
                   <Text style={styles.badgeText}>已认证</Text>
                 </View>
               ) : null}
-              {user?.levelName ? (
-                <View style={styles.levelBadge}>
-                  <Text style={styles.levelBadgeText}>{user.levelName}</Text>
-                </View>
-              ) : null}
             </View>
-            <Text style={styles.phone}>{displayPhone || '—'}</Text>
+            <Text style={styles.phone}>{displayPhone}</Text>
             <Text style={styles.slogan}>连接星空 · 智联未来</Text>
           </View>
         </View>
@@ -69,63 +152,72 @@ export default function ProfileScreen() {
           </View>
         ) : (
           <>
-            <GlassCard style={{ marginTop: 16 }}>
-              <View style={styles.assetRow}>
-                <Asset
-                  label="余额"
-                  value={`¥ ${formatBalance(user.cnyAvailable)}`}
-                  sub={`USDT ${formatBalance(user.usdtAvailable)}`}
-                />
-                <Asset label="冻结(CNY)" value={formatBalance(user.cnyFrozen)} />
-                <Asset label="团队人数" value={formatBalance(user.teamCount)} />
+            <View style={[styles.card, styles.assetCard]}>
+              <View style={styles.assetLabels}>
+                <View style={styles.assetUnitCol} />
+                <Text style={[styles.assetLabel, styles.assetCol]}>余额</Text>
+                <Text style={[styles.assetLabel, styles.assetCol]}>产品收益</Text>
+                <Text style={[styles.assetLabel, styles.assetCol]}>助力值</Text>
+              </View>
+              <View style={styles.assetDivider} />
+              <View style={styles.assetValueRow}>
+                <Text style={styles.assetUnit}>¥</Text>
+                <Text style={[styles.assetValue, styles.assetCol]}>
+                  {formatBalance(cnyAvailable)}
+                </Text>
+                <Text style={[styles.assetValue, styles.assetCol]}>
+                  {formatBalance(cnyProductIncome)}
+                </Text>
+                <Text style={[styles.assetValue, styles.assetCol]}>
+                  {formatBalance(cnyAssistValue)}
+                </Text>
+              </View>
+              <View style={styles.assetValueRow}>
+                <Text style={styles.assetUnit}>USDT</Text>
+                <Text style={[styles.assetValue, styles.assetCol]}>
+                  {formatBalance(usdtAvailable)}
+                </Text>
+                <Text style={[styles.assetValue, styles.assetCol]}>
+                  {formatBalance(usdtProductIncome)}
+                </Text>
+                <Text style={[styles.assetValue, styles.assetCol]}>
+                  {formatBalance(usdtAssistValue)}
+                </Text>
               </View>
               <View style={styles.actions}>
-                <Pressable style={styles.pill} onPress={() => router.push('/recharge')}>
-                  <Text style={styles.pillText}>充值</Text>
-                </Pressable>
-                <Pressable style={styles.pill} onPress={() => router.push('/withdraw')}>
-                  <Text style={styles.pillText}>提现</Text>
-                </Pressable>
+                <GradientPill title="充值" onPress={() => router.push('/recharge')} />
+                <GradientPill title="提现" onPress={() => router.push('/withdraw')} />
               </View>
-            </GlassCard>
+            </View>
 
-            <GlassCard style={{ marginTop: 12 }}>
+            <View style={[styles.card, styles.quickCard]}>
               <View style={styles.quick}>
                 <Quick icon={images.iconRecords} label="认购记录" onPress={() => router.push('/subscribe-records')} />
                 <Quick icon={images.iconVip} label="会员等级" onPress={() => router.push('/levels')} />
                 <Quick icon={images.iconFund} label="资金明细" onPress={() => router.push('/fund-details')} />
               </View>
-            </GlassCard>
+            </View>
 
-            <GlassCard style={{ marginTop: 12, paddingVertical: 4 }}>
+            <View style={[styles.card, styles.menuCard]}>
               <Menu icon={images.iconIdcard} label="实名认证" onPress={() => router.push('/kyc')} />
+              <Menu icon={images.iconWallet} label="钱包管理" onPress={() => router.push('/wallet')} />
               <Menu icon={images.iconTeamSmall} label="我的团队" onPress={() => router.push('/team')} />
               <Menu icon={images.iconInfo} label="关于我们" onPress={() => router.push('/about')} />
               <Menu icon={images.iconPassword} label="密码设置" onPress={() => router.push('/password')} />
               <Menu icon={images.iconLogout} label="退出登录" onPress={() => void logout()} last />
-            </GlassCard>
+            </View>
           </>
         )}
-      </ScrollView>
-    </AppBackground>
-  );
-}
-
-function Asset({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <View style={{ flex: 1, alignItems: 'center' }}>
-      <Text style={{ color: colors.muted, fontSize: 12 }}>{label}</Text>
-      <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800', marginTop: 6 }}>{value}</Text>
-      {sub ? <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>{sub}</Text> : null}
+      </RefreshableScrollView>
     </View>
   );
 }
 
 function Quick({ icon, label, onPress }: { icon: number; label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={{ flex: 1, alignItems: 'center', gap: 8 }}>
-      <Image source={icon} style={{ width: 42, height: 42 }} contentFit="contain" />
-      <Text style={{ color: colors.text, fontSize: 12 }}>{label}</Text>
+    <Pressable onPress={onPress} style={styles.quickItem}>
+      <Image source={icon} style={styles.quickIcon} contentFit="contain" />
+      <Text style={styles.quickLabel}>{label}</Text>
     </Pressable>
   );
 }
@@ -144,50 +236,198 @@ function Menu({
   return (
     <Pressable
       onPress={onPress}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 13,
-        borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth,
-        borderBottomColor: 'rgba(255,255,255,0.08)',
-      }}
+      style={[styles.menuRow, !last && styles.menuRowBorder]}
     >
-      <Image source={icon} style={{ width: 22, height: 22, marginRight: 10 }} contentFit="contain" />
-      <Text style={{ color: colors.text, flex: 1, fontSize: 15 }}>{label}</Text>
-      <Text style={{ color: colors.muted, fontSize: 18 }}>›</Text>
+      <Image source={icon} style={styles.menuIcon} contentFit="contain" />
+      <Text style={styles.menuLabel}>{label}</Text>
+      <Text style={styles.menuChevron}>›</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  user: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 64, height: 64, borderRadius: 32 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  name: { color: colors.text, fontSize: 22, fontWeight: '800' },
-  badge: { backgroundColor: colors.accent, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  badgeText: { color: colors.text, fontSize: 11 },
-  levelBadge: {
-    backgroundColor: 'rgba(232, 195, 106, 0.2)',
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(232, 195, 106, 0.35)',
+  page: {
+    flex: 1,
+    backgroundColor: colors.bg,
   },
-  levelBadgeText: { color: colors.gold, fontSize: 11 },
-  phone: { color: colors.muted, marginTop: 4 },
-  slogan: { color: colors.muted, marginTop: 4, fontSize: 12 },
-  loading: { marginTop: 40, alignItems: 'center' },
-  assetRow: { flexDirection: 'row', paddingVertical: 6 },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 14 },
+  user: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 36,
+  },
+  avatar: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+  },
+  userMeta: {
+    flex: 1,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  name: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  badge: {
+    backgroundColor: 'rgba(90, 170, 255, 0.55)',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  phone: {
+    color: 'rgba(210, 225, 245, 0.78)',
+    marginTop: 5,
+    fontSize: 14,
+  },
+  slogan: {
+    color: 'rgba(170, 195, 225, 0.72)',
+    marginTop: 4,
+    fontSize: 12,
+  },
+  loading: {
+    marginTop: 40,
+    alignItems: 'center',
+  },
+  card: {
+    backgroundColor: 'rgba(12, 28, 58, 0.78)',
+    borderColor: 'rgba(100, 165, 230, 0.32)',
+    borderWidth: 1,
+    borderRadius: 14,
+    marginBottom: 14,
+  },
+  assetCard: {
+    paddingHorizontal: 12,
+    paddingTop: 14,
+    paddingBottom: 14,
+  },
+  assetLabels: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  assetUnitCol: {
+    width: 44,
+    marginRight: 6,
+  },
+  assetCol: {
+    flex: 1,
+    textAlign: 'left',
+    paddingRight: 4,
+  },
+  assetDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(180, 205, 235, 0.35)',
+    marginBottom: 12,
+  },
+  assetValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 26,
+    marginBottom: 4,
+  },
+  assetUnit: {
+    width: 44,
+    marginRight: 6,
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  assetLabel: {
+    color: 'rgba(180, 200, 230, 0.78)',
+    fontSize: 13,
+  },
+  assetValue: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '800',
+    lineHeight: 26,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 14,
+    marginTop: 16,
+  },
   pill: {
     flex: 1,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.accent,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  pillText: { color: colors.text, fontWeight: '700', fontSize: 15 },
-  quick: { flexDirection: 'row' },
+  pillPressed: {
+    opacity: 0.88,
+  },
+  pillFallback: {
+    backgroundColor: '#3B8CFF',
+    borderRadius: 21,
+  },
+  pillText: {
+    color: colors.text,
+    fontWeight: '700',
+    fontSize: 16,
+    zIndex: 1,
+  },
+  quickCard: {
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+  },
+  quick: {
+    flexDirection: 'row',
+  },
+  quickItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 8,
+  },
+  quickIcon: {
+    width: 48,
+    height: 48,
+  },
+  quickLabel: {
+    color: colors.text,
+    fontSize: 13,
+  },
+  menuCard: {
+    paddingHorizontal: 14,
+    paddingVertical: 2,
+    marginBottom: 8,
+  },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  menuRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  menuIcon: {
+    width: 22,
+    height: 22,
+    marginRight: 12,
+  },
+  menuLabel: {
+    color: colors.text,
+    flex: 1,
+    fontSize: 15,
+  },
+  menuChevron: {
+    color: 'rgba(180, 200, 230, 0.65)',
+    fontSize: 20,
+    lineHeight: 22,
+  },
 });

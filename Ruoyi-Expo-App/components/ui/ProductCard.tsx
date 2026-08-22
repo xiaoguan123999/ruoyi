@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ProductCycleIcon, ProductDailyIcon } from '@/components/ui/ProductStatIcons';
-import type { ProductItem } from '@/constants/mock';
+import type { ProductItem } from '@/types/product';
 import { colors } from '@/theme/colors';
 
 export type { ProductItem };
@@ -15,6 +15,13 @@ type Props = {
 
 export function ProductCard({ item, onPress }: Props) {
   const titleColor = item.titleTone === 'purple' ? '#D8CCFF' : '#A8D8FF';
+  // 卡片主展示：优先 USDT，否则人民币
+  const useUsdt = item.amount > 0;
+  const amount = useUsdt ? item.amount : item.amountCny;
+  const daily = useUsdt ? item.daily : item.dailyCny;
+  const unit = useUsdt ? 'USDT' : 'RMB';
+  const amountText = amount > 0 ? String(amount) : '--';
+  const dailyText = daily > 0 ? `${daily} ${unit}` : `-- ${unit}`;
 
   return (
     <View style={styles.card}>
@@ -31,10 +38,10 @@ export function ProductCard({ item, onPress }: Props) {
         <View style={styles.divider} />
 
         <View style={styles.amountRow}>
-          <Text style={styles.amount}>{item.amount}</Text>
+          <Text style={styles.amount}>{amountText}</Text>
           <View style={styles.amountLabelWrap}>
             <Text style={styles.amountLabel}>参与金额</Text>
-            <Text style={styles.amountUnit}>/USDT</Text>
+            <Text style={styles.amountUnit}>/{unit}</Text>
           </View>
         </View>
 
@@ -44,13 +51,13 @@ export function ProductCard({ item, onPress }: Props) {
           <View style={styles.metaItem}>
             <ProductDailyIcon size={44} />
             <Text style={styles.metaText}>
-              每日收益 <Text style={styles.metaValue}>{item.daily} USDT</Text>
+              每日收益 <Text style={styles.metaValue}>{dailyText}</Text>
             </Text>
           </View>
           <View style={styles.metaItem}>
             <ProductCycleIcon size={44} />
             <Text style={styles.metaText}>
-              收益周期 <Text style={styles.metaValue}>{item.cycle}</Text>
+              收益周期 <Text style={styles.metaValue}>{item.cycle || '--'}</Text>
             </Text>
           </View>
         </View>
