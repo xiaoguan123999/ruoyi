@@ -39,6 +39,11 @@
         limit 1
     </select>
 
+    <select id="countActiveByMemberLevel" resultType="int">
+        select count(1) from biz_level_reward_grant
+        where member_id = #{memberId} and level_id = #{levelId} and status in ('0', '1')
+    </select>
+
     <select id="selectGrantList" parameterType="BizLevelRewardGrant" resultMap="GrantResult">
         <include refid="selectGrantVo"/>
         <where>

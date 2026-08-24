@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizPromoGrantMapper">
+
+    <resultMap type="BizPromoGrant" id="GrantResult">
+        <id     property="grantId"       column="grant_id"/>
+        <result property="memberId"      column="member_id"/>
+        <result property="phone"         column="phone"/>
+        <result property="fromMemberId"  column="from_member_id"/>
+        <result property="fromPhone"     column="from_phone"/>
+        <result property="grantType"     column="grant_type"/>
+        <result property="currency"      column="currency"/>
+        <result property="amount"        column="amount"/>
+        <result property="status"        column="status"/>
+        <result property="createTime"    column="create_time"/>
+        <result property="remark"        column="remark"/>
+    </resultMap>
+
+    <sql id="selectGrantVo">
+        select g.grant_id, g.member_id, m.phone, g.from_member_id, f.phone as from_phone,
+               g.grant_type, g.currency, g.amount, g.status, g.create_time, g.remark
+        from biz_promo_grant g
+        left join biz_member m on m.member_id = g.member_id
+        left join biz_member f on f.member_id = g.from_member_id
+    </sql>
+
+    <select id="selectByTypeAndFrom" resultMap="GrantResult">
+        <include refid="selectGrantVo"/>
+        where g.grant_type = #{grantType} and g.from_member_id = #{fromMemberId}
+        limit 1
+    </select>
+
+    <select id="selectGrantList" parameterType="BizPromoGrant" resultMap="GrantResult">
+        <include refid="selectGrantVo"/>
+        <where>
+            <if test="memberId != null">and g.member_id = #{memberId}</if>
+            <if test="fromMemberId != null">and g.from_member_id = #{fromMemberId}</if>
+            <if test="grantType != null and grantType != ''">and g.grant_type = #{grantType}</if>
+            <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
+        </where>
+        order by g.grant_id desc
+    </select>
+
+    <insert id="insertGrant" parameterType="BizPromoGrant" useGeneratedKeys="true" keyProperty="grantId">
+        insert into biz_promo_grant (
+            member_id, from_member_id, grant_type, currency, amount, status, create_time, remark
+        ) values (
+            #{memberId}, #{fromMemberId}, #{grantType}, #{currency}, #{amount}, #{status}, sysdate(), #{remark}
+        )
+    </insert>
+</mapper>

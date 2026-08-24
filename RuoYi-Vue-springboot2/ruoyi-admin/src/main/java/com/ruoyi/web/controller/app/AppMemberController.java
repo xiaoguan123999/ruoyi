@@ -24,12 +24,13 @@ import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.service.IBizLevelRewardService;
 import com.ruoyi.biz.service.IBizLevelService;
 import com.ruoyi.biz.service.IBizMemberService;
+import com.ruoyi.biz.service.IBizPromoService;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.utils.AppSecurityUtils;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
-@Api(tags = "App-会员")
+@Api(tags = "App-???")
 @RestController
 @RequestMapping("/app")
 public class AppMemberController extends BaseController
@@ -44,16 +45,19 @@ public class AppMemberController extends BaseController
     private IBizLevelRewardService levelRewardService;
 
     @Autowired
+    private IBizPromoService promoService;
+
+    @Autowired
     private BizMemberMapper memberMapper;
 
-    @ApiOperation(value = "我的资料", notes = "返回 data 为会员资料。资产卡?? cnyAvailable / usdtAvailable / productIncome 等字段??")
+    @ApiOperation(value = "???????", notes = "???? data ???????????????? cnyAvailable / usdtAvailable / productIncome ????????")
     @GetMapping("/profile")
     public AppProfileResult profile()
     {
         return AppProfileResult.ok(memberService.selectMemberById(AppSecurityUtils.getMemberId()));
     }
 
-    @ApiOperation(value = "提交实名", notes = "校验姓名??18位身份证。App 侧身份证号不能与其他会员重???。校验通过即已实名??")
+    @ApiOperation(value = "?????", notes = "��????????18��???????App ????????????????????????????��??????????????")
     @PostMapping("/kyc")
     public AppOkResult kyc(@RequestBody AppKycBody body)
     {
@@ -61,47 +65,47 @@ public class AppMemberController extends BaseController
         return AppOkResult.ok();
     }
 
-    @ApiOperation(value = "??改密??", notes = "需登录。校验原密码后写入新密码。成功没?? data。登录态仍有效??")
+    @ApiOperation(value = "????????", notes = "??????��????????��?????????????? data??????????��??")
     @PostMapping("/password")
     public AppOkResult changePassword(@RequestBody AppPasswordBody body)
     {
         if (body == null)
         {
-            return AppOkResult.fail("请填写原密码和新密码");
+            return AppOkResult.fail("????��????????????");
         }
         memberService.changePassword(AppSecurityUtils.getMemberId(), body.getOldPassword(),
                 body.getNewPassword(), body.getConfirmPassword());
         return AppOkResult.ok();
     }
 
-    @ApiOperation(value = "??改密??", notes = "?? POST /app/password", hidden = true)
+    @ApiOperation(value = "????????", notes = "?? POST /app/password", hidden = true)
     @PutMapping("/password")
     public AppOkResult changePasswordPut(@RequestBody AppPasswordBody body)
     {
         return changePassword(body);
     }
 
-    @ApiOperation(value = "设置或修改支付密码", notes = "未设置过只需 newPassword 或 payPassword；已设置需带 oldPassword。别名 /app/tradePassword。")
+    @ApiOperation(value = "???????????????", notes = "?????��???? newPassword ?? payPassword???????????? oldPassword?????? /app/tradePassword??")
     @PostMapping({"/payPassword", "/tradePassword"})
     public AppOkResult savePayPassword(@RequestBody AppPayPasswordBody body)
     {
         if (body == null)
         {
-            return AppOkResult.fail("请设置支付密码");
+            return AppOkResult.fail("???????????????");
         }
         memberService.savePayPassword(AppSecurityUtils.getMemberId(), body.getOldPassword(),
                 body.getNewPassword(), body.getConfirmPassword());
         return AppOkResult.ok();
     }
 
-    @ApiOperation(value = "设置或修改支付密码", notes = "同 POST /app/payPassword", hidden = true)
+    @ApiOperation(value = "???????????????", notes = "?? POST /app/payPassword", hidden = true)
     @PutMapping({"/payPassword", "/tradePassword"})
     public AppOkResult savePayPasswordPut(@RequestBody AppPayPasswordBody body)
     {
         return savePayPassword(body);
     }
 
-    @ApiOperation(value = "邀请信??", notes = "inviteCode 给别人填；inviteCount ??直推人数；reward 当前固定 0??")
+    @ApiOperation(value = "????????", notes = "inviteCode ????????inviteCount ???????????reward ?????? 0??")
     @GetMapping("/invite")
     public AppInviteResult invite()
     {
@@ -110,11 +114,11 @@ public class AppMemberController extends BaseController
         AppInviteData data = new AppInviteData();
         data.setInviteCode(member.getInviteCode());
         data.setInviteCount(Integer.valueOf(memberMapper.countDirectMembers(memberId)));
-        data.setReward(Integer.valueOf(0));
+        promoService.fillInvite(data);
         return AppInviteResult.ok(data);
     }
 
-    @ApiOperation(value = "我的团队", notes = "summary ?? 1-7 级汇总；members ?? key ?? 1-7；同时返?? level1-level7 数组??")
+    @ApiOperation(value = "??????", notes = "summary ?? 1-7 ???????members ?? key ?? 1-7???????? level1-level7 ??????")
     @GetMapping("/team")
     public AppTeamResult team()
     {
@@ -122,7 +126,7 @@ public class AppMemberController extends BaseController
         return AppTeamResult.ok(memberService.getAppTeam(memberId));
     }
 
-    @ApiOperation(value = "会员等级", notes = "current ??我；levels ??全部等级配置（含停用），方便 App 画七档表??")
+    @ApiOperation(value = "??????", notes = "current ?????levels ????????????????????????? App ?????????")
     @GetMapping("/levels")
     public AppLevelsResult levels()
     {

@@ -23,7 +23,7 @@ Swagger：`http://localhost:8080/swagger-ui/index.html`，分组 `App-*`。每�
 
 ## 一、App 接口（给前端对接）
 
-注册、登录不需要 token。公告、运行概览、关于我们、官方群聊、新闻、视频轮播、**客服中心** 的 GET 也不需要 token。其余 `/app/**` 必须带：
+注册、登录不需要 token。公告、运行概览、关于我们、官方群聊、新闻、视频轮播、**客服中心**、**注册推广规则** 的 GET 也不需要 token。其余 `/app/**` 必须带：
 
 ```
 Authorization: Bearer <token>
@@ -35,10 +35,10 @@ token 来自注册或登录返回。
 
 `POST /app/auth/register`
 
-先调 `GET /app/auth/captcha` 拿到图和 uuid，再提交：
+先调 `GET /app/auth/captcha` 拿到 `text` 和 uuid，再提交：
 
 ```json
-{ "phone": "13800000001", "password": "123456", "inviteCode": "5839201", "code": "3", "uuid": "验证码uuid" }
+{ "phone": "13800000001", "password": "123456", "inviteCode": "5839201", "code": "1234", "uuid": "验证码uuid" }
 ```
 
 | 字段 | 必填 | 说明 |
@@ -46,7 +46,7 @@ token 来自注册或登录返回。
 | phone | 是 | 手机号，唯一 |
 | password | 是 | 登录密码 |
 | payPassword | 建议填 | 支付/交易密码，4-20 位。注册页「交易密码」应传到这里 |
-| inviteCode | 否 | 上级邀请码，7 位数字，注册时系统生成且不重复 |
+| inviteCode | 否 | 上级邀请码，7 位数字。注册时绑定后不可改上级，请核对后再提交 |
 | code | 是 | 验证码答案 |
 | uuid | 是 | `/app/auth/captcha` 返回的 uuid |
 
@@ -74,20 +74,19 @@ token 来自注册或登录返回。
 {
   "code": 200,
   "uuid": "校验用的uuid",
-  "img": "base64图片（PNG，不含data:image前缀）",
-  "imgType": "png",
+  "text": "1234",
   "captchaEnabled": true
 }
 ```
 
-当前是数学验证码，图片为深蓝底、浅色数字，和 App 登录/注册页一致。显示时用 `data:image/png;base64,` 拼在 `img` 前面。验证码 2 分钟有效，一次性使用。App **登录和注册都必须**带验证码。
+4 位数字，App 直接展示在输入框右侧，点右侧刷新。`text` 就是用户要填的内容。验证码 2 分钟有效，一次性使用。App **登录和注册都必须**带验证码。
 
 ### 3. 登录
 
 `POST /app/auth/login`
 
 ```json
-{ "phone": "13800000001", "password": "123456", "code": "3", "uuid": "上一步返回的uuid" }
+{ "phone": "13800000001", "password": "123456", "code": "1234", "uuid": "上一步返回的uuid" }
 ```
 
 | 字段 | 必填 | 说明 |
@@ -194,6 +193,10 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 
 不接三方核验。格式和唯一性通过即 `kycStatus=1`，没有审核中。后台改会员资料**允许**身份证重复。
 
+实名成功后：
+- 若该用户注册时填了邀请码，系统按后台配置给邀请人发放**推广奖励**（默认 2 元，每人只因该被邀请人发一次）。
+- 本人的**实名注册奖励**不自动入账，需再调领取接口，人民币或 USDT 任选其一，每人一次。
+
 ### 6.1 修改密码
 
 `POST /app/password`（`PUT` 也可以）
@@ -245,19 +248,96 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 
 ### 7. 邀请信息
 
-`GET /app/invite`
+`GET /app/invite`（需登录）
 
 ```json
 {
   "data": {
     "inviteCode": "5839201",
     "inviteCount": 2,
-    "reward": 0
+    "reward": 2,
+    "inviteAmount": 2,
+    "inviteCurrency": "CNY",
+    "kycRewardCny": 14,
+    "kycRewardUsdt": 2,
+    "teamRateL1": 9,
+    "teamRateL2": 3,
+    "teamRateL3": 1,
+    "lockParent": true,
+    "ruleText": "用户注册与推广奖励规则：\n一、实名注册奖励\n..."
   }
 }
 ```
 
-当前邀请没有奖励，`reward` 固定 0。
+| 字段 | 说明 |
+|---|---|
+| inviteCode | 我的 7 位邀请码，给别人注册用 |
+| inviteCount | 直推人数 |
+| reward | 邀请奖励整数金额；规则关闭或金额为 0 时返回 `0`（兼容旧字段） |
+| inviteAmount / inviteCurrency | 每成功邀请 1 名实名用户发给邀请人的金额和币种 |
+| kycRewardCny / kycRewardUsdt | 实名后本人可领的两种金额，任选其一 |
+| teamRateL1 / L2 / L3 | 充值三级返佣百分比 |
+| lockParent | 注册绑定后不可改上级 |
+| ruleText | 后台配置的规则全文，可直接展示 |
+
+### 7.1 注册推广规则与实名奖励领取
+
+`GET /app/promo`（别名 `GET /app/registerReward`，**可不登录**）
+
+未登录只返回规则。已登录额外返回能否领取实名奖励。
+
+```json
+{
+  "data": {
+    "enabled": true,
+    "kycSelfEnabled": true,
+    "kycRewardCny": 14,
+    "kycRewardUsdt": 2,
+    "inviteEnabled": true,
+    "inviteAmount": 2,
+    "inviteCurrency": "CNY",
+    "lockParent": true,
+    "teamEnabled": true,
+    "teamRateL1": 9,
+    "teamRateL2": 3,
+    "teamRateL3": 1,
+    "ruleText": "...",
+    "kycStatus": "1",
+    "kycRewardClaimed": false,
+    "kycRewardClaimable": true
+  }
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| enabled | 总开关。关闭后实名自领和邀请奖励都不发 |
+| kycSelfEnabled | 实名注册奖励开关 |
+| kycRewardCny / kycRewardUsdt | 实名后可选的两种金额 |
+| inviteEnabled | 邀请奖励开关 |
+| teamEnabled | 充值三级返佣开关 |
+| kycStatus | 已登录才有：`0` 未实名 `1` 已实名 |
+| kycRewardClaimed | 是否已领过实名注册奖励 |
+| kycRewardClaimable | 当前是否可领（已实名且未领且开关打开） |
+| claimedCurrency / claimedAmount | 已领时返回当时选择的币种和金额 |
+
+领取实名注册奖励（需登录，实名后调用）：
+
+`POST /app/promo/kycReward`（别名 `POST /app/registerReward`）
+
+```json
+{ "currency": "CNY" }
+```
+
+`currency` 只能是 `CNY` 或 `USDT`，每人只能成功一次。
+
+```json
+{ "code": 200, "msg": "操作成功", "data": { "currency": "CNY", "amount": 14 } }
+```
+
+失败 `msg`：请先完成实名认证、已领取实名注册奖励、只能选择人民币或USDT、实名注册奖励暂未开放、USDT暂未开放。
+
+邀请奖励在被邀请人 `POST /app/kyc` 成功后自动入账邀请人钱包，无需再调接口。历史已实名用户不补发邀请奖励，但仍可自领实名注册奖励（尚未领过时）。
 
 ### 8. 团队
 
@@ -334,7 +414,7 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 {
   "data": {
     "current": { "memberId": 10001, "levelName": "V0" },
-    "ruleText": "启航、探索、开拓、星耀：达成条件后自动获得1次等级奖励。...",
+    "ruleText": "启航、探索、开拓、星耀、领航、星域：达成条件后系统自动发放1次成长激励金。...",
     "hint": "注：成员个人累计认购金额达到 ¥10,000 或 1,429 USDT 后，方可计入团队等级考核。请遵循平台规则，严禁作弊行为，一经发现将取消奖励资格。",
     "note": "注：成员个人累计认购金额达到 ¥10,000 或 1,429 USDT 后，方可计入团队等级考核。请遵循平台规则，严禁作弊行为，一经发现将取消奖励资格。",
     "levels": [
@@ -363,9 +443,8 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 
 成长激励金发放：
 
-- `ONCE` + `AUTO`：达标自动入账 1 次（启航/探索/开拓/星耀）
-- `MONTHLY` + `MANUAL`：当月达标后生成待发放，客服在「等级奖励发放」确认（领航/星域）
-- `PERMANENT` + `MANUAL` + `UNLIMITED`：达标后永久资格，先出一笔待发放；之后客服可「额外发放」（星链）
+- `ONCE` + `AUTO`：达标自动入账 1 次（启航/探索/开拓/星耀/领航/星域，前6级）
+- `PERMANENT` + `MANUAL` + `UNLIMITED`：仅第7级星链。达标后生成待发放，客服在「等级奖励发放」确认入账；之后可「额外发放」
 - 团队业绩同时有人民币和 USDT 时，按全局「混合业绩发放币种」发放（默认 USDT）
 
 预置的启航～星链默认是**停用**，配好人数/业绩/金额后再改成正常，避免未配金额就升级。
@@ -612,7 +691,7 @@ CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币
 | direction | `IN` / `OUT` |
 | date | `yyyy-MM-dd`，可直接展示 |
 
-`bizType`：`SUBSCRIBE` 认购、`RECHARGE` 充值、`COMMISSION` 推广奖金、`CHECKIN` 签到、`REBATE` 产品日返、`LEVEL_REWARD` 等级奖励、`WITHDRAW_FREEZE` 提现、`WITHDRAW_REJECT` 提现退回。
+`bizType`：`SUBSCRIBE` 认购、`RECHARGE` 充值、`COMMISSION` 推广奖金、`INVITE` 推广奖励、`KYC_REWARD` 实名注册奖励、`CHECKIN` 签到、`REBATE` 产品日返、`LEVEL_REWARD` 等级奖励、`WITHDRAW_FREEZE` 提现、`WITHDRAW_REJECT` 提现退回。
 
 ### 14.1 收款账户（钱包管理）
 
@@ -991,13 +1070,14 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 1. 注册 A（不填邀请码）
 2. 注册 B，`inviteCode = A` 的 7 位邀请码
 3. 注册 C，`inviteCode = B` 的 7 位邀请码
-4. C 实名
-5. C 申请充值 300
-6. 后台「充值审核」通过 → B 到账 27，A 到账 9
-7. C 认购产品 1（扣 100）
-8. C 签到（+2）
-9. C 申请提现 105 → 后台「提现审核」通过
-10. 未认购指定产品时提现会被拒绝
+4. C 实名 → B 到账 2 元推广奖励
+5. C 调 `POST /app/promo/kycReward` `{ "currency": "CNY" }` → C 到账 14 元（或选 USDT 到账 2）
+6. C 申请充值 300
+7. 后台「充值审核」通过 → B 到账 27，A 到账 9
+8. C 认购产品 1（扣 100）
+9. C 签到（+2）
+10. C 申请提现 105 → 后台「提现审核」通过
+11. 未认购指定产品时提现会被拒绝
 
 ---
 
@@ -1029,6 +1109,8 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | GET | `/biz/order/list` | 认购订单 |
 | GET | `/biz/checkin/list` | 签到记录 |
 | GET/PUT | `/biz/checkin/rule` | 签到规则（金额、连续天数、奖品、概率） |
+| GET/PUT | `/biz/promo/rule` | 注册推广规则（实名奖励、邀请奖励、三级返佣、规则说明） |
+| GET | `/biz/promo/grant/list` | 实名自领 / 推广奖励发放记录 |
 | GET | `/biz/checkin/prize/list` | 签到中奖记录 |
 | GET | `/biz/recharge/list` | 充值列表 |
 | POST | `/biz/recharge` | 后台代提充值单 `{memberId, currency, amount, remark}` |
@@ -1072,6 +1154,8 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | WITHDRAW_REJECT | 提现拒绝解冻 |
 | COMMISSION | 团队分佣 |
 | LEVEL_REWARD | 等级奖励（成长激励金） |
+| KYC_REWARD | 实名注册奖励（用户自领） |
+| INVITE | 实名推广奖励（邀请人） |
 
 ---
 
@@ -1084,8 +1168,18 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | biz.checkin.prize2.days / name / rate / enabled | 365 / 华硕ROG笔记本电脑 / 0.5 / true | 连续签到第二档抽奖 |
 | biz.withdraw.minAmount | 105 | 人民币最低提现 |
 | biz.withdraw.minAmount.usdt | 105 | USDT 最低提现 |
+| biz.team.enabled | true | 充值三级返佣开关 |
 | biz.team.rate.l1 / l2 / l3 | 9 / 3 / 1 | 充值分佣百分比（同币种） |
-| biz.invite.reward | 0 | 邀请奖励，暂未发放 |
+| biz.invite.reward | 2 | 与 biz.promo.invite.amount 同步，每邀请 1 名实名用户 |
+| biz.promo.enabled | true | 实名自领+邀请奖励总开关 |
+| biz.promo.kycSelf.enabled | true | 实名注册奖励开关 |
+| biz.promo.kycSelf.cny | 14 | 实名注册奖励人民币 |
+| biz.promo.kycSelf.usdt | 2 | 实名注册奖励 USDT |
+| biz.promo.invite.enabled | true | 实名推广奖励开关 |
+| biz.promo.invite.amount | 2 | 每成功邀请 1 名实名用户 |
+| biz.promo.invite.currency | CNY | 邀请奖励币种 |
+| biz.promo.invite.lockParent | true | 注册绑定后不可改上级 |
+| biz.promo.ruleText | （规则全文） | App 邀请/规则页文案 |
 | biz.usdt.enabled | true | USDT 开关 |
 | biz.google.enabled | true | 谷歌验证总开关 |
 | biz.google.requireWithdraw | false | App 提现不要求谷歌验证（代码侧已固定关闭） |
@@ -1105,4 +1199,6 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 每日返利任务：定时任务里「产品每日返利」，`dailyRebateTask.execute()`，cron `0 5 0 * * ?`。  
 成长激励金任务：定时任务里「等级奖励核算」，`levelRewardTask.execute()`，cron `0 15 0 * * ?`。也可在后台「等级奖励」点立即核算。
 
-初始化脚本：`RuoYi-Vue-springboot2/sql/biz_init.sql`
+初始化脚本：`RuoYi-Vue-springboot2/sql/biz_init.sql`  
+注册推广规则补丁：`RuoYi-Vue-springboot2/sql/biz_promo_rule_patch.sql`
+

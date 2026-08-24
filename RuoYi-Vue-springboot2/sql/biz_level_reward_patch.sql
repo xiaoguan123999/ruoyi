@@ -37,7 +37,7 @@ insert into sys_config values(43, '团队业绩口径', 'biz.levelReward.perform
 insert into sys_config values(44, '团队业绩含本人', 'biz.levelReward.includeSelf', 'false', 'N', 'admin', sysdate(), '', null, 'true表示本人业绩计入团队');
 insert into sys_config values(45, '有效成员需实名', 'biz.levelReward.validNeedKyc', 'true', 'N', 'admin', sysdate(), '', null, '有效成员是否必须已实名');
 insert into sys_config values(46, '有效成员需认购', 'biz.levelReward.validNeedOrder', 'true', 'N', 'admin', sysdate(), '', null, '有效成员是否必须有认购订单');
-insert into sys_config values(47, '等级奖励规则说明', 'biz.levelReward.ruleText', '启航、探索、开拓、星耀：达成条件后自动获得1次等级奖励。领航、星域：每月达成条件后联系客服领取1次。星链：达成条件后获永久领取资格，联系客服领取。团队同时有人民币和USDT业绩时发放USDT。最终以系统核算为准。', 'N', 'admin', sysdate(), '', null, '展示给App/后台的规则文案');
+insert into sys_config values(47, '等级奖励规则说明', 'biz.levelReward.ruleText', '启航、探索、开拓、星耀、领航、星域：达成条件后系统自动发放1次成长激励金。星链：达成条件后联系客服领取，由后台手动发放。团队同时有人民币和USDT业绩时发放USDT。最终以系统核算为准。', 'N', 'admin', sysdate(), '', null, '展示给App/后台的规则文案');
 
 -- 预置七档名称（停用，避免未配金额就升级）。后台改条件、金额后打开即可。
 insert into biz_level (level_name, min_valid_members, min_recharge_cny, min_recharge_usdt, min_team_perf_cny, min_team_perf_usdt, sort, status, create_by, create_time, remark, reward_enabled, reward_cycle, reward_mode, reward_repeat, reward_cny, reward_usdt)
@@ -53,13 +53,13 @@ insert into biz_level (level_name, min_valid_members, min_recharge_cny, min_rech
 select '星耀', 10, 0, 0, 0, 0, 40, '1', 'admin', sysdate(), '成长激励金：一次自动发放', '1', 'ONCE', 'AUTO', 'NONE', 0, 0
 from dual where not exists (select 1 from biz_level where level_name = '星耀');
 insert into biz_level (level_name, min_valid_members, min_recharge_cny, min_recharge_usdt, min_team_perf_cny, min_team_perf_usdt, sort, status, create_by, create_time, remark, reward_enabled, reward_cycle, reward_mode, reward_repeat, reward_cny, reward_usdt)
-select '领航', 20, 0, 0, 0, 0, 50, '1', 'admin', sysdate(), '成长激励金：每月联系客服领取', '1', 'MONTHLY', 'MANUAL', 'NONE', 0, 0
+select '领航', 20, 0, 0, 0, 0, 50, '1', 'admin', sysdate(), '成长激励金：一次自动发放', '1', 'ONCE', 'AUTO', 'NONE', 0, 0
 from dual where not exists (select 1 from biz_level where level_name = '领航');
 insert into biz_level (level_name, min_valid_members, min_recharge_cny, min_recharge_usdt, min_team_perf_cny, min_team_perf_usdt, sort, status, create_by, create_time, remark, reward_enabled, reward_cycle, reward_mode, reward_repeat, reward_cny, reward_usdt)
-select '星域', 50, 0, 0, 0, 0, 60, '1', 'admin', sysdate(), '成长激励金：每月联系客服领取', '1', 'MONTHLY', 'MANUAL', 'NONE', 0, 0
+select '星域', 50, 0, 0, 0, 0, 60, '1', 'admin', sysdate(), '成长激励金：一次自动发放', '1', 'ONCE', 'AUTO', 'NONE', 0, 0
 from dual where not exists (select 1 from biz_level where level_name = '星域');
 insert into biz_level (level_name, min_valid_members, min_recharge_cny, min_recharge_usdt, min_team_perf_cny, min_team_perf_usdt, sort, status, create_by, create_time, remark, reward_enabled, reward_cycle, reward_mode, reward_repeat, reward_cny, reward_usdt)
-select '星链', 100, 0, 0, 0, 0, 70, '1', 'admin', sysdate(), '成长激励金：永久资格，联系客服领取', '1', 'PERMANENT', 'MANUAL', 'UNLIMITED', 0, 0
+select '星链', 100, 0, 0, 0, 0, 70, '1', 'admin', sysdate(), '成长激励金：达标后联系客服，后台手动发放', '1', 'PERMANENT', 'MANUAL', 'UNLIMITED', 0, 0
 from dual where not exists (select 1 from biz_level where level_name = '星链');
 
 delete from sys_menu where menu_id in (2019, 2020, 2261, 2262, 2271, 2272, 2273);
@@ -72,4 +72,4 @@ insert into sys_menu values('2272', '确认发放', '2020', '2', '', '', '', '',
 insert into sys_menu values('2273', '拒绝发放', '2020', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:levelReward:reject', '#', 'admin', sysdate(), '', null, '');
 
 delete from sys_job where job_id = 101;
-insert into sys_job values(101, '等级奖励核算', 'DEFAULT', 'levelRewardTask.execute()', '0 15 0 * * ?', '3', '1', '0', 'admin', sysdate(), '', null, '每日核算成长激励金一次/每月/永久档');
+insert into sys_job values(101, '等级奖励核算', 'DEFAULT', 'levelRewardTask.execute()', '0 15 0 * * ?', '3', '1', '0', 'admin', sysdate(), '', null, '每日核算成长激励金：前六档一次自动，星链生成待发放');

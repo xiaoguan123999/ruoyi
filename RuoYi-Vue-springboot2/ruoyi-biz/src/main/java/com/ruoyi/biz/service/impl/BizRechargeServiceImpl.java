@@ -104,6 +104,10 @@ public class BizRechargeServiceImpl implements IBizRechargeService
 
     private void grantCommission(BizRecharge recharge)
     {
+        if (!configService.isTeamCommissionEnabled())
+        {
+            return;
+        }
         BizMember current = memberMapper.selectMemberById(recharge.getMemberId());
         if (current == null)
         {

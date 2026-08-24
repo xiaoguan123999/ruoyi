@@ -66,6 +66,14 @@ public class BizConstants
 
     public static final String BIZ_LEVEL_REWARD = "LEVEL_REWARD";
 
+    public static final String BIZ_KYC_REWARD = "KYC_REWARD";
+
+    public static final String BIZ_INVITE = "INVITE";
+
+    public static final String PROMO_KYC_SELF = "KYC_SELF";
+
+    public static final String PROMO_INVITE = "INVITE";
+
     public static final String CONFIG_CHECKIN_AMOUNT = "biz.checkin.amount";
 
     public static final String CONFIG_WITHDRAW_MIN = "biz.withdraw.minAmount";
@@ -79,6 +87,26 @@ public class BizConstants
     public static final String CONFIG_RATE_L3 = "biz.team.rate.l3";
 
     public static final String CONFIG_INVITE_REWARD = "biz.invite.reward";
+
+    public static final String CONFIG_PROMO_ENABLED = "biz.promo.enabled";
+
+    public static final String CONFIG_PROMO_KYC_SELF_ENABLED = "biz.promo.kycSelf.enabled";
+
+    public static final String CONFIG_PROMO_KYC_SELF_CNY = "biz.promo.kycSelf.cny";
+
+    public static final String CONFIG_PROMO_KYC_SELF_USDT = "biz.promo.kycSelf.usdt";
+
+    public static final String CONFIG_PROMO_INVITE_ENABLED = "biz.promo.invite.enabled";
+
+    public static final String CONFIG_PROMO_INVITE_AMOUNT = "biz.promo.invite.amount";
+
+    public static final String CONFIG_PROMO_INVITE_CURRENCY = "biz.promo.invite.currency";
+
+    public static final String CONFIG_PROMO_LOCK_PARENT = "biz.promo.invite.lockParent";
+
+    public static final String CONFIG_TEAM_ENABLED = "biz.team.enabled";
+
+    public static final String CONFIG_PROMO_RULE_TEXT = "biz.promo.ruleText";
 
     public static final String CONFIG_USDT_ENABLED = "biz.usdt.enabled";
 

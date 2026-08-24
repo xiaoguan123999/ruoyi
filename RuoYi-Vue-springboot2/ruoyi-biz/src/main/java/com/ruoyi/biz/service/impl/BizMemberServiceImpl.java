@@ -21,6 +21,7 @@ import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.service.IBizLevelRewardService;
 import com.ruoyi.biz.service.IBizMemberService;
+import com.ruoyi.biz.service.IBizPromoService;
 import com.ruoyi.biz.service.IBizWalletService;
 import com.ruoyi.biz.util.KycUtils;
 import com.ruoyi.common.constant.UserConstants;
@@ -39,6 +40,9 @@ public class BizMemberServiceImpl implements IBizMemberService
 
     @Autowired
     private IBizLevelRewardService levelRewardService;
+
+    @Autowired
+    private IBizPromoService promoService;
 
     @Override
     public BizMember selectMemberById(Long memberId)
@@ -194,6 +198,7 @@ public class BizMemberServiceImpl implements IBizMemberService
         {
             refreshLevel(exist.getParentId());
         }
+        promoService.grantInviteOnKyc(memberId);
     }
 
     @Override

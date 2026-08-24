@@ -64,7 +64,7 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
         rule.setValidNeedKyc(Boolean.valueOf(boolVal(BizConstants.CONFIG_LEVEL_REWARD_NEED_KYC, true)));
         rule.setValidNeedOrder(Boolean.valueOf(boolVal(BizConstants.CONFIG_LEVEL_REWARD_NEED_ORDER, true)));
         rule.setRuleText(strVal(BizConstants.CONFIG_LEVEL_REWARD_TEXT,
-                "启航、探索、开拓、星耀：达成条件后自动获得1次等级奖励。领航、星域：每月达成条件后联系客服领取1次。星链：达成条件后获永久领取资格，联系客服领取。团队同时有人民币和USDT业绩时发放USDT。最终以系统核算为准。"));
+                "启航、探索、开拓、星耀、领航、星域：达成条件后系统自动发放1次成长激励金。星链：达成条件后联系客服领取，由后台手动发放。团队同时有人民币和USDT业绩时发放USDT。最终以系统核算为准。"));
         rule.setHint(strVal(BizConstants.CONFIG_LEVEL_REWARD_HINT,
                 "注：成员个人累计认购金额达到 ¥10,000 或 1,429 USDT 后，方可计入团队等级考核。请遵循平台规则，严禁作弊行为，一经发现将取消奖励资格。"));
         return rule;
@@ -327,6 +327,11 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
 
     private void tryGrant(BizMember member, BizLevel level, Stats stats, String cycleKey)
     {
+        if ("ONCE".equalsIgnoreCase(level.getRewardCycle())
+                && grantMapper.countActiveByMemberLevel(member.getMemberId(), level.getLevelId()) > 0)
+        {
+            return;
+        }
         BizLevelRewardGrant existing = grantMapper.selectByCycle(member.getMemberId(), level.getLevelId(), cycleKey);
         if (existing != null)
         {

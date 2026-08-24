@@ -12,6 +12,8 @@ public interface IBizConfigService
 
     BigDecimal getTeamRate(int level);
 
+    boolean isTeamCommissionEnabled();
+
     boolean isUsdtEnabled();
 
     void assertCurrencyEnabled(String currency);

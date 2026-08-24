@@ -16,6 +16,23 @@ public class AppSecurityUtils
         return getLoginMember().getMemberId();
     }
 
+    public static Long getMemberIdOrNull()
+    {
+        try
+        {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !(authentication.getPrincipal() instanceof AppLoginMember))
+            {
+                return null;
+            }
+            return ((AppLoginMember) authentication.getPrincipal()).getMemberId();
+        }
+        catch (Exception e)
+        {
+            return null;
+        }
+    }
+
     public static AppLoginMember getLoginMember()
     {
         try

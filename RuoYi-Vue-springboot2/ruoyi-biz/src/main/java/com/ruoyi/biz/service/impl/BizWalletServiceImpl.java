@@ -325,6 +325,14 @@ public class BizWalletServiceImpl implements IBizWalletService
         {
             return "等级奖励";
         }
+        if (BizConstants.BIZ_KYC_REWARD.equals(bizType))
+        {
+            return "实名注册奖励";
+        }
+        if (BizConstants.BIZ_INVITE.equals(bizType))
+        {
+            return "推广奖励";
+        }
         if (BizConstants.BIZ_WITHDRAW_FREEZE.equals(bizType))
         {
             return "提现";

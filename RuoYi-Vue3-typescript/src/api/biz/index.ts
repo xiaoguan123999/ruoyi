@@ -324,3 +324,15 @@ export function updateCsChannel(data: any): Promise<AjaxResult> {
 export function delCsChannel(channelId: number | number[]): Promise<AjaxResult> {
   return request({ url: '/biz/service/' + channelId, method: 'delete' })
 }
+
+export function getPromoRule(): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/promo/rule', method: 'get' })
+}
+
+export function savePromoRule(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/promo/rule', method: 'put', data })
+}
+
+export function listPromoGrant(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/promo/grant/list', method: 'get', params: query })
+}

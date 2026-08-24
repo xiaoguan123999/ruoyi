@@ -56,6 +56,12 @@ public class BizConfigServiceImpl implements IBizConfigService
     }
 
     @Override
+    public boolean isTeamCommissionEnabled()
+    {
+        return bool(BizConstants.CONFIG_TEAM_ENABLED, true);
+    }
+
+    @Override
     public boolean isUsdtEnabled()
     {
         String value = configService.selectConfigByKey(BizConstants.CONFIG_USDT_ENABLED);

@@ -11,6 +11,8 @@ public interface BizLevelRewardGrantMapper
     BizLevelRewardGrant selectByCycle(@Param("memberId") Long memberId, @Param("levelId") Long levelId,
             @Param("cycleKey") String cycleKey);
 
+    int countActiveByMemberLevel(@Param("memberId") Long memberId, @Param("levelId") Long levelId);
+
     List<BizLevelRewardGrant> selectGrantList(BizLevelRewardGrant grant);
 
     int insertGrant(BizLevelRewardGrant grant);
