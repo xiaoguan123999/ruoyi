@@ -31,7 +31,7 @@ select 'terminal', '在线终端', '1256000+', '稳定连接', '#4DA3FF', '', 3,
 from dual where not exists (select 1 from biz_overview where item_key = 'terminal');
 
 delete from sys_menu where menu_id in (2013, 2201, 2202, 2203, 2204);
-insert into sys_menu values('2013', '运行概览', '2000', '0', 'overview', 'biz/overview/index', '', '', 1, 0, 'C', '0', '0', 'biz:overview:list', 'dashboard', 'admin', sysdate(), '', null, 'App首页展示数字，后台手改');
+insert into sys_menu values('2013', '运行概览', '2024', '6', 'overview', 'biz/overview/index', '', '', 1, 0, 'C', '0', '0', 'biz:overview:list', 'dashboard', 'admin', sysdate(), '', null, 'App首页展示数字，后台手改');
 insert into sys_menu values('2201', '概览查询', '2013', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:overview:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2202', '概览新增', '2013', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:overview:add', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2203', '概览修改', '2013', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:overview:edit', '#', 'admin', sysdate(), '', null, '');

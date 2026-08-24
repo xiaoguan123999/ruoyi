@@ -373,10 +373,12 @@ create table biz_carousel (
 delete from sys_role_menu where menu_id >= 2000;
 delete from sys_menu where menu_id >= 2000;
 insert into sys_menu values('2000', '业务管理', '0', '5', 'biz', null, '', '', 1, 0, 'M', '0', '0', '', 'money', 'admin', sysdate(), '', null, '认购返利业务目录');
+insert into sys_menu values('2025', '产品交易', '0', '6', 'trade', null, '', '', 1, 0, 'M', '0', '0', '', 'shopping', 'admin', sysdate(), '', null, '产品、认购与签到目录');
+insert into sys_menu values('2024', '运营内容', '0', '7', 'content', null, '', '', 1, 0, 'M', '0', '0', '', 'documentation', 'admin', sysdate(), '', null, 'App展示与运营内容目录');
 insert into sys_menu values('2001', '会员管理', '2000', '1', 'member', 'biz/member/index', '', '', 1, 0, 'C', '0', '0', 'biz:member:list', 'user', 'admin', sysdate(), '', null, 'C端会员');
-insert into sys_menu values('2002', '产品管理', '2000', '2', 'product', 'biz/product/index', '', '', 1, 0, 'C', '0', '0', 'biz:product:list', 'shopping', 'admin', sysdate(), '', null, '认购产品');
-insert into sys_menu values('2003', '认购订单', '2000', '3', 'order', 'biz/order/index', '', '', 1, 0, 'C', '0', '0', 'biz:order:list', 'list', 'admin', sysdate(), '', null, '认购订单');
-insert into sys_menu values('2004', '签到记录', '2000', '4', 'checkin', 'biz/checkin/index', '', '', 1, 0, 'C', '0', '0', 'biz:checkin:list', 'date', 'admin', sysdate(), '', null, '签到记录');
+insert into sys_menu values('2002', '产品管理', '2025', '2', 'product', 'biz/product/index', '', '', 1, 0, 'C', '0', '0', 'biz:product:list', 'shopping', 'admin', sysdate(), '', null, '认购产品');
+insert into sys_menu values('2003', '认购订单', '2025', '3', 'order', 'biz/order/index', '', '', 1, 0, 'C', '0', '0', 'biz:order:list', 'list', 'admin', sysdate(), '', null, '认购订单');
+insert into sys_menu values('2004', '签到记录', '2025', '4', 'checkin', 'biz/checkin/index', '', '', 1, 0, 'C', '0', '0', 'biz:checkin:list', 'date', 'admin', sysdate(), '', null, '签到记录');
 insert into sys_menu values('2005', '充值审核', '2000', '5', 'recharge', 'biz/recharge/index', '', '', 1, 0, 'C', '0', '0', 'biz:recharge:list', 'edit', 'admin', sysdate(), '', null, '充值审核');
 insert into sys_menu values('2006', '提现审核', '2000', '6', 'withdraw', 'biz/withdraw/index', '', '', 1, 0, 'C', '0', '0', 'biz:withdraw:list', 'edit', 'admin', sysdate(), '', null, '提现审核');
 insert into sys_menu values('2007', '资金流水', '2000', '7', 'walletLog', 'biz/walletLog/index', '', '', 1, 0, 'C', '0', '0', 'biz:walletLog:list', 'log', 'admin', sysdate(), '', null, '资金流水');
@@ -385,11 +387,11 @@ insert into sys_menu values('2009', '会员等级', '2000', '9', 'level', 'biz/l
 insert into sys_menu values('2010', '分佣记录', '2000', '10', 'commission', 'biz/commission/index', '', '', 1, 0, 'C', '0', '0', 'biz:commission:list', 'form', 'admin', sysdate(), '', null, '分佣记录');
 insert into sys_menu values('2011', '签到规则', '2000', '4', 'checkinRule', 'biz/checkin/rule', '', '', 1, 0, 'C', '0', '0', 'biz:checkin:rule', 'edit', 'admin', sysdate(), '', null, '签到金额与连续抽奖规则');
 insert into sys_menu values('2012', '签到中奖', '2000', '4', 'checkinPrize', 'biz/checkin/prize', '', '', 1, 0, 'C', '0', '0', 'biz:checkin:prize', 'star', 'admin', sysdate(), '', null, '连续签到抽奖记录');
-insert into sys_menu values('2013', '运行概览', '2000', '0', 'overview', 'biz/overview/index', '', '', 1, 0, 'C', '0', '0', 'biz:overview:list', 'dashboard', 'admin', sysdate(), '', null, 'App首页展示数字，后台手改');
-insert into sys_menu values('2014', '关于我们', '2000', '0', 'about', 'biz/about/index', '', '', 1, 0, 'C', '0', '0', 'biz:about:list', 'guide', 'admin', sysdate(), '', null, 'App关于我们，后台手改');
-insert into sys_menu values('2015', '官方群聊', '2000', '0', 'groupChat', 'biz/groupChat/index', '', '', 1, 0, 'C', '0', '0', 'biz:group:list', 'message', 'admin', sysdate(), '', null, 'App官方群聊二维码，后台手改');
-insert into sys_menu values('2016', '新闻资讯', '2000', '0', 'news', 'biz/news/index', '', '', 1, 0, 'C', '0', '0', 'biz:news:list', 'documentation', 'admin', sysdate(), '', null, 'App新闻资讯，后台手改');
-insert into sys_menu values('2018', '视频轮播', '2000', '0', 'carousel', 'biz/carousel/index', '', '', 1, 0, 'C', '0', '0', 'biz:carousel:list', 'example', 'admin', sysdate(), '', null, 'App首页视频轮播');
+insert into sys_menu values('2013', '运行概览', '2024', '6', 'overview', 'biz/overview/index', '', '', 1, 0, 'C', '0', '0', 'biz:overview:list', 'dashboard', 'admin', sysdate(), '', null, 'App首页展示数字，后台手改');
+insert into sys_menu values('2014', '关于我们', '2024', '5', 'about', 'biz/about/index', '', '', 1, 0, 'C', '0', '0', 'biz:about:list', 'guide', 'admin', sysdate(), '', null, 'App关于我们，后台手改');
+insert into sys_menu values('2015', '官方群聊', '2024', '4', 'groupChat', 'biz/groupChat/index', '', '', 1, 0, 'C', '0', '0', 'biz:group:list', 'message', 'admin', sysdate(), '', null, 'App官方群聊二维码，后台手改');
+insert into sys_menu values('2016', '新闻资讯', '2024', '3', 'news', 'biz/news/index', '', '', 1, 0, 'C', '0', '0', 'biz:news:list', 'documentation', 'admin', sysdate(), '', null, 'App新闻资讯，后台手改');
+insert into sys_menu values('2018', '视频轮播', '2024', '2', 'carousel', 'biz/carousel/index', '', '', 1, 0, 'C', '0', '0', 'biz:carousel:list', 'example', 'admin', sysdate(), '', null, 'App首页视频轮播');
 
 -- 按钮权限
 insert into sys_menu values('2101', '会员查询', '2001', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:member:query', '#', 'admin', sysdate(), '', null, '');

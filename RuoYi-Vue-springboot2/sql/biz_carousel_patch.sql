@@ -15,7 +15,7 @@ create table if not exists biz_carousel (
 ) engine=innodb comment = 'App首页视频轮播';
 
 delete from sys_menu where menu_id in (2018, 2251, 2252, 2253, 2254);
-insert into sys_menu values('2018', '视频轮播', '2000', '0', 'carousel', 'biz/carousel/index', '', '', 1, 0, 'C', '0', '0', 'biz:carousel:list', 'example', 'admin', sysdate(), '', null, 'App首页视频轮播');
+insert into sys_menu values('2018', '视频轮播', '2024', '2', 'carousel', 'biz/carousel/index', '', '', 1, 0, 'C', '0', '0', 'biz:carousel:list', 'example', 'admin', sysdate(), '', null, 'App首页视频轮播');
 insert into sys_menu values('2251', '轮播查询', '2018', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:carousel:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2252', '轮播新增', '2018', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:carousel:add', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2253', '轮播修改', '2018', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:carousel:edit', '#', 'admin', sysdate(), '', null, '');

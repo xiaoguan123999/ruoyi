@@ -96,11 +96,11 @@ function getUser() {
   })
 }
 
+watch(() => route.params.activeTab, (tab) => {
+  selectedTab.value = (tab as string) || "userinfo"
+}, { immediate: true })
+
 onMounted(() => {
-  const activeTab = route.params && route.params.activeTab
-  if (activeTab) {
-    selectedTab.value = activeTab as string
-  }
   getUser()
 })
 </script>

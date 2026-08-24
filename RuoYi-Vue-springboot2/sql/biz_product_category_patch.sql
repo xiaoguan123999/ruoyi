@@ -30,7 +30,7 @@ alter table biz_product add column cover_url varchar(500) default '' comment '�
 update biz_product set category_id = 1 where category_id is null;
 
 delete from sys_menu where menu_id in (2017, 2241, 2242, 2243, 2244);
-insert into sys_menu values('2017', '产品分类', '2000', '2', 'productCategory', 'biz/productCategory/index', '', '', 1, 0, 'C', '0', '0', 'biz:productCategory:list', 'cascader', 'admin', sysdate(), '', null, 'App产品Tab上的系列');
+insert into sys_menu values('2017', '产品分类', '2025', '1', 'productCategory', 'biz/productCategory/index', '', '', 1, 0, 'C', '0', '0', 'biz:productCategory:list', 'cascader', 'admin', sysdate(), '', null, 'App产品Tab上的系列');
 insert into sys_menu values('2241', '分类查询', '2017', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:productCategory:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2242', '分类新增', '2017', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:productCategory:add', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2243', '分类修改', '2017', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:productCategory:edit', '#', 'admin', sysdate(), '', null, '');

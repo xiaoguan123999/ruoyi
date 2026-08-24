@@ -37,7 +37,8 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T>
         }
         return JSON.toJSONString(t, JSONWriter.Feature.WriteClassName,
                 JSONWriter.Feature.NotWriteNumberClassName,
-                JSONWriter.Feature.NotWriteSetClassName).getBytes(DEFAULT_CHARSET);
+                JSONWriter.Feature.NotWriteSetClassName,
+                JSONWriter.Feature.NotWriteHashMapArrayListClassName).getBytes(DEFAULT_CHARSET);
     }
 
     @Override

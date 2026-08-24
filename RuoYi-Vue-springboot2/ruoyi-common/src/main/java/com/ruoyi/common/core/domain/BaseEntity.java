@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import com.alibaba.fastjson2.annotation.JSONField;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -102,6 +103,7 @@ public class BaseEntity implements Serializable
         this.remark = remark;
     }
 
+    @JSONField(serialize = false)
     public Map<String, Object> getParams()
     {
         if (params == null)

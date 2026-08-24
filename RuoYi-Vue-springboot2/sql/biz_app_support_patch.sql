@@ -45,7 +45,7 @@ from dual where not exists (select 1 from biz_cs_channel limit 1);
 
 delete from sys_menu where menu_id in (2021, 2022, 2281, 2282, 2283, 2284, 2291, 2292, 2293, 2294);
 insert into sys_menu values('2021', '收款账户', '2000', '11', 'payAccount', 'biz/payAccount/index', '', '', 1, 0, 'C', '0', '0', 'biz:payAccount:list', 'wallet', 'admin', sysdate(), '', null, '会员USDT/银行卡/支付宝收款账户');
-insert into sys_menu values('2022', '客服中心', '2000', '0', 'service', 'biz/service/index', '', '', 1, 0, 'C', '0', '0', 'biz:service:list', 'service', 'admin', sysdate(), '', null, 'App联系客服渠道');
+insert into sys_menu values('2022', '客服中心', '2024', '1', 'service', 'biz/service/index', '', '', 1, 0, 'C', '0', '0', 'biz:service:list', 'service', 'admin', sysdate(), '', null, 'App联系客服渠道');
 insert into sys_menu values('2281', '账户查询', '2021', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:payAccount:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2282', '账户新增', '2021', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:payAccount:add', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2283', '账户修改', '2021', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:payAccount:edit', '#', 'admin', sysdate(), '', null, '');

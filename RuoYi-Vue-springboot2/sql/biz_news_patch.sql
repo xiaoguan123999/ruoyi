@@ -33,7 +33,7 @@ select '商业航天星座组网加速，行业应用场景持续拓展',
 from dual where not exists (select 1 from biz_news where title = '商业航天星座组网加速，行业应用场景持续拓展');
 
 delete from sys_menu where menu_id in (2016, 2231, 2232, 2233, 2234);
-insert into sys_menu values('2016', '新闻资讯', '2000', '0', 'news', 'biz/news/index', '', '', 1, 0, 'C', '0', '0', 'biz:news:list', 'documentation', 'admin', sysdate(), '', null, 'App新闻资讯，后台手改');
+insert into sys_menu values('2016', '新闻资讯', '2024', '3', 'news', 'biz/news/index', '', '', 1, 0, 'C', '0', '0', 'biz:news:list', 'documentation', 'admin', sysdate(), '', null, 'App新闻资讯，后台手改');
 insert into sys_menu values('2231', '新闻查询', '2016', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:news:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2232', '新闻新增', '2016', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:news:add', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2233', '新闻修改', '2016', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:news:edit', '#', 'admin', sysdate(), '', null, '');

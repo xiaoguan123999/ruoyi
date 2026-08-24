@@ -20,7 +20,7 @@ select '星帆智联', '连接星空 · 智联未来', '<p>星帆智联聚焦商
 from dual where not exists (select 1 from biz_about limit 1);
 
 delete from sys_menu where menu_id in (2014, 2211, 2212, 2213, 2214);
-insert into sys_menu values('2014', '关于我们', '2000', '0', 'about', 'biz/about/index', '', '', 1, 0, 'C', '0', '0', 'biz:about:list', 'guide', 'admin', sysdate(), '', null, 'App关于我们，后台手改');
+insert into sys_menu values('2014', '关于我们', '2024', '5', 'about', 'biz/about/index', '', '', 1, 0, 'C', '0', '0', 'biz:about:list', 'guide', 'admin', sysdate(), '', null, 'App关于我们，后台手改');
 insert into sys_menu values('2211', '关于查询', '2014', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:about:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2212', '关于新增', '2014', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:about:add', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2213', '关于修改', '2014', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:about:edit', '#', 'admin', sysdate(), '', null, '');
