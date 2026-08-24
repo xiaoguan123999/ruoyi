@@ -170,7 +170,7 @@ function mapLevelCurrent(raw: unknown): AppLevelCurrent {
 }
 
 export function emptyLevelsView(): AppLevelsView {
-  return { current: {}, levels: [], ruleText: '' };
+  return { current: {}, levels: [], hint: '', ruleText: '' };
 }
 
 export async function fetchAppLevelsView(): Promise<AppLevelsView> {
@@ -186,6 +186,7 @@ export async function fetchAppLevelsView(): Promise<AppLevelsView> {
     return {
       current: mapLevelCurrent(root.current ?? root.member ?? root.profile),
       levels,
+      hint: pickString(root, ['hint', 'note']),
       ruleText: pickString(root, ['ruleText', 'rules', 'rule']),
     };
   }
@@ -196,6 +197,7 @@ export async function fetchAppLevelsView(): Promise<AppLevelsView> {
       .map(mapLevel)
       .filter((item): item is AppLevel => item !== null)
       .sort((a, b) => (a.sort ?? a.levelId) - (b.sort ?? b.levelId)),
+    hint: '',
     ruleText: '',
   };
 }

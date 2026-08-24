@@ -278,6 +278,9 @@ export type AppLevelCurrent = {
 export type AppLevelsView = {
   current: AppLevelCurrent;
   levels: AppLevel[];
+  /** 表格上方注释；接口 hint / note 同值 */
+  hint?: string;
+  /** 规则说明弹窗文案 */
   ruleText?: string;
 };
 

@@ -22,9 +22,6 @@ import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
 import { modalError } from '@/utils/toast';
 
-const LEVEL_NOTE =
-  '注：成员个人累计认购金额达到 ¥10,000 或 1,429 USDT 后，方可计入团队等级考核。请遵循平台规则，严禁作弊行为，一经发现将取消奖励资格。';
-
 type DisplayLevelRow = {
   levelId: number;
   levelName: string;
@@ -164,14 +161,16 @@ export default function LevelsScreen() {
   return (
     <AppBackground source={images.levelBg} dim={false} contentPosition="top">
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
-        <View style={styles.headerSide}>
+        <View style={styles.headerLeft}>
           <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
             <Text style={styles.back}>‹</Text>
           </Pressable>
         </View>
-        <Text style={styles.headerTitle}>会员等级</Text>
+        <View style={styles.headerTitleWrap} pointerEvents="none">
+          <Text style={styles.headerTitle}>会员等级</Text>
+        </View>
         <Pressable
-          style={styles.headerSide}
+          style={styles.headerRight}
           hitSlop={8}
           onPress={() => setRulesVisible(true)}
         >
@@ -209,7 +208,9 @@ export default function LevelsScreen() {
           </View>
         </View>
 
-        <Text style={styles.note}>{LEVEL_NOTE}</Text>
+        {levelsView.hint?.trim() ? (
+          <Text style={styles.note}>{levelsView.hint.trim()}</Text>
+        ) : null}
 
         <View style={styles.tableCard}>
           <View style={styles.tableHead}>
@@ -250,14 +251,24 @@ export default function LevelsScreen() {
 
 const styles = StyleSheet.create({
   header: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 8,
     paddingBottom: 10,
+    minHeight: 44,
   },
-  headerSide: {
-    width: 96,
-    alignItems: 'center',
+  headerLeft: {
+    zIndex: 1,
+    minWidth: 44,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerRight: {
+    zIndex: 1,
+    minWidth: 44,
+    alignItems: 'flex-end',
     justifyContent: 'center',
   },
   backBtn: {
@@ -271,8 +282,12 @@ const styles = StyleSheet.create({
     lineHeight: 34,
     fontWeight: '300',
   },
+  headerTitleWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerTitle: {
-    flex: 1,
     textAlign: 'center',
     color: colors.text,
     fontSize: 18,
@@ -282,7 +297,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    alignSelf: 'flex-end',
     paddingRight: 2,
   },
   rulesText: {
