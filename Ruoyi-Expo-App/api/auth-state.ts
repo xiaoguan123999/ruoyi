@@ -74,7 +74,7 @@ export function isPublicAuthRoute(segments: string[]): boolean {
 }
 
 export async function handleUnauthorized(
-  message = '无效的会话，或者会话已过期，请重新登录。',
+  message = '登录已过期，请重新登录',
 ): Promise<void> {
   if (Date.now() < ignoreUnauthorizedUntil) {
     return;
@@ -87,7 +87,7 @@ export async function handleUnauthorized(
     await removeToken();
     clearCurrentUser();
     toastThenNavigate(
-      message || '无效的会话，或者会话已过期，请重新登录。',
+      message || '登录已过期，请重新登录',
       () => {
         router.replace('/sign-in');
         redirecting = false;

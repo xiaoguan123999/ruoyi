@@ -18,7 +18,7 @@ export async function request<T>(
   options: { method?: string; body?: unknown; withToken?: boolean } = {},
 ): Promise<AjaxResult<T>> {
   if (!config.API_URL) {
-    throw new ApiError('尚未配置 API 地址', -1);
+    throw new ApiError('服务暂不可用，请稍后再试', -1);
   }
 
   const { method = 'GET', body, withToken = true } = options;
@@ -38,26 +38,23 @@ export async function request<T>(
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError('网络异常，请检查 API 地址或 CORS 配置', -1);
+    throw new ApiError('网络连接失败，请检查网络后重试', -1);
   }
 
   let json: AjaxResult<T>;
   try {
     json = (await response.json()) as AjaxResult<T>;
   } catch {
-    throw new ApiError(
-      response.ok ? '响应解析失败' : `请求失败 (${response.status})`,
-      response.status,
-    );
+    throw new ApiError(response.ok ? '服务异常，请稍后再试' : '服务繁忙，请稍后再试', response.status);
   }
 
   const code = Number(json.code);
   if (response.status === 401 || code === 401) {
-    void handleUnauthorized('无效的会话，或者会话已过期，请重新登录。');
-    throw new ApiError('无效的会话，或者会话已过期，请重新登录。', 401);
+    void handleUnauthorized('登录已过期，请重新登录');
+    throw new ApiError('登录已过期，请重新登录', 401);
   }
   if (code !== 200) {
-    throw new ApiError(json.msg || '请求失败', code);
+    throw new ApiError(json.msg || '操作失败，请稍后再试', code);
   }
   return json;
 }
