@@ -1,13 +1,31 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type ProxyOptions } from 'vite'
 import path from 'path'
 import createVitePlugins from './vite/plugins'
-
-const baseUrl = 'http://localhost:8080' // 后端接口
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd())
-  const { VITE_APP_ENV } = env
+  // 去掉 .env 中可能带的引号/空格
+  const normalize = (v?: string) => (v || '').trim().replace(/^['"]|['"]$/g, '')
+  const VITE_APP_ENV = normalize(env.VITE_APP_ENV)
+  const VITE_APP_BASE_API = normalize(env.VITE_APP_BASE_API)
+  const VITE_APP_BASE_URL = normalize(env.VITE_APP_BASE_URL)
+
+  // 仅开发环境：相对路径走 Vite 代理；测试/生产打包后直接请求后端完整地址
+  const proxy: Record<string, string | ProxyOptions> = {}
+  if (VITE_APP_BASE_URL && VITE_APP_BASE_API.startsWith('/')) {
+    proxy[VITE_APP_BASE_API] = {
+      target: VITE_APP_BASE_URL,
+      changeOrigin: true,
+      // /dev-api/captchaImage -> /captchaImage
+      rewrite: (p) => (p.startsWith(VITE_APP_BASE_API) ? p.slice(VITE_APP_BASE_API.length) || '/' : p)
+    }
+    proxy['^/v3/api-docs/(.*)'] = {
+      target: VITE_APP_BASE_URL,
+      changeOrigin: true,
+    }
+  }
+
   return {
     // 部署生产环境和开发环境下的URL。
     // 默认情况下，vite 会假设你的应用是被部署在一个域名的根路径上
@@ -45,19 +63,7 @@ export default defineConfig(({ mode, command }) => {
       port: 80,
       host: true,
       open: true,
-      proxy: {
-        // https://cn.vitejs.dev/config/#server-proxy
-        '/dev-api': {
-          target: baseUrl,
-          changeOrigin: true,
-          rewrite: (p) => p.replace(/^\/dev-api/, '')
-        },
-         // springdoc proxy
-         '^/v3/api-docs/(.*)': {
-          target: baseUrl,
-          changeOrigin: true,
-        }
-      }
+      proxy
     },
     css: {
       postcss: {

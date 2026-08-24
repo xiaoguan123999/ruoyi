@@ -9,6 +9,8 @@ declare module '*.vue' {
 interface ImportMetaEnv {
   readonly VITE_APP_TITLE: string
   readonly VITE_APP_BASE_API: string
+  /** 仅开发环境：Vite 代理目标后端地址 */
+  readonly VITE_APP_BASE_URL?: string
   readonly VITE_APP_ENV: string
 }
 
