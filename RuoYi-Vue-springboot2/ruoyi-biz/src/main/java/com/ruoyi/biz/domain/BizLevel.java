@@ -41,6 +41,30 @@ public class BizLevel extends BaseEntity
     @ApiModelProperty("状态")
     private String status;
 
+    @ApiModelProperty("最低团队业绩CNY，0不限制")
+    private java.math.BigDecimal minTeamPerfCny;
+
+    @ApiModelProperty("最低团队业绩USDT，0不限制")
+    private java.math.BigDecimal minTeamPerfUsdt;
+
+    @ApiModelProperty("是否启用该等级奖励：1是 0否")
+    private String rewardEnabled;
+
+    @ApiModelProperty("奖励周期：NONE/ONCE/MONTHLY/PERMANENT")
+    private String rewardCycle;
+
+    @ApiModelProperty("发放方式：AUTO自动 MANUAL客服")
+    private String rewardMode;
+
+    @ApiModelProperty("永久档重复领取：NONE/MONTHLY/UNLIMITED")
+    private String rewardRepeat;
+
+    @ApiModelProperty("奖励金额CNY")
+    private java.math.BigDecimal rewardCny;
+
+    @ApiModelProperty("奖励金额USDT")
+    private java.math.BigDecimal rewardUsdt;
+
     public Long getLevelId()
     {
         return levelId;
@@ -110,5 +134,22 @@ public class BizLevel extends BaseEntity
     {
         this.status = status;
     }
+
+    public java.math.BigDecimal getMinTeamPerfCny() { return minTeamPerfCny; }
+    public void setMinTeamPerfCny(java.math.BigDecimal minTeamPerfCny) { this.minTeamPerfCny = minTeamPerfCny; }
+    public java.math.BigDecimal getMinTeamPerfUsdt() { return minTeamPerfUsdt; }
+    public void setMinTeamPerfUsdt(java.math.BigDecimal minTeamPerfUsdt) { this.minTeamPerfUsdt = minTeamPerfUsdt; }
+    public String getRewardEnabled() { return rewardEnabled; }
+    public void setRewardEnabled(String rewardEnabled) { this.rewardEnabled = rewardEnabled; }
+    public String getRewardCycle() { return rewardCycle; }
+    public void setRewardCycle(String rewardCycle) { this.rewardCycle = rewardCycle; }
+    public String getRewardMode() { return rewardMode; }
+    public void setRewardMode(String rewardMode) { this.rewardMode = rewardMode; }
+    public String getRewardRepeat() { return rewardRepeat; }
+    public void setRewardRepeat(String rewardRepeat) { this.rewardRepeat = rewardRepeat; }
+    public java.math.BigDecimal getRewardCny() { return rewardCny; }
+    public void setRewardCny(java.math.BigDecimal rewardCny) { this.rewardCny = rewardCny; }
+    public java.math.BigDecimal getRewardUsdt() { return rewardUsdt; }
+    public void setRewardUsdt(java.math.BigDecimal rewardUsdt) { this.rewardUsdt = rewardUsdt; }
 
 }

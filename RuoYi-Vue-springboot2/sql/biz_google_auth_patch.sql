@@ -18,5 +18,5 @@ DROP PROCEDURE IF EXISTS patch_biz_google_auth;
 
 delete from sys_config where config_id between 36 and 38;
 insert into sys_config values(36, '谷歌验证开关', 'biz.google.enabled', 'true', 'N', 'admin', sysdate(), '', null, 'false表示关闭谷歌验证');
-insert into sys_config values(37, '提现必须谷歌验证', 'biz.google.requireWithdraw', 'true', 'N', 'admin', sysdate(), '', null, 'true表示未绑定不能提现');
+insert into sys_config values(37, '提现必须谷歌验证', 'biz.google.requireWithdraw', 'false', 'N', 'admin', sysdate(), '', null, 'App提现不校验谷歌验证');
 insert into sys_config values(38, '谷歌验证器名称', 'biz.google.issuer', 'App', 'N', 'admin', sysdate(), '', null, '显示在谷歌验证器中的名称');

@@ -13,6 +13,9 @@ public interface BizRechargeMapper
 
     BigDecimal sumPassedRecharge(@Param("memberId") Long memberId, @Param("currency") String currency);
 
+    BigDecimal sumTeamPassedRecharge(@Param("memberId") Long memberId, @Param("currency") String currency,
+            @Param("includeSelf") boolean includeSelf);
+
     int insertRecharge(BizRecharge recharge);
 
     int updateRecharge(BizRecharge recharge);

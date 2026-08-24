@@ -6,6 +6,7 @@
         <id     property="memberId"     column="member_id"/>
         <result property="phone"        column="phone"/>
         <result property="password"     column="password"/>
+        <result property="payPassword"  column="pay_password"/>
         <result property="inviteCode"   column="invite_code"/>
         <result property="parentId"     column="parent_id"/>
         <result property="ancestors"    column="ancestors"/>
@@ -30,7 +31,7 @@
     </resultMap>
 
     <sql id="selectMemberVo">
-        select m.member_id, m.phone, m.password, m.invite_code, m.parent_id, m.ancestors,
+        select m.member_id, m.phone, m.password, m.pay_password, m.invite_code, m.parent_id, m.ancestors,
                m.real_name, m.id_card, m.kyc_status, m.level_id, l.level_name, m.status, m.ga_secret, m.ga_status,
                m.create_by, m.create_time, m.update_by, m.update_time, m.remark,
                (select w.available from biz_wallet w where w.member_id = m.member_id and w.currency = 'CNY') as cny_available,
@@ -74,10 +75,10 @@
 
     <insert id="insertMember" parameterType="BizMember" useGeneratedKeys="true" keyProperty="memberId">
         insert into biz_member (
-            phone, password, invite_code, parent_id, ancestors, real_name, id_card,
+            phone, password, pay_password, invite_code, parent_id, ancestors, real_name, id_card,
             kyc_status, level_id, status, create_by, create_time, remark
         ) values (
-            #{phone}, #{password}, #{inviteCode}, #{parentId}, #{ancestors}, #{realName}, #{idCard},
+            #{phone}, #{password}, #{payPassword}, #{inviteCode}, #{parentId}, #{ancestors}, #{realName}, #{idCard},
             #{kycStatus}, #{levelId}, #{status}, #{createBy}, sysdate(), #{remark}
         )
     </insert>
@@ -87,6 +88,7 @@
         <set>
             <if test="phone != null and phone != ''">phone = #{phone},</if>
             <if test="password != null and password != ''">password = #{password},</if>
+            <if test="payPassword != null and payPassword != ''">pay_password = #{payPassword},</if>
             <if test="inviteCode != null and inviteCode != ''">invite_code = #{inviteCode},</if>
             <if test="parentId != null">parent_id = #{parentId},</if>
             <if test="ancestors != null">ancestors = #{ancestors},</if>
@@ -108,12 +110,30 @@
         where member_id = #{memberId}
     </update>
 
+    <update id="updatePayPassword">
+        update biz_member
+        set pay_password = #{payPassword}, update_time = sysdate()
+        where member_id = #{memberId}
+    </update>
+
     <select id="countValidTeamMembers" parameterType="Long" resultType="int">
         select count(1)
         from biz_member m
         where find_in_set(#{memberId}, m.ancestors)
           and m.kyc_status = '1'
           and exists (select 1 from biz_order o where o.member_id = m.member_id)
+    </select>
+
+    <select id="countValidTeamMembersConfig" resultType="int">
+        select count(1)
+        from biz_member m
+        where find_in_set(#{memberId}, m.ancestors)
+        <if test="needKyc">
+            and m.kyc_status = '1'
+        </if>
+        <if test="needOrder">
+            and exists (select 1 from biz_order o where o.member_id = m.member_id)
+        </if>
     </select>
 
     <select id="countDirectMembers" parameterType="Long" resultType="int">
@@ -123,25 +143,87 @@
     <select id="selectTeamMembers" resultMap="BizMemberResult">
         <include refid="selectMemberVo"/>
         <where>
-            <choose>
-                <when test="teamLevel != null and teamLevel == 1">
-                    and m.parent_id = #{memberId}
-                </when>
-                <when test="teamLevel != null and teamLevel == 2">
-                    and m.parent_id in (select member_id from biz_member where parent_id = #{memberId})
-                </when>
-                <when test="teamLevel != null and teamLevel == 3">
-                    and m.parent_id in (
-                        select member_id from biz_member
-                        where parent_id in (select member_id from biz_member where parent_id = #{memberId})
-                    )
-                </when>
-                <otherwise>
-                    and find_in_set(#{memberId}, m.ancestors)
-                </otherwise>
-            </choose>
+            find_in_set(#{memberId}, m.ancestors)
+            <if test="teamLevel != null">
+                and (length(ifnull(m.ancestors,'')) - length(replace(ifnull(m.ancestors,''), ',', ''))
+                    - ifnull(#{viewerDepth}, 0)) = #{teamLevel}
+            </if>
         </where>
         order by m.member_id desc
+    </select>
+
+    <resultMap type="com.ruoyi.biz.api.AppTeamMemberItem" id="AppTeamMemberResult">
+        <id     property="memberId"      column="member_id"/>
+        <result property="name"          column="real_name"/>
+        <result property="realName"      column="real_name"/>
+        <result property="phone"         column="phone"/>
+        <result property="kycStatus"     column="kyc_status"/>
+        <result property="usd"           column="recharge_usdt"/>
+        <result property="usdt"          column="recharge_usdt"/>
+        <result property="rechargeUsdt"  column="recharge_usdt"/>
+        <result property="cny"           column="recharge_cny"/>
+        <result property="rechargeCny"   column="recharge_cny"/>
+        <result property="subscribeUsdt" column="subscribe_usdt"/>
+        <result property="subscribeCny"  column="subscribe_cny"/>
+        <result property="teamLevel"     column="team_level"/>
+    </resultMap>
+
+    <sql id="teamDepthExpr">
+        (length(ifnull(m.ancestors,'')) - length(replace(ifnull(m.ancestors,''), ',', '')) - #{viewerDepth})
+    </sql>
+
+    <select id="selectAppTeamMembers" resultMap="AppTeamMemberResult">
+        select m.member_id, m.real_name, m.phone, m.kyc_status,
+               <include refid="teamDepthExpr"/> as team_level,
+               ifnull((select sum(r.amount) from biz_recharge r where r.member_id = m.member_id and r.currency = 'USDT' and r.status = '1'), 0) as recharge_usdt,
+               ifnull((select sum(r.amount) from biz_recharge r where r.member_id = m.member_id and r.currency = 'CNY' and r.status = '1'), 0) as recharge_cny,
+               ifnull((select sum(o.price) from biz_order o where o.member_id = m.member_id and o.currency = 'USDT'), 0) as subscribe_usdt,
+               ifnull((select sum(o.price) from biz_order o where o.member_id = m.member_id and o.currency = 'CNY'), 0) as subscribe_cny
+        from biz_member m
+        where find_in_set(#{memberId}, m.ancestors)
+          and <include refid="teamDepthExpr"/> between 1 and 7
+        <if test="teamLevel != null">
+            and <include refid="teamDepthExpr"/> = #{teamLevel}
+        </if>
+        order by m.member_id desc
+    </select>
+
+    <select id="selectAppTeamRegisterStats" resultType="com.ruoyi.biz.api.AppTeamLevelStats">
+        select depth as teamLevel,
+               count(1) as register,
+               ifnull(sum(case when kyc_status = '1' then 1 else 0 end), 0) as active
+        from (
+            select m.kyc_status, <include refid="teamDepthExpr"/> as depth
+            from biz_member m
+            where find_in_set(#{memberId}, m.ancestors)
+        ) t
+        where depth between 1 and 7
+        group by depth
+    </select>
+
+    <select id="selectAppTeamOrderStats" resultType="com.ruoyi.biz.api.AppTeamLevelStats">
+        select <include refid="teamDepthExpr"/> as teamLevel,
+               ifnull(sum(case when o.currency = 'USDT' then o.price else 0 end), 0) as subscribeUsd,
+               ifnull(sum(case when o.currency = 'USDT' then o.price else 0 end), 0) as subscribeUsdt,
+               ifnull(sum(case when o.currency = 'CNY' then o.price else 0 end), 0) as subscribeCny
+        from biz_order o
+        inner join biz_member m on m.member_id = o.member_id
+        where find_in_set(#{memberId}, m.ancestors)
+          and <include refid="teamDepthExpr"/> between 1 and 7
+        group by <include refid="teamDepthExpr"/>
+    </select>
+
+    <select id="selectAppTeamRechargeStats" resultType="com.ruoyi.biz.api.AppTeamLevelStats">
+        select <include refid="teamDepthExpr"/> as teamLevel,
+               ifnull(sum(case when r.currency = 'USDT' then r.amount else 0 end), 0) as rechargeUsd,
+               ifnull(sum(case when r.currency = 'USDT' then r.amount else 0 end), 0) as rechargeUsdt,
+               ifnull(sum(case when r.currency = 'CNY' then r.amount else 0 end), 0) as rechargeCny
+        from biz_recharge r
+        inner join biz_member m on m.member_id = r.member_id
+        where r.status = '1'
+          and find_in_set(#{memberId}, m.ancestors)
+          and <include refid="teamDepthExpr"/> between 1 and 7
+        group by <include refid="teamDepthExpr"/>
     </select>
 
     <select id="countByIdCard" resultType="int">

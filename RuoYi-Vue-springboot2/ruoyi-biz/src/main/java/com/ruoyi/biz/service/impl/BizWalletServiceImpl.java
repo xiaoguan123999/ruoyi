@@ -1,12 +1,15 @@
 package com.ruoyi.biz.service.impl;
 
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.biz.api.AppWalletCard;
+import com.ruoyi.biz.api.AppWalletLogItem;
 import com.ruoyi.biz.api.AppWalletRow;
 import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.BizMember;
@@ -17,6 +20,7 @@ import com.ruoyi.biz.mapper.BizWalletLogMapper;
 import com.ruoyi.biz.mapper.BizWalletMapper;
 import com.ruoyi.biz.service.IBizWalletService;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.StringUtils;
 
 @Service
 public class BizWalletServiceImpl implements IBizWalletService
@@ -101,6 +105,18 @@ public class BizWalletServiceImpl implements IBizWalletService
     public List<BizWalletLog> selectWalletLogList(BizWalletLog log)
     {
         return walletLogMapper.selectWalletLogList(log);
+    }
+
+    @Override
+    public List<AppWalletLogItem> selectAppWalletLogList(Long memberId, String currency, String bizType)
+    {
+        List<BizWalletLog> logs = walletLogMapper.selectAppWalletLogList(memberId, currency, bizType);
+        List<AppWalletLogItem> rows = new ArrayList<AppWalletLogItem>();
+        for (int i = 0; i < logs.size(); i++)
+        {
+            rows.add(toAppItem(logs.get(i)));
+        }
+        return rows;
     }
 
     @Override
@@ -203,5 +219,133 @@ public class BizWalletServiceImpl implements IBizWalletService
         log.setFrozenAfter(frozenAfter);
         log.setRemark(remark);
         walletLogMapper.insertWalletLog(log);
+    }
+
+    private AppWalletLogItem toAppItem(BizWalletLog log)
+    {
+        String bizType = log.getBizType() == null ? "" : log.getBizType();
+        String label = bizTypeLabel(bizType);
+        String title = displayTitle(bizType, log.getRemark(), label);
+        BigDecimal amount = log.getAmount() == null ? BigDecimal.ZERO : log.getAmount();
+        AppWalletLogItem item = new AppWalletLogItem();
+        item.setLogId(log.getLogId());
+        item.setId(log.getLogId());
+        item.setTitle(title);
+        item.setName(title);
+        item.setBizType(bizType);
+        item.setBizTypeLabel(label);
+        item.setTypeLabel(label);
+        item.setAmount(amount);
+        item.setCurrency(log.getCurrency());
+        item.setDirection(amount.compareTo(BigDecimal.ZERO) < 0 ? "OUT" : "IN");
+        item.setDate(formatDate(log.getCreateTime()));
+        item.setCreateTime(log.getCreateTime());
+        item.setRemark(log.getRemark() == null ? "" : log.getRemark());
+        return item;
+    }
+
+    private String displayTitle(String bizType, String remark, String label)
+    {
+        if (BizConstants.BIZ_SUBSCRIBE.equals(bizType))
+        {
+            return stripPrefix(remark, "认购产品:", label);
+        }
+        if (BizConstants.BIZ_RECHARGE.equals(bizType))
+        {
+            return "充值";
+        }
+        if (BizConstants.BIZ_COMMISSION.equals(bizType))
+        {
+            return "推广奖金";
+        }
+        if (BizConstants.BIZ_CHECKIN.equals(bizType))
+        {
+            return "签到";
+        }
+        if (BizConstants.BIZ_REBATE.equals(bizType))
+        {
+            return "系统";
+        }
+        if (BizConstants.BIZ_LEVEL_REWARD.equals(bizType))
+        {
+            return stripPrefix(remark, "等级奖励:", "等级奖励");
+        }
+        if (BizConstants.BIZ_WITHDRAW_FREEZE.equals(bizType) || BizConstants.BIZ_WITHDRAW_SUCCESS.equals(bizType))
+        {
+            return "提现";
+        }
+        if (BizConstants.BIZ_WITHDRAW_REJECT.equals(bizType))
+        {
+            return "提现退回";
+        }
+        if (!StringUtils.isEmpty(remark))
+        {
+            return remark;
+        }
+        return label;
+    }
+
+    private String stripPrefix(String remark, String prefix, String fallback)
+    {
+        if (StringUtils.isEmpty(remark))
+        {
+            return fallback;
+        }
+        if (remark.startsWith(prefix))
+        {
+            String name = remark.substring(prefix.length()).trim();
+            return name.length() == 0 ? fallback : name;
+        }
+        return remark;
+    }
+
+    private String bizTypeLabel(String bizType)
+    {
+        if (BizConstants.BIZ_SUBSCRIBE.equals(bizType))
+        {
+            return "认购";
+        }
+        if (BizConstants.BIZ_RECHARGE.equals(bizType))
+        {
+            return "充值";
+        }
+        if (BizConstants.BIZ_COMMISSION.equals(bizType))
+        {
+            return "推广奖金";
+        }
+        if (BizConstants.BIZ_CHECKIN.equals(bizType))
+        {
+            return "签到";
+        }
+        if (BizConstants.BIZ_REBATE.equals(bizType))
+        {
+            return "产品日返";
+        }
+        if (BizConstants.BIZ_LEVEL_REWARD.equals(bizType))
+        {
+            return "等级奖励";
+        }
+        if (BizConstants.BIZ_WITHDRAW_FREEZE.equals(bizType))
+        {
+            return "提现";
+        }
+        if (BizConstants.BIZ_WITHDRAW_SUCCESS.equals(bizType))
+        {
+            return "提现成功";
+        }
+        if (BizConstants.BIZ_WITHDRAW_REJECT.equals(bizType))
+        {
+            return "提现退回";
+        }
+        return StringUtils.isEmpty(bizType) ? "其他" : bizType;
+    }
+
+    private String formatDate(Date time)
+    {
+        if (time == null)
+        {
+            return "";
+        }
+        return new SimpleDateFormat("yyyy-MM-dd").format(time);
     }
 }

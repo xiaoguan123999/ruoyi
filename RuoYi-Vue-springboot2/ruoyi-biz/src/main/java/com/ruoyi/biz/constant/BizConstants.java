@@ -19,6 +19,10 @@ public class BizConstants
 
     public static final String GA_BOUND = "1";
 
+    public static final int PAY_PASSWORD_MIN_LENGTH = 4;
+
+    public static final int PAY_PASSWORD_MAX_LENGTH = 20;
+
     /** 正常 */
     public static final String STATUS_OK = "0";
 
@@ -60,6 +64,8 @@ public class BizConstants
 
     public static final String BIZ_COMMISSION = "COMMISSION";
 
+    public static final String BIZ_LEVEL_REWARD = "LEVEL_REWARD";
+
     public static final String CONFIG_CHECKIN_AMOUNT = "biz.checkin.amount";
 
     public static final String CONFIG_WITHDRAW_MIN = "biz.withdraw.minAmount";
@@ -88,6 +94,22 @@ public class BizConstants
     public static final String CONFIG_GOOGLE_ENABLED = "biz.google.enabled";
     public static final String CONFIG_GOOGLE_REQUIRE_WITHDRAW = "biz.google.requireWithdraw";
     public static final String CONFIG_GOOGLE_ISSUER = "biz.google.issuer";
+
+    public static final String CONFIG_LEVEL_REWARD_ENABLED = "biz.levelReward.enabled";
+    public static final String CONFIG_LEVEL_REWARD_MIXED_PAY = "biz.levelReward.mixedPayCurrency";
+    public static final String CONFIG_LEVEL_REWARD_PERF_SOURCE = "biz.levelReward.performanceSource";
+    public static final String CONFIG_LEVEL_REWARD_INCLUDE_SELF = "biz.levelReward.includeSelf";
+    public static final String CONFIG_LEVEL_REWARD_NEED_KYC = "biz.levelReward.validNeedKyc";
+    public static final String CONFIG_LEVEL_REWARD_NEED_ORDER = "biz.levelReward.validNeedOrder";
+    public static final String CONFIG_LEVEL_REWARD_TEXT = "biz.levelReward.ruleText";
+    public static final String CONFIG_LEVEL_REWARD_HINT = "biz.levelReward.hint";
+    public static final int TEAM_MAX_LEVEL = 7;
+
+    public static final String PAY_BANK = "BANK";
+
+    public static final String CONFIG_SERVICE_TITLE = "biz.service.title";
+    public static final String CONFIG_SERVICE_WORK_TIME = "biz.service.workTime";
+    public static final String CONFIG_SERVICE_HINT = "biz.service.hint";
 }
 
 

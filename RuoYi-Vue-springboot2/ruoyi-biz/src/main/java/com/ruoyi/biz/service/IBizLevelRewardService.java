@@ -1,0 +1,30 @@
+package com.ruoyi.biz.service;
+
+import java.util.List;
+import com.ruoyi.biz.domain.BizLevel;
+import com.ruoyi.biz.domain.BizLevelRewardGrant;
+import com.ruoyi.biz.domain.BizLevelRewardPayBody;
+import com.ruoyi.biz.domain.BizLevelRewardRule;
+
+public interface IBizLevelRewardService
+{
+    BizLevelRewardRule getRule();
+
+    void saveRule(BizLevelRewardRule rule);
+
+    int updateLevelReward(BizLevel level);
+
+    void evaluate(Long memberId);
+
+    BizLevel matchLevel(Long memberId);
+
+    int evaluateAll();
+
+    List<BizLevelRewardGrant> selectGrantList(BizLevelRewardGrant grant);
+
+    void payGrant(Long grantId, String operator, String remark);
+
+    void rejectGrant(Long grantId, String operator, String remark);
+
+    void extraPay(BizLevelRewardPayBody body, String operator);
+}

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizCarouselMapper">
+
+    <resultMap type="BizCarousel" id="BizCarouselResult">
+        <id     property="carouselId"    column="carousel_id"/>
+        <result property="title"         column="title"/>
+        <result property="videoUrl"      column="video_url"/>
+        <result property="coverUrl"      column="cover_url"/>
+        <result property="sort"          column="sort"/>
+        <result property="status"        column="status"/>
+        <result property="createBy"      column="create_by"/>
+        <result property="createTime"    column="create_time"/>
+        <result property="updateBy"      column="update_by"/>
+        <result property="updateTime"    column="update_time"/>
+        <result property="remark"        column="remark"/>
+    </resultMap>
+
+    <sql id="selectCarouselVo">
+        select carousel_id, title, video_url, cover_url, sort, status,
+               create_by, create_time, update_by, update_time, remark
+        from biz_carousel
+    </sql>
+
+    <select id="selectCarouselById" parameterType="Long" resultMap="BizCarouselResult">
+        <include refid="selectCarouselVo"/>
+        where carousel_id = #{carouselId}
+    </select>
+
+    <select id="selectCarouselList" parameterType="BizCarousel" resultMap="BizCarouselResult">
+        <include refid="selectCarouselVo"/>
+        <where>
+            <if test="title != null and title != ''">and title like concat('%', #{title}, '%')</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+        </where>
+        order by sort asc, carousel_id desc
+    </select>
+
+    <insert id="insertCarousel" parameterType="BizCarousel" useGeneratedKeys="true" keyProperty="carouselId">
+        insert into biz_carousel (
+            title, video_url, cover_url, sort, status, create_by, create_time, remark
+        ) values (
+            #{title}, #{videoUrl}, #{coverUrl}, #{sort}, #{status}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateCarousel" parameterType="BizCarousel">
+        update biz_carousel
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="videoUrl != null and videoUrl != ''">video_url = #{videoUrl},</if>
+            <if test="coverUrl != null">cover_url = #{coverUrl},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where carousel_id = #{carouselId}
+    </update>
+
+    <delete id="deleteCarouselByIds" parameterType="Long">
+        delete from biz_carousel where carousel_id in
+        <foreach collection="array" item="carouselId" open="(" separator="," close=")">
+            #{carouselId}
+        </foreach>
+    </delete>
+</mapper>

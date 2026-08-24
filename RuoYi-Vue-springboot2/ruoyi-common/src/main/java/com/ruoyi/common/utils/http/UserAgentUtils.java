@@ -39,7 +39,6 @@ public class UserAgentUtils
     private static final UserAgentAnalyzer userAgentAnalyzer = UserAgentAnalyzer
             .newBuilder().hideMatcherLoadStats()
             .withCache(5000)
-            .showMinimalVersion()
             .withField(UserAgent.AGENT_NAME_VERSION)
             .withField(UserAgent.OPERATING_SYSTEM_NAME_VERSION)
             .build();
@@ -55,7 +54,7 @@ public class UserAgentUtils
         {
             return formatBrowser(userAgent);
         }
-        return agentNameVersion;
+        return redisSafe(agentNameVersion);
     }
 
     /**
@@ -69,7 +68,7 @@ public class UserAgentUtils
         {
             return formatOperatingSystem(userAgent);
         }
-        return operatingSystemNameVersion;
+        return redisSafe(operatingSystemNameVersion);
     }
 
     /**
@@ -187,6 +186,18 @@ public class UserAgentUtils
             return "Chrome OS";
         }
         return UNKNOWN;
+    }
+
+    /**
+     * Fastjson2 cannot deserialize Redis LoginUser when os/browser contains &gt;=
+     */
+    private static String redisSafe(String value)
+    {
+        if (value == null)
+        {
+            return UNKNOWN;
+        }
+        return value.replace(">=", " ").replace("<=", " ").replace(">", " ").replace("<", " ").trim();
     }
 
     /**

@@ -125,6 +125,42 @@ export function delLevel(levelId: number | number[]): Promise<AjaxResult> {
   return request({ url: '/biz/level/' + levelId, method: 'delete' })
 }
 
+export function getLevelRewardRule(): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/levelReward/rule', method: 'get' })
+}
+
+export function saveLevelRewardRule(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/levelReward/rule', method: 'put', data })
+}
+
+export function listLevelRewardLevel(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/levelReward/level/list', method: 'get', params: query })
+}
+
+export function updateLevelRewardLevel(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/levelReward/level', method: 'put', data })
+}
+
+export function evaluateLevelReward(): Promise<AjaxResult> {
+  return request({ url: '/biz/levelReward/evaluate', method: 'post' })
+}
+
+export function listLevelRewardGrant(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/levelReward/grant/list', method: 'get', params: query })
+}
+
+export function payLevelRewardGrant(grantId: number, data?: any): Promise<AjaxResult> {
+  return request({ url: '/biz/levelReward/grant/pay/' + grantId, method: 'put', data })
+}
+
+export function rejectLevelRewardGrant(grantId: number, data?: any): Promise<AjaxResult> {
+  return request({ url: '/biz/levelReward/grant/reject/' + grantId, method: 'put', data })
+}
+
+export function extraPayLevelReward(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/levelReward/grant/extraPay', method: 'post', data })
+}
+
 export function listCommission(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/commission/list', method: 'get', params: query })
 }
@@ -219,4 +255,72 @@ export function updateNews(data: any): Promise<AjaxResult> {
 
 export function delNews(newsId: number | number[]): Promise<AjaxResult> {
   return request({ url: '/biz/news/' + newsId, method: 'delete' })
+}
+
+export function listCarousel(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/carousel/list', method: 'get', params: query })
+}
+
+export function getCarousel(carouselId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/carousel/' + carouselId, method: 'get' })
+}
+
+export function addCarousel(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/carousel', method: 'post', data })
+}
+
+export function updateCarousel(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/carousel', method: 'put', data })
+}
+
+export function delCarousel(carouselId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/carousel/' + carouselId, method: 'delete' })
+}
+
+export function listPayAccount(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/payAccount/list', method: 'get', params: query })
+}
+
+export function getPayAccount(accountId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/payAccount/' + accountId, method: 'get' })
+}
+
+export function addPayAccount(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/payAccount', method: 'post', data })
+}
+
+export function updatePayAccount(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/payAccount', method: 'put', data })
+}
+
+export function delPayAccount(accountId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/payAccount/' + accountId, method: 'delete' })
+}
+
+export function getCsConfig(): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/service/config', method: 'get' })
+}
+
+export function saveCsConfig(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/service/config', method: 'put', data })
+}
+
+export function listCsChannel(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/service/list', method: 'get', params: query })
+}
+
+export function getCsChannel(channelId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/service/' + channelId, method: 'get' })
+}
+
+export function addCsChannel(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/service', method: 'post', data })
+}
+
+export function updateCsChannel(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/service', method: 'put', data })
+}
+
+export function delCsChannel(channelId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/service/' + channelId, method: 'delete' })
 }

@@ -2,6 +2,7 @@ package com.ruoyi.biz.domain;
 
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
 @ApiModel("App注册请求")
 public class AppRegisterBody
@@ -11,6 +12,10 @@ public class AppRegisterBody
 
     @ApiModelProperty(value = "密码", required = true, example = "admin123")
     private String password;
+
+    @ApiModelProperty(value = "支付/交易密码，4-20位。注册页有该字段时应传入", example = "123456")
+    @JsonAlias({"tradePassword", "fundPassword", "payPwd"})
+    private String payPassword;
 
     @ApiModelProperty(value = "邀请码，7位数字", example = "5839201")
     private String inviteCode;
@@ -39,6 +44,16 @@ public class AppRegisterBody
     public void setPassword(String password)
     {
         this.password = password;
+    }
+
+    public String getPayPassword()
+    {
+        return payPassword;
+    }
+
+    public void setPayPassword(String payPassword)
+    {
+        this.payPassword = payPassword;
     }
 
     public String getInviteCode()

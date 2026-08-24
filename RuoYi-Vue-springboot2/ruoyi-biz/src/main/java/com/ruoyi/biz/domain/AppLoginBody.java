@@ -18,7 +18,7 @@ public class AppLoginBody
     @ApiModelProperty(value = "验证码uuid，来自 /app/auth/captcha", required = true)
     private String uuid;
 
-    @ApiModelProperty(value = "谷歌验证器6位数字，已绑定则登录必填")
+    @ApiModelProperty(value = "谷歌验证码，App 登录可省略")
     private String googleCode;
 
     public String getPhone()

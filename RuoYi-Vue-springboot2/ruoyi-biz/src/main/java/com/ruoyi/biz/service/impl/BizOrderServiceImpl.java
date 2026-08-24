@@ -63,8 +63,9 @@ public class BizOrderServiceImpl implements IBizOrderService
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public BizOrder subscribe(Long memberId, Long productId, String payCurrency)
+    public BizOrder subscribe(Long memberId, Long productId, String payCurrency, String payPassword)
     {
+        memberService.assertPayPassword(memberId, payPassword);
         BizMember member = memberService.selectMemberById(memberId);
         if (member == null)
         {

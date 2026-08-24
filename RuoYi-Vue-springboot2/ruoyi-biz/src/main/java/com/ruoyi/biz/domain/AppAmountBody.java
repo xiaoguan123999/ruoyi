@@ -3,6 +3,7 @@ package com.ruoyi.biz.domain;
 import java.math.BigDecimal;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
 @ApiModel("App金额类请求")
 public class AppAmountBody
@@ -16,14 +17,21 @@ public class AppAmountBody
     @ApiModelProperty(value = "金额", example = "105")
     private BigDecimal amount;
 
+    @ApiModelProperty(value = "已保存的收款账户ID，提现时可传")
+    private Long accountId;
+
     @ApiModelProperty(value = "提现账户信息")
     private String accountInfo;
 
     @ApiModelProperty(value = "备注")
     private String remark;
 
-    @ApiModelProperty(value = "谷歌验证码，提现时按规则必填", example = "123456")
+    @ApiModelProperty(value = "谷歌验证码，App 提现可省略", example = "123456")
     private String googleCode;
+
+    @ApiModelProperty(value = "支付/交易密码，认购必填", example = "123456")
+    @JsonAlias({"tradePassword", "fundPassword", "payPwd"})
+    private String payPassword;
 
     public Long getProductId()
     {
@@ -55,6 +63,16 @@ public class AppAmountBody
         this.amount = amount;
     }
 
+    public Long getAccountId()
+    {
+        return accountId;
+    }
+
+    public void setAccountId(Long accountId)
+    {
+        this.accountId = accountId;
+    }
+
     public String getAccountInfo()
     {
         return accountInfo;
@@ -83,5 +101,15 @@ public class AppAmountBody
     public void setGoogleCode(String googleCode)
     {
         this.googleCode = googleCode;
+    }
+
+    public String getPayPassword()
+    {
+        return payPassword;
+    }
+
+    public void setPayPassword(String payPassword)
+    {
+        this.payPassword = payPassword;
     }
 }

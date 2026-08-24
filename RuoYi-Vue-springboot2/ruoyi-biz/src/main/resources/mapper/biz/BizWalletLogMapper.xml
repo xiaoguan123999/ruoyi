@@ -33,6 +33,19 @@
         order by l.log_id desc
     </select>
 
+    <select id="selectAppWalletLogList" resultMap="BizWalletLogResult">
+        select l.log_id, l.member_id, m.phone, l.currency, l.biz_type, l.biz_id, l.amount,
+               l.available_before, l.available_after, l.frozen_before, l.frozen_after,
+               l.remark, l.create_time
+        from biz_wallet_log l
+        left join biz_member m on m.member_id = l.member_id
+        where l.member_id = #{memberId}
+          and l.available_before &lt;&gt; l.available_after
+        <if test="currency != null and currency != ''">and l.currency = #{currency}</if>
+        <if test="bizType != null and bizType != ''">and l.biz_type = #{bizType}</if>
+        order by l.log_id desc
+    </select>
+
     <insert id="insertWalletLog" parameterType="BizWalletLog" useGeneratedKeys="true" keyProperty="logId">
         insert into biz_wallet_log (
             member_id, currency, biz_type, biz_id, amount,

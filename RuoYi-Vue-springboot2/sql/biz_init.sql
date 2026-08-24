@@ -8,6 +8,7 @@ create table biz_member (
   member_id         bigint(20)      not null auto_increment    comment '会员ID/邀请码',
   phone             varchar(20)     not null                   comment '手机号',
   password          varchar(100)    not null                   comment '密码',
+  pay_password      varchar(100)    default ''                 comment '支付/交易密码',
   invite_code       varchar(32)     default ''                 comment '邀请码(7位随机数字)',
   parent_id         bigint(20)      default null               comment '上级会员ID',
   ancestors         varchar(500)    default '0'                comment '祖级列表',
@@ -252,7 +253,7 @@ insert into sys_config values(33, '签到第二档奖品', 'biz.checkin.prize2.n
 insert into sys_config values(34, '签到第二档中奖概率', 'biz.checkin.prize2.rate', '0.5', 'N', 'admin', sysdate(), '', null, '百分数，0.5表示0.5%，100表示必中');
 insert into sys_config values(35, '签到第二档开关', 'biz.checkin.prize2.enabled', 'true', 'N', 'admin', sysdate(), '', null, 'false表示关闭该档抽奖');
 insert into sys_config values(36, '谷歌验证开关', 'biz.google.enabled', 'true', 'N', 'admin', sysdate(), '', null, 'false表示关闭谷歌验证');
-insert into sys_config values(37, '提现必须谷歌验证', 'biz.google.requireWithdraw', 'true', 'N', 'admin', sysdate(), '', null, 'true表示未绑定不能提现');
+insert into sys_config values(37, '提现必须谷歌验证', 'biz.google.requireWithdraw', 'false', 'N', 'admin', sysdate(), '', null, 'App提现不校验谷歌验证');
 insert into sys_config values(38, '谷歌验证器名称', 'biz.google.issuer', 'App', 'N', 'admin', sysdate(), '', null, '显示在谷歌验证器中的名称');
 
 -- 每日返利任务（默认开启）
@@ -349,6 +350,23 @@ create table biz_news (
 insert into biz_news values(1, '俄罗斯近24小时遥感卫星观测任务与行业应用动态', '俄罗斯近24小时遥感卫星观测任务与行业应用动态', '', '<p>一、在轨遥感星座整体运行工况平稳</p><p>（一）高分辨率光学卫星完成农情、地质重点区域成像。</p><p>（二）雷达卫星持续开展全天候云雨覆盖区域观测。</p><p>二、行业应用动态</p><p>面向应急、农业、交通等场景的数据产品按计划分发，支撑多地业务系统稳定运行。</p>', '2026-08-18 00:00:00', 1, '0', 'admin', sysdate(), '', null, null);
 insert into biz_news values(2, '商业航天星座组网加速，行业应用场景持续拓展', '商业航天星座组网加速，行业应用场景持续拓展', '', '<p>商业航天正从单星验证走向规模组网。星帆智联持续推进星座部署与地面终端协同，为行业用户提供稳定连接能力。</p>', '2026-08-12 00:00:00', 2, '0', 'admin', sysdate(), '', null, null);
 
+
+drop table if exists biz_carousel;
+create table biz_carousel (
+  carousel_id       bigint(20)      not null auto_increment    comment '轮播ID',
+  title             varchar(100)    default ''                 comment '后台备注标题',
+  video_url         varchar(500)    not null                   comment '视频地址',
+  cover_url         varchar(500)    default ''                 comment '封面图，未播前展示',
+  sort              int(4)          default 0                  comment '排序，越小越靠前',
+  status            char(1)         default '0'                comment '状态（0显示 1隐藏）',
+  create_by         varchar(64)     default ''                 comment '创建者',
+  create_time       datetime                                   comment '创建时间',
+  update_by         varchar(64)     default ''                 comment '更新者',
+  update_time       datetime                                   comment '更新时间',
+  remark            varchar(500)    default null               comment '备注',
+  primary key (carousel_id)
+) engine=innodb comment = 'App首页视频轮播';
+
 -- ----------------------------
 -- 业务菜单
 -- ----------------------------
@@ -371,6 +389,7 @@ insert into sys_menu values('2013', '运行概览', '2000', '0', 'overview', 'bi
 insert into sys_menu values('2014', '关于我们', '2000', '0', 'about', 'biz/about/index', '', '', 1, 0, 'C', '0', '0', 'biz:about:list', 'guide', 'admin', sysdate(), '', null, 'App关于我们，后台手改');
 insert into sys_menu values('2015', '官方群聊', '2000', '0', 'groupChat', 'biz/groupChat/index', '', '', 1, 0, 'C', '0', '0', 'biz:group:list', 'message', 'admin', sysdate(), '', null, 'App官方群聊二维码，后台手改');
 insert into sys_menu values('2016', '新闻资讯', '2000', '0', 'news', 'biz/news/index', '', '', 1, 0, 'C', '0', '0', 'biz:news:list', 'documentation', 'admin', sysdate(), '', null, 'App新闻资讯，后台手改');
+insert into sys_menu values('2018', '视频轮播', '2000', '0', 'carousel', 'biz/carousel/index', '', '', 1, 0, 'C', '0', '0', 'biz:carousel:list', 'example', 'admin', sysdate(), '', null, 'App首页视频轮播');
 
 -- 按钮权限
 insert into sys_menu values('2101', '会员查询', '2001', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:member:query', '#', 'admin', sysdate(), '', null, '');
@@ -412,3 +431,7 @@ insert into sys_menu values('2231', '新闻查询', '2016', '1', '', '', '', '',
 insert into sys_menu values('2232', '新闻新增', '2016', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:news:add', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2233', '新闻修改', '2016', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:news:edit', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2234', '新闻删除', '2016', '4', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:news:remove', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2251', '轮播查询', '2018', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:carousel:query', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2252', '轮播新增', '2018', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:carousel:add', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2253', '轮播修改', '2018', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:carousel:edit', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2254', '轮播删除', '2018', '4', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:carousel:remove', '#', 'admin', sysdate(), '', null, '');

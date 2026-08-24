@@ -85,7 +85,7 @@ public class BizConfigServiceImpl implements IBizConfigService
     @Override
     public boolean isGoogleRequiredForWithdraw()
     {
-        return bool(BizConstants.CONFIG_GOOGLE_REQUIRE_WITHDRAW, true);
+        return false;
     }
 
     @Override

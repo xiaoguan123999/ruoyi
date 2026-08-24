@@ -27,6 +27,10 @@ public class BizMember extends BaseEntity
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
+    /** 支付/交易密码 */
+    @JsonIgnore
+    private String payPassword;
+
     /** 邀请码 */
     @ApiModelProperty("邀请码")
     private String inviteCode;
@@ -70,6 +74,9 @@ public class BizMember extends BaseEntity
     /** 谷歌验证 0未绑定 1已绑定 */
     @ApiModelProperty("谷歌验证 0未绑定 1已绑定")
     private String gaStatus;
+
+    @ApiModelProperty("是否已设置支付密码")
+    private Boolean hasPayPassword;
 
     /** 人民币可用 */
     @ApiModelProperty("人民币可用")
@@ -135,6 +142,30 @@ public class BizMember extends BaseEntity
     public void setPassword(String password)
     {
         this.password = password;
+    }
+
+    public String getPayPassword()
+    {
+        return payPassword;
+    }
+
+    public void setPayPassword(String payPassword)
+    {
+        this.payPassword = payPassword;
+    }
+
+    public Boolean getHasPayPassword()
+    {
+        if (hasPayPassword != null)
+        {
+            return hasPayPassword;
+        }
+        return payPassword != null && payPassword.length() > 0;
+    }
+
+    public void setHasPayPassword(Boolean hasPayPassword)
+    {
+        this.hasPayPassword = hasPayPassword;
     }
 
     public String getInviteCode()

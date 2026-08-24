@@ -43,6 +43,17 @@
         where member_id = #{memberId} and currency = #{currency} and status = '1'
     </select>
 
+    <select id="sumTeamPassedRecharge" resultType="java.math.BigDecimal">
+        select ifnull(sum(r.amount), 0)
+        from biz_recharge r
+        inner join biz_member m on m.member_id = r.member_id
+        where r.currency = #{currency} and r.status = '1'
+          and (
+            find_in_set(#{memberId}, m.ancestors)
+            <if test="includeSelf">or m.member_id = #{memberId}</if>
+          )
+    </select>
+
     <insert id="insertRecharge" parameterType="BizRecharge" useGeneratedKeys="true" keyProperty="rechargeId">
         insert into biz_recharge (member_id, currency, amount, status, create_time, remark)
         values (#{memberId}, #{currency}, #{amount}, #{status}, sysdate(), #{remark})

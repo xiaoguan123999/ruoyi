@@ -16,6 +16,9 @@ public interface BizOrderMapper
 
     int countWithdrawRequiredOrders(@Param("memberId") Long memberId, @Param("currency") String currency);
 
+    java.math.BigDecimal sumTeamOrderAmount(@Param("memberId") Long memberId, @Param("currency") String currency,
+            @Param("includeSelf") boolean includeSelf);
+
     int insertOrder(BizOrder order);
 
     int updateOrder(BizOrder order);

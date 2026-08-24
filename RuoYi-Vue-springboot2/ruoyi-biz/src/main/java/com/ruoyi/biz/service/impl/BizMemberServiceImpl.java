@@ -1,19 +1,25 @@
 package com.ruoyi.biz.service.impl;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.ruoyi.biz.api.AppTeamData;
+import com.ruoyi.biz.api.AppTeamLevelStats;
+import com.ruoyi.biz.api.AppTeamMemberItem;
+import com.ruoyi.biz.api.AppTeamSummary;
 import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.AppKycBody;
 import com.ruoyi.biz.domain.AppRegisterBody;
 import com.ruoyi.biz.domain.BizLevel;
 import com.ruoyi.biz.domain.BizMember;
-import com.ruoyi.biz.mapper.BizLevelMapper;
 import com.ruoyi.biz.mapper.BizMemberMapper;
-import com.ruoyi.biz.mapper.BizRechargeMapper;
+import com.ruoyi.biz.service.IBizLevelRewardService;
 import com.ruoyi.biz.service.IBizMemberService;
 import com.ruoyi.biz.service.IBizWalletService;
 import com.ruoyi.biz.util.KycUtils;
@@ -29,13 +35,10 @@ public class BizMemberServiceImpl implements IBizMemberService
     private BizMemberMapper memberMapper;
 
     @Autowired
-    private BizLevelMapper levelMapper;
-
-    @Autowired
-    private BizRechargeMapper rechargeMapper;
-
-    @Autowired
     private IBizWalletService walletService;
+
+    @Autowired
+    private IBizLevelRewardService levelRewardService;
 
     @Override
     public BizMember selectMemberById(Long memberId)
@@ -91,6 +94,15 @@ public class BizMemberServiceImpl implements IBizMemberService
         BizMember member = new BizMember();
         member.setPhone(body.getPhone());
         member.setPassword(SecurityUtils.encryptPassword(body.getPassword()));
+        if (StringUtils.isNotEmpty(body.getPayPassword()))
+        {
+            validatePayPasswordPlain(body.getPayPassword());
+            member.setPayPassword(SecurityUtils.encryptPassword(body.getPayPassword()));
+        }
+        else
+        {
+            member.setPayPassword("");
+        }
         member.setInviteCode(nextInviteCode());
         member.setKycStatus(BizConstants.KYC_NONE);
         member.setLevelId(1L);
@@ -221,9 +233,254 @@ public class BizMemberServiceImpl implements IBizMemberService
     }
 
     @Override
+    public void savePayPassword(Long memberId, String oldPayPassword, String newPayPassword, String confirmPassword)
+    {
+        validatePayPasswordPlain(newPayPassword);
+        if (StringUtils.isNotEmpty(confirmPassword) && !newPayPassword.equals(confirmPassword))
+        {
+            throw new ServiceException("两次密码不一致");
+        }
+        BizMember member = memberMapper.selectMemberById(memberId);
+        if (member == null)
+        {
+            throw new ServiceException("会员不存在");
+        }
+        boolean alreadySet = StringUtils.isNotEmpty(member.getPayPassword());
+        if (alreadySet)
+        {
+            if (StringUtils.isEmpty(oldPayPassword))
+            {
+                throw new ServiceException("请输入原支付密码");
+            }
+            if (!SecurityUtils.matchesPassword(oldPayPassword, member.getPayPassword()))
+            {
+                throw new ServiceException("原支付密码错误");
+            }
+            if (SecurityUtils.matchesPassword(newPayPassword, member.getPayPassword()))
+            {
+                throw new ServiceException("新支付密码不能与原密码相同");
+            }
+        }
+        memberMapper.updatePayPassword(memberId, SecurityUtils.encryptPassword(newPayPassword));
+    }
+
+    @Override
+    public void assertPayPassword(Long memberId, String payPassword)
+    {
+        BizMember member = memberMapper.selectMemberById(memberId);
+        if (member == null)
+        {
+            throw new ServiceException("会员不存在");
+        }
+        if (StringUtils.isEmpty(member.getPayPassword()))
+        {
+            throw new ServiceException("请先设置支付密码");
+        }
+        if (StringUtils.isEmpty(payPassword))
+        {
+            throw new ServiceException("请输入支付密码");
+        }
+        if (!SecurityUtils.matchesPassword(payPassword, member.getPayPassword()))
+        {
+            throw new ServiceException("支付密码错误");
+        }
+    }
+
+    private void validatePayPasswordPlain(String payPassword)
+    {
+        if (StringUtils.isEmpty(payPassword))
+        {
+            throw new ServiceException("请设置支付密码");
+        }
+        if (payPassword.length() < BizConstants.PAY_PASSWORD_MIN_LENGTH
+                || payPassword.length() > BizConstants.PAY_PASSWORD_MAX_LENGTH)
+        {
+            throw new ServiceException("支付密码长度必须为" + BizConstants.PAY_PASSWORD_MIN_LENGTH + "-"
+                    + BizConstants.PAY_PASSWORD_MAX_LENGTH + "位");
+        }
+    }
+
+    @Override
     public List<BizMember> selectTeamMembers(Long memberId, Integer teamLevel)
     {
-        return memberMapper.selectTeamMembers(memberId, teamLevel);
+        return memberMapper.selectTeamMembers(memberId, teamLevel, Integer.valueOf(viewerDepth(memberId)));
+    }
+
+    @Override
+    public AppTeamData getAppTeam(Long memberId)
+    {
+        int depth = viewerDepth(memberId);
+        Map<Integer, List<AppTeamMemberItem>> byLevel = new HashMap<Integer, List<AppTeamMemberItem>>();
+        for (int i = 1; i <= BizConstants.TEAM_MAX_LEVEL; i++)
+        {
+            byLevel.put(Integer.valueOf(i), new ArrayList<AppTeamMemberItem>());
+        }
+        List<AppTeamMemberItem> all = memberMapper.selectAppTeamMembers(memberId, null, depth);
+        for (int i = 0; i < all.size(); i++)
+        {
+            AppTeamMemberItem item = all.get(i);
+            Integer lv = item.getTeamLevel();
+            if (lv != null && byLevel.containsKey(lv))
+            {
+                if (StringUtils.isEmpty(item.getName()))
+                {
+                    item.setName(item.getRealName());
+                }
+                if (StringUtils.isEmpty(item.getName()))
+                {
+                    item.setName(item.getPhone());
+                }
+                byLevel.get(lv).add(item);
+            }
+        }
+        Map<Integer, AppTeamLevelStats> stats = emptyStats();
+        mergeRegister(stats, memberMapper.selectAppTeamRegisterStats(memberId, depth));
+        mergeOrder(stats, memberMapper.selectAppTeamOrderStats(memberId, depth));
+        mergeRecharge(stats, memberMapper.selectAppTeamRechargeStats(memberId, depth));
+
+        AppTeamSummary summary = new AppTeamSummary();
+        summary.setLevel1(stats.get(Integer.valueOf(1)));
+        summary.setLevel2(stats.get(Integer.valueOf(2)));
+        summary.setLevel3(stats.get(Integer.valueOf(3)));
+        summary.setLevel4(stats.get(Integer.valueOf(4)));
+        summary.setLevel5(stats.get(Integer.valueOf(5)));
+        summary.setLevel6(stats.get(Integer.valueOf(6)));
+        summary.setLevel7(stats.get(Integer.valueOf(7)));
+
+        Map<String, List<AppTeamMemberItem>> members = new HashMap<String, List<AppTeamMemberItem>>();
+        for (int i = 1; i <= BizConstants.TEAM_MAX_LEVEL; i++)
+        {
+            members.put(String.valueOf(i), byLevel.get(Integer.valueOf(i)));
+        }
+        AppTeamData data = new AppTeamData();
+        data.setSummary(summary);
+        data.setMembers(members);
+        data.setLevel1(byLevel.get(Integer.valueOf(1)));
+        data.setLevel2(byLevel.get(Integer.valueOf(2)));
+        data.setLevel3(byLevel.get(Integer.valueOf(3)));
+        data.setLevel4(byLevel.get(Integer.valueOf(4)));
+        data.setLevel5(byLevel.get(Integer.valueOf(5)));
+        data.setLevel6(byLevel.get(Integer.valueOf(6)));
+        data.setLevel7(byLevel.get(Integer.valueOf(7)));
+        data.setLevel1Members(byLevel.get(Integer.valueOf(1)));
+        data.setMembers1(byLevel.get(Integer.valueOf(1)));
+        return data;
+    }
+
+    private int viewerDepth(Long memberId)
+    {
+        BizMember member = memberMapper.selectMemberById(memberId);
+        if (member == null)
+        {
+            return 0;
+        }
+        return commaCount(member.getAncestors());
+    }
+
+    private int commaCount(String ancestors)
+    {
+        if (StringUtils.isEmpty(ancestors) || "0".equals(ancestors))
+        {
+            return 0;
+        }
+        int n = 0;
+        for (int i = 0; i < ancestors.length(); i++)
+        {
+            if (ancestors.charAt(i) == ',')
+            {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private Map<Integer, AppTeamLevelStats> emptyStats()
+    {
+        Map<Integer, AppTeamLevelStats> map = new HashMap<Integer, AppTeamLevelStats>();
+        for (int i = 1; i <= BizConstants.TEAM_MAX_LEVEL; i++)
+        {
+            AppTeamLevelStats s = new AppTeamLevelStats();
+            s.setTeamLevel(Integer.valueOf(i));
+            s.setRegister(Integer.valueOf(0));
+            s.setActive(Integer.valueOf(0));
+            s.setSubscribeUsd(BigDecimal.ZERO);
+            s.setSubscribeUsdt(BigDecimal.ZERO);
+            s.setSubscribeCny(BigDecimal.ZERO);
+            s.setRechargeUsd(BigDecimal.ZERO);
+            s.setRechargeUsdt(BigDecimal.ZERO);
+            s.setRechargeCny(BigDecimal.ZERO);
+            map.put(Integer.valueOf(i), s);
+        }
+        return map;
+    }
+
+    private void mergeRegister(Map<Integer, AppTeamLevelStats> target, List<AppTeamLevelStats> rows)
+    {
+        if (rows == null)
+        {
+            return;
+        }
+        for (int i = 0; i < rows.size(); i++)
+        {
+            AppTeamLevelStats row = rows.get(i);
+            AppTeamLevelStats dest = target.get(row.getTeamLevel());
+            if (dest == null)
+            {
+                continue;
+            }
+            dest.setRegister(nvl(row.getRegister()));
+            dest.setActive(nvl(row.getActive()));
+        }
+    }
+
+    private void mergeOrder(Map<Integer, AppTeamLevelStats> target, List<AppTeamLevelStats> rows)
+    {
+        if (rows == null)
+        {
+            return;
+        }
+        for (int i = 0; i < rows.size(); i++)
+        {
+            AppTeamLevelStats row = rows.get(i);
+            AppTeamLevelStats dest = target.get(row.getTeamLevel());
+            if (dest == null)
+            {
+                continue;
+            }
+            dest.setSubscribeUsd(nvl(row.getSubscribeUsd()));
+            dest.setSubscribeUsdt(nvl(row.getSubscribeUsdt()));
+            dest.setSubscribeCny(nvl(row.getSubscribeCny()));
+        }
+    }
+
+    private void mergeRecharge(Map<Integer, AppTeamLevelStats> target, List<AppTeamLevelStats> rows)
+    {
+        if (rows == null)
+        {
+            return;
+        }
+        for (int i = 0; i < rows.size(); i++)
+        {
+            AppTeamLevelStats row = rows.get(i);
+            AppTeamLevelStats dest = target.get(row.getTeamLevel());
+            if (dest == null)
+            {
+                continue;
+            }
+            dest.setRechargeUsd(nvl(row.getRechargeUsd()));
+            dest.setRechargeUsdt(nvl(row.getRechargeUsdt()));
+            dest.setRechargeCny(nvl(row.getRechargeCny()));
+        }
+    }
+
+    private int nvl(Integer v)
+    {
+        return v == null ? 0 : v.intValue();
+    }
+
+    private BigDecimal nvl(BigDecimal v)
+    {
+        return v == null ? BigDecimal.ZERO : v;
     }
 
     @Override
@@ -238,28 +495,7 @@ public class BizMemberServiceImpl implements IBizMemberService
         {
             return;
         }
-        int validMembers = memberMapper.countValidTeamMembers(memberId);
-        BigDecimal rechargeCny = rechargeMapper.sumPassedRecharge(memberId, BizConstants.CURRENCY_CNY);
-        if (rechargeCny == null)
-        {
-            rechargeCny = BigDecimal.ZERO;
-        }
-        BizLevel query = new BizLevel();
-        query.setStatus(BizConstants.STATUS_OK);
-        List<BizLevel> levels = levelMapper.selectLevelList(query);
-        BizLevel matched = null;
-        for (BizLevel level : levels)
-        {
-            int minMembers = level.getMinValidMembers() == null ? 0 : level.getMinValidMembers();
-            BigDecimal minRecharge = level.getMinRechargeCny() == null ? BigDecimal.ZERO : level.getMinRechargeCny();
-            if (validMembers >= minMembers && rechargeCny.compareTo(minRecharge) >= 0)
-            {
-                if (matched == null || (level.getSort() != null && matched.getSort() != null && level.getSort() > matched.getSort()))
-                {
-                    matched = level;
-                }
-            }
-        }
+        BizLevel matched = levelRewardService.matchLevel(memberId);
         if (matched != null && (member.getLevelId() == null || !matched.getLevelId().equals(member.getLevelId())))
         {
             BizMember update = new BizMember();
@@ -267,6 +503,20 @@ public class BizMemberServiceImpl implements IBizMemberService
             update.setLevelId(matched.getLevelId());
             memberMapper.updateMember(update);
         }
+        levelRewardService.evaluate(memberId);
+    }
+
+    @Override
+    public int refreshAllLevels()
+    {
+        List<BizMember> members = memberMapper.selectMemberList(new BizMember());
+        int count = 0;
+        for (int i = 0; i < members.size(); i++)
+        {
+            refreshLevel(members.get(i).getMemberId());
+            count++;
+        }
+        return count;
     }
 
     private String nextInviteCode()

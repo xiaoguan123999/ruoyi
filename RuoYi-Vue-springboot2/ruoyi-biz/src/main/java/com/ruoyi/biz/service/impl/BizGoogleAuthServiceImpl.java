@@ -35,7 +35,7 @@ public class BizGoogleAuthServiceImpl implements IBizGoogleAuthService
         GoogleBindInfo info = new GoogleBindInfo();
         info.setBound(isBound(member));
         info.setEnabled(configService.isGoogleEnabled());
-        info.setRequireWithdraw(configService.isGoogleRequiredForWithdraw());
+        info.setRequireWithdraw(Boolean.FALSE);
         info.setIssuer(configService.getGoogleIssuer());
         return info;
     }
@@ -105,30 +105,11 @@ public class BizGoogleAuthServiceImpl implements IBizGoogleAuthService
     @Override
     public void assertForLogin(BizMember member, String googleCode)
     {
-        if (!configService.isGoogleEnabled() || !isBound(member))
-        {
-            return;
-        }
-        verifyBound(member, googleCode);
     }
 
     @Override
     public void assertForWithdraw(Long memberId, String googleCode)
     {
-        if (!configService.isGoogleEnabled())
-        {
-            return;
-        }
-        BizMember member = requireMember(memberId);
-        if (!isBound(member))
-        {
-            if (configService.isGoogleRequiredForWithdraw())
-            {
-                throw new ServiceException("请先绑定谷歌验证器");
-            }
-            return;
-        }
-        verifyBound(member, googleCode);
     }
 
     private void verifyBound(BizMember member, String googleCode)

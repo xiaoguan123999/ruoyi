@@ -9,7 +9,7 @@ public interface IBizOrderService
 
     List<BizOrder> selectOrderList(BizOrder order);
 
-    BizOrder subscribe(Long memberId, Long productId, String currency);
+    BizOrder subscribe(Long memberId, Long productId, String currency, String payPassword);
 
     int processDailyRebate();
 }

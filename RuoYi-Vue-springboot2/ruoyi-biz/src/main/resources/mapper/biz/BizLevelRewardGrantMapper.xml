@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizLevelRewardGrantMapper">
+
+    <resultMap type="BizLevelRewardGrant" id="GrantResult">
+        <id     property="grantId"     column="grant_id"/>
+        <result property="memberId"    column="member_id"/>
+        <result property="phone"       column="phone"/>
+        <result property="levelId"     column="level_id"/>
+        <result property="levelName"   column="level_name"/>
+        <result property="cycleKey"    column="cycle_key"/>
+        <result property="grantCycle"  column="grant_cycle"/>
+        <result property="grantMode"   column="grant_mode"/>
+        <result property="currency"    column="currency"/>
+        <result property="amount"      column="amount"/>
+        <result property="status"      column="status"/>
+        <result property="payBy"       column="pay_by"/>
+        <result property="payTime"     column="pay_time"/>
+        <result property="createTime"  column="create_time"/>
+        <result property="remark"      column="remark"/>
+    </resultMap>
+
+    <sql id="selectGrantVo">
+        select g.grant_id, g.member_id, m.phone, g.level_id, g.level_name, g.cycle_key,
+               g.grant_cycle, g.grant_mode, g.currency, g.amount, g.status,
+               g.pay_by, g.pay_time, g.create_time, g.remark
+        from biz_level_reward_grant g
+        left join biz_member m on m.member_id = g.member_id
+    </sql>
+
+    <select id="selectGrantById" parameterType="Long" resultMap="GrantResult">
+        <include refid="selectGrantVo"/>
+        where g.grant_id = #{grantId}
+    </select>
+
+    <select id="selectByCycle" resultMap="GrantResult">
+        <include refid="selectGrantVo"/>
+        where g.member_id = #{memberId} and g.level_id = #{levelId} and g.cycle_key = #{cycleKey}
+        limit 1
+    </select>
+
+    <select id="selectGrantList" parameterType="BizLevelRewardGrant" resultMap="GrantResult">
+        <include refid="selectGrantVo"/>
+        <where>
+            <if test="memberId != null">and g.member_id = #{memberId}</if>
+            <if test="levelId != null">and g.level_id = #{levelId}</if>
+            <if test="status != null and status != ''">and g.status = #{status}</if>
+            <if test="grantCycle != null and grantCycle != ''">and g.grant_cycle = #{grantCycle}</if>
+            <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
+        </where>
+        order by g.grant_id desc
+    </select>
+
+    <insert id="insertGrant" parameterType="BizLevelRewardGrant" useGeneratedKeys="true" keyProperty="grantId">
+        insert into biz_level_reward_grant (
+            member_id, level_id, level_name, cycle_key, grant_cycle, grant_mode,
+            currency, amount, status, pay_by, pay_time, create_time, remark
+        ) values (
+            #{memberId}, #{levelId}, #{levelName}, #{cycleKey}, #{grantCycle}, #{grantMode},
+            #{currency}, #{amount}, #{status}, #{payBy}, #{payTime}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateGrant" parameterType="BizLevelRewardGrant">
+        update biz_level_reward_grant
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="payBy != null">pay_by = #{payBy},</if>
+            <if test="payTime != null">pay_time = #{payTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </set>
+        where grant_id = #{grantId}
+    </update>
+</mapper>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizPayAccountMapper">
+
+    <resultMap type="BizPayAccount" id="PayAccountResult">
+        <id     property="accountId"   column="account_id"/>
+        <result property="memberId"    column="member_id"/>
+        <result property="phone"       column="phone"/>
+        <result property="accountType" column="account_type"/>
+        <result property="accountName" column="account_name"/>
+        <result property="accountNo"   column="account_no"/>
+        <result property="bankName"    column="bank_name"/>
+        <result property="network"     column="network"/>
+        <result property="isDefault"   column="is_default"/>
+        <result property="status"      column="status"/>
+        <result property="createTime"  column="create_time"/>
+        <result property="updateTime"  column="update_time"/>
+        <result property="remark"      column="remark"/>
+    </resultMap>
+
+    <sql id="selectVo">
+        select a.account_id, a.member_id, m.phone, a.account_type, a.account_name, a.account_no,
+               a.bank_name, a.network, a.is_default, a.status, a.create_time, a.update_time, a.remark
+        from biz_pay_account a
+        left join biz_member m on m.member_id = a.member_id
+    </sql>
+
+    <select id="selectPayAccountById" parameterType="Long" resultMap="PayAccountResult">
+        <include refid="selectVo"/>
+        where a.account_id = #{accountId}
+    </select>
+
+    <select id="selectPayAccountList" parameterType="BizPayAccount" resultMap="PayAccountResult">
+        <include refid="selectVo"/>
+        <where>
+            <if test="memberId != null">and a.member_id = #{memberId}</if>
+            <if test="accountType != null and accountType != ''">and a.account_type = #{accountType}</if>
+            <if test="status != null and status != ''">and a.status = #{status}</if>
+            <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
+        </where>
+        order by a.is_default desc, a.account_id desc
+    </select>
+
+    <select id="countByMemberType" resultType="int">
+        select count(1) from biz_pay_account
+        where member_id = #{memberId} and account_type = #{accountType} and status = '0'
+    </select>
+
+    <insert id="insertPayAccount" parameterType="BizPayAccount" useGeneratedKeys="true" keyProperty="accountId">
+        insert into biz_pay_account (
+            member_id, account_type, account_name, account_no, bank_name, network,
+            is_default, status, create_time, remark
+        ) values (
+            #{memberId}, #{accountType}, #{accountName}, #{accountNo}, #{bankName}, #{network},
+            #{isDefault}, #{status}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updatePayAccount" parameterType="BizPayAccount">
+        update biz_pay_account
+        <set>
+            <if test="accountType != null">account_type = #{accountType},</if>
+            <if test="accountName != null">account_name = #{accountName},</if>
+            <if test="accountNo != null">account_no = #{accountNo},</if>
+            <if test="bankName != null">bank_name = #{bankName},</if>
+            <if test="network != null">network = #{network},</if>
+            <if test="isDefault != null">is_default = #{isDefault},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where account_id = #{accountId}
+    </update>
+
+    <update id="clearDefault">
+        update biz_pay_account set is_default = '0'
+        where member_id = #{memberId} and account_type = #{accountType}
+    </update>
+
+    <delete id="deletePayAccountByIds" parameterType="Long">
+        delete from biz_pay_account where account_id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+</mapper>

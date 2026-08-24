@@ -23,7 +23,7 @@ public class AppGoogleController extends BaseController
     @Autowired
     private IBizGoogleAuthService googleAuthService;
 
-    @ApiOperation(value = "谷歌验证状态", notes = "data.bound 是否已绑定；requireWithdraw 为 true 时未绑定不能提现。")
+    @ApiOperation(value = "谷歌验证状态", notes = "data.bound 是否已绑定。App 登录和提现不要求谷歌验证，requireWithdraw 固定为 false。")
     @GetMapping("/status")
     public AppGoogleResult status()
     {

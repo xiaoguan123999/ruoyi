@@ -23,7 +23,7 @@ Swagger：`http://localhost:8080/swagger-ui/index.html`，分组 `App-*`。每�
 
 ## 一、App 接口（给前端对接）
 
-注册、登录不需要 token。其余 `/app/**` 必须带：
+注册、登录不需要 token。公告、运行概览、关于我们、官方群聊、新闻、视频轮播、**客服中心** 的 GET 也不需要 token。其余 `/app/**` 必须带：
 
 ```
 Authorization: Bearer <token>
@@ -44,7 +44,8 @@ token 来自注册或登录返回。
 | 字段 | 必填 | 说明 |
 |---|---|---|
 | phone | 是 | 手机号，唯一 |
-| password | 是 | 密码 |
+| password | 是 | 登录密码 |
+| payPassword | 建议填 | 支付/交易密码，4-20 位。注册页「交易密码」应传到这里 |
 | inviteCode | 否 | 上级邀请码，7 位数字，注册时系统生成且不重复 |
 | code | 是 | 验证码答案 |
 | uuid | 是 | `/app/auth/captcha` 返回的 uuid |
@@ -95,9 +96,9 @@ token 来自注册或登录返回。
 | password | 是 | 密码 |
 | code | 是 | 验证码答案 |
 | uuid | 是 | `/app/auth/captcha` 返回的 uuid |
-| googleCode | 已绑定则必填 | 谷歌验证器 6 位数字 |
+| googleCode | 否 | 忽略，App 登录不校验谷歌验证 |
 
-返回字段同注册，另有 `gaBound`（是否已绑定谷歌验证）。已绑定但未传或传错 `googleCode` 会失败。
+返回字段同注册，另有 `gaBound`。App 会员登录、提现都不需要谷歌验证。
 
 ### 3.1 谷歌验证器
 
@@ -106,7 +107,7 @@ token 来自注册或登录返回。
 `GET /app/google/status`
 
 ```json
-{ "bound": false, "enabled": true, "requireWithdraw": true, "issuer": "App" }
+{ "bound": false, "enabled": true, "requireWithdraw": false, "issuer": "App" }
 ```
 
 `GET /app/google/bind` 开始绑定，返回 `secret`、`otpauthUrl`（10 分钟内有效，需再确认）。
@@ -154,7 +155,8 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
     "usdtFrozen": 0,
     "usdtProductIncome": 0,
     "usdtAssistValue": 0,
-    "teamCount": 0
+    "teamCount": 0,
+    "hasPayPassword": false
   }
 }
 ```
@@ -195,6 +197,26 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 ### 6.1 修改密码
 
 `POST /app/password`（`PUT` 也可以）
+
+### 5.1 支付 / 交易密码
+
+认购必须带支付密码。未设置时 `POST /app/orders` 返回「请先设置支付密码」。
+
+`POST /app/payPassword`（别名 `POST /app/tradePassword`，`PUT` 也可以）
+
+未设置过：
+
+```json
+{ "payPassword": "123456" }
+```
+
+已设置过，改密：
+
+```json
+{ "oldPassword": "123456", "newPassword": "654321", "confirmPassword": "654321" }
+```
+
+`payPassword` / `newPassword` / `tradePassword` 都认。资料里 `hasPayPassword` 表示是否已设置，哈希不会返回。
 
 需登录。App「密码设置」页：原密码、新密码、确认新密码。
 
@@ -239,37 +261,114 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 
 ### 8. 团队
 
-`GET /app/team`
+`GET /app/team`（需登录）
+
+返回 1～7 级下线名单和汇总。激活人数 = 已实名。成员金额是该人**已通过的充值**；认购金额是订单金额。
 
 ```json
 {
   "data": {
-    "level1": [ { "memberId": 10002, "phone": "13800000002", "realName": "李四" } ],
+    "summary": {
+      "level1": {
+        "register": 2,
+        "active": 1,
+        "subscribeUsd": 100,
+        "subscribeUsdt": 100,
+        "subscribeCny": 700,
+        "rechargeUsd": 50,
+        "rechargeUsdt": 50,
+        "rechargeCny": 200
+      },
+      "level2": {},
+      "level3": {},
+      "level4": {},
+      "level5": {},
+      "level6": {},
+      "level7": {}
+    },
+    "members": {
+      "1": [
+        {
+          "memberId": 10002,
+          "name": "李四",
+          "realName": "李四",
+          "phone": "13800000002",
+          "kycStatus": "1",
+          "usd": 50,
+          "usdt": 50,
+          "rechargeUsdt": 50,
+          "cny": 200,
+          "rechargeCny": 200,
+          "subscribeUsdt": 100,
+          "subscribeCny": 700,
+          "teamLevel": 1
+        }
+      ],
+      "2": []
+    },
+    "level1": [],
     "level2": [],
-    "level3": []
+    "level3": [],
+    "level4": [],
+    "level5": [],
+    "level6": [],
+    "level7": []
   }
 }
 ```
 
-一级 / 二级 / 三级下线列表。
+`members["1"]`～`members["7"]`、`level1`～`level7` 内容相同，方便 App 兼容。`usd`/`usdt`/`rechargeUsdt` 同义，`cny`/`rechargeCny` 同义。
 
-### 9. 会员等级
+### 9. 会员等级 / 成长激励金
 
 `GET /app/levels`
+
+返回**全部**等级配置（含停用），方便 App 画七档表。升级匹配仍只用 `status=0` 的档。
+
+文案在后台 **业务管理 → 等级奖励** 改：
+
+- `ruleText`：右上角「规则说明」点开后的正文
+- `hint` / `note`：表格上方灰色「注」（两个字段内容相同）
 
 ```json
 {
   "data": {
     "current": { "memberId": 10001, "levelName": "V0" },
+    "ruleText": "启航、探索、开拓、星耀：达成条件后自动获得1次等级奖励。...",
+    "hint": "注：成员个人累计认购金额达到 ¥10,000 或 1,429 USDT 后，方可计入团队等级考核。请遵循平台规则，严禁作弊行为，一经发现将取消奖励资格。",
+    "note": "注：成员个人累计认购金额达到 ¥10,000 或 1,429 USDT 后，方可计入团队等级考核。请遵循平台规则，严禁作弊行为，一经发现将取消奖励资格。",
     "levels": [
-      { "levelId": 1, "levelName": "V0", "minValidMembers": 0, "minRechargeCny": 0 },
-      { "levelId": 2, "levelName": "V1", "minValidMembers": 3, "minRechargeCny": 1000 }
+      {
+        "levelId": 1,
+        "levelName": "启航",
+        "minValidMembers": 1,
+        "minRechargeCny": 0,
+        "minRechargeUsdt": 0,
+        "minTeamPerfCny": 0,
+        "minTeamPerfUsdt": 0,
+        "rewardEnabled": "1",
+        "rewardCycle": "ONCE",
+        "rewardMode": "AUTO",
+        "rewardCny": 100,
+        "rewardUsdt": 10
+      }
     ]
   }
 }
 ```
 
-有效会员定义（可改）：已实名 + 至少一笔认购。等级按「团队有效人数 + 本人累计 CNY 充值」匹配。
+等级匹配（全部启用中的等级取 sort 最高的一档）：有效成员人数、本人累计充值 CNY/USDT、团队业绩 CNY/USDT。某项阈值填 0 表示不限制。
+
+有效成员、团队业绩口径、是否含本人，都在后台「等级奖励」里配。
+
+成长激励金发放：
+
+- `ONCE` + `AUTO`：达标自动入账 1 次（启航/探索/开拓/星耀）
+- `MONTHLY` + `MANUAL`：当月达标后生成待发放，客服在「等级奖励发放」确认（领航/星域）
+- `PERMANENT` + `MANUAL` + `UNLIMITED`：达标后永久资格，先出一笔待发放；之后客服可「额外发放」（星链）
+- 团队业绩同时有人民币和 USDT 时，按全局「混合业绩发放币种」发放（默认 USDT）
+
+预置的启航～星链默认是**停用**，配好人数/业绩/金额后再改成正常，避免未配金额就升级。
 
 ### 10. 签到
 
@@ -390,12 +489,15 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 `POST /app/orders`
 
 ```json
-{ "productId": 1, "currency": "CNY" }
+{ "productId": 1, "currency": "CNY", "payPassword": "123456" }
 ```
+
+不传或传错 `payPassword` 不会扣款、不会下单。
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
 | productId | 是 | 产品 ID |
+| payPassword | 是 | 支付/交易密码。别名 `tradePassword` / `payPwd` |
 | currency | 建议填 | `CNY` 或 `USDT`。不传：有人民币价走人民币，否则走 USDT |
 | amount | 否 | **忽略**，以产品配置的对应币种价格为准 |
 
@@ -472,6 +574,88 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 
 CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币种单独结算：用人民币买产品就返人民币、提人民币；用 USDT 买产品就返 U、提 U。签到奖励仍走 CNY。
 
+### 13.1 资金明细 / 充值余额交易
+
+`GET /app/walletLog?pageNum=1&pageSize=10`
+
+给资金明细「充值余额」Tab 用，返回**可用余额变动**流水（认购扣款、充值入账、签到、日返、推广奖金、提现冻结、提现退回等）。只记可用余额变化，提现打款成功只扣冻结的那条不出现。
+
+别名：`GET /app/wallet/logs` 、 `GET /app/funds`。可选 `currency=CNY|USDT`、`bizType`。
+
+```json
+{
+  "total": 4,
+  "rows": [
+    {
+      "logId": 12,
+      "id": 12,
+      "title": "曙光一号",
+      "name": "曙光一号",
+      "bizType": "SUBSCRIBE",
+      "bizTypeLabel": "认购",
+      "typeLabel": "认购",
+      "amount": -350,
+      "currency": "CNY",
+      "direction": "OUT",
+      "date": "2026-08-19",
+      "createTime": "2026-08-19 12:00:00",
+      "remark": "认购产品:曙光一号"
+    }
+  ]
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| title / name | 列表左侧标题。认购用产品名，充值=充值，分佣=推广奖金，日返=系统 |
+| amount | 收入为正、支出为负 |
+| direction | `IN` / `OUT` |
+| date | `yyyy-MM-dd`，可直接展示 |
+
+`bizType`：`SUBSCRIBE` 认购、`RECHARGE` 充值、`COMMISSION` 推广奖金、`CHECKIN` 签到、`REBATE` 产品日返、`LEVEL_REWARD` 等级奖励、`WITHDRAW_FREEZE` 提现、`WITHDRAW_REJECT` 提现退回。
+
+### 14.1 收款账户（钱包管理）
+
+给 App「钱包管理 / 添加 USDT、银行卡、支付宝」用，**不是**余额钱包。需登录。别名：`/app/wallet/accounts`。
+
+`GET /app/payAccounts?type=USDT` 我的账户。`type` 可选 `USDT` / `BANK` / `ALIPAY`。
+
+```json
+{
+  "data": [
+    {
+      "accountId": 1,
+      "accountType": "USDT",
+      "accountName": "张三",
+      "accountNo": "Txxxx",
+      "bankName": "",
+      "network": "TRC20",
+      "isDefault": "1",
+      "status": "0"
+    }
+  ]
+}
+```
+
+`POST /app/payAccounts` 新增或保存（带 `accountId` 则改）：
+
+```json
+{ "accountType": "BANK", "accountName": "张三", "accountNo": "6222...", "bankName": "中国银行", "isDefault": "1" }
+```
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| accountType | 是 | `USDT` / `BANK` / `ALIPAY` |
+| accountNo | 是 | USDT 地址 / 卡号 / 支付宝账号 |
+| accountName | 否 | 户名 |
+| bankName | 银行卡必填 | 开户行 |
+| network | USDT 可空 | 默认 `TRC20`，也可 `ERC20` |
+| isDefault | 否 | `1` 默认。该类型第一张自动默认 |
+| accountId | 改时 | 修改已有账户 |
+
+每类最多 5 个。`PUT /app/payAccounts/{id}` 修改，`DELETE /app/payAccounts/{id}` 删除。
+
+
 ### 14. 充值申请
 
 `POST /app/recharge`
@@ -497,23 +681,24 @@ CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币
 
 会员提交后**不会立刻到账**。对应币种可用余额先冻结，等后台在「业务管理 → 提现审核」确认已线下打款后，才扣掉冻结；拒绝则解冻退回。
 
-已绑定谷歌验证，或后台开启「提现必须谷歌验证」时，body 需带 `googleCode`。未绑定且强制开启时会提示先绑定。
+App 提现不需要绑定或填写谷歌验证码，`googleCode` 可省略。
 
 ```json
 { "currency": "CNY", "amount": 105, "accountInfo": "支付宝账号", "remark": "支付宝" }
 ```
 
 ```json
-{ "currency": "USDT", "amount": 105, "accountInfo": "USDT收款地址", "remark": "USDT" }
+{ "currency": "USDT", "amount": 105, "accountId": 12, "remark": "USDT" }
 ```
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
 | currency | 是 | `CNY` 走支付宝，`USDT` 走链上地址 |
 | amount | 是 | 不低于最低提现 |
-| accountInfo | 是 | CNY 填支付宝账号，USDT 填钱包地址 |
+| accountId | 否 | 已保存的收款账户 ID，有则自动填 `accountInfo` |
+| accountInfo | accountId 为空时必填 | CNY 填支付宝/银行卡，USDT 填钱包地址 |
 | remark | 否 | 可写收款方式说明 |
-| googleCode | 按规则 | 谷歌验证 6 位 |
+| googleCode | 否 | 忽略，App 提现不校验谷歌验证 |
 
 规则：
 - 人民币最低提现 `biz.withdraw.minAmount`（默认 105）
@@ -573,6 +758,36 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 ```
 
 `GET /app/notices/{noticeId}` 详情，`noticeContent` 已去掉 HTML，可直接展示。关闭或类型不是「公告」时返回失败。
+
+### 17.1 首页视频轮播
+
+后台 **业务管理 → 视频轮播**。App 首页顶部轮播用这条接口，不需要登录。
+
+`GET /app/video`（兼容别名 `GET /app/carousel`）
+
+```json
+{
+  "code": 200,
+  "data": [
+    {
+      "carouselId": 1,
+      "title": "首页主视觉",
+      "videoUrl": "http://host/profile/upload/xxx.mp4",
+      "coverUrl": "http://host/profile/upload/xxx.png",
+      "sort": 1
+    }
+  ]
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| videoUrl | 视频完整 URL，mp4 |
+| coverUrl | 封面，空字符串表示没有封面 |
+| sort | 越小越靠前 |
+
+`data` 为空数组时，App 继续用本地默认图。初始化脚本：`sql/biz_carousel_patch.sql`
+
 ### 18. 运行概览
 
 后台在 **业务管理 → 运行概览** 手改数字。没有真实统计，只给 App 首页展示。
@@ -693,6 +908,45 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 
 可返回多条（微信群、QQ群等），按 `sort` 排序。隐藏的不返回。初始化脚本：`sql/biz_group_chat_patch.sql`
 
+### 20.1 客服中心
+
+后台 **业务管理 → 客服中心**。给 App「客服中心」和登录页「联系客服」用，和官方群聊不是同一套。
+
+**不需要登录。**
+
+`GET /app/service`（兼容别名 `GET /app/customer-service`）
+
+```json
+{
+  "data": {
+    "title": "客服中心",
+    "workTime": "09:00 - 21:00",
+    "hint": "通道拥堵可联系在线客服",
+    "channels": [
+      {
+        "channelId": 1,
+        "name": "微信客服",
+        "type": "WECHAT",
+        "value": "",
+        "qrUrl": "https://example.com/qr.png",
+        "linkUrl": "",
+        "sort": 1
+      }
+    ]
+  }
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| title / workTime / hint | 文案，后台可改 |
+| type | `PHONE` / `WECHAT` / `TELEGRAM` / `QQ` / `LINK` / `QR` |
+| value | 手机号、微信号、账号 |
+| qrUrl | 二维码完整 URL，可空 |
+| linkUrl | 点击跳转，可空 |
+
+隐藏的渠道不返回。初始化脚本：`sql/biz_app_support_patch.sql`
+
 ### 21. 新闻资讯
 
 后台在 **业务管理 → 新闻资讯** 新增。给 App 底部「新闻」Tab 用，和首页「公告」不是同一套。
@@ -765,7 +1019,7 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | POST | `/system/user/profile/google/unbind` | 解绑 `{googleCode}` |
 | PUT | `/system/user/{userId}/google/reset` | 管理员给后台账号解绑谷歌验证 |
 | POST | `/login` | 后台登录，已绑定则 body 需带 `googleCode` |
-| GET | `/biz/member/team/{memberId}?teamLevel=1` | 某会员的 1/2/3 级或全部下线 |
+| GET | `/biz/member/team/{memberId}?teamLevel=1` | 某会员的 1～7 级或全部下线 |
 | GET/POST/PUT | `/system/notice` | 通知公告（系统管理菜单，类型选「公告」会展示到 App） |
 | GET/POST/PUT | `/biz/productCategory` | 产品分类（App 系列）列表/新增/修改 |
 | GET | `/biz/productCategory/options` | 分类下拉 |
@@ -784,10 +1038,23 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | GET | `/biz/walletLog/list` | 资金流水 |
 | GET | `/biz/team/list` | 团队关系（会员列表视角） |
 | GET/POST/PUT/DELETE | `/biz/level` | 会员等级配置 |
+| GET/PUT | `/biz/levelReward/rule` | 成长激励金全局规则 |
+| GET | `/biz/levelReward/level/list` | 各等级奖励配置列表 |
+| PUT | `/biz/levelReward/level` | 保存某等级条件与奖励 |
+| POST | `/biz/levelReward/evaluate` | 立即核算全部会员 |
+| GET | `/biz/levelReward/grant/list` | 发放记录 |
+| PUT | `/biz/levelReward/grant/pay/{grantId}` | 确认发放入账 |
+| PUT | `/biz/levelReward/grant/reject/{grantId}` | 拒绝发放 |
+| POST | `/biz/levelReward/grant/extraPay` | 永久档额外发放 `{memberId, levelId, remark}` |
 | GET/POST/PUT/DELETE | `/biz/overview` | App 运行概览（手改展示数字） |
 | GET/POST/PUT/DELETE | `/biz/about` | App 关于我们（手改展示内容） |
 | GET/POST/PUT/DELETE | `/biz/group` | App 官方群聊（上传二维码） |
 | GET/POST/PUT/DELETE | `/biz/news` | App 新闻资讯 |
+| GET/POST/PUT/DELETE | `/biz/carousel` | App 首页视频轮播 |
+| GET | `/biz/payAccount/list` | 会员收款账户，查询：phone、accountType、status |
+| GET/POST/PUT/DELETE | `/biz/payAccount` | 代会员新增/改/删 USDT、银行卡、支付宝账户 |
+| GET/PUT | `/biz/service/config` | 客服中心标题、工作时间、提示文案 |
+| GET/POST/PUT/DELETE | `/biz/service` | 客服渠道（二维码/微信号/电话等） |
 | GET | `/biz/commission/list` | 分佣记录 |
 
 列表查询通用分页：`pageNum`、`pageSize`。
@@ -804,6 +1071,7 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | WITHDRAW_SUCCESS | 提现成功 |
 | WITHDRAW_REJECT | 提现拒绝解冻 |
 | COMMISSION | 团队分佣 |
+| LEVEL_REWARD | 等级奖励（成长激励金） |
 
 ---
 
@@ -820,9 +1088,21 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | biz.invite.reward | 0 | 邀请奖励，暂未发放 |
 | biz.usdt.enabled | true | USDT 开关 |
 | biz.google.enabled | true | 谷歌验证总开关 |
-| biz.google.requireWithdraw | true | 提现必须先绑定谷歌验证 |
+| biz.google.requireWithdraw | false | App 提现不要求谷歌验证（代码侧已固定关闭） |
 | biz.google.issuer | App | 验证器里显示的名称 |
+| biz.levelReward.enabled | true | 成长激励金总开关 |
+| biz.levelReward.mixedPayCurrency | USDT | 团队同时有人民币和USDT业绩时发这个币种 |
+| biz.levelReward.performanceSource | SUBSCRIBE | 团队业绩口径：SUBSCRIBE认购 / RECHARGE充值 / BOTH |
+| biz.levelReward.includeSelf | false | 团队业绩是否含本人 |
+| biz.levelReward.validNeedKyc | true | 有效成员是否必须已实名 |
+| biz.levelReward.validNeedOrder | true | 有效成员是否必须有认购 |
+| biz.levelReward.ruleText | （规则文案） | App 会员等级页右上角「规则说明」 |
+| biz.levelReward.hint | （页面注释） | App 会员等级页表格上方的「注」 |
+| biz.service.title | 客服中心 | App 客服页标题 |
+| biz.service.workTime | 09:00 - 21:00 | App 客服工作时间 |
+| biz.service.hint | 通道拥堵可联系在线客服 | App 客服提示 |
 
-每日返利任务：定时任务里「产品每日返利」，`dailyRebateTask.execute()`，cron `0 5 0 * * ?`。
+每日返利任务：定时任务里「产品每日返利」，`dailyRebateTask.execute()`，cron `0 5 0 * * ?`。  
+成长激励金任务：定时任务里「等级奖励核算」，`levelRewardTask.execute()`，cron `0 15 0 * * ?`。也可在后台「等级奖励」点立即核算。
 
 初始化脚本：`RuoYi-Vue-springboot2/sql/biz_init.sql`
