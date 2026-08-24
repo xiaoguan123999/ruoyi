@@ -8,11 +8,12 @@ import { colors } from '@/theme/colors';
 type Props = {
   value: string;
   onChangeText: (text: string) => void;
-  captchaUri: string;
+  /** 接口返回的明文验证码 */
+  captchaText: string;
   onRefresh: () => void;
 };
 
-export function AuthCaptchaRow({ value, onChangeText, captchaUri, onRefresh }: Props) {
+export function AuthCaptchaRow({ value, onChangeText, captchaText, onRefresh }: Props) {
   const { rowHeight, fontSize, iconSize } = useAuthMetrics();
   const captchaW = Math.round(rowHeight * 2.2);
 
@@ -40,12 +41,10 @@ export function AuthCaptchaRow({ value, onChangeText, captchaUri, onRefresh }: P
         accessibilityLabel="点击刷新验证码"
         style={[styles.captchaBox, { width: captchaW, height: rowHeight }]}
       >
-        {captchaUri ? (
-          <Image
-            source={{ uri: captchaUri }}
-            style={{ width: captchaW - 12, height: rowHeight - 10 }}
-            contentFit="contain"
-          />
+        {captchaText ? (
+          <Text style={[styles.captchaText, { fontSize: Math.max(16, fontSize) }]} numberOfLines={1}>
+            {captchaText}
+          </Text>
         ) : (
           <Text style={styles.captchaHint}>刷新</Text>
         )}
@@ -87,6 +86,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    paddingHorizontal: 6,
+  },
+  captchaText: {
+    color: colors.text,
+    fontWeight: '700',
+    letterSpacing: 2,
   },
   captchaHint: {
     color: colors.muted,

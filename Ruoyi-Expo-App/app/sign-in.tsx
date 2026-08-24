@@ -18,7 +18,7 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [uuid, setUuid] = useState('');
-  const [captchaUri, setCaptchaUri] = useState('');
+  const [captchaText, setCaptchaText] = useState('');
   const [captchaEnabled, setCaptchaEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
 
@@ -27,7 +27,7 @@ export default function SignInScreen() {
       const res = await fetchAppCaptcha();
       setCaptchaEnabled(res.enabled);
       setUuid(res.uuid);
-      setCaptchaUri(res.img);
+      setCaptchaText(res.text);
       setCode('');
     } catch (error) {
       modalError(error instanceof ApiError ? error.message : '验证码加载失败');
@@ -95,7 +95,7 @@ export default function SignInScreen() {
           <AuthCaptchaRow
             value={code}
             onChangeText={setCode}
-            captchaUri={captchaUri}
+            captchaText={captchaText}
             onRefresh={loadCaptcha}
           />
         ) : null}

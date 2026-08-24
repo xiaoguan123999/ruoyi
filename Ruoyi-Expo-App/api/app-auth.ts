@@ -11,7 +11,8 @@ import { removeToken, setToken } from '@/utils/storage';
 export type AppCaptchaResult = {
   enabled: boolean;
   uuid: string;
-  img: string;
+  /** 明文验证码，展示在输入框旁，点击可刷新 */
+  text: string;
 };
 
 function extractMember(res: { data?: AppMember; user?: AppMember }): AppMember | undefined {
@@ -126,12 +127,10 @@ function extractToken(res: { token?: string; data?: unknown }): string | undefin
 export async function fetchAppCaptcha(): Promise<AppCaptchaResult> {
   const res = await request('/app/auth/captcha', { withToken: false });
   const enabled = res.captchaEnabled ?? res.captchaOnOff ?? true;
-  const raw = res.img ?? '';
-  const img = raw.startsWith('data:') ? raw : raw ? `data:image/jpeg;base64,${raw}` : '';
   return {
     enabled,
     uuid: res.uuid ?? '',
-    img,
+    text: typeof res.text === 'string' ? res.text : '',
   };
 }
 

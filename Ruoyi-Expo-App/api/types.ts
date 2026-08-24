@@ -4,6 +4,8 @@ export type AjaxResult<T = unknown> = {
   data?: T;
   token?: string;
   img?: string;
+  /** App 验证码明文（/app/auth/captcha） */
+  text?: string;
   uuid?: string;
   captchaEnabled?: boolean;
   captchaOnOff?: boolean;
