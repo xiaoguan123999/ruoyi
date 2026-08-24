@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -118,23 +119,25 @@ function LightToast({
   }, [dismiss, payload.autoClose, payload.duration]);
 
   return (
-    <View style={[styles.lightHost, { paddingTop: topInset + 8 }]} pointerEvents="box-none">
-      <Animated.View
-        style={[
-          styles.lightBar,
-          {
-            opacity,
-            transform: [{ translateY }],
-            borderLeftColor: meta.accent,
-          },
-        ]}
-      >
-        <ToastIcon type={payload.type} compact />
-        <Text style={styles.lightMessage} numberOfLines={3}>
-          {payload.message}
-        </Text>
-      </Animated.View>
-    </View>
+    <Modal transparent visible animationType="fade" statusBarTranslucent>
+      <View style={[styles.lightHost, { paddingTop: topInset + 8 }]} pointerEvents="box-none">
+        <Animated.View
+          style={[
+            styles.lightBar,
+            {
+              opacity,
+              transform: [{ translateY }],
+              borderLeftColor: meta.accent,
+            },
+          ]}
+        >
+          <ToastIcon type={payload.type} compact />
+          <Text style={styles.lightMessage} numberOfLines={3}>
+            {payload.message}
+          </Text>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
@@ -191,41 +194,43 @@ function ModalToast({
   }, [dismiss, payload.autoClose, payload.duration]);
 
   return (
-    <View style={styles.modalHost} pointerEvents="box-none">
-      <Pressable style={styles.backdrop} onPress={dismiss} accessibilityLabel="关闭提示" />
-      <Animated.View
-        style={[
-          styles.panel,
-          {
-            opacity,
-            transform: [{ scale }, { translateY }],
-          },
-        ]}
-      >
-        <View style={[styles.accentBar, { backgroundColor: meta.accent }]} />
-        <Pressable
-          onPress={dismiss}
-          hitSlop={8}
-          style={({ pressed }) => [styles.closeBtn, pressed && styles.closeBtnPressed]}
-          accessibilityLabel="关闭"
+    <Modal transparent visible animationType="fade" statusBarTranslucent onRequestClose={dismiss}>
+      <View style={styles.modalHost} pointerEvents="box-none">
+        <Pressable style={styles.backdrop} onPress={dismiss} accessibilityLabel="关闭提示" />
+        <Animated.View
+          style={[
+            styles.panel,
+            {
+              opacity,
+              transform: [{ scale }, { translateY }],
+            },
+          ]}
         >
-          <Text style={styles.closeText}>×</Text>
-        </Pressable>
-        <ToastIcon type={payload.type} />
-        <Text style={styles.title}>{meta.label}</Text>
-        <Text style={[styles.message, !payload.showButton && styles.messageNoBtn]}>
-          {payload.message}
-        </Text>
-        {payload.showButton ? (
+          <View style={[styles.accentBar, { backgroundColor: meta.accent }]} />
           <Pressable
             onPress={dismiss}
-            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
+            hitSlop={8}
+            style={({ pressed }) => [styles.closeBtn, pressed && styles.closeBtnPressed]}
+            accessibilityLabel="关闭"
           >
-            <Text style={styles.btnText}>{payload.buttonText}</Text>
+            <Text style={styles.closeText}>×</Text>
           </Pressable>
-        ) : null}
-      </Animated.View>
-    </View>
+          <ToastIcon type={payload.type} />
+          <Text style={styles.title}>{meta.label}</Text>
+          <Text style={[styles.message, !payload.showButton && styles.messageNoBtn]}>
+            {payload.message}
+          </Text>
+          {payload.showButton ? (
+            <Pressable
+              onPress={dismiss}
+              style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
+            >
+              <Text style={styles.btnText}>{payload.buttonText}</Text>
+            </Pressable>
+          ) : null}
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
@@ -291,7 +296,7 @@ export function AppToast() {
 
 const styles = StyleSheet.create({
   lightHost: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 10000,
     elevation: 10000,
     alignItems: 'center',
@@ -338,7 +343,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   modalHost: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 10000,
     elevation: 10000,
     alignItems: 'center',
@@ -346,7 +351,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(2, 8, 20, 0.55)',
   },
   panel: {

@@ -73,7 +73,9 @@ export function isPublicAuthRoute(segments: string[]): boolean {
   return PUBLIC_AUTH_SEGMENTS.has(root);
 }
 
-export async function handleUnauthorized(message = '登录已过期，请重新登录'): Promise<void> {
+export async function handleUnauthorized(
+  message = '无效的会话，或者会话已过期，请重新登录。',
+): Promise<void> {
   if (Date.now() < ignoreUnauthorizedUntil) {
     return;
   }
@@ -85,12 +87,12 @@ export async function handleUnauthorized(message = '登录已过期，请重新�
     await removeToken();
     clearCurrentUser();
     toastThenNavigate(
-      message,
+      message || '无效的会话，或者会话已过期，请重新登录。',
       () => {
         router.replace('/sign-in');
         redirecting = false;
       },
-      { type: 'warning' },
+      { type: 'warning', presentation: 'toast', duration: 2800 },
     );
   } catch {
     redirecting = false;

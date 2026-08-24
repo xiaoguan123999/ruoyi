@@ -1,11 +1,12 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { SubscribeButton } from '@/components/ui/SubscribeButton';
-import type { ProductItem } from '@/constants/mock';
+import type { ProductItem } from '@/types/product';
 import { colors } from '@/theme/colors';
 
 type Props = {
   item: ProductItem;
+  submitting?: boolean;
   onSubscribeCny?: () => void;
   onSubscribeUsdt?: () => void;
 };
@@ -26,25 +27,37 @@ function InfoRow({ label, value, highlight, last }: RowProps) {
   );
 }
 
-export function ProductSubscribePanel({ item, onSubscribeCny, onSubscribeUsdt }: Props) {
-  const productName = `${item.name} ${item.enName}`;
+export function ProductSubscribePanel({
+  item,
+  submitting,
+  onSubscribeCny,
+  onSubscribeUsdt,
+}: Props) {
+  const productName = [item.name, item.enName].filter((v) => v && v !== '--').join(' ') || '--';
+  const supportCny = item.amountCny > 0;
+  const supportUsdt = item.amount > 0;
+  const amountUsdt = supportUsdt ? `${item.amount} USDT` : '--';
+  const amountCny = supportCny ? `${item.amountCny} RMB` : '--';
+  const dailyUsdt = item.daily > 0 ? `${item.daily} USDT` : '--';
+  const dailyCny = item.dailyCny > 0 ? `${item.dailyCny} RMB` : '--';
+  const term = item.termDays > 0 ? `${item.termDays} 天` : '--';
   const rows = [
     { label: '产品名称', value: productName },
-    { label: '产品类型', value: item.tag },
+    { label: '产品类型', value: item.tag || '--' },
     {
       label: '参与金额',
-      value: `${item.amount} USDT / ${item.amountCny} RMB`,
+      value: `${amountUsdt} / ${amountCny}`,
       highlight: true,
     },
     {
       label: '日收益',
-      value: `${item.daily} USDT / ${item.dailyCny} RMB`,
+      value: `${dailyUsdt} / ${dailyCny}`,
       highlight: true,
     },
-    { label: '收益发放方式', value: item.payoutMethod ?? '每日回报（次日发放）' },
-    { label: '产品期限', value: `${item.termDays} 天`, highlight: true },
-    { label: '支持货币', value: item.currencies ?? 'USDT / RMB' },
-    { label: '风险等级', value: item.riskLevel ?? 'R2 中低风险' },
+    { label: '收益发放方式', value: item.payoutMethod || '--' },
+    { label: '产品期限', value: term, highlight: true },
+    { label: '支持货币', value: item.currencies || '--' },
+    { label: '风险等级', value: item.riskLevel || '--' },
   ] as const;
 
   return (
@@ -64,8 +77,25 @@ export function ProductSubscribePanel({ item, onSubscribeCny, onSubscribeUsdt }:
       </View>
 
       <View style={styles.actions}>
-        <SubscribeButton title="使用RMB认购" variant="cny" onPress={onSubscribeCny} />
-        <SubscribeButton title="使用USDT认购" variant="usdt" onPress={onSubscribeUsdt} />
+        {supportCny ? (
+          <SubscribeButton
+            title="使用RMB认购"
+            variant="cny"
+            disabled={submitting}
+            onPress={onSubscribeCny}
+          />
+        ) : null}
+        {supportUsdt ? (
+          <SubscribeButton
+            title="使用USDT认购"
+            variant="usdt"
+            disabled={submitting}
+            onPress={onSubscribeUsdt}
+          />
+        ) : null}
+        {!supportCny && !supportUsdt ? (
+          <Text style={styles.unsupported}>该产品暂未开放认购</Text>
+        ) : null}
       </View>
     </View>
   );
@@ -127,5 +157,11 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: 18,
     gap: 12,
+  },
+  unsupported: {
+    color: colors.muted,
+    textAlign: 'center',
+    fontSize: 14,
+    paddingVertical: 8,
   },
 });

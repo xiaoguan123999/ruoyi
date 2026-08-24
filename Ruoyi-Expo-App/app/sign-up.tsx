@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -8,21 +8,31 @@ import { AuthCaptchaRow } from '@/components/ui/AuthCaptchaRow';
 import { AuthField } from '@/components/ui/AuthField';
 import { AuthScreen } from '@/components/ui/AuthScreen';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
+import { pickInviteCodeFromParams } from '@/utils/invite';
 import { modalError, modalWarning, toastThenNavigate } from '@/utils/toast';
 
 export default function SignUpScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [payPassword, setPayPassword] = useState('');
-  const [invite, setInvite] = useState('');
+  const [invite, setInvite] = useState(() => pickInviteCodeFromParams(params as Record<string, unknown>));
   const [code, setCode] = useState('');
   const [uuid, setUuid] = useState('');
   const [captchaUri, setCaptchaUri] = useState('');
   const [captchaEnabled, setCaptchaEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fromQuery = pickInviteCodeFromParams(params as Record<string, unknown>);
+    if (fromQuery) {
+      setInvite(fromQuery);
+    }
+  }, [params]);
 
   const loadCaptcha = useCallback(async () => {
     try {
@@ -71,6 +81,7 @@ export default function SignUpScreen() {
       await appRegister({
         phone: phone.trim(),
         password,
+        payPassword,
         code: code.trim(),
         uuid,
         inviteCode: invite.trim() || undefined,
@@ -85,64 +96,79 @@ export default function SignUpScreen() {
   };
 
   return (
-    <AuthScreen formStart={0.35}>
-      <AuthField
-        icon={images.iconPhone}
-        placeholder="请输入手机号码"
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-      />
-      <AuthField
-        icon={images.iconPassword}
-        placeholder="请设置登录密码"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <AuthField
-        icon={images.iconPassword}
-        placeholder="请确认登录密码"
-        value={confirm}
-        onChangeText={setConfirm}
-        secureTextEntry
-      />
-      <AuthField
-        icon={images.iconPassword}
-        placeholder="请设置交易密码"
-        value={payPassword}
-        onChangeText={setPayPassword}
-        secureTextEntry
-      />
-      <AuthField
-        icon={images.iconLock}
-        placeholder="请输入邀请码"
-        value={invite}
-        onChangeText={setInvite}
-      />
-      {captchaEnabled ? (
-        <AuthCaptchaRow
-          value={code}
-          onChangeText={setCode}
-          captchaUri={captchaUri}
-          onRefresh={() => void loadCaptcha()}
+    <AuthScreen formStart={0.32} rows={8}>
+      <RefreshableScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.formContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        onRefresh={loadCaptcha}
+      >
+        <AuthField
+          icon={images.iconPhone}
+          placeholder="请输入手机号码"
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
         />
-      ) : null}
-      <View style={{ marginTop: 8 }}>
-        <PrimaryButton title="注 册" onPress={() => void onSubmit()} disabled={loading || !canSubmit} />
-      </View>
-      <Pressable onPress={() => router.replace('/sign-in')} style={styles.loginLink}>
-        <Text style={styles.loginLinkText}>已有账号，返回登录</Text>
-      </Pressable>
+        <AuthField
+          icon={images.iconPassword}
+          placeholder="请设置登录密码"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+        <AuthField
+          icon={images.iconPassword}
+          placeholder="请确认登录密码"
+          value={confirm}
+          onChangeText={setConfirm}
+          secureTextEntry
+        />
+        <AuthField
+          icon={images.iconPassword}
+          placeholder="请设置支付密码"
+          value={payPassword}
+          onChangeText={setPayPassword}
+          secureTextEntry
+        />
+        <AuthField
+          icon={images.iconLock}
+          placeholder="请输入邀请码"
+          value={invite}
+          onChangeText={setInvite}
+        />
+        {captchaEnabled ? (
+          <AuthCaptchaRow
+            value={code}
+            onChangeText={setCode}
+            captchaUri={captchaUri}
+            onRefresh={loadCaptcha}
+          />
+        ) : null}
+        <View style={styles.submitWrap}>
+          <PrimaryButton title="注 册" onPress={() => void onSubmit()} disabled={loading || !canSubmit} />
+        </View>
+        <Pressable onPress={() => router.replace('/sign-in')} style={styles.loginLink}>
+          <Text style={styles.loginLinkText}>已有账号，返回登录</Text>
+        </Pressable>
+      </RefreshableScrollView>
     </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  formContent: {
+    flexGrow: 1,
+    gap: 12,
+  },
+  submitWrap: {
+    marginTop: 4,
+  },
   loginLink: {
     alignSelf: 'center',
-    marginTop: 4,
-    paddingVertical: 8,
+    marginTop: 8,
+    paddingVertical: 6,
   },
   loginLinkText: {
     color: '#8BB8FF',

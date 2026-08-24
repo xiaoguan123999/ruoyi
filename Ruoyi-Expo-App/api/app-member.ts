@@ -1,6 +1,13 @@
 import { fetchAppProfile } from '@/api/app-auth';
 import { request } from '@/api/request';
-import type { AppInviteInfo, AppKycBody, AppLevel } from '@/api/types';
+import type {
+  AppInviteInfo,
+  AppKycBody,
+  AppLevel,
+  AppLevelCurrent,
+  AppLevelsView,
+  AppPasswordBody,
+} from '@/api/types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -76,6 +83,8 @@ function mapLevel(raw: unknown): AppLevel | null {
     minRechargeCny: pickNumber(raw, ['minRechargeCny', 'rechargeCny']),
     minRechargeUsdt: pickNumber(raw, ['minRechargeUsdt', 'rechargeUsdt']),
     minValidMembers: pickNumber(raw, ['minValidMembers', 'validMembers', 'teamCount']),
+    teamRewardCny: pickNumber(raw, ['teamRewardCny', 'rewardCny', 'levelRewardCny']) || undefined,
+    teamRewardUsdt: pickNumber(raw, ['teamRewardUsdt', 'rewardUsdt', 'levelRewardUsdt']) || undefined,
     sort: pickNumber(raw, ['sort']),
     status: pickString(raw, ['status']),
     remark: pickString(raw, ['remark', 'desc', 'description']),
@@ -114,22 +123,84 @@ export async function fetchAppInvite(): Promise<AppInviteInfo> {
   };
 }
 
+/** POST /app/kyc — 提交即已实名，成功后资料 kycStatus=1 */
 export async function submitAppKyc(body: AppKycBody): Promise<string> {
   const res = await request('/app/kyc', {
     method: 'POST',
     body: {
       realName: body.realName.trim(),
-      idCard: body.idCard.trim(),
+      idCard: body.idCard.trim().toUpperCase(),
     },
   });
   await fetchAppProfile().catch(() => {});
   return res.msg || '实名认证提交成功';
 }
 
-export async function fetchAppLevels(): Promise<AppLevel[]> {
+export async function updateAppPassword(body: AppPasswordBody): Promise<string> {
+  const res = await request('/app/password', {
+    method: 'PUT',
+    body: {
+      oldPassword: body.oldPassword,
+      newPassword: body.newPassword,
+      confirmPassword: body.confirmPassword,
+    },
+  });
+  return res.msg || '密码修改成功';
+}
+
+/** POST /app/payPassword — 老账号首次设置支付密码 */
+export async function setAppPayPassword(payPassword: string): Promise<string> {
+  const res = await request('/app/payPassword', {
+    method: 'POST',
+    body: { payPassword: payPassword.trim() },
+  });
+  return res.msg || '支付密码设置成功';
+}
+
+function mapLevelCurrent(raw: unknown): AppLevelCurrent {
+  if (!isRecord(raw)) {
+    return {};
+  }
+  const levelId = pickNumber(raw, ['levelId', 'id']);
+  const levelName = pickString(raw, ['levelName', 'name']);
+  return {
+    levelId: levelId || undefined,
+    levelName: levelName || undefined,
+  };
+}
+
+export function emptyLevelsView(): AppLevelsView {
+  return { current: {}, levels: [], ruleText: '' };
+}
+
+export async function fetchAppLevelsView(): Promise<AppLevelsView> {
   const res = await request<unknown>('/app/levels');
-  return extractList(res as Record<string, unknown>)
-    .map(mapLevel)
-    .filter((item): item is AppLevel => item !== null)
-    .sort((a, b) => (a.sort ?? a.levelId) - (b.sort ?? b.levelId));
+  const root = extractDataRoot(res as Record<string, unknown>);
+
+  if (isRecord(root)) {
+    const levels = (Array.isArray(root.levels) ? root.levels : extractList(res as Record<string, unknown>))
+      .map(mapLevel)
+      .filter((item): item is AppLevel => item !== null)
+      .sort((a, b) => (a.sort ?? a.levelId) - (b.sort ?? b.levelId));
+
+    return {
+      current: mapLevelCurrent(root.current ?? root.member ?? root.profile),
+      levels,
+      ruleText: pickString(root, ['ruleText', 'rules', 'rule']),
+    };
+  }
+
+  return {
+    current: {},
+    levels: extractList(res as Record<string, unknown>)
+      .map(mapLevel)
+      .filter((item): item is AppLevel => item !== null)
+      .sort((a, b) => (a.sort ?? a.levelId) - (b.sort ?? b.levelId)),
+    ruleText: '',
+  };
+}
+
+export async function fetchAppLevels(): Promise<AppLevel[]> {
+  const view = await fetchAppLevelsView();
+  return view.levels;
 }

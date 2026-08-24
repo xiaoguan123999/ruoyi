@@ -21,13 +21,18 @@ export default function Root({ children }: { children: React.ReactNode }) {
 const responsiveBackground = `
 html, body, #root {
   height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
 }
 body {
   background-color: #050B1C;
+  margin: 0;
+  overscroll-behavior: none;
 }
 input, textarea {
   outline: none !important;
   box-shadow: none !important;
+  font-size: 16px; /* 避免 iOS 聚焦自动放大 */
 }
 input:focus, textarea:focus {
   outline: none !important;
@@ -39,6 +44,7 @@ input:focus, textarea:focus {
     margin: 0 auto;
     background-color: #050B1C;
     min-height: 100%;
+    min-height: 100dvh;
     box-shadow: 0 0 24px rgba(0, 0, 0, 0.06);
   }
 }

@@ -8,6 +8,7 @@ import { AuthCaptchaRow } from '@/components/ui/AuthCaptchaRow';
 import { AuthField } from '@/components/ui/AuthField';
 import { AuthScreen } from '@/components/ui/AuthScreen';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { modalError, modalWarning, toastThenNavigate } from '@/utils/toast';
 
@@ -68,47 +69,59 @@ export default function SignInScreen() {
   };
 
   return (
-    <AuthScreen formStart={0.40}>
-      <AuthField
-        icon={images.iconPhone}
-        placeholder="请输入手机号码"
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-      />
-      <AuthField
-        icon={images.iconPassword}
-        placeholder="请输入密码"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      {captchaEnabled ? (
-        <AuthCaptchaRow
-          value={code}
-          onChangeText={setCode}
-          captchaUri={captchaUri}
-          onRefresh={() => void loadCaptcha()}
+    <AuthScreen formStart={0.34} rows={5}>
+      <RefreshableScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.formContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        onRefresh={loadCaptcha}
+      >
+        <AuthField
+          icon={images.iconPhone}
+          placeholder="请输入手机号码"
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
         />
-      ) : null}
-      <View style={styles.btnWrap}>
-        <PrimaryButton title="登 录" onPress={() => void onSubmit()} disabled={loading} />
-      </View>
-      <View style={styles.links}>
-        <Link href="/sign-up" asChild>
-          <Pressable>
-            <Text style={styles.link}>立即注册</Text>
+        <AuthField
+          icon={images.iconPassword}
+          placeholder="请输入密码"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+        {captchaEnabled ? (
+          <AuthCaptchaRow
+            value={code}
+            onChangeText={setCode}
+            captchaUri={captchaUri}
+            onRefresh={loadCaptcha}
+          />
+        ) : null}
+        <View style={styles.btnWrap}>
+          <PrimaryButton title="登 录" onPress={() => void onSubmit()} disabled={loading} />
+        </View>
+        <View style={styles.links}>
+          <Link href="/sign-up" asChild>
+            <Pressable>
+              <Text style={styles.link}>立即注册</Text>
+            </Pressable>
+          </Link>
+          <Pressable onPress={() => modalWarning('客服功能开发中')}>
+            <Text style={styles.link}>联系客服</Text>
           </Pressable>
-        </Link>
-        <Pressable onPress={() => modalWarning('客服功能开发中')}>
-          <Text style={styles.link}>联系客服</Text>
-        </Pressable>
-      </View>
+        </View>
+      </RefreshableScrollView>
     </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  formContent: {
+    flexGrow: 1,
+    gap: 12,
+  },
   btnWrap: { marginTop: 8 },
   links: {
     flexDirection: 'row',

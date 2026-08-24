@@ -2,7 +2,6 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -16,6 +15,7 @@ import { AppBackground } from '@/components/ui/AppBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
 import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
@@ -70,7 +70,6 @@ export default function CheckInScreen() {
   const checkedToday = signedDays.has(todayKey);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const list = await fetchAppCheckinList();
       const dates = new Set(list.map((item) => item.checkinDate));
@@ -116,9 +115,10 @@ export default function CheckInScreen() {
   return (
     <AppBackground source={images.pageBg}>
       <PageHeader title="每日签到" />
-      <ScrollView
+      <RefreshableScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
+        onRefresh={load}
       >
         <View style={styles.streakCard}>
           <Image source={images.checkinBg} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -181,9 +181,9 @@ export default function CheckInScreen() {
         <GlassCard style={styles.ruleCard}>
           <Text style={styles.ruleTitle}>签到规则</Text>
           <Text style={styles.rule}>1、每天签到可以获得2元</Text>
-          <Text style={styles.rule}>2、连续签到可累计天数，断签后重新计算</Text>
+          <Text style={styles.rule}>2、</Text>
         </GlassCard>
-      </ScrollView>
+      </RefreshableScrollView>
     </AppBackground>
   );
 }

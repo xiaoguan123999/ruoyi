@@ -53,8 +53,8 @@ export async function request<T>(
 
   const code = Number(json.code);
   if (response.status === 401 || code === 401) {
-    void handleUnauthorized(json.msg || '登录已过期，请重新登录');
-    throw new ApiError(json.msg || '登录已过期', 401);
+    void handleUnauthorized('无效的会话，或者会话已过期，请重新登录。');
+    throw new ApiError('无效的会话，或者会话已过期，请重新登录。', 401);
   }
   if (code !== 200) {
     throw new ApiError(json.msg || '请求失败', code);
