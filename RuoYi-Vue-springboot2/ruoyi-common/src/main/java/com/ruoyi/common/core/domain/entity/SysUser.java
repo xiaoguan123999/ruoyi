@@ -56,7 +56,8 @@ public class SysUser extends BaseEntity
     /** 用户头像 */
     private String avatar;
 
-    /** 密码 */
+    /** 密码。Fastjson2 无法安全回读 bcrypt 里的 /. ，Redis 会话不存密码 */
+    @JSONField(serialize = false)
     private String password;
 
     /** 账号状态（0正常 1停用） */
@@ -208,6 +209,7 @@ public class SysUser extends BaseEntity
     }
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @JSONField(serialize = false)
     public String getPassword()
     {
         return password;
