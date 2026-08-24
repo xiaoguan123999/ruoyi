@@ -7,6 +7,7 @@ import type {
   AppOrderRecord,
   AppSubscribeBody,
   AppWallet,
+  AppWalletLogItem,
 } from '@/api/types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -92,13 +93,14 @@ function normalizeCurrency(value: unknown): string {
   return 'CNY';
 }
 
-/** 认购：只传 productId + currency，金额以后台配置为准 */
+/** 认购：productId + currency + 交易密码 */
 export async function subscribeAppProduct(body: AppSubscribeBody): Promise<string> {
   const res = await request('/app/orders', {
     method: 'POST',
     body: {
       productId: body.productId,
       currency: body.currency,
+      payPassword: body.payPassword,
     },
   });
   return res.msg || '认购成功';
@@ -385,6 +387,105 @@ export async function fetchAppWithdrawRecords(): Promise<AppFundRecord[]> {
     .filter((item): item is AppFundRecord => item !== null);
 }
 
+const WALLET_BIZ_LABEL: Record<string, string> = {
+  CHECKIN: '系统',
+  SUBSCRIBE: '认购',
+  REBATE: '日返',
+  RECHARGE: '充值',
+  WITHDRAW_FREEZE: '提现冻结',
+  WITHDRAW_SUCCESS: '提现',
+  WITHDRAW_REJECT: '提现退回',
+  COMMISSION: '推广奖金',
+};
+
+function mapWalletLogTitle(raw: Record<string, unknown>, bizType: string): string {
+  // 优先用接口下发的业务类型文案
+  const bizTypeLabel = pickString(raw, ['bizTypeLabel', 'bizTypeName', 'typeLabel']);
+  if (bizTypeLabel) {
+    return bizTypeLabel;
+  }
+
+  const remark = pickString(raw, ['title', 'bizName', 'productName', 'remark', 'remarkInfo']);
+  if (bizType === 'SUBSCRIBE' && remark) {
+    // 常见备注：「认购产品:曙光一号」
+    const matched = remark.match(/认购产品[:：]\s*(.+)$/);
+    if (matched?.[1]) {
+      return matched[1].trim();
+    }
+    return remark;
+  }
+  return remark || WALLET_BIZ_LABEL[bizType] || bizType || '交易';
+}
+
+function mapWalletLogItem(raw: unknown): AppWalletLogItem | null {
+  if (!isRecord(raw)) {
+    return null;
+  }
+  const id = pickNumber(raw, ['logId', 'id']);
+  const amount = pickNumber(raw, ['amount', 'changeAmount']);
+  const currency = normalizeCurrency(raw.currency);
+  const bizType = pickString(raw, ['bizType', 'type'], '').toUpperCase();
+  const title = mapWalletLogTitle(raw, bizType);
+  const createTime = formatDateTime(raw.createTime ?? raw.updateTime);
+  if (!id && !createTime && !amount) {
+    return null;
+  }
+  return {
+    id: String(id || `${bizType}-${createTime}-${amount}`),
+    title,
+    amount,
+    currency,
+    createTime,
+  };
+}
+
+/** GET /app/walletLog — 资金明细「充值余额」流水；兼容别名 */
+export async function fetchAppWalletLogs(options?: {
+  pageNum?: number;
+  pageSize?: number;
+  currency?: 'CNY' | 'USDT';
+  bizType?: string;
+}): Promise<AppWalletLogItem[]> {
+  const pageNum = options?.pageNum ?? 1;
+  const pageSize = options?.pageSize ?? 50;
+  const query = new URLSearchParams({
+    pageNum: String(pageNum),
+    pageSize: String(pageSize),
+  });
+  if (options?.currency) {
+    query.set('currency', options.currency);
+  }
+  if (options?.bizType) {
+    query.set('bizType', options.bizType);
+  }
+  const qs = query.toString();
+
+  const paths = [
+    `/app/walletLog?${qs}`,
+    `/app/wallet/logs?${qs}`,
+    `/app/funds?${qs}`,
+  ];
+
+  let lastError: unknown;
+  for (const path of paths) {
+    try {
+      const res = await request(path);
+      if (Number(res.code) === 200 || Array.isArray(res.rows) || res.data !== undefined) {
+        return extractRows(res)
+          .map(mapWalletLogItem)
+          .filter((item): item is AppWalletLogItem => item !== null);
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) {
+    throw lastError;
+  }
+  return [];
+}
+
 function mapCheckin(raw: unknown): AppCheckinRecord | null {
   if (!isRecord(raw)) {
     return null;
@@ -422,10 +523,13 @@ export async function appCheckin(): Promise<{ message: string; amount?: number }
 
 export function formatMoneyLabel(amount: number, currency: string): string {
   const unit = normalizeCurrency(currency) === 'USDT' ? 'USDT' : '¥';
+  const abs = Math.abs(amount);
+  const value = formatBalance(abs);
+  const signed = amount < 0 ? '- ' : '';
   if (unit === 'USDT') {
-    return `USDT ${formatBalance(amount)}`;
+    return `${signed}USDT ${value}`;
   }
-  return `¥${formatBalance(amount)}`;
+  return `${signed}¥ ${value}`;
 }
 
 export function parseAmountInput(value: string): number {

@@ -2,11 +2,14 @@ import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 
+import { fetchAppProfile } from '@/api/app-auth';
+import { setAppPayPassword } from '@/api/app-member';
 import { fetchAppProductById } from '@/api/app-product';
 import { subscribeAppProduct } from '@/api/app-trade';
 import { ApiError } from '@/api/request';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { PayPasswordModal, type PayPasswordMode } from '@/components/ui/PayPasswordModal';
 import { ProductSubscribePanel } from '@/components/ui/ProductSubscribePanel';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import type { ProductItem } from '@/types/product';
@@ -17,10 +20,19 @@ export default function ProductSubscribeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [item, setItem] = useState<ProductItem | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  const [payVisible, setPayVisible] = useState(false);
+  const [payMode, setPayMode] = useState<PayPasswordMode>('verify');
+  const [hasPayPassword, setHasPayPassword] = useState(true);
+  const [pendingCurrency, setPendingCurrency] = useState<'CNY' | 'USDT' | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setItem(await fetchAppProductById(id));
+      const [product, profile] = await Promise.all([
+        fetchAppProductById(id),
+        fetchAppProfile().catch(() => null),
+      ]);
+      setItem(product);
+      setHasPayPassword(profile?.hasPayPassword !== false);
     } catch {
       setItem(undefined);
     }
@@ -30,7 +42,7 @@ export default function ProductSubscribeScreen() {
     void load();
   }, [load]);
 
-  const onSubscribe = async (currency: 'CNY' | 'USDT') => {
+  const requestSubscribe = (currency: 'CNY' | 'USDT') => {
     if (!item || submitting) {
       return;
     }
@@ -39,19 +51,63 @@ export default function ProductSubscribeScreen() {
       modalWarning('产品暂未开放认购');
       return;
     }
-    // 0 / 空表示不支持该币种；金额由后台产品配置决定，客户端不传 amount
     const supported = currency === 'USDT' ? item.amount > 0 : item.amountCny > 0;
     if (!supported) {
       modalWarning(currency === 'USDT' ? '该产品暂不支持 USDT 认购' : '该产品暂不支持 RMB 认购');
       return;
     }
+    setPendingCurrency(currency);
+    setPayMode(hasPayPassword ? 'verify' : 'set');
+    setPayVisible(true);
+  };
+
+  const closePaySheet = () => {
+    setPayVisible(false);
+    setPendingCurrency(null);
+    setPayMode('verify');
+  };
+
+  const doSubscribe = async (payPassword: string) => {
+    if (!item || !pendingCurrency) {
+      return;
+    }
+    const productId = item.apiId ?? Number(item.id);
+    const message = await subscribeAppProduct({
+      productId,
+      currency: pendingCurrency,
+      payPassword,
+    });
+    closePaySheet();
+    requestAnimationFrame(() => modalSuccess(message));
+  };
+
+  const onConfirmPay = async (payPassword: string) => {
+    if (!item || !pendingCurrency || submitting) {
+      return;
+    }
+    if (payPassword.length < 4) {
+      modalWarning('请输入支付密码');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const message = await subscribeAppProduct({ productId, currency });
-      modalSuccess(message);
+      if (payMode === 'set') {
+        await setAppPayPassword(payPassword);
+        setHasPayPassword(true);
+        await doSubscribe(payPassword);
+        return;
+      }
+      await doSubscribe(payPassword);
     } catch (error) {
       if (!(error instanceof ApiError) || error.code !== 401) {
-        modalError(error instanceof ApiError ? error.message : '认购失败');
+        const message = error instanceof ApiError ? error.message : '认购失败';
+        modalError(message);
+        // 后端提示未设置时，切到设置模式
+        if (message.includes('请先设置支付密码')) {
+          setHasPayPassword(false);
+          setPayMode('set');
+        }
       }
     } finally {
       setSubmitting(false);
@@ -82,10 +138,30 @@ export default function ProductSubscribeScreen() {
         <ProductSubscribePanel
           item={item}
           submitting={submitting}
-          onSubscribeCny={() => void onSubscribe('CNY')}
-          onSubscribeUsdt={() => void onSubscribe('USDT')}
+          onSubscribeCny={() => requestSubscribe('CNY')}
+          onSubscribeUsdt={() => requestSubscribe('USDT')}
         />
       </RefreshableScrollView>
+
+      <PayPasswordModal
+        visible={payVisible}
+        mode={payMode}
+        submitting={submitting}
+        title={
+          payMode === 'set'
+            ? '设置支付密码'
+            : pendingCurrency === 'USDT'
+              ? 'USDT 认购验证'
+              : 'RMB 认购验证'
+        }
+        onCancel={() => {
+          if (submitting) {
+            return;
+          }
+          closePaySheet();
+        }}
+        onConfirm={(pwd) => void onConfirmPay(pwd)}
+      />
     </AppBackground>
   );
 }

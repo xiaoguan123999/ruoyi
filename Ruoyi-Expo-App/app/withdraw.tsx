@@ -4,9 +4,14 @@ import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { formatBalance, toNumberOrZero } from '@/api/app-auth';
+import {
+  fetchAppPayAccounts,
+  formatPayAccountLabel,
+  payAccountCurrency,
+} from '@/api/app-pay-account';
 import { ApiError } from '@/api/request';
 import { applyAppWithdraw, fetchAppWallet, parseAmountInput } from '@/api/app-trade';
-import type { AppWallet } from '@/api/types';
+import type { AppPayAccount, AppWallet } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { DualBalance } from '@/components/ui/DualBalance';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -19,37 +24,55 @@ import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
 
 type WithdrawTab = 'income' | 'assist';
 
-type WithdrawMethod = {
-  key: string;
-  label: string;
-  icon: number;
-  currency: 'CNY' | 'USDT';
-};
-
 const tabs: { key: WithdrawTab; label: string }[] = [
   { key: 'income', label: '产品收益' },
   { key: 'assist', label: '助力值' },
 ];
+
+function accountIcon(account: AppPayAccount): number {
+  if (account.accountType === 'USDT') return images.payUsdt;
+  if (account.accountType === 'BANK') return images.payCard;
+  return images.payAlipay;
+}
+
+/** 与提现 UI 原型一致的短名称 */
+function accountTypeLabel(account: AppPayAccount): string {
+  if (account.accountType === 'USDT') return 'USDT';
+  if (account.accountType === 'BANK') return '银行卡';
+  return '支付宝';
+}
 
 export default function WithdrawScreen() {
   const router = useRouter();
   const amountRef = useRef<TextInput>(null);
   const [amount, setAmount] = useState('');
   const [activeTab, setActiveTab] = useState<WithdrawTab>('income');
-  const [methods, setMethods] = useState<WithdrawMethod[]>([]);
-  const [method, setMethod] = useState<string>('');
+  const [accounts, setAccounts] = useState<AppPayAccount[]>([]);
+  const [accountId, setAccountId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [wallet, setWallet] = useState<AppWallet | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const nextWallet = await fetchAppWallet();
+      const [nextWallet, nextAccounts] = await Promise.all([
+        fetchAppWallet(),
+        fetchAppPayAccounts(),
+      ]);
       setWallet(nextWallet);
-    } catch {
+      setAccounts(nextAccounts);
+      setAccountId((prev) => {
+        if (prev && nextAccounts.some((item) => item.accountId === prev)) {
+          return prev;
+        }
+        const preferred =
+          nextAccounts.find((item) => item.isDefault === '1') ?? nextAccounts[0];
+        return preferred?.accountId ?? null;
+      });
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 401) {
+        // wallet 失败时仍尝试展示空收款方式
+      }
     }
-    // 收款账户接口未对接前保持空列表，不展示假收款方式
-    setMethods([]);
-    setMethod('');
   }, []);
 
   useFocusEffect(
@@ -60,7 +83,8 @@ export default function WithdrawScreen() {
     }, [load]),
   );
 
-  const selected = methods.find((item) => item.key === method);
+  const selected = accounts.find((item) => item.accountId === accountId);
+  const selectedCurrency = selected ? payAccountCurrency(selected) : null;
   const tabLabel = tabs.find((item) => item.key === activeTab)?.label ?? '产品收益';
   const availableCny =
     activeTab === 'income'
@@ -71,9 +95,9 @@ export default function WithdrawScreen() {
       ? toNumberOrZero(wallet?.usdtProductIncome)
       : toNumberOrZero(wallet?.usdtAssistValue);
   const availableAmount =
-    selected?.currency === 'USDT'
+    selectedCurrency === 'USDT'
       ? availableUsdt
-      : selected?.currency === 'CNY'
+      : selectedCurrency === 'CNY'
         ? availableCny
         : 0;
 
@@ -92,16 +116,16 @@ export default function WithdrawScreen() {
       return;
     }
     if (value > availableAmount) {
-      modalWarning(`提现金额不能超过${tabLabel}`);
+      modalWarning('提现余额不足');
       return;
     }
     setSubmitting(true);
     try {
       const message = await applyAppWithdraw({
         amount: value,
-        currency: selected.currency,
-        accountInfo: selected.label,
-        remark: `${tabLabel}-${selected.label}`,
+        currency: selectedCurrency || undefined,
+        accountId: selected.accountId,
+        remark: `${tabLabel}-${formatPayAccountLabel(selected)}`,
       });
       modalSuccess(message);
       setAmount('');
@@ -159,7 +183,7 @@ export default function WithdrawScreen() {
             onChangeText={setAmount}
             keyboardType="numeric"
             style={styles.input}
-            placeholder={selected?.currency === 'CNY' ? '¥ 0' : 'USDT 0'}
+            placeholder={selectedCurrency === 'CNY' ? '¥ 0' : 'USDT 0'}
             placeholderTextColor={colors.placeholder}
             autoFocus
           />
@@ -168,25 +192,37 @@ export default function WithdrawScreen() {
         <GlassCard>
           <View style={styles.row}>
             <Text style={styles.label}>选择收款方式</Text>
-            {methods.length > 0 ? <Text style={styles.label}>可用余额</Text> : null}
+            <Text style={styles.label}>可用余额</Text>
           </View>
 
-          {methods.length === 0 ? (
+          {accounts.length === 0 ? (
             <Pressable style={styles.emptyWrap} onPress={goAddPayMethod}>
               <Text style={styles.emptyText}>暂未添加收款方式</Text>
               <Text style={styles.emptyLink}>去添加 ›</Text>
             </Pressable>
           ) : (
-            methods.map((item) => (
-              <Pressable key={item.key} style={styles.method} onPress={() => setMethod(item.key)}>
-                <View style={[styles.radio, method === item.key && styles.radioOn]} />
-                <Image source={item.icon} style={styles.icon} contentFit="contain" />
-                <Text style={styles.methodText}>{item.label}</Text>
-                <Text style={styles.right}>
-                  {formatBalance(item.currency === 'USDT' ? availableUsdt : availableCny)}
-                </Text>
-              </Pressable>
-            ))
+            accounts.map((item, index) => {
+              const currency = payAccountCurrency(item);
+              const selectedMethod = accountId === item.accountId;
+              return (
+                <Pressable
+                  key={item.accountId}
+                  style={[styles.method, index > 0 && styles.methodBorder]}
+                  onPress={() => setAccountId(item.accountId)}
+                >
+                  <View style={[styles.radio, selectedMethod && styles.radioOn]}>
+                    {selectedMethod ? <View style={styles.radioDot} /> : null}
+                  </View>
+                  <Image source={accountIcon(item)} style={styles.icon} contentFit="contain" />
+                  <Text style={styles.methodText} numberOfLines={1}>
+                    {accountTypeLabel(item)}
+                  </Text>
+                  <Text style={styles.right}>
+                    {formatBalance(currency === 'USDT' ? availableUsdt : availableCny)}
+                  </Text>
+                </Pressable>
+              );
+            })
           )}
         </GlassCard>
 
@@ -271,29 +307,42 @@ const styles = StyleSheet.create({
   method: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     gap: 10,
   },
+  methodBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(160, 190, 230, 0.28)',
+  },
   radio: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.text,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: 'rgba(220, 230, 245, 0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   radioOn: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+    borderColor: '#3D8BFF',
+  },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#3D8BFF',
   },
   icon: {
-    width: 22,
-    height: 22,
+    width: 24,
+    height: 24,
   },
   methodText: {
     color: colors.text,
     flex: 1,
+    fontSize: 15,
   },
   right: {
     color: colors.text,
+    fontSize: 15,
   },
 });

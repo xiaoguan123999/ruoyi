@@ -12,11 +12,11 @@ import { formatBalance } from '@/api/app-auth';
 import { ApiError } from '@/api/request';
 import {
   fetchAppRechargeRecords,
-  fetchAppWallet,
+  fetchAppWalletLogs,
   fetchAppWithdrawRecords,
   formatMoneyLabel,
 } from '@/api/app-trade';
-import type { AppFundRecord, AppWallet } from '@/api/types';
+import type { AppFundRecord, AppWalletLogItem } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -66,8 +66,26 @@ function sumByCurrency(records: AppFundRecord[]) {
 function DualSummary({ cny, usdt }: { cny: number; usdt: number }) {
   return (
     <View style={styles.summaryAmounts}>
-      <Text style={styles.summaryAmount}>¥{formatBalance(cny)}</Text>
+      <Text style={styles.summaryAmount}>¥ {formatBalance(cny)}</Text>
       <Text style={styles.summaryAmount}>USDT {formatBalance(usdt)}</Text>
+    </View>
+  );
+}
+
+function formatRecordDate(value: string): string {
+  const raw = value.replace(/：/g, ':').trim();
+  if (!raw) {
+    return '';
+  }
+  return raw.slice(0, 10);
+}
+
+function LedgerFooter() {
+  return (
+    <View style={styles.loadedRow}>
+      <View style={styles.loadedLine} />
+      <Text style={styles.loadedText}>已加载完毕</Text>
+      <View style={styles.loadedLine} />
     </View>
   );
 }
@@ -76,25 +94,26 @@ export default function FundDetailsScreen() {
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const [activeTab, setActiveTab] = useState<FundTab>(() => resolveTab(tab));
   const [loading, setLoading] = useState(true);
-  const [wallet, setWallet] = useState<AppWallet | null>(null);
   const [recharges, setRecharges] = useState<AppFundRecord[]>([]);
   const [withdraws, setWithdraws] = useState<AppFundRecord[]>([]);
+  const [balanceLogs, setBalanceLogs] = useState<AppWalletLogItem[]>([]);
 
   useFocusEffect(
     useCallback(() => {
       setActiveTab(resolveTab(tab));
     }, [tab]),
   );
+
   const load = useCallback(async () => {
     try {
-      const [nextWallet, nextRecharges, nextWithdraws] = await Promise.all([
-        fetchAppWallet(),
+      const [nextRecharges, nextWithdraws, nextLogs] = await Promise.all([
         fetchAppRechargeRecords(),
         fetchAppWithdrawRecords(),
+        fetchAppWalletLogs({ pageNum: 1, pageSize: 50 }),
       ]);
-      setWallet(nextWallet);
       setRecharges(nextRecharges);
       setWithdraws(nextWithdraws);
+      setBalanceLogs(nextLogs);
     } catch (error) {
       if (!(error instanceof ApiError) || error.code !== 401) {
         modalError(error instanceof ApiError ? error.message : '获取资金明细失败');
@@ -110,79 +129,48 @@ export default function FundDetailsScreen() {
     }, [load]),
   );
 
-  const content = useMemo(() => {
+  const summary = useMemo(() => {
     if (activeTab === 'recharge') {
       const totals = sumByCurrency(recharges);
       return {
-        summaryLabel: '累计充值',
-        summaryNode: <DualSummary cny={totals.cny} usdt={totals.usdt} />,
-        rows: recharges.map((item) => ({
-          id: item.id,
-          title: item.title,
-          date: item.createTime.slice(0, 10),
-          amount: formatMoneyLabel(item.amount, item.currency),
-          tone: item.title.includes('成功')
-            ? styles.in
-            : item.title.includes('失败')
-              ? styles.fail
-              : styles.pending,
-        })),
+        label: '累计充值',
+        node: <DualSummary cny={totals.cny} usdt={totals.usdt} />,
       };
     }
-    if (activeTab === 'balance') {
+    if (activeTab === 'withdraw') {
+      const totals = sumByCurrency(withdraws);
       return {
-        summaryLabel: '充值余额',
-        summaryNode: (
-          <DualSummary
-            cny={wallet?.cnyAvailable ?? 0}
-            usdt={wallet?.usdtAvailable ?? 0}
-          />
-        ),
-        rows: [
-          {
-            id: 'cny',
-            title: '人民币可用',
-            date: '当前余额',
-            amount: `¥${formatBalance(wallet?.cnyAvailable)}`,
-            tone: styles.textLight,
-          },
-          {
-            id: 'usdt',
-            title: 'USDT 可用',
-            date: '当前余额',
-            amount: `USDT ${formatBalance(wallet?.usdtAvailable)}`,
-            tone: styles.textLight,
-          },
-        ],
+        label: '累计提现',
+        node: <DualSummary cny={totals.cny} usdt={totals.usdt} />,
       };
     }
-    const totals = sumByCurrency(withdraws);
-    return {
-      summaryLabel: '累计提现',
-      summaryNode: <DualSummary cny={totals.cny} usdt={totals.usdt} />,
-      rows: withdraws.map((item) => ({
-        id: item.id,
-        title: item.title,
-        date: item.createTime.slice(0, 10),
-        amount: formatMoneyLabel(item.amount, item.currency),
-        tone: item.title.includes('成功')
-          ? styles.in
-          : item.title.includes('失败')
-            ? styles.fail
-            : styles.pending,
-      })),
-    };
-  }, [activeTab, recharges, wallet, withdraws]);
+    return null;
+  }, [activeTab, recharges, withdraws]);
+
+  const fundRows = useMemo(() => {
+    const source = activeTab === 'recharge' ? recharges : withdraws;
+    return source.map((item) => ({
+      id: item.id,
+      title: item.title,
+      date: formatRecordDate(item.createTime),
+      amount: formatMoneyLabel(item.amount, item.currency),
+      tone: item.title.includes('成功')
+        ? styles.in
+        : item.title.includes('失败')
+          ? styles.fail
+          : styles.pending,
+    }));
+  }, [activeTab, recharges, withdraws]);
 
   return (
     <AppBackground source={images.pageBg} dim={false}>
       <PageHeader title="资金明细" />
       <View style={styles.tabs}>
-        {tabs.map((tab) => {
-          const active = tab.key === activeTab;
+        {tabs.map((item) => {
+          const active = item.key === activeTab;
           return (
-            <Pressable key={tab.key} style={styles.tabItem} onPress={() => setActiveTab(tab.key)}>
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
+            <Pressable key={item.key} style={styles.tabItem} onPress={() => setActiveTab(item.key)}>
+              <Text style={[styles.tabText, active && styles.tabTextActive]}>{item.label}</Text>
               <View style={[styles.tabBar, active && styles.tabBarActive]} />
             </Pressable>
           );
@@ -198,30 +186,66 @@ export default function FundDetailsScreen() {
           showsVerticalScrollIndicator={false}
           onRefresh={load}
         >
-          <GlassCard style={styles.card}>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryLeft}>
+          {activeTab === 'balance' ? (
+            <GlassCard style={styles.ledgerCard}>
+              <View style={styles.ledgerHead}>
                 <View style={styles.summaryMark} />
-                <Text style={styles.summaryLabel}>{content.summaryLabel}</Text>
+                <Text style={styles.summaryLabel}>交易</Text>
               </View>
-              {content.summaryNode}
-            </View>
-          </GlassCard>
 
-          {content.rows.length === 0 ? (
-            <Text style={styles.empty}>暂无记录</Text>
-          ) : (
-            content.rows.map((item) => (
-              <GlassCard key={item.id} style={styles.card}>
-                <View style={styles.detailRow}>
-                  <View>
-                    <Text style={[styles.title, item.tone]}>{item.title}</Text>
-                    <Text style={styles.time}>{item.date}</Text>
+              {balanceLogs.length === 0 ? (
+                <Text style={styles.emptyInCard}>暂无交易记录</Text>
+              ) : (
+                balanceLogs.map((item, index) => (
+                  <View
+                    key={item.id}
+                    style={[styles.ledgerRow, index > 0 && styles.ledgerRowBorder]}
+                  >
+                    <View style={styles.ledgerLeft}>
+                      <Text style={styles.ledgerTitle} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text style={styles.ledgerDate}>{formatRecordDate(item.createTime)}</Text>
+                    </View>
+                    <Text style={styles.ledgerAmount}>
+                      {formatMoneyLabel(item.amount, item.currency)}
+                    </Text>
                   </View>
-                  <Text style={styles.summaryAmount}>{item.amount}</Text>
-                </View>
-              </GlassCard>
-            ))
+                ))
+              )}
+
+              <LedgerFooter />
+            </GlassCard>
+          ) : (
+            <>
+              {summary ? (
+                <GlassCard style={styles.card}>
+                  <View style={styles.summaryRow}>
+                    <View style={styles.summaryLeft}>
+                      <View style={styles.summaryMark} />
+                      <Text style={styles.summaryLabel}>{summary.label}</Text>
+                    </View>
+                    {summary.node}
+                  </View>
+                </GlassCard>
+              ) : null}
+
+              {fundRows.length === 0 ? (
+                <Text style={styles.empty}>暂无记录</Text>
+              ) : (
+                fundRows.map((item) => (
+                  <GlassCard key={item.id} style={styles.card}>
+                    <View style={styles.detailRow}>
+                      <View>
+                        <Text style={[styles.title, item.tone]}>{item.title}</Text>
+                        <Text style={styles.time}>{item.date}</Text>
+                      </View>
+                      <Text style={styles.summaryAmount}>{item.amount}</Text>
+                    </View>
+                  </GlassCard>
+                ))
+              )}
+            </>
           )}
         </RefreshableScrollView>
       )}
@@ -267,6 +291,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 24,
   },
+  emptyInCard: {
+    color: colors.muted,
+    textAlign: 'center',
+    paddingVertical: 28,
+    fontSize: 14,
+  },
   content: {
     paddingHorizontal: 16,
     paddingBottom: 24,
@@ -277,6 +307,68 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(98, 150, 220, 0.24)',
     borderRadius: 12,
     paddingVertical: 16,
+  },
+  ledgerCard: {
+    backgroundColor: 'rgba(23, 43, 88, 0.94)',
+    borderColor: 'rgba(98, 150, 220, 0.24)',
+    borderRadius: 12,
+    paddingTop: 16,
+    paddingBottom: 12,
+    paddingHorizontal: 0,
+  },
+  ledgerHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 4,
+  },
+  ledgerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  ledgerRowBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(160, 190, 230, 0.28)',
+  },
+  ledgerLeft: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  ledgerTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  ledgerDate: {
+    marginTop: 8,
+    color: 'rgba(190, 210, 235, 0.78)',
+    fontSize: 13,
+  },
+  ledgerAmount: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  loadedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingTop: 8,
+    paddingBottom: 6,
+    paddingHorizontal: 24,
+  },
+  loadedLine: {
+    width: 36,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(160, 190, 230, 0.45)',
+  },
+  loadedText: {
+    color: 'rgba(180, 200, 230, 0.7)',
+    fontSize: 12,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -324,9 +416,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginTop: 10,
     fontSize: 14,
-  },
-  textLight: {
-    color: colors.text,
   },
   in: {
     color: '#7CFF3B',

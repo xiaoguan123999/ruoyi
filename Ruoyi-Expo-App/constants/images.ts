@@ -45,4 +45,6 @@ export const images = {
   tabProductActive: require('../assets/ui/tab-product-active.png'),
   tabMine: require('../assets/ui/tab-mine.png'),
   tabMineActive: require('../assets/ui/tab-mine-active.png'),
+  levelBg: require('../assets/ui/level-bg.png'),
+  levelTrophy: require('../assets/ui/level-trophy.png'),
 };

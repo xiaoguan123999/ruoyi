@@ -1,23 +1,48 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { createAppPayAccount, fetchAppPayAccounts } from '@/api/app-pay-account';
+import { ApiError } from '@/api/request';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { colors } from '@/theme/colors';
-import { modalWarning } from '@/utils/toast';
+import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
 
 export default function AddAlipayWalletScreen() {
+  const router = useRouter();
   const [name, setName] = useState('');
   const [account, setAccount] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     if (!name.trim() || !account.trim()) {
       modalWarning('请填写完整信息');
       return;
     }
-    modalWarning('收款账户接口暂未对接');
+    setSubmitting(true);
+    try {
+      const existing = await fetchAppPayAccounts('ALIPAY');
+      if (existing.length >= 1) {
+        modalWarning('最多添加1个支付宝账户');
+        return;
+      }
+      const msg = await createAppPayAccount({
+        accountType: 'ALIPAY',
+        accountName: name.trim(),
+        accountNo: account.trim(),
+      });
+      modalSuccess(msg);
+      router.replace('/wallet?tab=alipay');
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 401) {
+        modalError(error instanceof ApiError ? error.message : '添加失败');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -43,7 +68,12 @@ export default function AddAlipayWalletScreen() {
         />
 
         <View style={styles.action}>
-          <PrimaryButton title="确认添加" onPress={onSubmit} />
+          <PrimaryButton
+            title="确认添加"
+            compact
+            onPress={() => void onSubmit()}
+            disabled={submitting}
+          />
         </View>
       </RefreshableScrollView>
     </AppBackground>
@@ -93,16 +123,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   input: {
+    height: 48,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(140, 180, 230, 0.28)',
-    backgroundColor: 'rgba(10, 28, 58, 0.72)',
+    borderColor: 'rgba(120, 160, 210, 0.22)',
+    backgroundColor: 'rgba(8, 22, 48, 0.72)',
     color: colors.text,
     paddingHorizontal: 14,
-    paddingVertical: 14,
     fontSize: 15,
   },
   action: {
-    marginTop: 10,
+    marginTop: 18,
   },
 });

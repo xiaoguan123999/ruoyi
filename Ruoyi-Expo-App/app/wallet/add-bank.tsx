@@ -1,24 +1,50 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { createAppPayAccount, fetchAppPayAccounts } from '@/api/app-pay-account';
+import { ApiError } from '@/api/request';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { colors } from '@/theme/colors';
-import { modalWarning } from '@/utils/toast';
+import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
 
 export default function AddBankWalletScreen() {
+  const router = useRouter();
   const [name, setName] = useState('');
   const [bankName, setBankName] = useState('');
   const [cardNo, setCardNo] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     if (!name.trim() || !bankName.trim() || !cardNo.trim()) {
       modalWarning('请填写完整信息');
       return;
     }
-    modalWarning('收款账户接口暂未对接');
+    setSubmitting(true);
+    try {
+      const existing = await fetchAppPayAccounts('BANK');
+      if (existing.length >= 1) {
+        modalWarning('最多添加1个银行账户');
+        return;
+      }
+      const msg = await createAppPayAccount({
+        accountType: 'BANK',
+        accountName: name.trim(),
+        bankName: bankName.trim(),
+        accountNo: cardNo.trim(),
+      });
+      modalSuccess(msg);
+      router.replace('/wallet?tab=bank');
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 401) {
+        modalError(error instanceof ApiError ? error.message : '添加失败');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -48,7 +74,12 @@ export default function AddBankWalletScreen() {
         />
 
         <View style={styles.action}>
-          <PrimaryButton title="确认添加" onPress={onSubmit} />
+          <PrimaryButton
+            title="确认添加"
+            compact
+            onPress={() => void onSubmit()}
+            disabled={submitting}
+          />
         </View>
       </RefreshableScrollView>
     </AppBackground>
@@ -97,8 +128,8 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(90, 160, 230, 0.45)',
-    backgroundColor: 'rgba(10, 28, 58, 0.55)',
+    borderColor: 'rgba(70, 140, 210, 0.5)',
+    backgroundColor: 'rgba(8, 24, 52, 0.5)',
     paddingHorizontal: 12,
     paddingVertical: 12,
     marginBottom: 22,
@@ -110,7 +141,7 @@ const styles = StyleSheet.create({
   },
   tipText: {
     flex: 1,
-    color: 'rgba(190, 210, 235, 0.88)',
+    color: 'rgba(200, 218, 240, 0.9)',
     fontSize: 13,
     lineHeight: 20,
   },
@@ -124,16 +155,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   input: {
+    height: 48,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(140, 180, 230, 0.28)',
-    backgroundColor: 'rgba(10, 28, 58, 0.72)',
+    borderColor: 'rgba(120, 160, 210, 0.22)',
+    backgroundColor: 'rgba(8, 22, 48, 0.72)',
     color: colors.text,
     paddingHorizontal: 14,
-    paddingVertical: 14,
     fontSize: 15,
   },
   action: {
-    marginTop: 10,
+    marginTop: 18,
   },
 });

@@ -1,19 +1,125 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { fetchAppVideoCarousel } from '@/api/app-video';
 import { fetchAppNotices } from '@/api/app-notice';
 import { fetchAppOverview } from '@/api/app-overview';
-import type { AppNotice, AppOverviewItem } from '@/api/types';
+import type { AppNotice, AppOverviewItem, AppVideoCarouselItem } from '@/api/types';
+import { BannerVideoPlayer } from '@/components/ui/BannerVideoPlayer';
 import { NoticeMarquee } from '@/components/ui/NoticeMarquee';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
+import { modalWarning } from '@/utils/toast';
+import { prefetchVideos } from '@/utils/video-cache';
 
 const PAGE_BG = '#050B1C';
 const PANEL_BG = '#0B1730';
+
+function HomeVideoCarousel({
+  items,
+  width,
+  height,
+}: {
+  items: AppVideoCarouselItem[];
+  width: number;
+  height: number;
+}) {
+  const scrollRef = useRef<ScrollView | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [playing, setPlaying] = useState<AppVideoCarouselItem | null>(null);
+
+  const slides = items.filter((it) => !!it.coverUrl || !!it.videoUrl);
+  const slideCount = Math.max(1, slides.length);
+
+  useEffect(() => {
+    if (slideCount <= 1 || playing) {
+      return;
+    }
+    const t = setInterval(() => {
+      const nextIndex = (activeIndex + 1) % slideCount;
+      scrollRef.current?.scrollTo({ x: nextIndex * width, animated: true });
+    }, 3500);
+    return () => clearInterval(t);
+  }, [activeIndex, slideCount, width, playing]);
+
+  const onPlay = (item: AppVideoCarouselItem) => {
+    if (!item.videoUrl) {
+      modalWarning('暂无可播放视频');
+      return;
+    }
+    setPlaying(item);
+  };
+
+  return (
+    <View style={{ width, height }}>
+      <ScrollView
+        ref={(r) => {
+          scrollRef.current = r;
+        }}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={(e) => {
+          const x = e.nativeEvent.contentOffset.x;
+          const idx = Math.round(x / width);
+          if (idx !== activeIndex) {
+            setActiveIndex(Math.max(0, Math.min(idx, slideCount - 1)));
+          }
+        }}
+        onMomentumScrollEnd={(e) => {
+          const x = e.nativeEvent.contentOffset.x;
+          const idx = Math.round(x / width);
+          setActiveIndex(Math.max(0, Math.min(idx, slideCount - 1)));
+        }}
+      >
+        {slides.map((item) => (
+          <Pressable
+            key={item.id}
+            style={{ width, height }}
+            onPress={() => onPlay(item)}
+          >
+            <Image
+              source={item.coverUrl ? { uri: item.coverUrl } : images.banner}
+              style={{ width, height }}
+              contentFit="cover"
+            />
+            {item.videoUrl ? (
+              <View style={styles.playOverlay} pointerEvents="none">
+                <View style={styles.playBtn}>
+                  <Text style={styles.playIcon}>▶</Text>
+                </View>
+              </View>
+            ) : null}
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {slideCount > 1 ? (
+        <View style={styles.bannerDots}>
+          {slides.map((item, index) => (
+            <View
+              key={item.id}
+              style={[styles.bannerDot, index === activeIndex && styles.bannerDotActive]}
+            />
+          ))}
+        </View>
+      ) : null}
+
+      <BannerVideoPlayer
+        uri={playing?.videoUrl ?? ''}
+        cacheId={playing?.id}
+        title={playing?.title}
+        visible={!!playing?.videoUrl}
+        onClose={() => setPlaying(null)}
+      />
+    </View>
+  );
+}
 
 const services = [
   { key: 'checkin', label: '每日签到', icon: images.iconCheckin, href: '/check-in' },
@@ -32,6 +138,7 @@ export default function HomeScreen() {
   const iconSize = Math.min(70, Math.max(56, Math.round(width * 0.155)));
   const [notices, setNotices] = useState<AppNotice[]>([]);
   const [overview, setOverview] = useState<AppOverviewItem[]>([]);
+  const [videos, setVideos] = useState<AppVideoCarouselItem[]>([]);
 
   const load = useCallback(async () => {
     const [nextNotices, nextOverview] = await Promise.all([
@@ -42,21 +149,38 @@ export default function HomeScreen() {
     setOverview(nextOverview);
   }, []);
 
+  const loadVideos = useCallback(async () => {
+    const list = await fetchAppVideoCarousel().catch(() => [] as AppVideoCarouselItem[]);
+    setVideos(list);
+    // 列表加载后后台预缓存全部视频（不阻塞 UI）
+    void prefetchVideos(list);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      void load();
-    }, [load]),
+      void (async () => {
+        await load();
+        await loadVideos();
+      })();
+    }, [load, loadVideos]),
   );
+
+  const bannerEl = useMemo(() => {
+    if (videos.length > 0) {
+      return <HomeVideoCarousel items={videos} width={width} height={bannerH} />;
+    }
+    return <Image source={images.banner} style={{ width, height: bannerH }} contentFit="cover" />;
+  }, [videos, width, bannerH]);
 
   return (
     <View style={styles.page}>
       <RefreshableScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 16 }}
-        onRefresh={load}
+        onRefresh={() => Promise.all([load(), loadVideos()]).then(() => undefined)}
       >
         <View>
-          <Image source={images.banner} style={{ width, height: bannerH }} contentFit="cover" />
+          {bannerEl}
           <View style={[styles.header, { top: insets.top + 4 }]}>
             <Image source={images.logo} style={styles.headerLogo} contentFit="contain" />
             <Text style={styles.headerTitle}>星帆智联</Text>
@@ -131,6 +255,47 @@ const styles = StyleSheet.create({
   },
   headerLogo: { width: 26, height: 26, borderRadius: 6 },
   headerTitle: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  playOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+  },
+  playBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 3,
+  },
+  playIcon: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  bannerDots: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  bannerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  bannerDotActive: {
+    width: 14,
+    backgroundColor: '#FFFFFF',
+  },
   body: {
     backgroundColor: PAGE_BG,
     paddingBottom: 8,

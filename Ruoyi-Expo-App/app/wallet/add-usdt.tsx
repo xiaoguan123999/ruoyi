@@ -1,27 +1,52 @@
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { createAppPayAccount, fetchAppPayAccounts } from '@/api/app-pay-account';
+import { ApiError } from '@/api/request';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
-import { modalWarning } from '@/utils/toast';
+import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
 
 const PROTOCOLS = ['TRC20', 'ERC20'] as const;
 
 export default function AddUsdtWalletScreen() {
+  const router = useRouter();
   const [protocol, setProtocol] = useState<(typeof PROTOCOLS)[number]>('TRC20');
   const [address, setAddress] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     if (!address.trim()) {
       modalWarning('请输入虚拟币地址');
       return;
     }
-    modalWarning('收款账户接口暂未对接');
+    setSubmitting(true);
+    try {
+      const existing = await fetchAppPayAccounts('USDT');
+      if (existing.length >= 1) {
+        modalWarning('最多添加1个虚拟账户');
+        return;
+      }
+      const msg = await createAppPayAccount({
+        accountType: 'USDT',
+        accountNo: address.trim(),
+        network: protocol,
+      });
+      modalSuccess(msg);
+      router.replace('/wallet?tab=usdt');
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 401) {
+        modalError(error instanceof ApiError ? error.message : '添加失败');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -50,7 +75,7 @@ export default function AddUsdtWalletScreen() {
           ))}
         </View>
 
-        <Text style={[styles.label, styles.labelGap]}>虚拟币地址</Text>
+        <Text style={[styles.label, styles.labelGap]}>银行卡号</Text>
         <TextInput
           value={address}
           onChangeText={setAddress}
@@ -62,7 +87,12 @@ export default function AddUsdtWalletScreen() {
         />
 
         <View style={styles.action}>
-          <PrimaryButton title="确认添加" onPress={onSubmit} />
+          <PrimaryButton
+            title="确认添加"
+            compact
+            onPress={() => void onSubmit()}
+            disabled={submitting}
+          />
         </View>
       </RefreshableScrollView>
     </AppBackground>
@@ -79,15 +109,13 @@ function SelectChip({
   children: React.ReactNode;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.chip, selected && styles.chipSelected]}
-    >
+    <Pressable onPress={onPress} style={[styles.chip, selected && styles.chipSelected]}>
       {children}
       {selected ? (
-        <View style={styles.check}>
+        <>
+          <View style={styles.check} />
           <Text style={styles.checkMark}>✓</Text>
-        </View>
+        </>
       ) : null}
     </Pressable>
   );
@@ -113,13 +141,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   chip: {
-    minWidth: 108,
-    height: 48,
-    paddingHorizontal: 16,
+    minWidth: 118,
+    height: 52,
+    paddingHorizontal: 18,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(180, 200, 230, 0.35)',
-    backgroundColor: 'rgba(8, 20, 44, 0.45)',
+    borderColor: 'rgba(180, 200, 230, 0.32)',
+    backgroundColor: 'rgba(8, 18, 40, 0.55)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -127,8 +155,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   chipSelected: {
-    borderColor: '#4A9EFF',
-    backgroundColor: 'rgba(30, 70, 140, 0.35)',
+    borderColor: '#3D8BFF',
+    backgroundColor: 'rgba(20, 48, 100, 0.45)',
   },
   chipText: {
     color: colors.text,
@@ -136,40 +164,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   chipTextActive: {
-    color: '#7EB6FF',
+    color: '#5BA3FF',
   },
   usdtIcon: {
-    width: 22,
-    height: 22,
+    width: 24,
+    height: 24,
   },
   check: {
     position: 'absolute',
     right: 0,
     bottom: 0,
-    width: 18,
-    height: 14,
-    borderTopLeftRadius: 6,
-    backgroundColor: '#3D8BFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 0,
+    height: 0,
+    borderStyle: 'solid',
+    borderLeftWidth: 18,
+    borderBottomWidth: 18,
+    borderLeftColor: 'transparent',
+    borderBottomColor: '#3D8BFF',
   },
   checkMark: {
+    position: 'absolute',
+    right: 1,
+    bottom: 0,
     color: '#fff',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
     lineHeight: 12,
   },
   input: {
+    height: 48,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(140, 180, 230, 0.28)',
-    backgroundColor: 'rgba(10, 28, 58, 0.72)',
+    borderColor: 'rgba(120, 160, 210, 0.22)',
+    backgroundColor: 'rgba(8, 22, 48, 0.72)',
     color: colors.text,
     paddingHorizontal: 14,
-    paddingVertical: 14,
     fontSize: 15,
   },
   action: {
-    marginTop: 28,
+    marginTop: 32,
   },
 });

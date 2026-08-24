@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AppBackground } from '@/components/ui/AppBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { MockDataBanner } from '@/components/ui/MockDataBanner';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
@@ -12,6 +13,7 @@ export default function ServiceScreen() {
   return (
     <AppBackground>
       <PageHeader title="客服中心" />
+      <MockDataBanner message="联系客服功能尚未对接" />
       <RefreshableScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 28 }}

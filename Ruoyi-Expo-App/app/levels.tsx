@@ -1,173 +1,514 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { Image } from 'expo-image';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { displayText, formatBalance } from '@/api/app-auth';
-import { fetchAppLevels } from '@/api/app-member';
+import { displayText } from '@/api/app-auth';
+import { emptyLevelsView, fetchAppLevelsView } from '@/api/app-member';
+import { fetchAppTeam, formatTeamAmount, sumTeamRecharge } from '@/api/app-team';
 import { ApiError } from '@/api/request';
 import type { AppLevel } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
-import { useAuth } from '@/hooks/useAuth';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
 import { modalError } from '@/utils/toast';
 
-export default function LevelsScreen() {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [levels, setLevels] = useState<AppLevel[]>([]);
+const LEVEL_NOTE =
+  '注：成员个人累计认购金额达到 ¥10,000 或 1,429 USDT 后，方可计入团队等级考核。请遵循平台规则，严禁作弊行为，一经发现将取消奖励资格。';
 
-  const load = useCallback(async () => {
+type DisplayLevelRow = {
+  levelId: number;
+  levelName: string;
+  /** 接口暂无此字段时为空 */
+  teamDepth: string;
+  minRechargeCny: number;
+  minRechargeUsdt: number;
+  teamRewardCny: number;
+  teamRewardUsdt: number;
+};
+
+function toNumberOrZero(value?: number | null): number {
+  return value !== undefined && value !== null && Number.isFinite(value) ? value : 0;
+}
+
+function mapLevelRows(apiLevels: AppLevel[]): DisplayLevelRow[] {
+  return apiLevels.map((apiLevel) => ({
+    levelId: apiLevel.levelId,
+    levelName: apiLevel.levelName?.trim() || `等级${apiLevel.levelId}`,
+    teamDepth: '',
+    minRechargeCny: toNumberOrZero(apiLevel.minRechargeCny),
+    minRechargeUsdt: toNumberOrZero(apiLevel.minRechargeUsdt),
+    teamRewardCny: toNumberOrZero(apiLevel.teamRewardCny),
+    teamRewardUsdt: toNumberOrZero(apiLevel.teamRewardUsdt),
+  }));
+}
+
+function formatAmountLine(value?: number | null): string {
+  return formatTeamAmount(toNumberOrZero(value));
+}
+
+function TableDualAmount({ cny, usdt }: { cny?: number; usdt?: number }) {
+  return (
+    <View style={styles.tableDualAmount}>
+      <Text style={styles.tableAmountLine} numberOfLines={1}>
+        ¥ {formatAmountLine(cny)}
+      </Text>
+      <Text style={styles.tableAmountLine} numberOfLines={1}>
+        USDT {formatAmountLine(usdt)}
+      </Text>
+    </View>
+  );
+}
+
+function RulesModal({
+  visible,
+  ruleText,
+  onClose,
+}: {
+  visible: boolean;
+  ruleText: string;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.modalMask} onPress={onClose}>
+        <Pressable style={styles.modalCard} onPress={() => {}}>
+          <View style={styles.modalHead}>
+            <Text style={styles.modalTitle}>规则说明</Text>
+            <Pressable onPress={onClose} hitSlop={12} style={styles.modalClose}>
+              <Text style={styles.modalCloseText}>×</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.modalRuleText}>{ruleText.trim() || '暂无规则说明'}</Text>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function LevelTableRow({
+  row,
+  current,
+}: {
+  row: DisplayLevelRow;
+  current: boolean;
+}) {
+  return (
+    <View style={[styles.tableRow, current && styles.tableRowCurrent]}>
+      <Text style={[styles.cellLevel, styles.colLevel]} numberOfLines={1}>
+        {row.levelName}
+      </Text>
+      <Text style={[styles.cellText, styles.colDepth]} numberOfLines={1}>
+        {row.teamDepth || '—'}
+      </Text>
+      <View style={styles.colRecharge}>
+        <TableDualAmount cny={row.minRechargeCny} usdt={row.minRechargeUsdt} />
+      </View>
+      <View style={styles.colReward}>
+        <TableDualAmount cny={row.teamRewardCny} usdt={row.teamRewardUsdt} />
+      </View>
+    </View>
+  );
+}
+
+export default function LevelsScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [refreshing, setRefreshing] = useState(false);
+  const [rulesVisible, setRulesVisible] = useState(false);
+  const [levelsView, setLevelsView] = useState(emptyLevelsView());
+  const [teamRechargeCny, setTeamRechargeCny] = useState(0);
+  const [teamRechargeUsdt, setTeamRechargeUsdt] = useState(0);
+
+  const load = useCallback(async (silent = false) => {
+    if (!silent) {
+      setRefreshing(true);
+    }
     try {
-      const list = await fetchAppLevels();
-      setLevels(list);
+      const [levelsData, teamData] = await Promise.all([fetchAppLevelsView(), fetchAppTeam()]);
+      setLevelsView(levelsData);
+      const recharge = sumTeamRecharge(teamData.summary);
+      setTeamRechargeCny(toNumberOrZero(recharge.cny));
+      setTeamRechargeUsdt(toNumberOrZero(recharge.usdt));
     } catch (error) {
+      setTeamRechargeCny(0);
+      setTeamRechargeUsdt(0);
       if (!(error instanceof ApiError) || error.code !== 401) {
         modalError(error instanceof ApiError ? error.message : '获取会员等级失败');
       }
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      void load();
+      void load(true);
     }, [load]),
   );
 
-  return (
-    <AppBackground source={images.pageBg} dim={false}>
-      <PageHeader title="会员等级" />
-      {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator color={colors.accent} />
-        </View>
-      ) : (
-        <RefreshableScrollView
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-          onRefresh={load}
-        >
-          {user?.levelName ? (
-            <GlassCard style={styles.currentCard}>
-              <Text style={styles.currentLabel}>当前等级</Text>
-              <Text style={styles.currentName}>{displayText(user.levelName)}</Text>
-            </GlassCard>
-          ) : null}
+  const displayRows = useMemo(() => mapLevelRows(levelsView.levels), [levelsView.levels]);
 
-          {levels.length === 0 ? (
-            <Text style={styles.empty}>暂无等级配置</Text>
+  const currentLevelName = levelsView.current.levelName?.trim() || '0';
+  const currentLevelId = levelsView.current.levelId;
+
+  return (
+    <AppBackground source={images.levelBg} dim={false} contentPosition="top">
+      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
+        <View style={styles.headerSide}>
+          <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
+            <Text style={styles.back}>‹</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.headerTitle}>会员等级</Text>
+        <Pressable
+          style={styles.headerSide}
+          hitSlop={8}
+          onPress={() => setRulesVisible(true)}
+        >
+          <View style={styles.rulesBtn}>
+            <View style={styles.rulesIcon}>
+              <Text style={styles.rulesIconText}>?</Text>
+            </View>
+            <Text style={styles.rulesText}>规则说明</Text>
+          </View>
+        </Pressable>
+      </View>
+
+      <RefreshableScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        onRefresh={() => load()}
+      >
+        <View style={styles.hero}>
+          <Image source={images.levelTrophy} style={styles.trophy} contentFit="contain" />
+          <View style={styles.heroTextWrap}>
+            <Text style={styles.heroLineWhite}>等级越高</Text>
+            <Text style={styles.heroLineGold}>奖励越丰厚!</Text>
+          </View>
+        </View>
+
+        <View style={styles.statusCard}>
+          <View style={styles.statusCol}>
+            <Text style={styles.statusLabel}>当前团队等级</Text>
+            <Text style={styles.statusLevelValue}>{displayText(currentLevelName)}</Text>
+          </View>
+          <View style={styles.statusCol}>
+            <Text style={styles.statusLabel}>团队充值金额</Text>
+            <Text style={styles.statusMoneyLine}>¥ {formatAmountLine(teamRechargeCny)}</Text>
+            <Text style={styles.statusMoneyLine}>USDT {formatAmountLine(teamRechargeUsdt)}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.note}>{LEVEL_NOTE}</Text>
+
+        <View style={styles.tableCard}>
+          <View style={styles.tableHead}>
+            <Text style={[styles.headText, styles.colLevel]}>会员等级</Text>
+            <Text style={[styles.headText, styles.colDepth]}>团队要求</Text>
+            <Text style={[styles.headText, styles.colRechargeHead]}>充值金额</Text>
+            <Text style={[styles.headText, styles.colRewardHead]}>团队奖励</Text>
+          </View>
+
+          {displayRows.length === 0 ? (
+            <Text style={styles.emptyText}>暂无等级数据</Text>
           ) : (
-            levels.map((level) => {
-              const current = user?.levelId === level.levelId || user?.levelName === level.levelName;
-              return (
-                <GlassCard key={level.levelId} style={[styles.card, current && styles.cardCurrent]}>
-                  <View style={styles.head}>
-                    <Text style={styles.name}>{level.levelName}</Text>
-                    {current ? (
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>当前</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <Text style={styles.row}>
-                    最低充值（CNY）：{formatBalance(level.minRechargeCny)}
-                  </Text>
-                  <Text style={styles.row}>
-                    最低充值（USDT）：{formatBalance(level.minRechargeUsdt)}
-                  </Text>
-                  <Text style={styles.row}>
-                    最低有效成员：{formatBalance(level.minValidMembers)}
-                  </Text>
-                  {level.remark ? <Text style={styles.remark}>{level.remark}</Text> : null}
-                </GlassCard>
-              );
-            })
+            displayRows.map((row) => (
+              <LevelTableRow
+                key={row.levelId}
+                row={row}
+                current={currentLevelId !== undefined && currentLevelId === row.levelId}
+              />
+            ))
           )}
-        </RefreshableScrollView>
-      )}
+        </View>
+
+        {refreshing ? (
+          <View style={styles.refreshHint}>
+            <ActivityIndicator color={colors.accent} size="small" />
+          </View>
+        ) : null}
+      </RefreshableScrollView>
+
+      <RulesModal
+        visible={rulesVisible}
+        ruleText={levelsView.ruleText || ''}
+        onClose={() => setRulesVisible(false)}
+      />
     </AppBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  loadingWrap: {
-    flex: 1,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingBottom: 10,
+  },
+  headerSide: {
+    width: 96,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  content: {
-    paddingHorizontal: 16,
-    paddingBottom: 28,
-    gap: 12,
+  backBtn: {
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  currentCard: {
-    backgroundColor: 'rgba(23, 43, 88, 0.94)',
+  back: {
+    color: colors.text,
+    fontSize: 32,
+    lineHeight: 34,
+    fontWeight: '300',
   },
-  currentLabel: {
-    color: colors.muted,
-    fontSize: 13,
-  },
-  currentName: {
-    color: colors.gold,
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 6,
-  },
-  empty: {
-    color: colors.muted,
+  headerTitle: {
+    flex: 1,
     textAlign: 'center',
-    marginTop: 40,
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '600',
   },
-  card: {
-    backgroundColor: 'rgba(23, 43, 88, 0.94)',
-    borderColor: 'rgba(98, 150, 220, 0.24)',
-  },
-  cardCurrent: {
-    borderColor: colors.gold,
-  },
-  head: {
+  rulesBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 4,
+    alignSelf: 'flex-end',
+    paddingRight: 2,
+  },
+  rulesText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  rulesIcon: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rulesIconText: {
+    color: colors.text,
+    fontSize: 11,
+    lineHeight: 12,
+    fontWeight: '700',
+    marginTop: -1,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+  },
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    marginBottom: 16,
+    paddingHorizontal: 2,
+  },
+  trophy: {
+    width: 132,
+    height: 132,
+  },
+  heroTextWrap: {
+    flex: 1,
+    paddingLeft: 6,
+    justifyContent: 'center',
+  },
+  heroLineWhite: {
+    color: colors.text,
+    fontSize: 21,
+    fontWeight: '700',
+    lineHeight: 30,
+  },
+  heroLineGold: {
+    color: colors.gold,
+    fontSize: 21,
+    fontWeight: '800',
+    lineHeight: 30,
+    textShadowColor: 'rgba(232, 195, 106, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
+  },
+  statusCard: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(98, 150, 220, 0.35)',
+    backgroundColor: 'rgba(12, 24, 52, 0.82)',
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+  },
+  statusCol: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  statusLabel: {
+    color: 'rgba(180, 198, 228, 0.85)',
+    fontSize: 13,
+    fontWeight: '500',
     marginBottom: 10,
   },
-  name: {
+  statusLevelValue: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  statusMoneyLine: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  note: {
+    color: 'rgba(180, 198, 228, 0.78)',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 12,
+    marginBottom: 14,
+  },
+  tableCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(98, 150, 220, 0.35)',
+    backgroundColor: 'rgba(12, 24, 52, 0.82)',
+    paddingHorizontal: 10,
+    paddingTop: 12,
+    paddingBottom: 6,
+  },
+  tableHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(120, 170, 230, 0.35)',
+  },
+  headText: {
+    color: 'rgba(220, 232, 255, 0.95)',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 11,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(120, 170, 230, 0.22)',
+  },
+  tableRowCurrent: {
+    backgroundColor: 'rgba(232, 195, 106, 0.06)',
+  },
+  cellLevel: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  cellText: {
+    color: colors.text,
+    fontSize: 12,
+  },
+  colLevel: {
+    width: '22%',
+  },
+  colDepth: {
+    width: '18%',
+  },
+  colRecharge: {
+    width: '30%',
+    alignItems: 'flex-end',
+    paddingRight: 4,
+    paddingTop: 1,
+  },
+  colReward: {
+    width: '30%',
+    alignItems: 'flex-end',
+    paddingTop: 1,
+  },
+  colRechargeHead: {
+    width: '30%',
+    textAlign: 'right',
+    paddingRight: 4,
+  },
+  colRewardHead: {
+    width: '30%',
+    textAlign: 'right',
+  },
+  tableDualAmount: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  tableAmountLine: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  refreshHint: {
+    alignItems: 'center',
+    paddingTop: 16,
+  },
+  modalMask: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  modalCard: {
+    borderRadius: 14,
+    backgroundColor: '#0E172A',
+    borderWidth: 1,
+    borderColor: 'rgba(98, 150, 220, 0.28)',
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 20,
+  },
+  modalHead: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  modalTitle: {
     color: colors.text,
     fontSize: 17,
     fontWeight: '700',
   },
-  badge: {
-    backgroundColor: 'rgba(232, 195, 106, 0.18)',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(232, 195, 106, 0.45)',
+  modalClose: {
+    position: 'absolute',
+    right: 0,
+    top: -2,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  badgeText: {
-    color: colors.gold,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  row: {
-    color: 'rgba(210, 225, 255, 0.9)',
-    fontSize: 14,
+  modalCloseText: {
+    color: colors.text,
+    fontSize: 24,
     lineHeight: 24,
+    fontWeight: '300',
   },
-  remark: {
-    color: colors.muted,
+  modalRuleText: {
+    color: colors.text,
     fontSize: 13,
-    marginTop: 8,
-    lineHeight: 20,
+    lineHeight: 22,
+  },
+  emptyText: {
+    color: 'rgba(180, 200, 230, 0.75)',
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: 24,
   },
 });

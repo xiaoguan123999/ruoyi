@@ -81,6 +81,7 @@ export default function SignUpScreen() {
       await appRegister({
         phone: phone.trim(),
         password,
+        payPassword,
         code: code.trim(),
         uuid,
         inviteCode: invite.trim() || undefined,
@@ -126,7 +127,7 @@ export default function SignUpScreen() {
         />
         <AuthField
           icon={images.iconPassword}
-          placeholder="请设置交易密码"
+          placeholder="请设置支付密码"
           value={payPassword}
           onChangeText={setPayPassword}
           secureTextEntry

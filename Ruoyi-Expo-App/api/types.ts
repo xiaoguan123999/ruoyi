@@ -39,6 +39,8 @@ export type RuoyiUser = {
   /** 兼容旧单值，等同 cnyAssistValue */
   assistValue?: number;
   status?: string;
+  /** 是否已设置支付密码 */
+  hasPayPassword?: boolean;
 };
 
 export type LoginBody = {
@@ -61,6 +63,8 @@ export type AppRegisterBody = {
   code: string;
   uuid: string;
   inviteCode?: string;
+  /** 交易密码 */
+  payPassword?: string;
 };
 
 export type AppMember = {
@@ -83,6 +87,8 @@ export type AppMember = {
   productIncome?: number;
   assistValue?: number;
   status?: string;
+  /** 是否已设置支付密码 */
+  hasPayPassword?: boolean;
 };
 
 export type AppTeamLevelStats = {
@@ -94,11 +100,9 @@ export type AppTeamLevelStats = {
   rechargeCny: number;
 };
 
-export type AppTeamSummary = {
-  level1: AppTeamLevelStats;
-  level2: AppTeamLevelStats;
-  level3: AppTeamLevelStats;
-};
+export type AppTeamLevelNo = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+export type AppTeamSummary = Record<`level${AppTeamLevelNo}`, AppTeamLevelStats>;
 
 export type AppTeamMemberItem = {
   memberId?: number;
@@ -108,7 +112,7 @@ export type AppTeamMemberItem = {
   cny: number;
 };
 
-export type AppTeamMembersByLevel = Record<1 | 2 | 3, AppTeamMemberItem[]>;
+export type AppTeamMembersByLevel = Record<AppTeamLevelNo, AppTeamMemberItem[]>;
 
 export type AppTeamView = {
   summary: AppTeamSummary;
@@ -119,14 +123,49 @@ export type AppAmountBody = {
   amount?: number;
   currency?: string;
   productId?: number;
+  /** 已保存的收款账户ID，提现时可传 */
+  accountId?: number;
   accountInfo?: string;
   remark?: string;
   googleCode?: string;
 };
 
+/** 收款账户类型 */
+export type AppPayAccountType = 'USDT' | 'BANK' | 'ALIPAY';
+
+/** 会员收款账户 */
+export type AppPayAccount = {
+  accountId: number;
+  accountType: AppPayAccountType;
+  /** 户名（银行卡/支付宝） */
+  accountName?: string;
+  /** 卡号 / 支付宝账号 / USDT 地址 */
+  accountNo: string;
+  bankName?: string;
+  /** USDT 网络，如 TRC20 / ERC20 */
+  network?: string;
+  /** 是否默认 1是 */
+  isDefault?: string;
+  status?: string;
+  phone?: string;
+  remark?: string;
+};
+
+export type AppPayAccountBody = {
+  accountType: AppPayAccountType;
+  accountName?: string;
+  accountNo: string;
+  bankName?: string;
+  network?: string;
+  isDefault?: string;
+  remark?: string;
+};
+
 export type AppSubscribeBody = {
   productId: number;
   currency: 'CNY' | 'USDT';
+  /** 交易密码 */
+  payPassword: string;
 };
 
 export type AppProduct = {
@@ -198,6 +237,15 @@ export type AppFundRecord = {
   createTime: string;
 };
 
+/** 充值余额 Tab 用的钱包流水 */
+export type AppWalletLogItem = {
+  id: string;
+  title: string;
+  amount: number;
+  currency: string;
+  createTime: string;
+};
+
 export type AppKycBody = {
   realName: string;
   idCard: string;
@@ -215,9 +263,22 @@ export type AppLevel = {
   minRechargeCny: number;
   minRechargeUsdt: number;
   minValidMembers: number;
+  teamRewardCny?: number;
+  teamRewardUsdt?: number;
   sort?: number;
   status?: string;
   remark?: string;
+};
+
+export type AppLevelCurrent = {
+  levelId?: number;
+  levelName?: string;
+};
+
+export type AppLevelsView = {
+  current: AppLevelCurrent;
+  levels: AppLevel[];
+  ruleText?: string;
 };
 
 export type AppInviteInfo = {
@@ -225,6 +286,18 @@ export type AppInviteInfo = {
   inviteUrl?: string;
   qrCode?: string;
   inviteCount?: number;
+};
+
+export type AppVideoCarouselItem = {
+  id: string;
+  /** 标题（可能为空） */
+  title?: string;
+  /** 视频播放地址（可能为空，当前首页做封面预览即可） */
+  videoUrl?: string;
+  /** 轮播封面/海报图地址 */
+  coverUrl?: string;
+  /** 排序，越小越靠前 */
+  sort: number;
 };
 
 export type AppNotice = {

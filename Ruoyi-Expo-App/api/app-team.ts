@@ -1,12 +1,15 @@
 import { displayText, maskPhone } from '@/api/app-auth';
 import { ApiError, request } from '@/api/request';
 import type {
+  AppTeamLevelNo,
   AppTeamLevelStats,
   AppTeamMemberItem,
   AppTeamMembersByLevel,
   AppTeamSummary,
   AppTeamView,
 } from '@/api/types';
+
+export const TEAM_LEVEL_NOS: AppTeamLevelNo[] = [1, 2, 3, 4, 5, 6, 7];
 
 const EMPTY_STATS: AppTeamLevelStats = {
   register: 0,
@@ -15,18 +18,6 @@ const EMPTY_STATS: AppTeamLevelStats = {
   subscribeCny: 0,
   rechargeUsd: 0,
   rechargeCny: 0,
-};
-
-const EMPTY_SUMMARY: AppTeamSummary = {
-  level1: { ...EMPTY_STATS },
-  level2: { ...EMPTY_STATS },
-  level3: { ...EMPTY_STATS },
-};
-
-const EMPTY_MEMBERS: AppTeamMembersByLevel = {
-  1: [],
-  2: [],
-  3: [],
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -57,6 +48,30 @@ function extractTeamRoot(res: Record<string, unknown>): Record<string, unknown> 
     return rest;
   }
   return {};
+}
+
+function emptySummary(): AppTeamSummary {
+  return {
+    level1: { ...EMPTY_STATS },
+    level2: { ...EMPTY_STATS },
+    level3: { ...EMPTY_STATS },
+    level4: { ...EMPTY_STATS },
+    level5: { ...EMPTY_STATS },
+    level6: { ...EMPTY_STATS },
+    level7: { ...EMPTY_STATS },
+  };
+}
+
+function emptyMembers(): AppTeamMembersByLevel {
+  return {
+    1: [],
+    2: [],
+    3: [],
+    4: [],
+    5: [],
+    6: [],
+    7: [],
+  };
 }
 
 function mapLevelStats(raw: unknown): AppTeamLevelStats {
@@ -107,57 +122,51 @@ function mapLevelStats(raw: unknown): AppTeamLevelStats {
   };
 }
 
-function getLevelObject(root: Record<string, unknown>, level: 1 | 2 | 3): Record<string, unknown> {
-  const candidates = [
-    root[`level${level}`],
-    root[`level${level}Stats`],
-    root[`stats${level}`],
-    root[String(level)],
-  ];
-  for (const item of candidates) {
-    if (isRecord(item)) {
-      return item;
-    }
+function parseLevelNo(value: unknown): AppTeamLevelNo | null {
+  const level = toNumber(value, 0);
+  if (level >= 1 && level <= 7) {
+    return level as AppTeamLevelNo;
   }
-  return {};
+  return null;
 }
 
 function mapSummary(root: Record<string, unknown>): AppTeamSummary {
   const summary = root.summary ?? root.stats ?? root.statistics;
+  const result = emptySummary();
+
   if (Array.isArray(summary)) {
-    const byLevel: Partial<Record<1 | 2 | 3, AppTeamLevelStats>> = {};
     for (const item of summary) {
       if (!isRecord(item)) {
         continue;
       }
-      const level = toNumber(item.teamLevel ?? item.level ?? item.levelNo ?? item.depth, 0) as
-        | 1
-        | 2
-        | 3;
-      if (level >= 1 && level <= 3) {
-        byLevel[level] = mapLevelStats(item);
+      const level = parseLevelNo(item.teamLevel ?? item.level ?? item.levelNo ?? item.depth);
+      if (level) {
+        result[`level${level}`] = mapLevelStats(item);
       }
     }
-    return {
-      level1: byLevel[1] ?? { ...EMPTY_STATS },
-      level2: byLevel[2] ?? { ...EMPTY_STATS },
-      level3: byLevel[3] ?? { ...EMPTY_STATS },
-    };
+    return result;
   }
 
   if (isRecord(summary)) {
-    return {
-      level1: mapLevelStats(summary.level1 ?? summary['1'] ?? summary.one),
-      level2: mapLevelStats(summary.level2 ?? summary['2'] ?? summary.two),
-      level3: mapLevelStats(summary.level3 ?? summary['3'] ?? summary.three),
-    };
+    for (const level of TEAM_LEVEL_NOS) {
+      result[`level${level}`] = mapLevelStats(
+        summary[`level${level}`] ?? summary[String(level)],
+      );
+    }
+    return result;
   }
 
-  return {
-    level1: mapLevelStats(getLevelObject(root, 1)),
-    level2: mapLevelStats(getLevelObject(root, 2)),
-    level3: mapLevelStats(getLevelObject(root, 3)),
-  };
+  // 兼容旧结构：无 summary 时从根节点读 level1…levelN 对象
+  for (const level of TEAM_LEVEL_NOS) {
+    const candidate =
+      root[`level${level}`] ??
+      root[`level${level}Stats`] ??
+      root[`stats${level}`];
+    if (isRecord(candidate) && !Array.isArray(candidate)) {
+      result[`level${level}`] = mapLevelStats(candidate);
+    }
+  }
+  return result;
 }
 
 function mapMemberItem(raw: unknown): AppTeamMemberItem | null {
@@ -192,21 +201,16 @@ function mapMemberItem(raw: unknown): AppTeamMemberItem | null {
 
 function pushMember(
   bucket: AppTeamMembersByLevel,
-  level: 1 | 2 | 3,
+  level: AppTeamLevelNo,
   item: AppTeamMemberItem,
 ): void {
-  if (level >= 1 && level <= 3) {
-    bucket[level].push(item);
-  }
+  bucket[level].push(item);
 }
 
 function mapMembers(root: Record<string, unknown>): AppTeamMembersByLevel {
-  const members: AppTeamMembersByLevel = {
-    1: [],
-    2: [],
-    3: [],
-  };
+  const members = emptyMembers();
 
+  // 新结构：data.members["1"] … data.members["7"]
   const list = root.members ?? root.memberList ?? root.list ?? root.rows;
   if (Array.isArray(list)) {
     for (const raw of list) {
@@ -214,8 +218,10 @@ function mapMembers(root: Record<string, unknown>): AppTeamMembersByLevel {
       if (!item || !isRecord(raw)) {
         continue;
       }
-      const level = toNumber(raw.teamLevel ?? raw.level ?? raw.levelNo ?? raw.depth, 1) as 1 | 2 | 3;
-      pushMember(members, level, item);
+      const level = parseLevelNo(raw.teamLevel ?? raw.level ?? raw.levelNo ?? raw.depth);
+      if (level) {
+        pushMember(members, level, item);
+      }
     }
     return members;
   }
@@ -225,7 +231,10 @@ function mapMembers(root: Record<string, unknown>): AppTeamMembersByLevel {
       if (!Array.isArray(value)) {
         continue;
       }
-      const level = toNumber(key.replace(/\D/g, ''), 0) as 1 | 2 | 3;
+      const level = parseLevelNo(key.replace(/\D/g, ''));
+      if (!level) {
+        continue;
+      }
       for (const raw of value) {
         const item = mapMemberItem(raw);
         if (item) {
@@ -236,8 +245,10 @@ function mapMembers(root: Record<string, unknown>): AppTeamMembersByLevel {
     return members;
   }
 
-  for (const level of [1, 2, 3] as const) {
+  // 兼容旧结构：data.level1 … data.level7 直接是成员数组
+  for (const level of TEAM_LEVEL_NOS) {
     const keyed =
+      root[`level${level}`] ??
       root[`members${level}`] ??
       root[`memberList${level}`] ??
       root[`list${level}`] ??
@@ -275,17 +286,23 @@ export async function fetchAppTeam(): Promise<AppTeamView> {
 
 export function emptyTeamView(): AppTeamView {
   return {
-    summary: {
-      level1: { ...EMPTY_STATS },
-      level2: { ...EMPTY_STATS },
-      level3: { ...EMPTY_STATS },
-    },
-    members: {
-      1: [...EMPTY_MEMBERS[1]],
-      2: [...EMPTY_MEMBERS[2]],
-      3: [...EMPTY_MEMBERS[3]],
-    },
+    summary: emptySummary(),
+    members: emptyMembers(),
   };
+}
+
+/** 汇总全部层级充值（会员等级页等复用） */
+export function sumTeamRecharge(summary: AppTeamSummary): { cny: number; usdt: number } {
+  return TEAM_LEVEL_NOS.reduce(
+    (acc, level) => {
+      const row = summary[`level${level}`];
+      return {
+        cny: acc.cny + row.rechargeCny,
+        usdt: acc.usdt + row.rechargeUsd,
+      };
+    },
+    { cny: 0, usdt: 0 },
+  );
 }
 
 export function formatTeamAmount(value: number): string {

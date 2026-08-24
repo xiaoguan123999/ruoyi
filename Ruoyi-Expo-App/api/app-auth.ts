@@ -96,6 +96,19 @@ function mapMember(member: AppMember): RuoyiUser {
       toBalanceNumber(raw.boostValue) ??
       toBalanceNumber(raw.assistPoints) ??
       0,
+    hasPayPassword: (() => {
+      const flag = raw.hasPayPassword ?? raw.payPasswordSet ?? raw.hasTradePassword;
+      if (typeof flag === 'boolean') {
+        return flag;
+      }
+      if (flag === 1 || flag === '1' || flag === 'true' || flag === 'Y') {
+        return true;
+      }
+      if (flag === 0 || flag === '0' || flag === 'false' || flag === 'N') {
+        return false;
+      }
+      return undefined;
+    })(),
     status: member.status,
   };
 }
