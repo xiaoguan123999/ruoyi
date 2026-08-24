@@ -95,6 +95,7 @@
 import selectUser from "./selectUser.vue"
 import { allocatedUserList, authUserCancel, authUserCancelAll } from "@/api/system/role"
 import type { SysUser, AuthUserQueryParams } from '@/types/api/system/user'
+import { resolveMenuPath } from '@/utils/menu'
 
 const route = useRoute()
 const { proxy } = getCurrentInstance()
@@ -127,8 +128,8 @@ function getList() {
 
 /** 返回按钮 */
 function handleClose() {
-  const obj = { path: "/system/role" }
-  proxy.$tab.closeOpenPage(obj)
+  const path = resolveMenuPath('角色管理') || '/system/role'
+  proxy.$tab.closeOpenPage({ path })
 }
 
 /** 搜索按钮操作 */

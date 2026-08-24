@@ -180,6 +180,7 @@ import useDictStore from '@/store/modules/dict'
 import { optionselect as getDictOptionselect, getType } from "@/api/system/dict/type"
 import { listData, getData, delData, addData, updateData } from "@/api/system/dict/data"
 import type { SysDictData, SysDictType, DictDataQueryParams } from '@/types/api/system/dict'
+import { resolveMenuPath } from '@/utils/menu'
 
 interface ListClassOption {
   value: string
@@ -284,8 +285,8 @@ function handleQuery() {
 
 /** 返回按钮操作 */
 function handleClose() {
-  const obj = { path: "/system/dict" }
-  proxy.$tab.closeOpenPage(obj)
+  const path = resolveMenuPath('字典管理') || '/system/dict'
+  proxy.$tab.closeOpenPage({ path })
 }
 
 /** 重置按钮操作 */

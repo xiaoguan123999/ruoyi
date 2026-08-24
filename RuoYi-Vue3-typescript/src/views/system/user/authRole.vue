@@ -49,6 +49,7 @@
 import { getAuthRole, updateAuthRole } from "@/api/system/user"
 import type { SysRole } from '@/types/api/system/role'
 import type { SysUser } from '@/types/api/system/user'
+import { resolveMenuPath } from '@/utils/menu'
 
 const route = useRoute()
 const { proxy } = getCurrentInstance()
@@ -94,8 +95,8 @@ function checkSelectable(row: SysRole): boolean {
 
 /** 关闭按钮 */
 function close() {
-  const obj = { path: "/system/user" }
-  proxy.$tab.closeOpenPage(obj)
+  const path = resolveMenuPath('用户管理') || '/system/user'
+  proxy.$tab.closeOpenPage({ path })
 }
 
 /** 提交按钮 */

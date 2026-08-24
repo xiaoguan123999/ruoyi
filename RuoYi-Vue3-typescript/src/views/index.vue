@@ -152,6 +152,7 @@ import {
 } from '@element-plus/icons-vue'
 import { getNormalPath } from '@/utils/ruoyi'
 import { isHttp } from '@/utils/validate'
+import auth from '@/plugins/auth'
 import useUserStore from '@/store/modules/user'
 import usePermissionStore from '@/store/modules/permission'
 
@@ -224,17 +225,28 @@ function resolveMenuIcon(...titles: string[]): string {
   return ''
 }
 
-/** 核心指标（模拟；跳转路径取自动态菜单） */
+/** 同时满足：当前角色拥有权限字符 + 动态菜单里能解析到页面 */
+function canShow(path: string, perms: string[]): boolean {
+  void userStore.permissions
+  return !!path && auth.hasPermiOr(perms)
+}
+
+function menuPathIfAllowed(titles: string[], perms: string[]): string {
+  const path = resolveMenuPath(...titles)
+  return canShow(path, perms) ? path : ''
+}
+
+/** 核心指标（模拟；无菜单/权限则不可点） */
 const statCards = computed(() => [
-  { key: 'member', label: '会员总数', value: '12,846', trend: 2.4, color: '#409EFF', icon: User, path: resolveMenuPath('会员管理') },
-  { key: 'todayMember', label: '今日新增', value: '86', trend: 12.1, color: '#67C23A', icon: User, path: resolveMenuPath('会员管理') },
-  { key: 'order', label: '今日认购单', value: '142', trend: -3.2, color: '#E6A23C', icon: ShoppingCart, path: resolveMenuPath('认购订单') },
-  { key: 'recharge', label: '今日充值(元)', value: '328,600', trend: 8.6, color: '#F56C6C', icon: Wallet, path: resolveMenuPath('充值审核') },
-  { key: 'withdraw', label: '今日提现(元)', value: '96,400', trend: 1.5, color: '#909399', icon: CreditCard, path: resolveMenuPath('提现审核') },
-  { key: 'commission', label: '今日分佣(元)', value: '18,230', trend: 5.0, color: '#9B59B6', icon: Coin, path: resolveMenuPath('分佣记录') }
+  { key: 'member', label: '会员总数', value: '12,846', trend: 2.4, color: '#409EFF', icon: User, path: menuPathIfAllowed(['会员管理'], ['biz:member:list']) },
+  { key: 'todayMember', label: '今日新增', value: '86', trend: 12.1, color: '#67C23A', icon: User, path: menuPathIfAllowed(['会员管理'], ['biz:member:list']) },
+  { key: 'order', label: '今日认购单', value: '142', trend: -3.2, color: '#E6A23C', icon: ShoppingCart, path: menuPathIfAllowed(['认购订单'], ['biz:order:list']) },
+  { key: 'recharge', label: '今日充值(元)', value: '328,600', trend: 8.6, color: '#F56C6C', icon: Wallet, path: menuPathIfAllowed(['充值审核'], ['biz:recharge:list', 'biz:recharge:query']) },
+  { key: 'withdraw', label: '今日提现(元)', value: '96,400', trend: 1.5, color: '#909399', icon: CreditCard, path: menuPathIfAllowed(['提现审核'], ['biz:withdraw:list', 'biz:withdraw:query']) },
+  { key: 'commission', label: '今日分佣(元)', value: '18,230', trend: 5.0, color: '#9B59B6', icon: Coin, path: menuPathIfAllowed(['分佣记录'], ['biz:commission:list', 'biz:commission:query']) }
 ])
 
-/** 待办审核（模拟；仅展示当前账号有权限的菜单） */
+/** 待办审核：必须有对应审核/查看权限，且菜单对当前账号可见 */
 const todoList = computed(() => {
   const defs = [
     {
@@ -243,6 +255,7 @@ const todoList = computed(() => {
       desc: '含 CNY / USDT 待审申请',
       count: 12,
       menuTitles: ['充值审核'],
+      perms: ['biz:recharge:audit'],
       icon: Wallet,
       color: '#F56C6C',
       bg: 'rgba(245, 108, 108, 0.12)',
@@ -254,6 +267,7 @@ const todoList = computed(() => {
       desc: '请先线下打款再确认',
       count: 7,
       menuTitles: ['提现审核'],
+      perms: ['biz:withdraw:audit'],
       icon: CreditCard,
       color: '#E6A23C',
       bg: 'rgba(230, 162, 60, 0.12)',
@@ -265,6 +279,7 @@ const todoList = computed(() => {
       desc: '领航 / 星域待发放',
       count: 4,
       menuTitles: ['等级奖励发放'],
+      perms: ['biz:levelReward:grant', 'biz:levelReward:pay'],
       icon: Present,
       color: '#409EFF',
       bg: 'rgba(64, 158, 255, 0.12)',
@@ -276,6 +291,7 @@ const todoList = computed(() => {
       desc: '大额提现 / 重复充值',
       count: 2,
       menuTitles: ['资金流水'],
+      perms: ['biz:walletLog:list', 'biz:walletLog:query'],
       icon: Warning,
       color: '#909399',
       bg: 'rgba(144, 147, 153, 0.12)',
@@ -284,19 +300,19 @@ const todoList = computed(() => {
   ]
   return defs
     .map((item) => ({ ...item, path: resolveMenuPath(...item.menuTitles) }))
-    .filter((item) => !!item.path)
+    .filter((item) => canShow(item.path, item.perms))
 })
 
 const todoTotal = computed(() => todoList.value.reduce((s, i) => s + i.count, 0))
 
-/** 运营快捷入口：按菜单标题匹配动态路由，无权限则不显示 */
+/** 运营快捷入口：菜单可见 + 拥有 list/query 权限才显示 */
 const shortcutDefs = [
-  { name: '新闻资讯', menuTitles: ['新闻资讯'], icon: Document, color: '#409EFF', bg: 'rgba(64,158,255,.1)' },
-  { name: '视频轮播', menuTitles: ['视频轮播'], icon: Picture, color: '#67C23A', bg: 'rgba(103,194,58,.1)' },
-  { name: '官方群聊', menuTitles: ['官方群聊'], icon: ChatDotRound, color: '#E6A23C', bg: 'rgba(230,162,60,.1)' },
-  { name: '客服中心', menuTitles: ['客服中心'], icon: Headset, color: '#F56C6C', bg: 'rgba(245,108,108,.1)' },
-  { name: '运行概览', menuTitles: ['运行概览'], icon: DataBoard, color: '#9B59B6', bg: 'rgba(155,89,182,.1)' },
-  { name: '关于我们', menuTitles: ['关于我们'], icon: Stamp, color: '#607D8B', bg: 'rgba(96,125,139,.1)' }
+  { name: '新闻资讯', menuTitles: ['新闻资讯'], perms: ['biz:news:list', 'biz:news:query'], icon: Document, color: '#409EFF', bg: 'rgba(64,158,255,.1)' },
+  { name: '视频轮播', menuTitles: ['视频轮播'], perms: ['biz:carousel:list', 'biz:carousel:query'], icon: Picture, color: '#67C23A', bg: 'rgba(103,194,58,.1)' },
+  { name: '官方群聊', menuTitles: ['官方群聊'], perms: ['biz:group:list', 'biz:group:query'], icon: ChatDotRound, color: '#E6A23C', bg: 'rgba(230,162,60,.1)' },
+  { name: '客服中心', menuTitles: ['客服中心'], perms: ['biz:service:list', 'biz:service:query'], icon: Headset, color: '#F56C6C', bg: 'rgba(245,108,108,.1)' },
+  { name: '运行概览', menuTitles: ['运行概览'], perms: ['biz:overview:list', 'biz:overview:query'], icon: DataBoard, color: '#9B59B6', bg: 'rgba(155,89,182,.1)' },
+  { name: '关于我们', menuTitles: ['关于我们'], perms: ['biz:about:list', 'biz:about:query'], icon: Stamp, color: '#607D8B', bg: 'rgba(96,125,139,.1)' }
 ]
 
 const shortcuts = computed(() =>
@@ -306,10 +322,13 @@ const shortcuts = computed(() =>
       path: resolveMenuPath(...item.menuTitles),
       menuIcon: resolveMenuIcon(...item.menuTitles)
     }))
-    .filter((item) => !!item.path)
+    .filter((item) => canShow(item.path, item.perms))
 )
 
-const walletLogPath = computed(() => resolveMenuPath('资金流水'))
+const walletLogPath = computed(() => {
+  const path = resolveMenuPath('资金流水')
+  return canShow(path, ['biz:walletLog:list', 'biz:walletLog:query']) ? path : ''
+})
 
 /** 最近动态（模拟） */
 const recentActivities = [

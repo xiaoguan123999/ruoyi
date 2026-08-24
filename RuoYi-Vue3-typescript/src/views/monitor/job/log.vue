@@ -143,6 +143,7 @@ import { getJob } from "@/api/monitor/job"
 import { listJobLog, delJobLog, cleanJobLog } from "@/api/monitor/jobLog"
 import type { SysJobLog, JobLogQueryParams } from '@/types/api/monitor/jobLog'
 import type { SysJob } from '@/types/api/monitor/job'
+import { resolveMenuPath } from '@/utils/menu'
 
 const { proxy } = getCurrentInstance()
 const { sys_common_status, sys_job_group } = useDict("sys_common_status", "sys_job_group")
@@ -182,7 +183,7 @@ function getList() {
 
 // 返回按钮
 function handleClose() {
-  const obj = { path: "/monitor/job" }
+  const obj = { path: resolveMenuPath('定时任务') || '/monitor/job' }
   proxy.$tab.closeOpenPage(obj)
 }
 
