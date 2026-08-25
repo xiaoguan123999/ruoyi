@@ -47,10 +47,14 @@
         <where>
             <if test="memberId != null">and o.member_id = #{memberId}</if>
             <if test="productId != null">and o.product_id = #{productId}</if>
+            <if test="categoryId != null">and p.category_id = #{categoryId}</if>
             <if test="currency != null and currency != ''">and o.currency = #{currency}</if>
             <if test="status != null and status != ''">and o.status = #{status}</if>
             <if test="orderNo != null and orderNo != ''">and o.order_no = #{orderNo}</if>
             <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
+            <if test="productName != null and productName != ''">and o.product_name like concat('%', #{productName}, '%')</if>
+            <if test="params.beginTime != null and params.beginTime != ''">and o.create_time &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''">and o.create_time &lt; date_add(#{params.endTime}, interval 1 day)</if>
         </where>
         order by o.order_id desc
     </select>
@@ -62,6 +66,10 @@
 
     <select id="countMemberOrders" resultType="int">
         select count(1) from biz_order where member_id = #{memberId}
+    </select>
+
+    <select id="countMemberProductOrders" resultType="int">
+        select count(1) from biz_order where member_id = #{memberId} and product_id = #{productId}
     </select>
 
     <select id="countWithdrawRequiredOrders" resultType="int">

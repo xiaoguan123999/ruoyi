@@ -17,7 +17,7 @@ public class AppWalletCard
     private BigDecimal cnyFrozen;
     @ApiModelProperty("人民币累计产品收益")
     private BigDecimal cnyProductIncome;
-    @ApiModelProperty("人民币助力值，固定 0")
+    @ApiModelProperty("人民币推广收益累计（邀请奖励+团队分佣），字段名仍为 cnyAssistValue")
     private BigDecimal cnyAssistValue;
     @ApiModelProperty("USDT 可用余额")
     private BigDecimal usdtAvailable;
@@ -25,7 +25,7 @@ public class AppWalletCard
     private BigDecimal usdtFrozen;
     @ApiModelProperty("USDT 累计产品收益")
     private BigDecimal usdtProductIncome;
-    @ApiModelProperty("USDT 助力值，固定 0")
+    @ApiModelProperty("USDT 推广收益累计（邀请奖励+团队分佣），字段名仍为 usdtAssistValue")
     private BigDecimal usdtAssistValue;
     @ApiModelProperty("人民币一行，给资产卡用")
     private AppWalletRow cny;

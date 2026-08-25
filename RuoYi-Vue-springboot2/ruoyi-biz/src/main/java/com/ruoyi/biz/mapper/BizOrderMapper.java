@@ -14,6 +14,8 @@ public interface BizOrderMapper
 
     int countMemberOrders(@Param("memberId") Long memberId);
 
+    int countMemberProductOrders(@Param("memberId") Long memberId, @Param("productId") Long productId);
+
     int countWithdrawRequiredOrders(@Param("memberId") Long memberId, @Param("currency") String currency);
 
     java.math.BigDecimal sumTeamOrderAmount(@Param("memberId") Long memberId, @Param("currency") String currency,

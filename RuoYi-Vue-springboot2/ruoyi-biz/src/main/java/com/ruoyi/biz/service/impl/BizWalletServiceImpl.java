@@ -170,7 +170,7 @@ public class BizWalletServiceImpl implements IBizWalletService
         row.setAvailable(nvl(wallet == null ? null : wallet.getAvailable()));
         row.setFrozen(nvl(wallet == null ? null : wallet.getFrozen()));
         row.setProductIncome(nvl(rebateLogMapper.sumAmountByMemberAndCurrency(memberId, currency)));
-        row.setAssistValue(BigDecimal.ZERO);
+        row.setAssistValue(nvl(walletLogMapper.sumPromoIncome(memberId, currency)));
         return row;
     }
 

@@ -19,6 +19,7 @@ import com.ruoyi.biz.domain.AppRegisterBody;
 import com.ruoyi.biz.domain.BizLevel;
 import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.mapper.BizMemberMapper;
+import com.ruoyi.biz.service.IBizBlacklistService;
 import com.ruoyi.biz.service.IBizLevelRewardService;
 import com.ruoyi.biz.service.IBizMemberService;
 import com.ruoyi.biz.service.IBizPromoService;
@@ -43,6 +44,9 @@ public class BizMemberServiceImpl implements IBizMemberService
 
     @Autowired
     private IBizPromoService promoService;
+
+    @Autowired
+    private IBizBlacklistService blacklistService;
 
     @Override
     public BizMember selectMemberById(Long memberId)
@@ -74,6 +78,7 @@ public class BizMemberServiceImpl implements IBizMemberService
         {
             throw new ServiceException("手机号和密码不能为空");
         }
+        blacklistService.assertPhone(body.getPhone(), BizConstants.BLACKLIST_REGISTER, null);
         if (memberMapper.selectMemberByPhone(body.getPhone()) != null)
         {
             throw new ServiceException("手机号已注册");
@@ -179,6 +184,7 @@ public class BizMemberServiceImpl implements IBizMemberService
         {
             throw new ServiceException("会员不存在");
         }
+        blacklistService.assertIdCard(idCard, memberId, exist.getPhone(), realName);
         if (BizConstants.KYC_DONE.equals(exist.getKycStatus()))
         {
             throw new ServiceException("已实名，不能重复提交");

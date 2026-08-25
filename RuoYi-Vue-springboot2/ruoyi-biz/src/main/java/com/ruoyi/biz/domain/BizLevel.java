@@ -25,6 +25,9 @@ public class BizLevel extends BaseEntity
     @ApiModelProperty("最低有效会员人数")
     private Integer minValidMembers;
 
+    @ApiModelProperty("团队要求，App等级表展示")
+    private String teamDepth;
+
     /** 最低累计充值CNY */
     @ApiModelProperty("最低累计充值CNY")
     private BigDecimal minRechargeCny;
@@ -93,6 +96,16 @@ public class BizLevel extends BaseEntity
     public void setMinValidMembers(Integer minValidMembers)
     {
         this.minValidMembers = minValidMembers;
+    }
+
+    public String getTeamDepth()
+    {
+        return teamDepth;
+    }
+
+    public void setTeamDepth(String teamDepth)
+    {
+        this.teamDepth = teamDepth;
     }
 
     public BigDecimal getMinRechargeCny()

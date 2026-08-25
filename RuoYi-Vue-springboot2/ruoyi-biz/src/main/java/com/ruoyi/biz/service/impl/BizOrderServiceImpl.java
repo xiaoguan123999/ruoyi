@@ -80,6 +80,15 @@ public class BizOrderServiceImpl implements IBizOrderService
         {
             throw new ServiceException("产品不存在或已下架");
         }
+        Integer buyLimit = product.getBuyLimit();
+        if (buyLimit != null && buyLimit.intValue() > 0)
+        {
+            int bought = orderMapper.countMemberProductOrders(memberId, productId);
+            if (bought >= buyLimit.intValue())
+            {
+                throw new ServiceException("该产品每人限购" + buyLimit + "份");
+            }
+        }
         String currency = resolvePayCurrency(product, payCurrency);
         configService.assertCurrencyEnabled(currency);
         BigDecimal price = product.priceOf(currency);

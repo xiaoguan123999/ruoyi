@@ -27,6 +27,10 @@ public class BizWithdraw extends BaseEntity
     @ApiModelProperty("手机号")
     private String phone;
 
+    /** 姓名 */
+    @ApiModelProperty("姓名")
+    private String realName;
+
     /** 币种 */
     @ApiModelProperty("币种")
     private String currency;
@@ -91,6 +95,16 @@ public class BizWithdraw extends BaseEntity
     public void setPhone(String phone)
     {
         this.phone = phone;
+    }
+
+    public String getRealName()
+    {
+        return realName;
+    }
+
+    public void setRealName(String realName)
+    {
+        this.realName = realName;
     }
 
     public String getCurrency()
@@ -211,6 +225,10 @@ public class BizWithdraw extends BaseEntity
         if ("USDT".equals(payMethod))
         {
             return "USDT";
+        }
+        if ("BANK".equals(payMethod) || "PAY_BANK".equals(payMethod))
+        {
+            return "银行卡";
         }
         return payMethod;
     }

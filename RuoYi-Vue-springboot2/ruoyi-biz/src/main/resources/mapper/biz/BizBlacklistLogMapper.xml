@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizBlacklistLogMapper">
+
+    <resultMap type="BizBlacklistLog" id="BizBlacklistLogResult">
+        <id     property="logId"        column="log_id"/>
+        <result property="blacklistId"  column="blacklist_id"/>
+        <result property="action"       column="action"/>
+        <result property="hitType"      column="hit_type"/>
+        <result property="hitValue"     column="hit_value"/>
+        <result property="memberId"     column="member_id"/>
+        <result property="phone"        column="phone"/>
+        <result property="realName"     column="real_name"/>
+        <result property="remark"       column="remark"/>
+        <result property="createTime"   column="create_time"/>
+    </resultMap>
+
+    <select id="selectLogList" parameterType="BizBlacklistLog" resultMap="BizBlacklistLogResult">
+        select log_id, blacklist_id, action, hit_type, hit_value, member_id, phone, real_name, remark, create_time
+        from biz_blacklist_log
+        <where>
+            <if test="action != null and action != ''">and action = #{action}</if>
+            <if test="hitType != null and hitType != ''">and hit_type = #{hitType}</if>
+            <if test="phone != null and phone != ''">and phone like concat('%', #{phone}, '%')</if>
+            <if test="hitValue != null and hitValue != ''">and hit_value like concat('%', #{hitValue}, '%')</if>
+            <if test="memberId != null">and member_id = #{memberId}</if>
+        </where>
+        order by log_id desc
+    </select>
+
+    <insert id="insertLog" parameterType="BizBlacklistLog" useGeneratedKeys="true" keyProperty="logId">
+        insert into biz_blacklist_log (
+            blacklist_id, action, hit_type, hit_value, member_id, phone, real_name, remark, create_time
+        ) values (
+            #{blacklistId}, #{action}, #{hitType}, #{hitValue}, #{memberId}, #{phone}, #{realName}, #{remark}, sysdate()
+        )
+    </insert>
+
+    <delete id="deleteLogByIds" parameterType="Long">
+        delete from biz_blacklist_log where log_id in
+        <foreach collection="array" item="logId" open="(" separator="," close=")">
+            #{logId}
+        </foreach>
+    </delete>
+</mapper>

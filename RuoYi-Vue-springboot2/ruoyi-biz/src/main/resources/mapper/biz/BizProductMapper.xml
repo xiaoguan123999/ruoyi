@@ -17,6 +17,7 @@
         <result property="dailyRebateUsdt"   column="daily_rebate_usdt"/>
         <result property="durationDays"      column="duration_days"/>
         <result property="withdrawRequired"  column="withdraw_required"/>
+        <result property="buyLimit"          column="buy_limit"/>
         <result property="status"            column="status"/>
         <result property="sort"              column="sort"/>
         <result property="coverUrl"          column="cover_url"/>
@@ -30,7 +31,7 @@
     <sql id="selectProductVo">
         select p.product_id, p.product_name, p.name_en, p.category_id, c.category_name,
                p.currency, p.price, p.price_cny, p.price_usdt, p.daily_rebate, p.daily_rebate_cny, p.daily_rebate_usdt,
-               p.duration_days, p.withdraw_required,
+               p.duration_days, p.withdraw_required, p.buy_limit,
                p.status, p.sort, p.cover_url, p.create_by, p.create_time, p.update_by, p.update_time, p.remark
         from biz_product p
         left join biz_product_category c on c.category_id = p.category_id
@@ -61,11 +62,11 @@
     <insert id="insertProduct" parameterType="BizProduct" useGeneratedKeys="true" keyProperty="productId">
         insert into biz_product (
             product_name, name_en, category_id, currency, price, price_cny, price_usdt,
-            daily_rebate, daily_rebate_cny, daily_rebate_usdt, duration_days, withdraw_required,
+            daily_rebate, daily_rebate_cny, daily_rebate_usdt, duration_days, withdraw_required, buy_limit,
             status, sort, cover_url, create_by, create_time, remark
         ) values (
             #{productName}, #{nameEn}, #{categoryId}, #{currency}, #{price}, #{priceCny}, #{priceUsdt},
-            #{dailyRebate}, #{dailyRebateCny}, #{dailyRebateUsdt}, #{durationDays}, #{withdrawRequired},
+            #{dailyRebate}, #{dailyRebateCny}, #{dailyRebateUsdt}, #{durationDays}, #{withdrawRequired}, #{buyLimit},
             #{status}, #{sort}, #{coverUrl}, #{createBy}, sysdate(), #{remark}
         )
     </insert>
@@ -85,6 +86,7 @@
             <if test="dailyRebateUsdt != null">daily_rebate_usdt = #{dailyRebateUsdt},</if>
             <if test="durationDays != null">duration_days = #{durationDays},</if>
             <if test="withdrawRequired != null">withdraw_required = #{withdrawRequired},</if>
+            <if test="buyLimit != null">buy_limit = #{buyLimit},</if>
             <if test="status != null">status = #{status},</if>
             <if test="sort != null">sort = #{sort},</if>
             <if test="coverUrl != null">cover_url = #{coverUrl},</if>

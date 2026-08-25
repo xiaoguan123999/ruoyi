@@ -47,6 +47,10 @@ public class BizProductServiceImpl implements IBizProductService
         {
             product.setCoverUrl("");
         }
+        if (product.getBuyLimit() == null || product.getBuyLimit().intValue() < 0)
+        {
+            product.setBuyLimit(Integer.valueOf(0));
+        }
         fillDualPrices(product);
         return productMapper.insertProduct(product);
     }

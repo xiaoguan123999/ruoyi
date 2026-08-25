@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
     <el-alert
-      title="同一产品可同时配人民币和 USDT 价格。App 认购页两个按钮：用人民币扣 CNY 钱包，用 USDT 扣 USDT 钱包，日返跟下单币种走。价格填 0 或不填表示不支持该币种。"
+      title="同一产品可同时配人民币和 USDT 价格。限购填每人可买份数，0 表示不限制。App 认购时按该会员已购订单数校验。"
       type="info"
       :closable="false"
       show-icon
@@ -48,6 +48,11 @@
       <el-table-column label="USDT价" align="center" prop="priceUsdt" width="90" />
       <el-table-column label="USDT日返" align="center" prop="dailyRebateUsdt" width="100" />
       <el-table-column label="天数" align="center" prop="durationDays" width="70" />
+      <el-table-column label="限购" align="center" prop="buyLimit" width="80">
+        <template #default="scope">
+          <span>{{ scope.row.buyLimit > 0 ? scope.row.buyLimit + "份" : "不限" }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="提现指定" align="center" prop="withdrawRequired" width="90">
         <template #default="scope">
           <el-tag :type="scope.row.withdrawRequired === '1' ? 'warning' : 'info'">{{ scope.row.withdrawRequired === '1' ? '是' : '否' }}</el-tag>
@@ -94,6 +99,10 @@
         </el-form-item>
         <el-form-item label="返利天数" prop="durationDays">
           <el-input-number v-model="form.durationDays" :min="1" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="每人限购" prop="buyLimit">
+          <el-input-number v-model="form.buyLimit" :min="0" :step="1" style="width: 100%" />
+          <div class="el-form-item-msg" style="color:#909399;font-size:12px;line-height:1.4">0 或不填表示不限制。按该会员已购该产品的订单数计算。</div>
         </el-form-item>
         <el-form-item label="提现指定产品" prop="withdrawRequired">
           <el-radio-group v-model="form.withdrawRequired">
@@ -168,6 +177,7 @@ function reset() {
   form.value = {
     status: "0",
     withdrawRequired: "0",
+    buyLimit: 0,
     sort: 0,
     categoryId: undefined,
     nameEn: "",
@@ -197,6 +207,7 @@ function submitForm() {
       proxy.$modal.msgError("请至少配置人民币或USDT认购价格")
       return
     }
+    form.value.buyLimit = Number(form.value.buyLimit || 0)
     const req = form.value.productId ? updateProduct(form.value) : addProduct(form.value)
     req.then(() => {
       proxy.$modal.msgSuccess("保存成功")

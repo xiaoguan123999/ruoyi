@@ -18,6 +18,7 @@
     <el-table v-loading="loading" :data="dataList">
       <el-table-column label="ID" align="center" prop="levelId" width="80" />
       <el-table-column label="等级" align="center" prop="levelName" />
+      <el-table-column label="团队要求" align="center" prop="teamDepth" min-width="100" />
       <el-table-column label="有效会员人数" align="center" prop="minValidMembers" />
       <el-table-column label="累计充值CNY" align="center" prop="minRechargeCny" />
       <el-table-column label="累计充值USDT" align="center" prop="minRechargeUsdt" />
@@ -41,6 +42,9 @@
     <el-dialog :title="title" v-model="open" width="520px" append-to-body>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
         <el-form-item label="等级名称" prop="levelName"><el-input v-model="form.levelName" /></el-form-item>
+        <el-form-item label="团队要求" prop="teamDepth">
+          <el-input v-model="form.teamDepth" placeholder="例如 一级内，对应 App 等级表该列" />
+        </el-form-item>
         <el-form-item label="有效会员人数" prop="minValidMembers"><el-input-number v-model="form.minValidMembers" :min="0" style="width: 100%" /></el-form-item>
         <el-form-item label="累计充值CNY" prop="minRechargeCny"><el-input-number v-model="form.minRechargeCny" :min="0" :precision="2" style="width: 100%" /></el-form-item>
         <el-form-item label="累计充值USDT" prop="minRechargeUsdt"><el-input-number v-model="form.minRechargeUsdt" :min="0" :precision="2" style="width: 100%" /></el-form-item>
@@ -90,7 +94,7 @@ function getList() {
 }
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
-function reset() { form.value = { status: "0", minValidMembers: 0, minRechargeCny: 0, minRechargeUsdt: 0, minTeamPerfCny: 0, minTeamPerfUsdt: 0, sort: 0 } }
+function reset() { form.value = { status: "0", teamDepth: "", minValidMembers: 0, minRechargeCny: 0, minRechargeUsdt: 0, minTeamPerfCny: 0, minTeamPerfUsdt: 0, sort: 0 } }
 function handleAdd() { reset(); open.value = true; title.value = "新增等级" }
 function handleUpdate(row: any) {
   getLevel(row.levelId).then((res: any) => {

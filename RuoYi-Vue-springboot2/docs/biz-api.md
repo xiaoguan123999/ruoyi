@@ -163,7 +163,7 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 `kycStatus`：`0` 未实名，`1` 已实名  
 `status`：`0` 正常，`1` 停用  
 
-资产卡字段：`available` 可用余额，`productIncome` 该币种累计产品日返，`assistValue` 助力值（需求未定，固定 `0`）。
+资产卡字段：`available` 可用余额，`productIncome` 该币种累计产品日返，`assistValue` 推广收益累计（邀请奖励 `INVITE` + 团队分佣 `COMMISSION`）。App 仍用该字段展示助力值，无需改前端。
 
 ### 6. 实名
 
@@ -649,7 +649,7 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 | available | 可用余额 |
 | frozen | 冻结金额（提现审核中） |
 | productIncome | 该币种累计产品日返（持仓订单每天打入的 `dailyRebate` 合计） |
-| assistValue | 助力值，需求未定，目前固定 `0` |
+| assistValue | 推广收益累计（邀请奖励 `INVITE` + 团队分佣 `COMMISSION`）。JSON 字段名不变，App 助力值列直接展示该值 |
 
 CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币种单独结算：用人民币买产品就返人民币、提人民币；用 USDT 买产品就返 U、提 U。签到奖励仍走 CNY。
 

@@ -9,6 +9,7 @@ import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizPayAccount;
 import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.mapper.BizPayAccountMapper;
+import com.ruoyi.biz.service.IBizBlacklistService;
 import com.ruoyi.biz.service.IBizPayAccountService;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
@@ -23,6 +24,9 @@ public class BizPayAccountServiceImpl implements IBizPayAccountService
 
     @Autowired
     private BizMemberMapper memberMapper;
+
+    @Autowired
+    private IBizBlacklistService blacklistService;
 
     @Override
     public BizPayAccount selectPayAccountById(Long accountId)
@@ -207,6 +211,19 @@ public class BizPayAccountServiceImpl implements IBizPayAccountService
         if (BizConstants.PAY_BANK.equals(type) && StringUtils.isEmpty(account.getBankName()))
         {
             throw new ServiceException("请填写银行名称");
+        }
+        if (BizConstants.PAY_BANK.equals(type))
+        {
+            String phone = account.getPhone();
+            if (StringUtils.isEmpty(phone) && account.getMemberId() != null)
+            {
+                BizMember member = memberMapper.selectMemberById(account.getMemberId());
+                if (member != null)
+                {
+                    phone = member.getPhone();
+                }
+            }
+            blacklistService.assertBankCard(account.getAccountNo(), account.getMemberId(), phone);
         }
     }
 

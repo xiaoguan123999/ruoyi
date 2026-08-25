@@ -52,6 +52,9 @@ public class BizProduct extends BaseEntity
     @ApiModelProperty("是否提现指定产品：1是，认购后才允许提现该币种")
     private String withdrawRequired;
 
+    @ApiModelProperty("每人限购份数，0表示不限制")
+    private Integer buyLimit;
+
     @ApiModelProperty("上架状态：0上架 1下架")
     private String status;
 
@@ -251,6 +254,16 @@ public class BizProduct extends BaseEntity
     public void setWithdrawRequired(String withdrawRequired)
     {
         this.withdrawRequired = withdrawRequired;
+    }
+
+    public Integer getBuyLimit()
+    {
+        return buyLimit;
+    }
+
+    public void setBuyLimit(Integer buyLimit)
+    {
+        this.buyLimit = buyLimit;
     }
 
     public String getStatus()

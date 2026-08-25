@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizBlacklistMapper">
+
+    <resultMap type="BizBlacklist" id="BizBlacklistResult">
+        <id     property="blacklistId"  column="blacklist_id"/>
+        <result property="realName"     column="real_name"/>
+        <result property="phone"        column="phone"/>
+        <result property="idCard"       column="id_card"/>
+        <result property="bankCard"     column="bank_card"/>
+        <result property="status"       column="status"/>
+        <result property="createBy"     column="create_by"/>
+        <result property="createTime"   column="create_time"/>
+        <result property="updateBy"     column="update_by"/>
+        <result property="updateTime"   column="update_time"/>
+        <result property="remark"       column="remark"/>
+    </resultMap>
+
+    <sql id="selectBlacklistVo">
+        select blacklist_id, real_name, phone, id_card, bank_card, status,
+               create_by, create_time, update_by, update_time, remark
+        from biz_blacklist
+    </sql>
+
+    <select id="selectBlacklistById" parameterType="Long" resultMap="BizBlacklistResult">
+        <include refid="selectBlacklistVo"/>
+        where blacklist_id = #{blacklistId}
+    </select>
+
+    <select id="selectBlacklistList" parameterType="BizBlacklist" resultMap="BizBlacklistResult">
+        <include refid="selectBlacklistVo"/>
+        <where>
+            <if test="realName != null and realName != ''">and real_name like concat('%', #{realName}, '%')</if>
+            <if test="phone != null and phone != ''">and phone like concat('%', #{phone}, '%')</if>
+            <if test="idCard != null and idCard != ''">and id_card like concat('%', #{idCard}, '%')</if>
+            <if test="bankCard != null and bankCard != ''">and bank_card like concat('%', #{bankCard}, '%')</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+        </where>
+        order by blacklist_id desc
+    </select>
+
+    <select id="selectEnabledByPhone" resultMap="BizBlacklistResult">
+        <include refid="selectBlacklistVo"/>
+        where status = '0' and phone is not null and phone != '' and phone = #{phone}
+        limit 1
+    </select>
+
+    <select id="selectEnabledByIdCard" resultMap="BizBlacklistResult">
+        <include refid="selectBlacklistVo"/>
+        where status = '0' and id_card is not null and id_card != '' and id_card = #{idCard}
+        limit 1
+    </select>
+
+    <select id="selectEnabledByBankCard" resultMap="BizBlacklistResult">
+        <include refid="selectBlacklistVo"/>
+        where status = '0' and bank_card is not null and bank_card != '' and bank_card = #{bankCard}
+        limit 1
+    </select>
+
+    <insert id="insertBlacklist" parameterType="BizBlacklist" useGeneratedKeys="true" keyProperty="blacklistId">
+        insert into biz_blacklist (
+            real_name, phone, id_card, bank_card, status, remark, create_by, create_time
+        ) values (
+            #{realName}, #{phone}, #{idCard}, #{bankCard}, #{status}, #{remark}, #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateBlacklist" parameterType="BizBlacklist">
+        update biz_blacklist
+        <set>
+            <if test="realName != null">real_name = #{realName},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="idCard != null">id_card = #{idCard},</if>
+            <if test="bankCard != null">bank_card = #{bankCard},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where blacklist_id = #{blacklistId}
+    </update>
+
+    <delete id="deleteBlacklistByIds" parameterType="Long">
+        delete from biz_blacklist where blacklist_id in
+        <foreach collection="array" item="blacklistId" open="(" separator="," close=")">
+            #{blacklistId}
+        </foreach>
+    </delete>
+</mapper>

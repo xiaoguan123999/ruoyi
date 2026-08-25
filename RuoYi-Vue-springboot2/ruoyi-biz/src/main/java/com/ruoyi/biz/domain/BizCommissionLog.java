@@ -43,6 +43,12 @@ public class BizCommissionLog extends BaseEntity
     /** 充值单ID */
     private Long rechargeId;
 
+    /** 查询：会员ID，匹配来源或收款人 */
+    private Long memberId;
+
+    /** 查询：手机号，匹配来源或收款人 */
+    private String phone;
+
     public Long getCommissionId()
     {
         return commissionId;
@@ -151,6 +157,26 @@ public class BizCommissionLog extends BaseEntity
     public void setRechargeId(Long rechargeId)
     {
         this.rechargeId = rechargeId;
+    }
+
+    public Long getMemberId()
+    {
+        return memberId;
+    }
+
+    public void setMemberId(Long memberId)
+    {
+        this.memberId = memberId;
+    }
+
+    public String getPhone()
+    {
+        return phone;
+    }
+
+    public void setPhone(String phone)
+    {
+        this.phone = phone;
     }
 
 }

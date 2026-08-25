@@ -24,10 +24,14 @@
         left join biz_member fm on fm.member_id = c.from_member_id
         left join biz_member tm on tm.member_id = c.to_member_id
         <where>
+            <if test="memberId != null">and (c.from_member_id = #{memberId} or c.to_member_id = #{memberId})</if>
             <if test="fromMemberId != null">and c.from_member_id = #{fromMemberId}</if>
             <if test="toMemberId != null">and c.to_member_id = #{toMemberId}</if>
             <if test="currency != null and currency != ''">and c.currency = #{currency}</if>
             <if test="teamLevel != null">and c.team_level = #{teamLevel}</if>
+            <if test="phone != null and phone != ''">and (fm.phone like concat('%', #{phone}, '%') or tm.phone like concat('%', #{phone}, '%'))</if>
+            <if test="params.beginTime != null and params.beginTime != ''">and c.create_time &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''">and c.create_time &lt; date_add(#{params.endTime}, interval 1 day)</if>
         </where>
         order by c.commission_id desc
     </select>

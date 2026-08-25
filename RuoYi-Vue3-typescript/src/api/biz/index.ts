@@ -105,6 +105,10 @@ export function listTeam(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/team/list', method: 'get', params: query })
 }
 
+export function getTeamSummary(memberId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/team/summary/' + memberId, method: 'get' })
+}
+
 export function listLevel(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/level/list', method: 'get', params: query })
 }
@@ -335,4 +339,32 @@ export function savePromoRule(data: any): Promise<AjaxResult> {
 
 export function listPromoGrant(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/promo/grant/list', method: 'get', params: query })
+}
+
+export function listBlacklist(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/blacklist/list', method: 'get', params: query })
+}
+
+export function getBlacklist(blacklistId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/blacklist/' + blacklistId, method: 'get' })
+}
+
+export function addBlacklist(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/blacklist', method: 'post', data })
+}
+
+export function updateBlacklist(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/blacklist', method: 'put', data })
+}
+
+export function delBlacklist(blacklistId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/blacklist/' + blacklistId, method: 'delete' })
+}
+
+export function listBlacklistLog(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/blacklist/log/list', method: 'get', params: query })
+}
+
+export function delBlacklistLog(logId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/blacklist/log/' + logId, method: 'delete' })
 }

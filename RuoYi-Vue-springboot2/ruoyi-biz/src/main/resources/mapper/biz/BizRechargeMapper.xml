@@ -34,6 +34,8 @@
             <if test="currency != null and currency != ''">and r.currency = #{currency}</if>
             <if test="status != null and status != ''">and r.status = #{status}</if>
             <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
+            <if test="params.beginTime != null and params.beginTime != ''">and r.create_time &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''">and r.create_time &lt; date_add(#{params.endTime}, interval 1 day)</if>
         </where>
         order by r.recharge_id desc
     </select>

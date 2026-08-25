@@ -8,8 +8,20 @@
       class="mb8"
     />
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
+      <el-form-item label="单号" prop="withdrawId">
+        <el-input v-model="queryParams.withdrawId" placeholder="提现单号" clearable style="width: 140px" @keyup.enter="handleQuery" />
+      </el-form-item>
+      <el-form-item label="会员ID" prop="memberId">
+        <el-input v-model="queryParams.memberId" placeholder="会员ID" clearable style="width: 140px" @keyup.enter="handleQuery" />
+      </el-form-item>
       <el-form-item label="手机号" prop="phone">
-        <el-input v-model="queryParams.phone" placeholder="手机号" clearable style="width: 180px" @keyup.enter="handleQuery" />
+        <el-input v-model="queryParams.phone" placeholder="手机号" clearable style="width: 160px" @keyup.enter="handleQuery" />
+      </el-form-item>
+      <el-form-item label="币种" prop="currency">
+        <el-select v-model="queryParams.currency" placeholder="币种" clearable style="width: 120px">
+          <el-option label="CNY" value="CNY" />
+          <el-option label="USDT" value="USDT" />
+        </el-select>
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="queryParams.status" placeholder="状态" clearable style="width: 140px">
@@ -17,6 +29,9 @@
           <el-option label="已打款" value="1" />
           <el-option label="已拒绝" value="2" />
         </el-select>
+      </el-form-item>
+      <el-form-item label="时间">
+        <el-date-picker v-model="dateRange" value-format="YYYY-MM-DD" type="daterange" range-separator="-" start-placeholder="开始日期" end-placeholder="结束日期" />
       </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -30,10 +45,13 @@
       <el-table-column label="单号" align="center" prop="withdrawId" width="80" />
       <el-table-column label="会员ID" align="center" prop="memberId" width="90" />
       <el-table-column label="手机号" align="center" prop="phone" width="120" />
+      <el-table-column label="姓名" align="center" prop="realName" width="100">
+        <template #default="scope">{{ scope.row.realName || "—" }}</template>
+      </el-table-column>
       <el-table-column label="币种" align="center" prop="currency" width="80" />
       <el-table-column label="金额" align="center" prop="amount" width="110" />
       <el-table-column label="收款方式" align="center" width="100">
-        <template #default="scope">{{ scope.row.payMethodLabel || scope.row.payMethod || '—' }}</template>
+        <template #default="scope">{{ scope.row.payMethodLabel || scope.row.payMethod || "—" }}</template>
       </el-table-column>
       <el-table-column label="收款信息" align="center" prop="accountInfo" min-width="180" :show-overflow-tooltip="true" />
       <el-table-column label="状态" align="center" prop="status" width="100">
@@ -56,8 +74,11 @@
           <span v-else style="color: #909399">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="申请时间" align="center" prop="createTime" width="160">
+      <el-table-column label="申请时间" align="center" prop="createTime" width="170">
         <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
+      </el-table-column>
+      <el-table-column label="审核时间" align="center" prop="auditTime" width="170">
+        <template #default="scope"><span>{{ parseTime(scope.row.auditTime) || "—" }}</span></template>
       </el-table-column>
       <el-table-column label="操作人" align="center" prop="auditBy" width="100" />
       <el-table-column label="操作" align="center" width="180" fixed="right">
@@ -66,7 +87,7 @@
             <el-button link type="primary" @click="openAudit(scope.row, '1')" v-hasPermi="['biz:withdraw:audit']">确认打款</el-button>
             <el-button link type="danger" @click="openAudit(scope.row, '2')" v-hasPermi="['biz:withdraw:audit']">拒绝</el-button>
           </template>
-          <span v-else>{{ scope.row.auditRemark || '—' }}</span>
+          <span v-else>{{ scope.row.auditRemark || "—" }}</span>
         </template>
       </el-table-column>
     </el-table>
@@ -74,7 +95,7 @@
 
     <el-dialog :title="auditTitle" v-model="open" width="520px" append-to-body>
       <el-descriptions :column="1" border class="mb8">
-        <el-descriptions-item label="会员">{{ current.phone }}（ID {{ current.memberId }}）</el-descriptions-item>
+        <el-descriptions-item label="会员">{{ current.realName || current.phone }}（ID {{ current.memberId }}）</el-descriptions-item>
         <el-descriptions-item label="金额">{{ current.amount }} {{ current.currency }}</el-descriptions-item>
         <el-descriptions-item label="收款方式">{{ current.payMethodLabel || current.payMethod }}</el-descriptions-item>
         <el-descriptions-item label="收款信息">{{ current.accountInfo }}</el-descriptions-item>
@@ -107,7 +128,8 @@ const showSearch = ref(true)
 const total = ref(0)
 const open = ref(false)
 const current = ref<any>({})
-const queryParams = ref({ pageNum: 1, pageSize: 10, phone: undefined, status: undefined })
+const dateRange = ref<string[]>([])
+const queryParams = ref({ pageNum: 1, pageSize: 10, withdrawId: undefined, memberId: undefined, phone: undefined, currency: undefined, status: undefined })
 const form = ref({ id: undefined as number | undefined, status: "1", auditRemark: "", payProofUrl: "" })
 const rules = {
   auditRemark: [{
@@ -131,14 +153,14 @@ function imgSrc(url: string) {
 
 function getList() {
   loading.value = true
-  listWithdraw(queryParams.value).then((res: any) => {
+  listWithdraw(proxy.addDateRange(queryParams.value, dateRange.value)).then((res: any) => {
     dataList.value = res.rows
     total.value = res.total
     loading.value = false
   })
 }
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
-function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
+function resetQuery() { dateRange.value = []; proxy.resetForm("queryRef"); handleQuery() }
 function openAudit(row: any, status: string) {
   current.value = row
   form.value = { id: row.withdrawId, status, auditRemark: "", payProofUrl: "" }

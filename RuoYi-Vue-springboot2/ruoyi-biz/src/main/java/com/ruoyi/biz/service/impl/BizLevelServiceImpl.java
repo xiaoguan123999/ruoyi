@@ -35,6 +35,10 @@ public class BizLevelServiceImpl implements IBizLevelService
         {
             level.setStatus(BizConstants.STATUS_OK);
         }
+        if (level.getTeamDepth() == null)
+        {
+            level.setTeamDepth("");
+        }
         if (level.getMinTeamPerfCny() == null)
         {
             level.setMinTeamPerfCny(BigDecimal.ZERO);

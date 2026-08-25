@@ -1,6 +1,9 @@
 <template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
+      <el-form-item label="会员ID" prop="memberId">
+        <el-input v-model="queryParams.memberId" placeholder="会员ID" clearable style="width: 140px" @keyup.enter="handleQuery" />
+      </el-form-item>
       <el-form-item label="手机号" prop="phone">
         <el-input v-model="queryParams.phone" placeholder="请输入手机号" clearable style="width: 200px" @keyup.enter="handleQuery" />
       </el-form-item>
@@ -57,6 +60,11 @@
       <el-table-column label="等级" align="center" prop="levelName" width="80" />
       <el-table-column label="上级ID" align="center" prop="parentId" width="90" />
       <el-table-column label="CNY可用" align="center" prop="cnyAvailable" width="100" />
+      <el-table-column label="CNY冻结" align="center" prop="cnyFrozen" width="100" />
+      <el-table-column label="USDT可用" align="center" prop="usdtAvailable" width="100" />
+      <el-table-column label="USDT冻结" align="center" prop="usdtFrozen" width="100" />
+      <el-table-column label="推广收益CNY" align="center" prop="cnyAssistValue" width="120" />
+      <el-table-column label="推广收益USDT" align="center" prop="usdtAssistValue" width="130" />
       <el-table-column label="团队人数" align="center" prop="teamCount" width="90" />
       <el-table-column label="状态" align="center" prop="status" width="80">
         <template #default="scope">
@@ -145,6 +153,7 @@ const data = reactive({
   queryParams: {
     pageNum: 1,
     pageSize: 10,
+    memberId: undefined,
     phone: undefined,
     inviteCode: undefined,
     kycStatus: undefined,

@@ -6,6 +6,7 @@
         <id     property="levelId"           column="level_id"/>
         <result property="levelName"         column="level_name"/>
         <result property="minValidMembers"   column="min_valid_members"/>
+        <result property="teamDepth"         column="team_depth"/>
         <result property="minRechargeCny"    column="min_recharge_cny"/>
         <result property="minRechargeUsdt"   column="min_recharge_usdt"/>
         <result property="minTeamPerfCny"    column="min_team_perf_cny"/>
@@ -26,7 +27,7 @@
     </resultMap>
 
     <sql id="selectLevelVo">
-        select level_id, level_name, min_valid_members, min_recharge_cny, min_recharge_usdt,
+        select level_id, level_name, min_valid_members, team_depth, min_recharge_cny, min_recharge_usdt,
                min_team_perf_cny, min_team_perf_usdt, sort, status,
                reward_enabled, reward_cycle, reward_mode, reward_repeat, reward_cny, reward_usdt,
                create_by, create_time, update_by, update_time, remark
@@ -49,12 +50,12 @@
 
     <insert id="insertLevel" parameterType="BizLevel" useGeneratedKeys="true" keyProperty="levelId">
         insert into biz_level (
-            level_name, min_valid_members, min_recharge_cny, min_recharge_usdt,
+            level_name, min_valid_members, team_depth, min_recharge_cny, min_recharge_usdt,
             min_team_perf_cny, min_team_perf_usdt, sort, status,
             reward_enabled, reward_cycle, reward_mode, reward_repeat, reward_cny, reward_usdt,
             create_by, create_time, remark
         ) values (
-            #{levelName}, #{minValidMembers}, #{minRechargeCny}, #{minRechargeUsdt},
+            #{levelName}, #{minValidMembers}, #{teamDepth}, #{minRechargeCny}, #{minRechargeUsdt},
             #{minTeamPerfCny}, #{minTeamPerfUsdt}, #{sort}, #{status},
             #{rewardEnabled}, #{rewardCycle}, #{rewardMode}, #{rewardRepeat}, #{rewardCny}, #{rewardUsdt},
             #{createBy}, sysdate(), #{remark}
@@ -66,6 +67,7 @@
         <set>
             <if test="levelName != null and levelName != ''">level_name = #{levelName},</if>
             <if test="minValidMembers != null">min_valid_members = #{minValidMembers},</if>
+            <if test="teamDepth != null">team_depth = #{teamDepth},</if>
             <if test="minRechargeCny != null">min_recharge_cny = #{minRechargeCny},</if>
             <if test="minRechargeUsdt != null">min_recharge_usdt = #{minRechargeUsdt},</if>
             <if test="minTeamPerfCny != null">min_team_perf_cny = #{minTeamPerfCny},</if>

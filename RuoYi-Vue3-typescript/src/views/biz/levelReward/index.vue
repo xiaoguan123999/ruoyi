@@ -63,6 +63,7 @@
     </el-form>
     <el-table v-loading="loading" :data="dataList">
       <el-table-column label="等级" align="center" prop="levelName" width="100" />
+      <el-table-column label="团队要求" align="center" prop="teamDepth" width="100" />
       <el-table-column label="有效成员" align="center" prop="minValidMembers" width="90" />
       <el-table-column label="团队业绩CNY" align="center" prop="minTeamPerfCny" width="110" />
       <el-table-column label="团队业绩USDT" align="center" prop="minTeamPerfUsdt" width="120" />
@@ -96,6 +97,10 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="150px">
         <el-form-item label="等级名称">
           <el-input v-model="form.levelName" disabled />
+        </el-form-item>
+        <el-form-item label="团队要求" prop="teamDepth">
+          <el-input v-model="form.teamDepth" placeholder="例如 一级内" />
+          <div class="tip">App 会员等级表「团队要求」列，对应接口 teamDepth</div>
         </el-form-item>
         <el-form-item label="有效成员人数" prop="minValidMembers">
           <el-input-number v-model="form.minValidMembers" :min="0" style="width: 100%" />

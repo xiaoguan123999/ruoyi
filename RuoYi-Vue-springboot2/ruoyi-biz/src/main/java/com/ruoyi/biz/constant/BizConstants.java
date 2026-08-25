@@ -135,6 +135,20 @@ public class BizConstants
 
     public static final String PAY_BANK = "BANK";
 
+    public static final String BLACKLIST_LOGIN = "LOGIN";
+
+    public static final String BLACKLIST_REGISTER = "REGISTER";
+
+    public static final String BLACKLIST_KYC = "KYC";
+
+    public static final String BLACKLIST_BANK = "BANK";
+
+    public static final String BLACKLIST_HIT_PHONE = "PHONE";
+
+    public static final String BLACKLIST_HIT_ID_CARD = "ID_CARD";
+
+    public static final String BLACKLIST_HIT_BANK_CARD = "BANK_CARD";
+
     public static final String CONFIG_SERVICE_TITLE = "biz.service.title";
     public static final String CONFIG_SERVICE_WORK_TIME = "biz.service.workTime";
     public static final String CONFIG_SERVICE_HINT = "biz.service.hint";
