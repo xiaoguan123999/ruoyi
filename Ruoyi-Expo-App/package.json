@@ -10,7 +10,7 @@
     "ios": "APP_ENV=development node scripts/with-port.mjs run:ios",
     "android": "APP_ENV=development node scripts/with-port.mjs run:android",
     "web": "node scripts/clean-dev.mjs && APP_ENV=development node scripts/with-port.mjs start --web --clear",
-    "web:preview": "APP_ENV=preview node scripts/with-port.mjs start --web",
+    "web:preview": "node scripts/clean-dev.mjs && APP_ENV=preview node scripts/with-port.mjs start --web --clear",
     "build:web": "APP_ENV=production expo export --platform web --output-dir dist --clear",
     "build:web:preview": "APP_ENV=preview expo export --platform web --output-dir dist --clear",
     "build:android": "APP_ENV=production eas build --platform android --profile production",

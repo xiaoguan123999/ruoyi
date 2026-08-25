@@ -10,8 +10,9 @@ const extra = (Constants.expoConfig?.extra ?? {}) as Extra;
 
 export const APP_ENV = extra.appEnv ?? process.env.APP_ENV ?? 'development';
 
-const raw = process.env.EXPO_PUBLIC_API_URL?.trim() || extra.apiUrl?.trim() || '';
-const rawH5 = process.env.EXPO_PUBLIC_H5_URL?.trim() || extra.h5Url?.trim() || '';
+// 优先用 app.config 按 APP_ENV 写入的 extra（已正确覆盖），再回退到 EXPO_PUBLIC_*
+const raw = extra.apiUrl?.trim() || process.env.EXPO_PUBLIC_API_URL?.trim() || '';
+const rawH5 = extra.h5Url?.trim() || process.env.EXPO_PUBLIC_H5_URL?.trim() || '';
 
 export const config = {
   APP_ENV,

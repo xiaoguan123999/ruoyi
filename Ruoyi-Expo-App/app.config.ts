@@ -52,8 +52,9 @@ function loadAppEnv(): AppEnv {
         : 'development';
 
   const root = process.cwd();
+  // 与 .env.example 一致：后者覆盖前者；APP_ENV 对应文件必须能盖掉 Expo 预载的 .env.development
   applyEnv(resolve(root, '.env'), false);
-  applyEnv(resolve(root, `.env.${appEnv}`), false);
+  applyEnv(resolve(root, `.env.${appEnv}`), true);
   applyEnv(resolve(root, '.env.local'), true);
   applyEnv(resolve(root, `.env.${appEnv}.local`), true);
   process.env.APP_ENV = appEnv;

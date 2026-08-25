@@ -13,12 +13,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { displayText } from '@/api/app-auth';
 import { emptyLevelsView, fetchAppLevelsView } from '@/api/app-member';
-import { fetchAppTeam, formatTeamAmount, sumTeamRecharge } from '@/api/app-team';
+import { formatTeamAmount } from '@/api/app-team';
 import { ApiError } from '@/api/request';
 import type { AppLevel } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
+import { useAuth } from '@/hooks/useAuth';
 import { colors } from '@/theme/colors';
 import { modalError } from '@/utils/toast';
 
@@ -29,6 +30,8 @@ type DisplayLevelRow = {
   teamDepth: string;
   minRechargeCny: number;
   minRechargeUsdt: number;
+  minTeamPerfCny: number;
+  minTeamPerfUsdt: number;
   teamRewardCny: number;
   teamRewardUsdt: number;
 };
@@ -44,6 +47,8 @@ function mapLevelRows(apiLevels: AppLevel[]): DisplayLevelRow[] {
     teamDepth: '',
     minRechargeCny: toNumberOrZero(apiLevel.minRechargeCny),
     minRechargeUsdt: toNumberOrZero(apiLevel.minRechargeUsdt),
+    minTeamPerfCny: toNumberOrZero(apiLevel.minTeamPerfCny),
+    minTeamPerfUsdt: toNumberOrZero(apiLevel.minTeamPerfUsdt),
     teamRewardCny: toNumberOrZero(apiLevel.teamRewardCny),
     teamRewardUsdt: toNumberOrZero(apiLevel.teamRewardUsdt),
   }));
@@ -53,14 +58,27 @@ function formatAmountLine(value?: number | null): string {
   return formatTeamAmount(toNumberOrZero(value));
 }
 
+function TableCurrencyUnit() {
+  return (
+    <View style={styles.tableCurrencyUnit}>
+      <Text style={styles.tableUnitLine} numberOfLines={1}>
+        ¥
+      </Text>
+      <Text style={styles.tableUnitLine} numberOfLines={1}>
+        USDT
+      </Text>
+    </View>
+  );
+}
+
 function TableDualAmount({ cny, usdt }: { cny?: number; usdt?: number }) {
   return (
     <View style={styles.tableDualAmount}>
       <Text style={styles.tableAmountLine} numberOfLines={1}>
-        ¥ {formatAmountLine(cny)}
+        {formatAmountLine(cny)}
       </Text>
       <Text style={styles.tableAmountLine} numberOfLines={1}>
-        USDT {formatAmountLine(usdt)}
+        {formatAmountLine(usdt)}
       </Text>
     </View>
   );
@@ -107,11 +125,14 @@ function LevelTableRow({
       <Text style={[styles.cellText, styles.colDepth]} numberOfLines={1}>
         {row.teamDepth || '—'}
       </Text>
+      <View style={styles.colUnit}>
+        <TableCurrencyUnit />
+      </View>
       <View style={styles.colRecharge}>
         <TableDualAmount cny={row.minRechargeCny} usdt={row.minRechargeUsdt} />
       </View>
       <View style={styles.colReward}>
-        <TableDualAmount cny={row.teamRewardCny} usdt={row.teamRewardUsdt} />
+        <TableDualAmount cny={row.minTeamPerfCny} usdt={row.minTeamPerfUsdt} />
       </View>
     </View>
   );
@@ -120,25 +141,19 @@ function LevelTableRow({
 export default function LevelsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [rulesVisible, setRulesVisible] = useState(false);
   const [levelsView, setLevelsView] = useState(emptyLevelsView());
-  const [teamRechargeCny, setTeamRechargeCny] = useState(0);
-  const [teamRechargeUsdt, setTeamRechargeUsdt] = useState(0);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) {
       setRefreshing(true);
     }
     try {
-      const [levelsData, teamData] = await Promise.all([fetchAppLevelsView(), fetchAppTeam()]);
+      const levelsData = await fetchAppLevelsView();
       setLevelsView(levelsData);
-      const recharge = sumTeamRecharge(teamData.summary);
-      setTeamRechargeCny(toNumberOrZero(recharge.cny));
-      setTeamRechargeUsdt(toNumberOrZero(recharge.usdt));
     } catch (error) {
-      setTeamRechargeCny(0);
-      setTeamRechargeUsdt(0);
       if (!(error instanceof ApiError) || error.code !== 401) {
         modalError(error instanceof ApiError ? error.message : '获取会员等级失败');
       }
@@ -155,8 +170,35 @@ export default function LevelsScreen() {
 
   const displayRows = useMemo(() => mapLevelRows(levelsView.levels), [levelsView.levels]);
 
-  const currentLevelName = levelsView.current.levelName?.trim() || '0';
-  const currentLevelId = levelsView.current.levelId;
+  const currentLevelId = levelsView.current.levelId ?? user?.levelId;
+  const currentLevelName = useMemo(() => {
+    const fromApi = levelsView.current.levelName?.trim();
+    if (fromApi) {
+      return fromApi;
+    }
+    const fromProfile = user?.levelName?.trim();
+    if (fromProfile) {
+      return fromProfile;
+    }
+    if (currentLevelId !== undefined) {
+      const matched = displayRows.find((row) => row.levelId === currentLevelId);
+      if (matched?.levelName) {
+        return matched.levelName;
+      }
+    }
+    return '';
+  }, [levelsView.current.levelName, user?.levelName, currentLevelId, displayRows]);
+
+  const currentTeamPerf = useMemo(() => {
+    const matched =
+      currentLevelId !== undefined
+        ? displayRows.find((row) => row.levelId === currentLevelId)
+        : displayRows.find((row) => row.levelName === currentLevelName);
+    return {
+      cny: matched?.minTeamPerfCny ?? 0,
+      usdt: matched?.minTeamPerfUsdt ?? 0,
+    };
+  }, [currentLevelId, currentLevelName, displayRows]);
 
   return (
     <AppBackground source={images.levelBg} dim={false} contentPosition="top">
@@ -202,9 +244,9 @@ export default function LevelsScreen() {
             <Text style={styles.statusLevelValue}>{displayText(currentLevelName)}</Text>
           </View>
           <View style={styles.statusCol}>
-            <Text style={styles.statusLabel}>团队充值金额</Text>
-            <Text style={styles.statusMoneyLine}>¥ {formatAmountLine(teamRechargeCny)}</Text>
-            <Text style={styles.statusMoneyLine}>USDT {formatAmountLine(teamRechargeUsdt)}</Text>
+            <Text style={styles.statusLabel}>团队奖励</Text>
+            <Text style={styles.statusMoneyLine}>¥ {formatAmountLine(currentTeamPerf.cny)}</Text>
+            <Text style={styles.statusMoneyLine}>USDT {formatAmountLine(currentTeamPerf.usdt)}</Text>
           </View>
         </View>
 
@@ -216,6 +258,7 @@ export default function LevelsScreen() {
           <View style={styles.tableHead}>
             <Text style={[styles.headText, styles.colLevel]}>会员等级</Text>
             <Text style={[styles.headText, styles.colDepth]}>团队要求</Text>
+            <View style={styles.colUnit} />
             <Text style={[styles.headText, styles.colRechargeHead]}>充值金额</Text>
             <Text style={[styles.headText, styles.colRewardHead]}>团队奖励</Text>
           </View>
@@ -435,30 +478,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   colLevel: {
-    width: '22%',
+    width: '20%',
   },
   colDepth: {
-    width: '18%',
+    width: '16%',
+  },
+  colUnit: {
+    width: '14%',
+    alignItems: 'flex-end',
+    paddingRight: 6,
+    paddingTop: 1,
   },
   colRecharge: {
-    width: '30%',
+    width: '25%',
     alignItems: 'flex-end',
-    paddingRight: 4,
+    paddingRight: 8,
     paddingTop: 1,
   },
   colReward: {
-    width: '30%',
+    width: '25%',
     alignItems: 'flex-end',
     paddingTop: 1,
   },
   colRechargeHead: {
-    width: '30%',
+    width: '25%',
     textAlign: 'right',
-    paddingRight: 4,
+    paddingRight: 8,
   },
   colRewardHead: {
-    width: '30%',
+    width: '25%',
     textAlign: 'right',
+  },
+  tableCurrencyUnit: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  tableUnitLine: {
+    color: 'rgba(200, 215, 245, 0.75)',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 18,
   },
   tableDualAmount: {
     alignItems: 'flex-end',

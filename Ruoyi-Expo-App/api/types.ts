@@ -265,6 +265,9 @@ export type AppLevel = {
   minRechargeCny: number;
   minRechargeUsdt: number;
   minValidMembers: number;
+  /** 最低团队业绩 */
+  minTeamPerfCny?: number;
+  minTeamPerfUsdt?: number;
   teamRewardCny?: number;
   teamRewardUsdt?: number;
   sort?: number;
@@ -291,6 +294,8 @@ export type AppInviteInfo = {
   inviteUrl?: string;
   qrCode?: string;
   inviteCount?: number;
+  /** 邀请规则说明全文 */
+  ruleText?: string;
 };
 
 export type AppVideoCarouselItem = {

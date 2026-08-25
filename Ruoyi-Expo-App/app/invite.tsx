@@ -24,13 +24,16 @@ const softTitleFont = Platform.select({
 export default function InviteScreen() {
   const { user } = useAuth();
   const [inviteCode, setInviteCode] = useState(displayText(user?.inviteCode));
+  const [ruleText, setRuleText] = useState('');
 
   const load = useCallback(async () => {
     try {
       const data = await fetchAppInvite();
       setInviteCode(displayText(data.inviteCode || user?.inviteCode));
+      setRuleText(data.ruleText?.trim() || '');
     } catch {
       setInviteCode(displayText(user?.inviteCode));
+      setRuleText('');
     }
   }, [user?.inviteCode]);
 
@@ -111,6 +114,8 @@ export default function InviteScreen() {
             )}
           </View>
 
+          {ruleText ? <Text style={styles.ruleText}>{ruleText}</Text> : null}
+
           <Image source={images.inviteFlow} style={styles.flow} contentFit="contain" />
         </View>
       </RefreshableScrollView>
@@ -186,6 +191,15 @@ const styles = StyleSheet.create({
     width: 148,
     height: 148,
     backgroundColor: '#D9D9D9',
+  },
+  ruleText: {
+    alignSelf: 'stretch',
+    marginTop: 4,
+    marginBottom: 14,
+    color: 'rgba(200, 215, 245, 0.88)',
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'left',
   },
   flow: {
     width: '100%',

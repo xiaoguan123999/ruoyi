@@ -83,6 +83,8 @@ function mapLevel(raw: unknown): AppLevel | null {
     minRechargeCny: pickNumber(raw, ['minRechargeCny', 'rechargeCny']),
     minRechargeUsdt: pickNumber(raw, ['minRechargeUsdt', 'rechargeUsdt']),
     minValidMembers: pickNumber(raw, ['minValidMembers', 'validMembers', 'teamCount']),
+    minTeamPerfCny: pickNumber(raw, ['minTeamPerfCny', 'teamPerfCny']) || undefined,
+    minTeamPerfUsdt: pickNumber(raw, ['minTeamPerfUsdt', 'teamPerfUsdt']) || undefined,
     teamRewardCny: pickNumber(raw, ['teamRewardCny', 'rewardCny', 'levelRewardCny']) || undefined,
     teamRewardUsdt: pickNumber(raw, ['teamRewardUsdt', 'rewardUsdt', 'levelRewardUsdt']) || undefined,
     sort: pickNumber(raw, ['sort']),
@@ -104,6 +106,7 @@ function mapInvite(raw: unknown): AppInviteInfo {
     inviteUrl: pickString(raw, ['inviteUrl', 'url', 'link', 'inviteLink']) || undefined,
     qrCode: qrCode || undefined,
     inviteCount: pickNumber(raw, ['inviteCount', 'inviteNum', 'count']) || undefined,
+    ruleText: pickString(raw, ['ruleText', 'rules', 'rule']) || undefined,
   };
 }
 
@@ -161,8 +164,9 @@ function mapLevelCurrent(raw: unknown): AppLevelCurrent {
   if (!isRecord(raw)) {
     return {};
   }
-  const levelId = pickNumber(raw, ['levelId', 'id']);
-  const levelName = pickString(raw, ['levelName', 'name']);
+  // 会员对象上不要回退到 id（那是 memberId）
+  const levelId = pickNumber(raw, ['levelId']);
+  const levelName = pickString(raw, ['levelName', 'memberLevelName', 'level']);
   return {
     levelId: levelId || undefined,
     levelName: levelName || undefined,
