@@ -156,7 +156,7 @@ public class AppBizController extends BaseController
             BizPayAccount acc = payAccountService.selectPayAccountById(body.getAccountId());
             if (acc == null || !memberId.equals(acc.getMemberId()))
             {
-                throw new ServiceException("收�?�账户不存在");
+                throw new ServiceException("收款账户不存在");
             }
             accountInfo = formatPayAccount(acc);
         }

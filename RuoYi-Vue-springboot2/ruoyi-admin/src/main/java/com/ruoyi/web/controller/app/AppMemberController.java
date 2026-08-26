@@ -30,7 +30,7 @@ import com.ruoyi.common.utils.AppSecurityUtils;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
-@Api(tags = "App-???")
+@Api(tags = "App-会员")
 @RestController
 @RequestMapping("/app")
 public class AppMemberController extends BaseController
@@ -50,14 +50,14 @@ public class AppMemberController extends BaseController
     @Autowired
     private BizMemberMapper memberMapper;
 
-    @ApiOperation(value = "???????", notes = "???? data ???????????????? cnyAvailable / usdtAvailable / productIncome ????????")
+    @ApiOperation(value = "我的资料", notes = "返回 data 为会员资料，含 cnyAvailable / usdtAvailable / productIncome 等资产字段")
     @GetMapping("/profile")
     public AppProfileResult profile()
     {
         return AppProfileResult.ok(memberService.selectMemberById(AppSecurityUtils.getMemberId()));
     }
 
-    @ApiOperation(value = "?????", notes = "��????????18��???????App ????????????????????????????��??????????????")
+    @ApiOperation(value = "提交实名", notes = "校验姓名和18位身份证。App 侧身份证号不能与其他会员重复。校验通过即已实名")
     @PostMapping("/kyc")
     public AppOkResult kyc(@RequestBody AppKycBody body)
     {
@@ -65,47 +65,47 @@ public class AppMemberController extends BaseController
         return AppOkResult.ok();
     }
 
-    @ApiOperation(value = "????????", notes = "??????��????????��?????????????? data??????????��??")
+    @ApiOperation(value = "修改密码", notes = "需登录。校验原密码后写入新密码。成功没有 data。登录态仍有效")
     @PostMapping("/password")
     public AppOkResult changePassword(@RequestBody AppPasswordBody body)
     {
         if (body == null)
         {
-            return AppOkResult.fail("????��????????????");
+            return AppOkResult.fail("请填写原密码和新密码");
         }
         memberService.changePassword(AppSecurityUtils.getMemberId(), body.getOldPassword(),
                 body.getNewPassword(), body.getConfirmPassword());
         return AppOkResult.ok();
     }
 
-    @ApiOperation(value = "????????", notes = "?? POST /app/password", hidden = true)
+    @ApiOperation(value = "修改密码", notes = "同 POST /app/password", hidden = true)
     @PutMapping("/password")
     public AppOkResult changePasswordPut(@RequestBody AppPasswordBody body)
     {
         return changePassword(body);
     }
 
-    @ApiOperation(value = "???????????????", notes = "?????��???? newPassword ?? payPassword???????????? oldPassword?????? /app/tradePassword??")
+    @ApiOperation(value = "设置或修改支付密码", notes = "未设置过只需 newPassword 或 payPassword；已设置需带 oldPassword。别名 /app/tradePassword")
     @PostMapping({"/payPassword", "/tradePassword"})
     public AppOkResult savePayPassword(@RequestBody AppPayPasswordBody body)
     {
         if (body == null)
         {
-            return AppOkResult.fail("???????????????");
+            return AppOkResult.fail("请设置支付密码");
         }
         memberService.savePayPassword(AppSecurityUtils.getMemberId(), body.getOldPassword(),
                 body.getNewPassword(), body.getConfirmPassword());
         return AppOkResult.ok();
     }
 
-    @ApiOperation(value = "???????????????", notes = "?? POST /app/payPassword", hidden = true)
+    @ApiOperation(value = "设置或修改支付密码", notes = "同 POST /app/payPassword", hidden = true)
     @PutMapping({"/payPassword", "/tradePassword"})
     public AppOkResult savePayPasswordPut(@RequestBody AppPayPasswordBody body)
     {
         return savePayPassword(body);
     }
 
-    @ApiOperation(value = "????????", notes = "inviteCode ????????inviteCount ???????????reward ?????? 0??")
+    @ApiOperation(value = "邀请信息", notes = "inviteCode 给别人填；inviteCount 为直推人数")
     @GetMapping("/invite")
     public AppInviteResult invite()
     {
@@ -118,7 +118,7 @@ public class AppMemberController extends BaseController
         return AppInviteResult.ok(data);
     }
 
-    @ApiOperation(value = "??????", notes = "summary ?? 1-7 ???????members ?? key ?? 1-7???????? level1-level7 ??????")
+    @ApiOperation(value = "我的团队", notes = "summary 为 1-7 级汇总；members 的 key 为 1-7；同时返回 level1-level7 数组")
     @GetMapping("/team")
     public AppTeamResult team()
     {
@@ -126,7 +126,7 @@ public class AppMemberController extends BaseController
         return AppTeamResult.ok(memberService.getAppTeam(memberId));
     }
 
-    @ApiOperation(value = "??????", notes = "current ?????levels ????????????????????????? App ?????????")
+    @ApiOperation(value = "会员等级", notes = "current 为我；levels 为全部等级配置")
     @GetMapping("/levels")
     public AppLevelsResult levels()
     {

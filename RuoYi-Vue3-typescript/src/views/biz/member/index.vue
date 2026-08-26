@@ -76,9 +76,11 @@
           <span>{{ parseTime(scope.row.createTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="200" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="360" class-name="small-padding fixed-width" fixed="right">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:member:edit']">修改</el-button>
+          <el-button link type="primary" icon="Key" @click="handleResetPwd(scope.row)" v-hasPermi="['biz:member:resetPwd']">登录密码</el-button>
+          <el-button link type="primary" icon="Lock" @click="handleResetPayPwd(scope.row)" v-hasPermi="['biz:member:resetPayPwd']">交易密码</el-button>
           <el-button v-if="scope.row.gaStatus === '1'" link type="primary" icon="Unlock" @click="handleResetGoogle(scope.row)" v-hasPermi="['biz:member:edit']">解绑谷歌</el-button>
         </template>
       </el-table-column>
@@ -118,9 +120,6 @@
               <el-radio value="1">停用</el-radio>
             </el-radio-group>
           </el-form-item>
-          <el-form-item label="重置密码">
-            <el-input v-model="form.password" type="password" placeholder="不修改请留空" show-password />
-          </el-form-item>
           <el-form-item label="备注">
             <el-input v-model="form.remark" type="textarea" />
           </el-form-item>
@@ -137,7 +136,7 @@
 </template>
 
 <script setup lang="ts" name="BizMember">
-import { listMember, getMember, addMember, updateMember, resetMemberGoogle } from "@/api/biz"
+import { listMember, getMember, addMember, updateMember, resetMemberGoogle, resetMemberPwd, resetMemberPayPwd } from "@/api/biz"
 
 const { proxy } = getCurrentInstance() as any
 const memberList = ref<any[]>([])
@@ -217,6 +216,40 @@ function handleResetGoogle(row: any) {
   }).then(() => {
     proxy.$modal.msgSuccess("已解绑")
     getList()
+  }).catch(() => {})
+}
+function handleResetPwd(row: any) {
+  proxy.$prompt("请输入「" + row.phone + "」的新登录密码", "重置登录密码", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    closeOnClickModal: false,
+    inputType: "password",
+    inputValidator: (value: string) => {
+      if (!value || value.length < 5 || value.length > 20) {
+        return "登录密码长度必须为 5-20 位"
+      }
+    }
+  }).then(({ value }: { value: string }) => {
+    return resetMemberPwd(row.memberId, value).then(() => {
+      proxy.$modal.msgSuccess("登录密码已重置，新密码是：" + value)
+    })
+  }).catch(() => {})
+}
+function handleResetPayPwd(row: any) {
+  proxy.$prompt("请输入「" + row.phone + "」的新交易密码", "重置交易密码", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    closeOnClickModal: false,
+    inputType: "password",
+    inputValidator: (value: string) => {
+      if (!value || value.length < 4 || value.length > 20) {
+        return "交易密码长度必须为 4-20 位"
+      }
+    }
+  }).then(({ value }: { value: string }) => {
+    return resetMemberPayPwd(row.memberId, value).then(() => {
+      proxy.$modal.msgSuccess("交易密码已重置，新密码是：" + value)
+    })
   }).catch(() => {})
 }
 function submitForm() {

@@ -21,6 +21,14 @@ export function resetMemberGoogle(memberId: number): Promise<AjaxResult> {
   return request({ url: '/biz/member/' + memberId + '/google/reset', method: 'put' })
 }
 
+export function resetMemberPwd(memberId: number, password: string): Promise<AjaxResult> {
+  return request({ url: '/biz/member/resetPwd', method: 'put', data: { memberId, password } })
+}
+
+export function resetMemberPayPwd(memberId: number, payPassword: string): Promise<AjaxResult> {
+  return request({ url: '/biz/member/resetPayPwd', method: 'put', data: { memberId, payPassword } })
+}
+
 export function listMemberTeam(memberId: number, teamLevel?: number): Promise<AjaxResult<any[]>> {
   return request({ url: '/biz/member/team/' + memberId, method: 'get', params: { teamLevel } })
 }

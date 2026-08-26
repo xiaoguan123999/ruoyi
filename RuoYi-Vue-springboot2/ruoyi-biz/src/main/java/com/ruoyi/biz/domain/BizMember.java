@@ -28,7 +28,7 @@ public class BizMember extends BaseEntity
     private String password;
 
     /** 支付/交易密码 */
-    @JsonIgnore
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String payPassword;
 
     /** 邀请码 */

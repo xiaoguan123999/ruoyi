@@ -22,6 +22,10 @@ public interface IBizMemberService
 
     void updateMember(BizMember member);
 
+    void resetLoginPassword(Long memberId, String password);
+
+    void resetPayPassword(Long memberId, String payPassword);
+
     void submitKyc(Long memberId, AppKycBody body);
 
     void changePassword(Long memberId, String oldPassword, String newPassword, String confirmPassword);

@@ -34,7 +34,7 @@ import com.ruoyi.framework.web.service.AppTokenService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
-@Api(tags = "App-???")
+@Api(tags = "App-认证")
 @RestController
 @RequestMapping("/app/auth")
 public class AppAuthController extends BaseController
@@ -56,7 +56,7 @@ public class AppAuthController extends BaseController
     @Autowired
     private IBizBlacklistService blacklistService;
 
-    @ApiOperation("???????????")
+    @ApiOperation("获取登录验证码")
     @GetMapping("/captcha")
     public AppCaptchaResult captcha()
     {
@@ -67,26 +67,26 @@ public class AppAuthController extends BaseController
         return AppCaptchaResult.of(uuid, text);
     }
 
-    @ApiOperation("??????")
+    @ApiOperation("会员注册")
     @PostMapping("/register")
     public AppLoginResult register(@RequestBody AppRegisterBody body)
     {
         if (body == null)
         {
-            throw new ServiceException("???????????");
+            throw new ServiceException("请输入验证码");
         }
         validateCaptcha(body.getCode(), body.getUuid());
         BizMember member = memberService.register(body);
         return buildToken(member);
     }
 
-    @ApiOperation("??????")
+    @ApiOperation("会员登录")
     @PostMapping("/login")
     public AppLoginResult login(@RequestBody AppLoginBody body)
     {
         if (body == null || StringUtils.isEmpty(body.getPhone()) || StringUtils.isEmpty(body.getPassword()))
         {
-            throw new ServiceException("???????????????");
+            throw new ServiceException("手机号和密码不能为空");
         }
         validateCaptcha(body.getCode(), body.getUuid());
         BizMember member;
@@ -107,17 +107,17 @@ public class AppAuthController extends BaseController
                 member == null ? null : member.getMemberId());
         if (member == null || !SecurityUtils.matchesPassword(body.getPassword(), member.getPassword()))
         {
-            throw new ServiceException("??????????????");
+            throw new ServiceException("手机号或密码错误");
         }
         if (BizConstants.STATUS_DISABLE.equals(member.getStatus()))
         {
-            throw new ServiceException("????????");
+            throw new ServiceException("账号已停用");
         }
         googleAuthService.assertForLogin(member, body.getGoogleCode());
         return buildToken(member);
     }
 
-    @ApiOperation("???????")
+    @ApiOperation("会员退出")
     @PostMapping("/logout")
     public AppOkResult logout(HttpServletRequest request)
     {
@@ -129,18 +129,18 @@ public class AppAuthController extends BaseController
     {
         if (StringUtils.isEmpty(code) || StringUtils.isEmpty(uuid))
         {
-            throw new ServiceException("???????????");
+            throw new ServiceException("请输入验证码");
         }
         String verifyKey = CacheConstants.CAPTCHA_CODE_KEY + uuid;
         String captcha = redisCache.getCacheObject(verifyKey);
         if (captcha == null)
         {
-            throw new ServiceException("????????��");
+            throw new ServiceException("验证码已失效");
         }
         redisCache.deleteObject(verifyKey);
         if (!code.equalsIgnoreCase(captcha))
         {
-            throw new ServiceException("????????");
+            throw new ServiceException("验证码错误");
         }
     }
 

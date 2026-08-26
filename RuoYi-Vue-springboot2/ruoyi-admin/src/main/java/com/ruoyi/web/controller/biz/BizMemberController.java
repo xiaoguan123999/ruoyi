@@ -74,6 +74,26 @@ public class BizMemberController extends BaseController
         return success();
     }
 
+    @ApiOperation("重置登录密码")
+    @PreAuthorize("@ss.hasPermi('biz:member:resetPwd')")
+    @Log(title = "重置登录密码", businessType = BusinessType.UPDATE)
+    @PutMapping("/resetPwd")
+    public AjaxResult resetPwd(@RequestBody BizMember member)
+    {
+        memberService.resetLoginPassword(member.getMemberId(), member.getPassword());
+        return success();
+    }
+
+    @ApiOperation("重置交易密码")
+    @PreAuthorize("@ss.hasPermi('biz:member:resetPayPwd')")
+    @Log(title = "重置交易密码", businessType = BusinessType.UPDATE)
+    @PutMapping("/resetPayPwd")
+    public AjaxResult resetPayPwd(@RequestBody BizMember member)
+    {
+        memberService.resetPayPassword(member.getMemberId(), member.getPayPassword());
+        return success();
+    }
+
     @ApiOperation("重置谷歌验证")
     @PreAuthorize("@ss.hasPermi('biz:member:edit')")
     @Log(title = "重置谷歌验证", businessType = BusinessType.UPDATE)

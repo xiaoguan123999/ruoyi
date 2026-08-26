@@ -165,6 +165,50 @@ public class BizMemberServiceImpl implements IBizMemberService
     }
 
     @Override
+    public void resetLoginPassword(Long memberId, String password)
+    {
+        if (memberId == null)
+        {
+            throw new ServiceException("会员ID不能为空");
+        }
+        if (StringUtils.isEmpty(password))
+        {
+            throw new ServiceException("请输入新登录密码");
+        }
+        if (password.length() < UserConstants.PASSWORD_MIN_LENGTH
+                || password.length() > UserConstants.PASSWORD_MAX_LENGTH)
+        {
+            throw new ServiceException("登录密码长度必须为" + UserConstants.PASSWORD_MIN_LENGTH + "-"
+                    + UserConstants.PASSWORD_MAX_LENGTH + "位");
+        }
+        BizMember exist = memberMapper.selectMemberById(memberId);
+        if (exist == null)
+        {
+            throw new ServiceException("会员不存在");
+        }
+        BizMember update = new BizMember();
+        update.setMemberId(memberId);
+        update.setPassword(SecurityUtils.encryptPassword(password));
+        memberMapper.updateMember(update);
+    }
+
+    @Override
+    public void resetPayPassword(Long memberId, String payPassword)
+    {
+        if (memberId == null)
+        {
+            throw new ServiceException("会员ID不能为空");
+        }
+        validatePayPasswordPlain(payPassword);
+        BizMember exist = memberMapper.selectMemberById(memberId);
+        if (exist == null)
+        {
+            throw new ServiceException("会员不存在");
+        }
+        memberMapper.updatePayPassword(memberId, SecurityUtils.encryptPassword(payPassword));
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void submitKyc(Long memberId, AppKycBody body)
     {

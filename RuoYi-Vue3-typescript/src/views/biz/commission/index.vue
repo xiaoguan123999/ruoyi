@@ -65,10 +65,10 @@ const dateRange = ref<string[]>([])
 const queryParams = ref({ pageNum: 1, pageSize: 10, memberId: undefined, phone: undefined, currency: undefined, teamLevel: undefined })
 
 function commissionRemark(row: any) {
-  const phone = row.fromPhone || row.fromMemberId || "下级"
+  const phone = row.fromPhone || row.fromMemberId || "来源会员"
   const base = row.baseAmount ?? 0
   const level = row.teamLevel ?? ""
-  return phone + " 下级充值 " + base + " 的 " + level + " 级分佣"
+  return phone + " 充值 " + base + " 的 " + level + " 级分佣"
 }
 function getList() {
   loading.value = true
