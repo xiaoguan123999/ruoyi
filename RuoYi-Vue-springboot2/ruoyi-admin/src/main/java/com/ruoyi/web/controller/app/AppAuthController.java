@@ -17,6 +17,7 @@ import com.ruoyi.biz.domain.AppRegisterBody;
 import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.service.IBizBlacklistService;
 import com.ruoyi.biz.service.IBizGoogleAuthService;
+import com.ruoyi.biz.service.IBizMemberLogininforService;
 import com.ruoyi.biz.service.IBizMemberService;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
@@ -56,7 +57,10 @@ public class AppAuthController extends BaseController
     @Autowired
     private IBizBlacklistService blacklistService;
 
-    @ApiOperation("获取登录验证码")
+    @Autowired
+    private IBizMemberLogininforService memberLoginLogService;
+
+    @ApiOperation("图形验证码")
     @GetMapping("/captcha")
     public AppCaptchaResult captcha()
     {
@@ -71,57 +75,88 @@ public class AppAuthController extends BaseController
     @PostMapping("/register")
     public AppLoginResult register(@RequestBody AppRegisterBody body)
     {
-        if (body == null)
+        String phone = body == null ? "" : body.getPhone();
+        try
         {
-            throw new ServiceException("请输入验证码");
+            if (body == null)
+            {
+                throw new ServiceException("请输入验证码");
+            }
+            validateCaptcha(body.getCode(), body.getUuid());
+            BizMember member = memberService.register(body);
+            memberLoginLogService.record(member.getPhone(), member.getMemberId(), Constants.REGISTER, "注册成功");
+            return buildToken(member);
         }
-        validateCaptcha(body.getCode(), body.getUuid());
-        BizMember member = memberService.register(body);
-        return buildToken(member);
+        catch (ServiceException e)
+        {
+            memberLoginLogService.record(phone, null, Constants.LOGIN_FAIL, e.getMessage());
+            throw e;
+        }
     }
 
     @ApiOperation("会员登录")
     @PostMapping("/login")
     public AppLoginResult login(@RequestBody AppLoginBody body)
     {
-        if (body == null || StringUtils.isEmpty(body.getPhone()) || StringUtils.isEmpty(body.getPassword()))
-        {
-            throw new ServiceException("手机号和密码不能为空");
-        }
-        validateCaptcha(body.getCode(), body.getUuid());
-        BizMember member;
+        String phone = body == null ? "" : body.getPhone();
+        Long memberId = null;
         try
         {
-            member = memberService.selectMemberByPhone(body.getPhone());
+            if (body == null || StringUtils.isEmpty(body.getPhone()) || StringUtils.isEmpty(body.getPassword()))
+            {
+                throw new ServiceException("手机号或密码不能为空");
+            }
+            phone = body.getPhone();
+            validateCaptcha(body.getCode(), body.getUuid());
+            BizMember member;
+            try
+            {
+                member = memberService.selectMemberByPhone(body.getPhone());
+            }
+            catch (ServiceException e)
+            {
+                throw e;
+            }
+            catch (RuntimeException e)
+            {
+                log.error("App login query failed", e);
+                throw new ServiceException(Constants.NETWORK_RETRY);
+            }
+            if (member != null)
+            {
+                memberId = member.getMemberId();
+            }
+            blacklistService.assertPhone(body.getPhone(), BizConstants.BLACKLIST_LOGIN, memberId);
+            if (member == null || !SecurityUtils.matchesPassword(body.getPassword(), member.getPassword()))
+            {
+                throw new ServiceException("手机号或密码错误");
+            }
+            if (BizConstants.STATUS_DISABLE.equals(member.getStatus()))
+            {
+                throw new ServiceException("账号已停用");
+            }
+            googleAuthService.assertForLogin(member, body.getGoogleCode());
+            memberLoginLogService.record(phone, memberId, Constants.LOGIN_SUCCESS, "登录成功");
+            return buildToken(member);
         }
         catch (ServiceException e)
         {
+            memberLoginLogService.record(phone, memberId, Constants.LOGIN_FAIL, e.getMessage());
             throw e;
         }
-        catch (RuntimeException e)
-        {
-            log.error("App login query failed", e);
-            throw new ServiceException(Constants.NETWORK_RETRY);
-        }
-        blacklistService.assertPhone(body.getPhone(), BizConstants.BLACKLIST_LOGIN,
-                member == null ? null : member.getMemberId());
-        if (member == null || !SecurityUtils.matchesPassword(body.getPassword(), member.getPassword()))
-        {
-            throw new ServiceException("手机号或密码错误");
-        }
-        if (BizConstants.STATUS_DISABLE.equals(member.getStatus()))
-        {
-            throw new ServiceException("账号已停用");
-        }
-        googleAuthService.assertForLogin(member, body.getGoogleCode());
-        return buildToken(member);
     }
 
     @ApiOperation("会员退出")
     @PostMapping("/logout")
     public AppOkResult logout(HttpServletRequest request)
     {
+        AppLoginMember loginMember = appTokenService.getLoginMember(request);
         appTokenService.delLoginMember(request);
+        if (loginMember != null)
+        {
+            memberLoginLogService.record(loginMember.getPhone(), loginMember.getMemberId(),
+                    Constants.LOGOUT, "退出成功");
+        }
         return AppOkResult.ok();
     }
 

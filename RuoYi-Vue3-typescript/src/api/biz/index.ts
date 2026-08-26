@@ -381,6 +381,18 @@ export function delBlacklist(blacklistId: number | number[]): Promise<AjaxResult
   return request({ url: '/biz/blacklist/' + blacklistId, method: 'delete' })
 }
 
+export function listMemberLogin(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/memberLogin/list', method: 'get', params: query })
+}
+
+export function delMemberLogin(infoId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/memberLogin/' + infoId, method: 'delete' })
+}
+
+export function cleanMemberLogin(): Promise<AjaxResult> {
+  return request({ url: '/biz/memberLogin/clean', method: 'delete' })
+}
+
 export function listBlacklistLog(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/blacklist/log/list', method: 'get', params: query })
 }

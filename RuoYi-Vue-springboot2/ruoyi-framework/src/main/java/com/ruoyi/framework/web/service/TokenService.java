@@ -86,17 +86,12 @@ public class TokenService
         }
         catch (Exception e)
         {
-            log.error("获取用户信息异常 {}", e.getClass().getSimpleName());
-            if (StringUtils.isNotEmpty(userKey))
+            Throwable root = e;
+            while (root.getCause() != null && root.getCause() != root)
             {
-                try
-                {
-                    redisCache.deleteObject(userKey);
-                }
-                catch (Exception ignored)
-                {
-                }
+                root = root.getCause();
             }
+            log.error("获取用户信息异常 {} {}", e.getClass().getSimpleName(), root.getMessage(), e);
         }
         return null;
     }

@@ -7,6 +7,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.alibaba.fastjson2.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ruoyi.common.annotation.Excel;
 import com.ruoyi.common.annotation.Excel.ColumnType;
@@ -58,13 +59,16 @@ public class SysUser extends BaseEntity
 
     /** 密码。Fastjson2 无法安全回读 bcrypt 里的 /. ，Redis 会话不存密码 */
     @JSONField(serialize = false)
+    @JsonIgnore
     private String password;
 
     /** 账号状态（0正常 1停用） */
     @Excel(name = "账号状态", readConverterExp = "0=正常,1=停用")
     private String status;
 
-    /** 谷歌验证密钥 */
+    /** 谷歌验证密钥。Redis 会话不存密钥 */
+    @JSONField(serialize = false)
+    @JsonIgnore
     private String gaSecret;
 
     /** 谷歌验证（0未绑定 1已绑定） */
@@ -125,6 +129,7 @@ public class SysUser extends BaseEntity
     }
 
     @JSONField(serialize = false, deserialize = false)
+    @JsonIgnore
     public boolean isAdmin()
     {
         return SecurityUtils.isAdmin(this.userId);

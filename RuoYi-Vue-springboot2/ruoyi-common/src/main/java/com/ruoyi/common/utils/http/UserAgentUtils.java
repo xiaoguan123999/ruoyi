@@ -197,7 +197,8 @@ public class UserAgentUtils
         {
             return UNKNOWN;
         }
-        return value.replace(">=", " ").replace("<=", " ").replace(">", " ").replace("<", " ").trim();
+        String safe = value.replaceAll("[^A-Za-z0-9 ._\\-]", " ").replaceAll("\\s+", " ").trim();
+        return safe;
     }
 
     /**
