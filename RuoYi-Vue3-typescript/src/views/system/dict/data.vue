@@ -216,7 +216,7 @@ const data = reactive({
   form: {} as SysDictData,
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 100,
     dictType: undefined,
     dictLabel: undefined,
     status: undefined

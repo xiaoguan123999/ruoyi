@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-form :inline="true" @submit.prevent="handleQuery">
       <el-form-item>
         <el-input

@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="这里维护 App「关于我们」页面内容。可新增多段，按排序展示。正文用富文本编辑，App 接口会转成纯文本。"
       type="info"
@@ -91,7 +91,7 @@ const open = ref(false)
 const title = ref("")
 const data = reactive({
   form: {} as any,
-  queryParams: { pageNum: 1, pageSize: 10, title: undefined, status: undefined },
+  queryParams: { pageNum: 1, pageSize: 100, title: undefined, status: undefined },
   rules: {
     title: [{ required: true, message: "请填写标题", trigger: "blur" }],
     content: [{ required: true, message: "请填写正文", trigger: "blur" }]

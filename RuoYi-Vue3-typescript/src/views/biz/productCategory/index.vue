@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="这里维护 App「产品」Tab 上的系列。App 先拉系列卡片，点进去再查该系列下的产品。"
       type="info"
@@ -101,7 +101,7 @@ const open = ref(false)
 const title = ref("")
 const data = reactive({
   form: {} as any,
-  queryParams: { pageNum: 1, pageSize: 10, categoryName: undefined, status: undefined },
+  queryParams: { pageNum: 1, pageSize: 100, categoryName: undefined, status: undefined },
   rules: {
     categoryName: [{ required: true, message: "请填写系列名称", trigger: "blur" }]
   }

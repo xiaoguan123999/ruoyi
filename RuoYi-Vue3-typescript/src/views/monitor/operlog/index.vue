@@ -177,7 +177,7 @@ const data = reactive({
   form: {} as SysOperLog,
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 100,
     operIp: undefined,
     title: undefined,
     operName: undefined,

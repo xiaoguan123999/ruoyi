@@ -28,12 +28,12 @@ const props = defineProps({
   },
   limit: {
     type: Number,
-    default: 20
+    default: 100
   },
   pageSizes: {
     type: Array,
     default() {
-      return [10, 20, 30, 50]
+      return [100, 200, 300, 400, 500]
     }
   },
   // 移动端页码按钮的数量端默认值5

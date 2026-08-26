@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="同一产品可同时配人民币和 USDT 价格。限购填每人可买份数，0 表示不限制。App 认购时按该会员已购订单数校验。"
       type="info"
@@ -149,7 +149,7 @@ const total = ref(0)
 const title = ref("")
 const data = reactive({
   form: {} as any,
-  queryParams: { pageNum: 1, pageSize: 10, productName: undefined, currency: undefined, status: undefined, categoryId: undefined },
+  queryParams: { pageNum: 1, pageSize: 100, productName: undefined, currency: undefined, status: undefined, categoryId: undefined },
   rules: {
     categoryId: [{ required: true, message: "请选择所属系列", trigger: "change" }],
     productName: [{ required: true, message: "产品名称不能为空", trigger: "blur" }],

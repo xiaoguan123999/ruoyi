@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="客服发放页：仅星链需要手动发放。达标后会出现待发放记录，点「确认发放」入账；之后还可用「额外发放」。前6级自动入账，不会出现在待发放里。"
       type="info"
@@ -61,11 +61,20 @@
       <el-table-column label="操作人" align="center" prop="payBy" width="100" />
       <el-table-column label="操作" align="center" width="180" fixed="right">
         <template #default="scope">
-          <template v-if="scope.row.status === '0'">
-            <el-button link type="primary" @click="openPay(scope.row)" v-hasPermi="['biz:levelReward:pay']">确认发放</el-button>
-            <el-button link type="danger" @click="openReject(scope.row)" v-hasPermi="['biz:levelReward:reject']">拒绝</el-button>
-          </template>
-          <span v-else>{{ scope.row.remark || '—' }}</span>
+          <el-button
+            link
+            type="primary"
+            :disabled="scope.row.status !== '0'"
+            @click="openPay(scope.row)"
+            v-hasPermi="['biz:levelReward:pay']"
+          >确认发放</el-button>
+          <el-button
+            link
+            type="danger"
+            :disabled="scope.row.status !== '0'"
+            @click="openReject(scope.row)"
+            v-hasPermi="['biz:levelReward:reject']"
+          >拒绝</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -85,8 +94,8 @@
 
     <el-dialog title="星链额外发放" v-model="extraOpen" width="480px" append-to-body>
       <el-form ref="extraRef" :model="extraForm" :rules="extraRules" label-width="90px">
-        <el-form-item label="会员ID" prop="memberId">
-          <el-input-number v-model="extraForm.memberId" :min="1" style="width: 100%" />
+        <el-form-item label="会员" prop="memberId">
+          <MemberSelect v-model="extraForm.memberId" width="100%" placeholder="选择会员" />
         </el-form-item>
         <el-form-item label="等级ID" prop="levelId">
           <el-input-number v-model="extraForm.levelId" :min="1" style="width: 100%" />
@@ -115,11 +124,11 @@ const total = ref(0)
 const payOpen = ref(false)
 const extraOpen = ref(false)
 const payTitle = ref("")
-const queryParams = ref({ pageNum: 1, pageSize: 10, phone: undefined as string | undefined, status: "0", grantCycle: undefined as string | undefined })
+const queryParams = ref({ pageNum: 1, pageSize: 100, phone: undefined as string | undefined, status: "0", grantCycle: undefined as string | undefined })
 const payForm = ref({ grantId: 0, remark: "", reject: false })
 const extraForm = ref({ memberId: undefined as number | undefined, levelId: undefined as number | undefined, remark: "" })
 const extraRules = {
-  memberId: [{ required: true, message: "请填写会员ID", trigger: "blur" }],
+  memberId: [{ required: true, message: "请选择会员", trigger: "change" }],
   levelId: [{ required: true, message: "请填写等级ID", trigger: "blur" }]
 }
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="这里维护 App「官方群聊」页。请上传群二维码图片，App 会原样展示。可新增多个（例如微信群、QQ群）。"
       type="info"
@@ -106,7 +106,7 @@ const open = ref(false)
 const title = ref("")
 const data = reactive({
   form: {} as any,
-  queryParams: { pageNum: 1, pageSize: 10, title: undefined, status: undefined },
+  queryParams: { pageNum: 1, pageSize: 100, title: undefined, status: undefined },
   rules: {
     title: [{ required: true, message: "请填写标题", trigger: "blur" }],
     qrUrl: [{ required: true, message: "请上传群聊二维码", trigger: "change" }]

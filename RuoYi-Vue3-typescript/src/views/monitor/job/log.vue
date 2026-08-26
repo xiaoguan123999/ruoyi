@@ -162,7 +162,7 @@ const data = reactive({
   form: {} as SysJobLog,
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 100,
     jobName: undefined,
     jobGroup: undefined,
     status: undefined

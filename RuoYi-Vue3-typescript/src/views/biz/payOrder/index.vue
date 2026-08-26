@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="线上代收单。模拟通道可点「模拟到账」，效果等同三方回调成功：充值自动审核入账。"
       type="info"
@@ -76,7 +76,7 @@ const dataList = ref<any[]>([])
 const loading = ref(true)
 const showSearch = ref(true)
 const total = ref(0)
-const queryParams = ref({ pageNum: 1, pageSize: 10, outTradeNo: undefined, phone: undefined, status: undefined })
+const queryParams = ref({ pageNum: 1, pageSize: 100, outTradeNo: undefined, phone: undefined, status: undefined })
 
 function getList() {
   loading.value = true

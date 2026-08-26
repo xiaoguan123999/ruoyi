@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="当前全部是模拟通道：App 下单会打开本机收银台，点「模拟支付成功」即入账。以后把服务商改成真实网关、关闭模拟即可接入百付/宝利/牛付/沙付。"
       type="info"
@@ -122,7 +122,7 @@ const open = ref(false)
 const providerOpen = ref(false)
 const form = ref<any>({})
 const providerForm = ref<any>({})
-const queryParams = ref({ pageNum: 1, pageSize: 10, providerCode: undefined, scene: undefined, status: undefined })
+const queryParams = ref({ pageNum: 1, pageSize: 100, providerCode: undefined, scene: undefined, status: undefined })
 
 function getList() {
   loading.value = true

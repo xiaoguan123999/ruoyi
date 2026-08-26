@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="实名后用户自行领取 14 元或 2 USDT（可改）；被邀请人实名后自动给邀请人发推广奖；充值通过后按三级比例返佣。金额、比例、开关和规则说明都在本页配置。"
       type="info"
@@ -8,7 +8,7 @@
       class="mb8"
     />
 
-    <el-form ref="ruleRef" :model="rule" :rules="rules" label-width="170px" v-loading="ruleLoading" style="max-width: 860px">
+    <el-form ref="ruleRef" :model="rule" :rules="rules" label-width="170px" v-loading="ruleLoading" class="ops-form-full">
       <el-divider content-position="left">总开关</el-divider>
       <el-form-item label="注册推广总开关">
         <el-switch v-model="rule.enabled" />
@@ -131,7 +131,7 @@ const rule = ref({
   teamRateL3: 1,
   ruleText: ""
 })
-const queryParams = ref({ pageNum: 1, pageSize: 10, phone: undefined as string | undefined, grantType: undefined as string | undefined })
+const queryParams = ref({ pageNum: 1, pageSize: 100, phone: undefined as string | undefined, grantType: undefined as string | undefined })
 const rules = {
   kycRewardCny: [{ required: true, message: "请填写实名注册奖励人民币", trigger: "blur" }],
   kycRewardUsdt: [{ required: true, message: "请填写实名注册奖励USDT", trigger: "blur" }],

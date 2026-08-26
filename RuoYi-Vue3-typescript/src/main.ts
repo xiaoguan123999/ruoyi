@@ -43,6 +43,7 @@ import ImageUpload from "@/components/ImageUpload/index.vue"
 import ImagePreview from "@/components/ImagePreview/index.vue"
 // 字典标签组件
 import DictTag from '@/components/DictTag/index.vue'
+import MemberSelect from '@/components/MemberSelect/index.vue'
 
 const app = createApp(App)
 
@@ -65,6 +66,7 @@ app.component('ImageUpload', ImageUpload)
 app.component('ImagePreview', ImagePreview)
 app.component('RightToolbar', RightToolbar)
 app.component('Editor', Editor)
+app.component('MemberSelect', MemberSelect)
 
 app.use(router)
 app.use(store)

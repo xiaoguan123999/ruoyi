@@ -1,8 +1,8 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
-      <el-form-item label="会员ID" prop="memberId">
-        <el-input v-model="queryParams.memberId" placeholder="会员ID" clearable style="width: 140px" @keyup.enter="handleQuery" />
+      <el-form-item label="会员" prop="memberId">
+        <MemberSelect v-model="queryParams.memberId" />
       </el-form-item>
       <el-form-item label="手机号" prop="phone">
         <el-input v-model="queryParams.phone" placeholder="请输入手机号" clearable style="width: 200px" @keyup.enter="handleQuery" />
@@ -151,7 +151,7 @@ const data = reactive({
   form: {} as any,
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 100,
     memberId: undefined,
     phone: undefined,
     inviteCode: undefined,

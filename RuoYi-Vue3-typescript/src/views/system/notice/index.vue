@@ -184,7 +184,7 @@ const data = reactive({
   form: {} as SysNotice,
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 100,
     noticeTitle: undefined,
     createBy: undefined,
     status: undefined

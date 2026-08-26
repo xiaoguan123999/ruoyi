@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="这里是会员保存的 USDT / 银行卡 / 支付宝收款账户，给 App「钱包管理」和提现选用。不是 CNY/USDT 余额钱包。"
       type="info"
@@ -131,7 +131,7 @@ const open = ref(false)
 const title = ref("")
 const data = reactive({
   form: {} as any,
-  queryParams: { pageNum: 1, pageSize: 10, phone: undefined, accountType: undefined, status: undefined },
+  queryParams: { pageNum: 1, pageSize: 100, phone: undefined, accountType: undefined, status: undefined },
   rules: {
     phone: [{ required: true, message: "请填写会员手机号", trigger: "blur" }],
     accountType: [{ required: true, message: "请选择账户类型", trigger: "change" }],

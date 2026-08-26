@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="这里维护 App 首页顶部视频轮播。显示中的视频按排序从小到大播放。一条都没有时 App 仍可用本地默认图。"
       type="info"
@@ -111,7 +111,7 @@ const open = ref(false)
 const title = ref("")
 const data = reactive({
   form: {} as any,
-  queryParams: { pageNum: 1, pageSize: 10, title: undefined, status: undefined },
+  queryParams: { pageNum: 1, pageSize: 100, title: undefined, status: undefined },
   rules: {
     videoUrl: [{ required: true, message: "请上传或填写视频地址", trigger: "blur" }]
   }

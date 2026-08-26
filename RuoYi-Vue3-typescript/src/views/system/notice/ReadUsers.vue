@@ -60,7 +60,7 @@ const userList = ref<NoticeReadUser[]>([])
 
 const queryParams = reactive<NoticeReadUserQueryParams>({
   pageNum: 1,
-  pageSize: 10,
+  pageSize: 100,
   noticeId: undefined,
   searchValue: undefined
 })

@@ -186,7 +186,7 @@ const data = reactive({
   form: {} as SysConfig,
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 100,
     configName: undefined,
     configKey: undefined,
     configType: undefined

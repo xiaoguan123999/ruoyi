@@ -286,7 +286,7 @@ const data = reactive({
   form: {} as SysRole,
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 100,
     roleName: undefined,
     roleKey: undefined,
     status: undefined

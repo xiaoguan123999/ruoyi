@@ -1,6 +1,13 @@
 <template>
-  <div class="app-container">
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="140px" v-loading="loading" style="max-width: 720px">
+  <div class="app-container ops-page">
+    <el-alert
+      title="配置每日签到奖励与连续签到抽奖档位。保存后 App 端立即按新规则生效。"
+      type="info"
+      :closable="false"
+      show-icon
+      class="mb8"
+    />
+    <el-form ref="formRef" :model="form" :rules="rules" label-width="140px" v-loading="loading" class="ops-form-full">
       <el-divider content-position="left">每日签到</el-divider>
       <el-form-item label="奖励金额(CNY)" prop="amount">
         <el-input-number v-model="form.amount" :min="0" :precision="2" :step="1" style="width: 240px" />

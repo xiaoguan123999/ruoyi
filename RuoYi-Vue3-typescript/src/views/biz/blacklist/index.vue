@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="命中手机号会拦截登录和注册；命中身份证会拦截实名；命中银行卡会拦截绑卡。App 会直接展示接口返回的提示。至少填一项号码。"
       type="info"
@@ -102,7 +102,7 @@ const open = ref(false)
 const title = ref("")
 const data = reactive({
   form: {} as any,
-  queryParams: { pageNum: 1, pageSize: 10, realName: undefined, phone: undefined, idCard: undefined, bankCard: undefined, status: undefined },
+  queryParams: { pageNum: 1, pageSize: 100, realName: undefined, phone: undefined, idCard: undefined, bankCard: undefined, status: undefined },
   rules: {}
 })
 const { queryParams, form, rules } = toRefs(data)

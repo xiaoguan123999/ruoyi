@@ -80,7 +80,7 @@ const userIds = ref<number[]>([])
 
 const queryParams = reactive<UserQueryParams>({
   pageNum: 1,
-  pageSize: 10,
+  pageSize: 100,
   roleId: undefined,
   userName: undefined,
   phonenumber: undefined

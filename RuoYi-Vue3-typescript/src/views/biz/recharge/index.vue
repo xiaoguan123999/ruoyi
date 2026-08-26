@@ -1,8 +1,8 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
-      <el-form-item label="会员ID" prop="memberId">
-        <el-input v-model="queryParams.memberId" placeholder="会员ID" clearable style="width: 140px" @keyup.enter="handleQuery" />
+      <el-form-item label="会员" prop="memberId">
+        <MemberSelect v-model="queryParams.memberId" />
       </el-form-item>
       <el-form-item label="手机号" prop="phone">
         <el-input v-model="queryParams.phone" placeholder="手机号" clearable style="width: 160px" @keyup.enter="handleQuery" />
@@ -58,10 +58,20 @@
       <el-table-column label="审核备注" align="center" prop="auditRemark" min-width="140" show-overflow-tooltip />
       <el-table-column label="操作" align="center" width="160" fixed="right">
         <template #default="scope">
-          <template v-if="scope.row.status === '0'">
-            <el-button link type="primary" @click="handleAudit(scope.row, '1')" v-hasPermi="['biz:recharge:audit']">通过</el-button>
-            <el-button link type="danger" @click="handleAudit(scope.row, '2')" v-hasPermi="['biz:recharge:audit']">拒绝</el-button>
-          </template>
+          <el-button
+            link
+            type="primary"
+            :disabled="scope.row.status !== '0'"
+            @click="handleAudit(scope.row, '1')"
+            v-hasPermi="['biz:recharge:audit']"
+          >通过</el-button>
+          <el-button
+            link
+            type="danger"
+            :disabled="scope.row.status !== '0'"
+            @click="handleAudit(scope.row, '2')"
+            v-hasPermi="['biz:recharge:audit']"
+          >拒绝</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -69,8 +79,8 @@
 
     <el-dialog title="人工充值" v-model="open" width="420px" append-to-body>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
-        <el-form-item label="会员ID" prop="memberId">
-          <el-input v-model="form.memberId" placeholder="会员ID/邀请码" />
+        <el-form-item label="会员" prop="memberId">
+          <MemberSelect v-model="form.memberId" width="100%" placeholder="选择会员" />
         </el-form-item>
         <el-form-item label="币种" prop="currency">
           <el-select v-model="form.currency" style="width: 100%">
@@ -105,9 +115,9 @@ const open = ref(false)
 const dateRange = ref<string[]>([])
 const data = reactive({
   form: { memberId: undefined, currency: "CNY", amount: undefined, remark: undefined } as any,
-  queryParams: { pageNum: 1, pageSize: 10, memberId: undefined, phone: undefined, currency: undefined, status: undefined },
+  queryParams: { pageNum: 1, pageSize: 100, memberId: undefined, phone: undefined, currency: undefined, status: undefined },
   rules: {
-    memberId: [{ required: true, message: "会员ID不能为空", trigger: "blur" }],
+    memberId: [{ required: true, message: "请选择会员", trigger: "change" }],
     amount: [{ required: true, message: "金额不能为空", trigger: "blur" }]
   }
 })

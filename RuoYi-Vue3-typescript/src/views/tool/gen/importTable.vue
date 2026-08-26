@@ -62,7 +62,7 @@ const { proxy } = getCurrentInstance()
 
 const queryParams = reactive<GenQueryParams>({
   pageNum: 1,
-  pageSize: 10,
+  pageSize: 100,
   tableName: undefined,
   tableComment: undefined
 })

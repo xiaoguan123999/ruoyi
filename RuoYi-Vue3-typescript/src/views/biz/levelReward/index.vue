@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="星链伙伴成长激励金：先配全局规则和各等级金额，再把对应等级改为正常。启航到星域（前6级）一次自动发放；仅星链找客服领取，后台「等级奖励发放」手动下发。"
       type="info"
@@ -8,90 +8,117 @@
       class="mb8"
     />
 
-    <el-form ref="ruleRef" :model="rule" label-width="160px" v-loading="ruleLoading" style="max-width: 860px">
-      <el-divider content-position="left">全局规则</el-divider>
-      <el-form-item label="成长激励金开关">
-        <el-switch v-model="rule.enabled" />
-        <span class="tip">关闭后不再自动核算和发放</span>
-      </el-form-item>
-      <el-form-item label="混合业绩发放币种">
-        <el-radio-group v-model="rule.mixedPayCurrency">
-          <el-radio value="USDT">USDT</el-radio>
-          <el-radio value="CNY">人民币</el-radio>
-        </el-radio-group>
-        <div class="tip">团队业绩同时有人民币和 USDT 时，按这里发放</div>
-      </el-form-item>
-      <el-form-item label="团队业绩口径">
-        <el-select v-model="rule.performanceSource" style="width: 280px">
-          <el-option label="认购金额" value="SUBSCRIBE" />
-          <el-option label="已通过充值" value="RECHARGE" />
-          <el-option label="认购 + 充值" value="BOTH" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="团队业绩含本人">
-        <el-switch v-model="rule.includeSelf" />
-      </el-form-item>
-      <el-form-item label="有效成员需实名">
-        <el-switch v-model="rule.validNeedKyc" />
-      </el-form-item>
-      <el-form-item label="有效成员需认购">
-        <el-switch v-model="rule.validNeedOrder" />
-      </el-form-item>
-      <el-form-item label="规则说明">
-        <el-input v-model="rule.ruleText" type="textarea" :rows="5" maxlength="500" show-word-limit placeholder="App 右上角「规则说明」点开后展示的正文" />
-        <div class="tip" style="margin-left: 0; margin-top: 6px">对应 App 会员等级页右上角问号。GET /app/levels 的 ruleText</div>
-      </el-form-item>
-      <el-form-item label="页面注释">
-        <el-input v-model="rule.hint" type="textarea" :rows="4" maxlength="500" show-word-limit placeholder="App 等级表上方的「注」" />
-        <div class="tip" style="margin-left: 0; margin-top: 6px">对应 App 当前等级卡片和表格之间的灰色说明。GET /app/levels 的 hint / note</div>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" @click="saveRule" v-hasPermi="['biz:levelReward:edit']">保存全局规则</el-button>
-        <el-button type="warning" @click="runEvaluate" v-hasPermi="['biz:levelReward:edit']">立即核算全部会员</el-button>
-      </el-form-item>
-    </el-form>
+    <div class="ops-section-card">
+      <div class="ops-section-card__hd">全局规则</div>
+      <div class="ops-section-card__bd">
+        <el-form ref="ruleRef" :model="rule" label-width="140px" v-loading="ruleLoading">
+          <el-row :gutter="16">
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="成长激励金开关">
+                <el-switch v-model="rule.enabled" />
+                <span class="tip">关闭后不核算发放</span>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="混合业绩币种">
+                <el-radio-group v-model="rule.mixedPayCurrency">
+                  <el-radio value="USDT">USDT</el-radio>
+                  <el-radio value="CNY">人民币</el-radio>
+                </el-radio-group>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="团队业绩口径">
+                <el-select v-model="rule.performanceSource" style="width: 100%">
+                  <el-option label="认购金额" value="SUBSCRIBE" />
+                  <el-option label="已通过充值" value="RECHARGE" />
+                  <el-option label="认购 + 充值" value="BOTH" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="16">
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="团队业绩含本人">
+                <el-switch v-model="rule.includeSelf" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="有效成员需实名">
+                <el-switch v-model="rule.validNeedKyc" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="有效成员需认购">
+                <el-switch v-model="rule.validNeedOrder" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="16">
+            <el-col :xs="24" :md="12">
+              <el-form-item label="规则说明">
+                <el-input v-model="rule.ruleText" type="textarea" :rows="3" maxlength="500" show-word-limit placeholder="App 右上角「规则说明」正文" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <el-form-item label="页面注释">
+                <el-input v-model="rule.hint" type="textarea" :rows="3" maxlength="500" show-word-limit placeholder="App 等级表上方的「注」" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label-width="0" class="form-actions">
+            <el-button type="primary" @click="saveRule" v-hasPermi="['biz:levelReward:edit']">保存全局规则</el-button>
+            <el-button type="warning" @click="runEvaluate" v-hasPermi="['biz:levelReward:edit']">立即核算全部会员</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+    </div>
 
-    <el-divider content-position="left">各等级奖励</el-divider>
-    <el-form :model="queryParams" ref="queryRef" :inline="true">
-      <el-form-item label="等级名称" prop="levelName">
-        <el-input v-model="queryParams.levelName" placeholder="等级名称" clearable style="width: 180px" @keyup.enter="handleQuery" />
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
-    <el-table v-loading="loading" :data="dataList">
-      <el-table-column label="等级" align="center" prop="levelName" width="100" />
-      <el-table-column label="团队要求" align="center" prop="teamDepth" width="100" />
-      <el-table-column label="有效成员" align="center" prop="minValidMembers" width="90" />
-      <el-table-column label="团队业绩CNY" align="center" prop="minTeamPerfCny" width="110" />
-      <el-table-column label="团队业绩USDT" align="center" prop="minTeamPerfUsdt" width="120" />
-      <el-table-column label="奖励开关" align="center" width="90">
-        <template #default="scope">
-          <el-tag :type="scope.row.rewardEnabled === '1' ? 'success' : 'info'">{{ scope.row.rewardEnabled === '1' ? '开' : '关' }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="周期" align="center" width="100">
-        <template #default="scope">{{ cycleLabel(scope.row.rewardCycle) }}</template>
-      </el-table-column>
-      <el-table-column label="发放" align="center" width="90">
-        <template #default="scope">{{ scope.row.rewardMode === 'MANUAL' ? '客服' : '自动' }}</template>
-      </el-table-column>
-      <el-table-column label="团队奖励CNY" align="center" prop="rewardCny" width="110" />
-      <el-table-column label="团队奖励USDT" align="center" prop="rewardUsdt" width="120" />
-      <el-table-column label="等级状态" align="center" width="90">
-        <template #default="scope">
-          <el-tag :type="scope.row.status === '0' ? 'success' : 'info'">{{ scope.row.status === '0' ? '正常' : '停用' }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" align="center" width="100" fixed="right">
-        <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:levelReward:edit']">配置</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+    <div class="ops-section-card">
+      <div class="ops-section-card__hd">各等级奖励</div>
+      <div class="ops-section-card__bd">
+        <el-form :model="queryParams" ref="queryRef" :inline="true">
+          <el-form-item label="等级名称" prop="levelName">
+            <el-input v-model="queryParams.levelName" placeholder="等级名称" clearable style="width: 180px" @keyup.enter="handleQuery" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+        <el-table v-loading="loading" :data="dataList">
+          <el-table-column label="等级" align="center" prop="levelName" width="100" />
+          <el-table-column label="团队要求" align="center" prop="teamDepth" width="100" />
+          <el-table-column label="有效成员" align="center" prop="minValidMembers" width="90" />
+          <el-table-column label="充值金额CNY" align="center" prop="minTeamPerfCny" width="110" />
+          <el-table-column label="充值金额USDT" align="center" prop="minTeamPerfUsdt" width="120" />
+          <el-table-column label="奖励开关" align="center" width="90">
+            <template #default="scope">
+              <el-tag :type="scope.row.rewardEnabled === '1' ? 'success' : 'info'">{{ scope.row.rewardEnabled === '1' ? '开' : '关' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="周期" align="center" width="100">
+            <template #default="scope">{{ cycleLabel(scope.row.rewardCycle) }}</template>
+          </el-table-column>
+          <el-table-column label="发放" align="center" width="90">
+            <template #default="scope">{{ scope.row.rewardMode === 'MANUAL' ? '客服' : '自动' }}</template>
+          </el-table-column>
+          <el-table-column label="团队奖励CNY" align="center" prop="rewardCny" width="110" />
+          <el-table-column label="团队奖励USDT" align="center" prop="rewardUsdt" width="120" />
+          <el-table-column label="等级状态" align="center" width="90">
+            <template #default="scope">
+              <el-tag :type="scope.row.status === '0' ? 'success' : 'info'">{{ scope.row.status === '0' ? '正常' : '停用' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" align="center" width="100" fixed="right">
+            <template #default="scope">
+              <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:levelReward:edit']">配置</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      </div>
+    </div>
 
     <el-dialog :title="title" v-model="open" width="640px" append-to-body>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="150px">
@@ -111,11 +138,11 @@
         <el-form-item label="本人充值USDT">
           <el-input-number v-model="form.minRechargeUsdt" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="团队业绩CNY">
+        <el-form-item label="充值金额CNY">
           <el-input-number v-model="form.minTeamPerfCny" :min="0" :precision="2" style="width: 100%" />
           <div class="tip">填 0 表示不限制</div>
         </el-form-item>
-        <el-form-item label="团队业绩USDT">
+        <el-form-item label="充值金额USDT">
           <el-input-number v-model="form.minTeamPerfUsdt" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
         <el-form-item label="启用该等级奖励">
@@ -186,7 +213,7 @@ const rule = ref({
   ruleText: "",
   hint: ""
 })
-const queryParams = ref({ pageNum: 1, pageSize: 10, levelName: undefined as string | undefined })
+const queryParams = ref({ pageNum: 1, pageSize: 100, levelName: undefined as string | undefined })
 const form = ref<any>({})
 const rules = {
   minValidMembers: [{ required: true, message: "请填写有效成员人数", trigger: "blur" }]
@@ -254,5 +281,11 @@ getList()
 </script>
 
 <style scoped>
-.tip { margin-left: 12px; color: #909399; font-size: 12px; }
+.tip { margin-left: 8px; color: #909399; font-size: 12px; }
+.form-actions {
+  margin-bottom: 8px !important;
+}
+.form-actions :deep(.el-form-item__content) {
+  margin-left: 0 !important;
+}
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="这里只改 App 首页「运行概览」展示数字，没有真实业务统计。卡片配图默认用 App 本地图（satellite / coverage / terminal），也可上传覆盖。"
       type="info"
@@ -107,7 +107,7 @@ const open = ref(false)
 const title = ref("")
 const data = reactive({
   form: {} as any,
-  queryParams: { pageNum: 1, pageSize: 10, title: undefined, status: undefined },
+  queryParams: { pageNum: 1, pageSize: 100, title: undefined, status: undefined },
   rules: {
     itemKey: [{ required: true, message: "请填写卡片标识", trigger: "blur" }],
     title: [{ required: true, message: "请填写标题", trigger: "blur" }],

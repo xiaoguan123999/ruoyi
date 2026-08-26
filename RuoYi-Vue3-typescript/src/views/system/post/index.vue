@@ -165,7 +165,7 @@ const data = reactive({
   form: {} as SysPost,
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 100,
     postCode: undefined,
     postName: undefined,
     status: undefined

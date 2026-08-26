@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="会员提交提现后会冻结余额。请先线下打款，再点「确认打款」扣冻结；拒绝则解冻退回。"
       type="info"
@@ -11,8 +11,8 @@
       <el-form-item label="单号" prop="withdrawId">
         <el-input v-model="queryParams.withdrawId" placeholder="提现单号" clearable style="width: 140px" @keyup.enter="handleQuery" />
       </el-form-item>
-      <el-form-item label="会员ID" prop="memberId">
-        <el-input v-model="queryParams.memberId" placeholder="会员ID" clearable style="width: 140px" @keyup.enter="handleQuery" />
+      <el-form-item label="会员" prop="memberId">
+        <MemberSelect v-model="queryParams.memberId" />
       </el-form-item>
       <el-form-item label="手机号" prop="phone">
         <el-input v-model="queryParams.phone" placeholder="手机号" clearable style="width: 160px" @keyup.enter="handleQuery" />
@@ -83,11 +83,20 @@
       <el-table-column label="操作人" align="center" prop="auditBy" width="100" />
       <el-table-column label="操作" align="center" width="180" fixed="right">
         <template #default="scope">
-          <template v-if="scope.row.status === '0'">
-            <el-button link type="primary" @click="openAudit(scope.row, '1')" v-hasPermi="['biz:withdraw:audit']">确认打款</el-button>
-            <el-button link type="danger" @click="openAudit(scope.row, '2')" v-hasPermi="['biz:withdraw:audit']">拒绝</el-button>
-          </template>
-          <span v-else>{{ scope.row.auditRemark || "—" }}</span>
+          <el-button
+            link
+            type="primary"
+            :disabled="scope.row.status !== '0'"
+            @click="openAudit(scope.row, '1')"
+            v-hasPermi="['biz:withdraw:audit']"
+          >确认打款</el-button>
+          <el-button
+            link
+            type="danger"
+            :disabled="scope.row.status !== '0'"
+            @click="openAudit(scope.row, '2')"
+            v-hasPermi="['biz:withdraw:audit']"
+          >拒绝</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -129,7 +138,7 @@ const total = ref(0)
 const open = ref(false)
 const current = ref<any>({})
 const dateRange = ref<string[]>([])
-const queryParams = ref({ pageNum: 1, pageSize: 10, withdrawId: undefined, memberId: undefined, phone: undefined, currency: undefined, status: undefined })
+const queryParams = ref({ pageNum: 1, pageSize: 100, withdrawId: undefined, memberId: undefined, phone: undefined, currency: undefined, status: undefined })
 const route = useRoute()
 function applyRouteQuery() {
   const status = String(route.query.status || "")

@@ -244,7 +244,7 @@ const data = reactive({
   form: {} as SysUser,
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
+    pageSize: 100,
     userName: undefined,
     phonenumber: undefined,
     status: undefined,

@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
       <el-form-item label="等级名称" prop="levelName">
         <el-input v-model="queryParams.levelName" placeholder="等级名称" clearable style="width: 180px" @keyup.enter="handleQuery" />
@@ -88,7 +88,7 @@ const open = ref(false)
 const title = ref("")
 const data = reactive({
   form: {} as any,
-  queryParams: { pageNum: 1, pageSize: 10, levelName: undefined },
+  queryParams: { pageNum: 1, pageSize: 100, levelName: undefined },
   rules: { levelName: [{ required: true, message: "等级名称不能为空", trigger: "blur" }] }
 })
 const { queryParams, form, rules } = toRefs(data)

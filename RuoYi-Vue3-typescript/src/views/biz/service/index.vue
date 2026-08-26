@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="这里维护 App「客服中心」。登录页「联系客服」也会读同一套数据。和「官方群聊」不是同一页。"
       type="info"
@@ -8,14 +8,38 @@
       class="mb8"
     />
 
-    <el-form ref="configRef" :model="config" label-width="110px" v-loading="configLoading" style="max-width: 720px">
+    <el-form ref="configRef" :model="config" label-width="110px" v-loading="configLoading" class="ops-form-full">
       <el-divider content-position="left">展示文案</el-divider>
-      <el-form-item label="标题">
-        <el-input v-model="config.title" placeholder="例如 客服中心" />
-      </el-form-item>
-      <el-form-item label="工作时间">
-        <el-input v-model="config.workTime" placeholder="例如 09:00 - 21:00" />
-      </el-form-item>
+      <el-row :gutter="16" class="config-basic-row">
+        <el-col :xs="24" :sm="16" :md="16" :lg="16" :xl="16">
+          <el-form-item label="标题">
+            <el-input v-model="config.title" placeholder="例如 客服中心" class="title-input" />
+          </el-form-item>
+        </el-col>
+        <el-col :xs="24" :sm="8" :md="8" :lg="8" :xl="8">
+          <el-form-item label="工作时间" class="work-time-item">
+            <el-time-picker
+              v-model="workTimeRange"
+              is-range
+              range-separator="-"
+              start-placeholder="开始"
+              end-placeholder="结束"
+              format="HH:mm"
+              value-format="HH:mm"
+              clearable
+              placement="bottom-start"
+              popper-class="cs-work-time-popper"
+              :popper-options="{
+                modifiers: [
+                  { name: 'flip', options: { fallbackPlacements: ['bottom-end', 'top-start', 'top-end'] } },
+                  { name: 'preventOverflow', options: { padding: 12 } }
+                ]
+              }"
+              class="work-time-picker"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
       <el-form-item label="提示文案">
         <el-input v-model="config.hint" type="textarea" :rows="2" placeholder="例如 通道拥堵可联系在线客服" />
       </el-form-item>
@@ -149,9 +173,38 @@ const typeOptions = [
   { label: "二维码", value: "QR" }
 ]
 const config = ref({ title: "客服中心", workTime: "09:00 - 21:00", hint: "" })
+
+function normalizeTime(t: string) {
+  const parts = (t || "").trim().split(":")
+  if (parts.length < 2) return ""
+  const h = String(Number(parts[0])).padStart(2, "0")
+  const m = String(Number(parts[1])).padStart(2, "0")
+  return `${h}:${m}`
+}
+
+function parseWorkTime(text: string): [string, string] | null {
+  if (!text) return null
+  const match = String(text).match(/(\d{1,2}:\d{2})\s*[-–—~至到]\s*(\d{1,2}:\d{2})/)
+  if (!match) return null
+  return [normalizeTime(match[1]), normalizeTime(match[2])]
+}
+
+const workTimeRange = computed({
+  get(): [string, string] | null {
+    return parseWorkTime(config.value.workTime)
+  },
+  set(val: [string, string] | null) {
+    if (val && val.length === 2 && val[0] && val[1]) {
+      config.value.workTime = `${val[0]} - ${val[1]}`
+    } else {
+      config.value.workTime = ""
+    }
+  }
+})
+
 const data = reactive({
   form: {} as any,
-  queryParams: { pageNum: 1, pageSize: 10, name: undefined, channelType: undefined, status: undefined },
+  queryParams: { pageNum: 1, pageSize: 100, name: undefined, channelType: undefined, status: undefined },
   rules: {
     name: [{ required: true, message: "请填写名称", trigger: "blur" }],
     channelType: [{ required: true, message: "请选择类型", trigger: "change" }]
@@ -223,3 +276,51 @@ function handleDelete(row: any) {
 loadConfig()
 getList()
 </script>
+
+<style scoped>
+.config-basic-row :deep(.el-form-item__content) {
+  min-width: 0;
+}
+.title-input {
+  width: 100%;
+  max-width: 640px;
+}
+.work-time-item :deep(.el-form-item__content) {
+  justify-content: flex-start;
+}
+.work-time-picker {
+  width: 100%;
+  max-width: 280px;
+}
+.work-time-picker :deep(.el-input),
+.work-time-picker :deep(.el-input__wrapper) {
+  width: 100%;
+}
+@media (max-width: 767px) {
+  .title-input,
+  .work-time-picker {
+    max-width: 100%;
+  }
+}
+</style>
+
+<style>
+.cs-work-time-popper.el-picker__popper {
+  max-width: min(280px, calc(100vw - 24px));
+}
+.cs-work-time-popper .el-time-range-picker {
+  width: 260px;
+  max-width: 100%;
+}
+.cs-work-time-popper .el-time-range-picker__cell {
+  padding: 4px 2px 6px;
+}
+.cs-work-time-popper .el-time-panel {
+  width: 100%;
+}
+.cs-work-time-popper .el-time-spinner__item {
+  font-size: 12px;
+  height: 28px;
+  line-height: 28px;
+}
+</style>

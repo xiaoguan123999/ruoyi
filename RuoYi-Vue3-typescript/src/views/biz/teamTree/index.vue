@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-form :inline="true" @submit.prevent="handleQuery">
       <el-form-item>
         <el-input
@@ -26,7 +26,18 @@
       :load="loadNode"
       :props="treeProps"
       :expand-on-click-node="false"
-    />
+    >
+      <template #default="{ node }">
+        <span class="tree-node">
+          <el-icon class="node-icon">
+            <FolderOpened v-if="!node.isLeaf && node.expanded" />
+            <Folder v-else-if="!node.isLeaf" />
+            <Document v-else />
+          </el-icon>
+          <span class="node-label">{{ node.label }}</span>
+        </span>
+      </template>
+    </el-tree>
   </div>
 </template>
 
@@ -76,11 +87,25 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.member-tree {
-  max-width: 720px;
-  padding: 8px 4px 24px;
+.member-tree :deep(.el-tree-node__content) {
+  height: 34px;
+  border-radius: 4px;
 }
-.member-tree :deep(.el-tree-node__label) {
+.member-tree :deep(.el-tree-node.is-current > .el-tree-node__content) {
+  background: #e6f0fd;
+}
+.tree-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 14px;
+}
+.tree-node .node-icon {
+  font-size: 16px;
+  color: #e6a23c;
+  flex-shrink: 0;
+}
+.tree-node .node-label {
+  line-height: 1.4;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="供应商即代收服务商（百付/宝利/牛付/沙付/宝利U）。当前全部是模拟占位，不要把其他项目的真实网关和密钥填进来。"
       type="info"
@@ -97,7 +97,7 @@ const showSearch = ref(true)
 const total = ref(0)
 const open = ref(false)
 const form = ref<any>({})
-const queryParams = ref({ pageNum: 1, pageSize: 10, providerCode: undefined, providerName: undefined, mockMode: undefined, status: undefined })
+const queryParams = ref({ pageNum: 1, pageSize: 100, providerCode: undefined, providerName: undefined, mockMode: undefined, status: undefined })
 
 function getList() {
   loading.value = true

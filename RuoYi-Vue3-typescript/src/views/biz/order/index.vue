@@ -1,11 +1,11 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
       <el-form-item label="订单号" prop="orderNo">
         <el-input v-model="queryParams.orderNo" placeholder="订单号" clearable style="width: 180px" @keyup.enter="handleQuery" />
       </el-form-item>
-      <el-form-item label="会员ID" prop="memberId">
-        <el-input v-model="queryParams.memberId" placeholder="会员ID" clearable style="width: 140px" @keyup.enter="handleQuery" />
+      <el-form-item label="会员" prop="memberId">
+        <MemberSelect v-model="queryParams.memberId" />
       </el-form-item>
       <el-form-item label="手机号" prop="phone">
         <el-input v-model="queryParams.phone" placeholder="手机号" clearable style="width: 160px" @keyup.enter="handleQuery" />
@@ -76,7 +76,7 @@ const showSearch = ref(true)
 const total = ref(0)
 const dateRange = ref<string[]>([])
 const categoryOptions = ref<any[]>([])
-const queryParams = ref({ pageNum: 1, pageSize: 10, orderNo: undefined, memberId: undefined, phone: undefined, categoryId: undefined, currency: undefined, status: undefined })
+const queryParams = ref({ pageNum: 1, pageSize: 100, orderNo: undefined, memberId: undefined, phone: undefined, categoryId: undefined, currency: undefined, status: undefined })
 
 function progressText(row: any) {
   const totalDays = Number(row.durationDays) || 0

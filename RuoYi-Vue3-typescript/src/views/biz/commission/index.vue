@@ -1,8 +1,8 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
-      <el-form-item label="会员ID" prop="memberId">
-        <el-input v-model="queryParams.memberId" placeholder="来源或收款会员ID" clearable style="width: 170px" @keyup.enter="handleQuery" />
+      <el-form-item label="会员" prop="memberId">
+        <MemberSelect v-model="queryParams.memberId" />
       </el-form-item>
       <el-form-item label="手机号" prop="phone">
         <el-input v-model="queryParams.phone" placeholder="来源或收款手机号" clearable style="width: 180px" @keyup.enter="handleQuery" />
@@ -31,18 +31,18 @@
     </el-row>
     <el-table v-loading="loading" :data="dataList">
       <el-table-column label="编号" align="center" prop="commissionId" width="80" />
-      <el-table-column label="收款会员" align="center" width="140">
+      <el-table-column label="收款会员" align="center" min-width="160">
         <template #default="scope">{{ scope.row.toMemberId }} / {{ scope.row.toPhone || "—" }}</template>
       </el-table-column>
-      <el-table-column label="来源会员" align="center" width="140">
+      <el-table-column label="来源会员" align="center" min-width="160">
         <template #default="scope">{{ scope.row.fromMemberId }} / {{ scope.row.fromPhone || "—" }}</template>
       </el-table-column>
       <el-table-column label="层级" align="center" prop="teamLevel" width="70" />
       <el-table-column label="币种" align="center" prop="currency" width="80" />
-      <el-table-column label="本金" align="center" prop="baseAmount" width="100" />
+      <el-table-column label="本金" align="center" prop="baseAmount" min-width="110" />
       <el-table-column label="比例%" align="center" prop="rate" width="80" />
-      <el-table-column label="佣金金额" align="center" prop="amount" width="110" />
-      <el-table-column label="发放时间" align="center" prop="createTime" width="170">
+      <el-table-column label="佣金金额" align="center" prop="amount" min-width="120" />
+      <el-table-column label="发放时间" align="center" prop="createTime" min-width="170">
         <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
       </el-table-column>
       <el-table-column label="备注" align="center" min-width="220" show-overflow-tooltip>
@@ -62,7 +62,7 @@ const loading = ref(true)
 const showSearch = ref(true)
 const total = ref(0)
 const dateRange = ref<string[]>([])
-const queryParams = ref({ pageNum: 1, pageSize: 10, memberId: undefined, phone: undefined, currency: undefined, teamLevel: undefined })
+const queryParams = ref({ pageNum: 1, pageSize: 100, memberId: undefined, phone: undefined, currency: undefined, teamLevel: undefined })
 
 function commissionRemark(row: any) {
   const phone = row.fromPhone || row.fromMemberId || "来源会员"

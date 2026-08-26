@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container ops-page">
     <el-alert
       title="黑名单命中后会写一条记录。登录/注册看手机号，实名看身份证，绑卡看银行卡。"
       type="info"
@@ -63,7 +63,7 @@ const dataList = ref<any[]>([])
 const loading = ref(true)
 const showSearch = ref(true)
 const total = ref(0)
-const queryParams = ref({ pageNum: 1, pageSize: 10, action: undefined, phone: undefined, hitValue: undefined })
+const queryParams = ref({ pageNum: 1, pageSize: 100, action: undefined, phone: undefined, hitValue: undefined })
 
 function actionText(v: string) {
   if (v === "LOGIN") return "登录"

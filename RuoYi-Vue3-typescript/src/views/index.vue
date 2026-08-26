@@ -3,7 +3,7 @@
     <div class="welcome-bar">
       <div class="welcome-left">
         <h2>{{ greeting }}，{{ nickName }}</h2>
-        <p>经营日报按所选自然日统计「当日」数据，「总计」为累计值。金额按币种分开，不把 CNY 与 USDT 相加。</p>
+        <p>仪表盘看待办与趋势；经营日报按所选自然日统计「当日」与「总计」。金额按币种分开，不把 CNY 与 USDT 相加。</p>
       </div>
       <div class="welcome-right">
         <el-date-picker
@@ -20,167 +20,189 @@
       </div>
     </div>
 
-    <el-alert type="info" :closable="false" show-icon class="hint-alert">
-      充值/提现成功按审核通过时间计入当日。拉单即认购订单。提现拆分按申请备注页签：产品收益、助力值/推广收益；未带页签的成功提现只计入总额。今日实名按会员资料最后更新日估算。
-    </el-alert>
-
-    <div class="section-title">用户与资金</div>
-    <el-row :gutter="14" class="metric-row">
-      <el-col v-for="card in userFundCards" :key="card.key" :xs="12" :sm="8" :md="6" :lg="6">
-        <div class="metric-card" :class="{ clickable: !!card.path }" @click="card.path && go(card.path)">
-          <div class="metric-head">
-            <span class="metric-title">{{ card.title }}</span>
-            <span class="metric-tag">今日</span>
-          </div>
-          <div class="metric-value">
-            {{ card.today }}
-            <span v-if="card.unit" class="unit">{{ card.unit }}</span>
-          </div>
-          <div v-if="card.sub" class="metric-sub">{{ card.sub }}</div>
-          <div class="metric-foot">
-            <span>总计</span>
-            <span>{{ card.total }}</span>
-          </div>
-        </div>
-      </el-col>
-    </el-row>
-
-    <div class="section-title">发放与持仓</div>
-    <el-row :gutter="14" class="metric-row">
-      <el-col v-for="card in extraCards" :key="card.key" :xs="12" :sm="8" :md="6" :lg="6">
-        <div class="metric-card tint" :class="{ clickable: !!card.path }" @click="card.path && go(card.path)">
-          <div class="metric-head">
-            <span class="metric-title">{{ card.title }}</span>
-            <span class="metric-tag" :class="{ stock: card.stock }">{{ card.tag || '今日' }}</span>
-          </div>
-          <div class="metric-value">
-            {{ card.today }}
-            <span v-if="card.unit" class="unit">{{ card.unit }}</span>
-          </div>
-          <div v-if="card.sub" class="metric-sub">{{ card.sub }}</div>
-          <div class="metric-foot">
-            <span>{{ card.footLabel || '总计' }}</span>
-            <span>{{ card.total }}</span>
-          </div>
-        </div>
-      </el-col>
-    </el-row>
-
-    <div class="section-title">钱包余额</div>
-    <el-row :gutter="14" class="metric-row">
-      <el-col v-for="card in walletCards" :key="card.key" :xs="12" :sm="8" :md="6" :lg="6">
-        <div class="metric-card">
-          <div class="metric-head">
-            <span class="metric-title">{{ card.title }}</span>
-            <span class="metric-tag stock">累计</span>
-          </div>
-          <div class="metric-value">{{ card.today }}<span class="unit">{{ card.unit }}</span></div>
-          <div class="metric-sub">{{ card.sub }}</div>
-        </div>
-      </el-col>
-    </el-row>
-
-    <el-row :gutter="16">
-      <el-col :xs="24" :lg="10">
-        <el-card shadow="never" class="panel-card">
-          <template #header>
-            <div class="panel-header">
-              <span>待办事项</span>
-              <el-badge :value="todoTotal" :max="99" type="danger" />
-            </div>
-          </template>
-          <div
-            v-for="todo in todoList"
-            :key="todo.key"
-            class="todo-item"
-            @click="go(todo.path, todo.query)"
-          >
-            <div class="todo-icon" :style="{ background: todo.bg }">
-              <el-icon :size="18" :color="todo.color"><component :is="todo.icon" /></el-icon>
-            </div>
-            <div class="todo-body">
-              <div class="todo-title">{{ todo.title }}</div>
-              <div class="todo-desc">{{ todo.desc }}</div>
-            </div>
-            <div class="todo-right">
-              <template v-if="todo.amountText">
-                <div class="todo-amount">{{ todo.amountText }}</div>
-                <div v-if="todo.amountSub" class="todo-amount-sub">{{ todo.amountSub }}</div>
-              </template>
-              <el-tag v-else :type="todo.tagType" effect="light" round>{{ fmtInt(todo.count) }} {{ todo.unit }}</el-tag>
-            </div>
-          </div>
-          <el-empty v-if="!todoList.length" description="暂无待办权限" :image-size="64" />
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :lg="14">
-        <el-card shadow="never" class="panel-card">
-          <template #header>
-            <div class="panel-header">
-              <span>近 7 日趋势</span>
-              <el-radio-group v-model="trendType" size="small" @change="renderTrendChart">
-                <el-radio-button value="register">注册</el-radio-button>
-                <el-radio-button value="order">认购</el-radio-button>
-                <el-radio-button value="fund">资金</el-radio-button>
-              </el-radio-group>
-            </div>
-          </template>
-          <div ref="trendChartRef" class="trend-chart" />
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <el-row :gutter="16" class="bottom-row">
-      <el-col :xs="24" :lg="10">
-        <el-card shadow="never" class="panel-card">
-          <template #header>
-            <div class="panel-header">
-              <span>运营快捷入口</span>
-            </div>
-          </template>
-          <el-row v-if="shortcuts.length" :gutter="12">
-            <el-col v-for="entry in shortcuts" :key="entry.path" :span="8">
-              <div class="shortcut" @click="go(entry.path)">
-                <div class="shortcut-icon" :style="{ background: entry.bg, color: entry.color }">
-                  <svg-icon v-if="entry.menuIcon" :icon-class="entry.menuIcon" class="menu-svg" />
-                  <el-icon v-else :size="20"><component :is="entry.icon" /></el-icon>
+    <el-tabs v-model="activeTab" class="home-tabs" @tab-change="onTabChange">
+      <el-tab-pane label="仪表盘" name="dashboard">
+        <el-row :gutter="16">
+          <el-col :xs="24" :lg="10">
+            <el-card shadow="never" class="panel-card">
+              <template #header>
+                <div class="panel-header">
+                  <span>待办事项</span>
+                  <el-badge :value="todoTotal" :max="99" type="danger" />
                 </div>
-                <div class="shortcut-name">{{ entry.name }}</div>
+              </template>
+              <div
+                v-for="todo in todoList"
+                :key="todo.key"
+                class="todo-item"
+                @click="go(todo.path, todo.query)"
+              >
+                <div class="todo-icon" :style="{ background: todo.bg }">
+                  <el-icon :size="18" :color="todo.color"><component :is="todo.icon" /></el-icon>
+                </div>
+                <div class="todo-body">
+                  <div class="todo-title">{{ todo.title }}</div>
+                  <div class="todo-desc">{{ todo.desc }}</div>
+                </div>
+                <div class="todo-right">
+                  <template v-if="todo.amountText">
+                    <div class="todo-amount">{{ todo.amountText }}</div>
+                    <div v-if="todo.amountSub" class="todo-amount-sub">{{ todo.amountSub }}</div>
+                  </template>
+                  <el-tag v-else :type="todo.tagType" effect="light" round>{{ fmtInt(todo.count) }} {{ todo.unit }}</el-tag>
+                </div>
               </div>
-            </el-col>
-          </el-row>
-          <el-empty v-else description="当前账号暂无运营菜单权限" :image-size="72" />
-        </el-card>
-      </el-col>
+              <el-empty v-if="!todoList.length" description="暂无待办权限" :image-size="64" />
+            </el-card>
+          </el-col>
 
-      <el-col :xs="24" :lg="14">
-        <el-card shadow="never" class="panel-card">
-          <template #header>
-            <div class="panel-header">
-              <span>最近业务动态</span>
-              <el-button v-if="walletLogPath" link type="primary" @click="go(walletLogPath)">查看流水</el-button>
+          <el-col :xs="24" :lg="14">
+            <el-card shadow="never" class="panel-card">
+              <template #header>
+                <div class="panel-header">
+                  <span>近 7 日趋势</span>
+                  <el-radio-group v-model="trendType" size="small" @change="renderTrendChart">
+                    <el-radio-button value="register">注册</el-radio-button>
+                    <el-radio-button value="order">认购</el-radio-button>
+                    <el-radio-button value="fund">资金</el-radio-button>
+                  </el-radio-group>
+                </div>
+              </template>
+              <div ref="trendChartRef" class="trend-chart" />
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="16" class="bottom-row">
+          <el-col :xs="24" :lg="10">
+            <el-card shadow="never" class="panel-card">
+              <template #header>
+                <div class="panel-header">
+                  <span>运营快捷入口</span>
+                </div>
+              </template>
+              <el-row v-if="shortcuts.length" :gutter="12">
+                <el-col v-for="entry in shortcuts" :key="entry.path" :span="8">
+                  <div class="shortcut" @click="go(entry.path)">
+                    <div class="shortcut-icon" :style="{ background: entry.bg, color: entry.color }">
+                      <svg-icon v-if="entry.menuIcon" :icon-class="entry.menuIcon" class="menu-svg" />
+                      <el-icon v-else :size="20"><component :is="entry.icon" /></el-icon>
+                    </div>
+                    <div class="shortcut-name">{{ entry.name }}</div>
+                  </div>
+                </el-col>
+              </el-row>
+              <el-empty v-else description="当前账号暂无运营菜单权限" :image-size="72" />
+            </el-card>
+          </el-col>
+
+          <el-col :xs="24" :lg="14">
+            <el-card shadow="never" class="panel-card">
+              <template #header>
+                <div class="panel-header">
+                  <span>最近业务动态</span>
+                  <el-button v-if="walletLogPath" link type="primary" @click="go(walletLogPath)">查看流水</el-button>
+                </div>
+              </template>
+              <el-table :data="recentActivities" size="small" stripe style="width: 100%">
+                <el-table-column prop="time" label="时间" width="160" />
+                <el-table-column prop="type" label="类型" width="100">
+                  <template #default="{ row }">
+                    <el-tag :type="row.tagType" size="small" effect="plain">{{ row.type }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="user" label="会员" width="120" show-overflow-tooltip />
+                <el-table-column prop="content" label="摘要" min-width="180" show-overflow-tooltip />
+                <el-table-column prop="amount" label="金额" width="130" align="right">
+                  <template #default="{ row }">
+                    <span :class="row.amountClass">{{ row.amount }}</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <el-empty v-if="!recentActivities.length" description="暂无流水" :image-size="64" />
+            </el-card>
+          </el-col>
+        </el-row>
+      </el-tab-pane>
+
+      <el-tab-pane label="经营日报" name="daily" lazy>
+        <el-alert type="info" :closable="false" show-icon class="hint-alert">
+          充值/提现成功按审核通过时间计入当日。拉单即认购订单。提现拆分按申请备注页签：产品收益、助力值/推广收益；未带页签的成功提现只计入总额。今日实名按会员资料最后更新日估算。
+        </el-alert>
+
+        <div class="section-title">用户与资金</div>
+        <el-row :gutter="14" class="metric-row">
+          <el-col v-for="card in userFundCards" :key="card.key" :xs="12" :sm="8" :md="6" :lg="6">
+            <div class="metric-card" :class="{ clickable: !!card.path }" @click="card.path && go(card.path)">
+              <div class="metric-head">
+                <span class="metric-title">{{ card.title }}</span>
+                <span class="metric-tag">今日</span>
+              </div>
+              <div v-if="card.dualMoney" class="metric-value dual">
+                <div>{{ card.today }}</div>
+                <div>{{ card.todayUsdt }}</div>
+              </div>
+              <div v-else class="metric-value">
+                {{ card.today }}
+                <span v-if="card.unit" class="unit">{{ card.unit }}</span>
+              </div>
+              <div v-if="card.sub" class="metric-sub">{{ card.sub }}</div>
+              <div class="metric-foot">
+                <span>总计</span>
+                <span v-if="card.dualMoney" class="foot-dual">
+                  <span>{{ card.total }}</span>
+                  <span>{{ card.totalUsdt }}</span>
+                </span>
+                <span v-else>{{ card.total }}</span>
+              </div>
             </div>
-          </template>
-          <el-table :data="recentActivities" size="small" stripe style="width: 100%">
-            <el-table-column prop="time" label="时间" width="160" />
-            <el-table-column prop="type" label="类型" width="100">
-              <template #default="{ row }">
-                <el-tag :type="row.tagType" size="small" effect="plain">{{ row.type }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="user" label="会员" width="120" show-overflow-tooltip />
-            <el-table-column prop="content" label="摘要" min-width="180" show-overflow-tooltip />
-            <el-table-column prop="amount" label="金额" width="130" align="right">
-              <template #default="{ row }">
-                <span :class="row.amountClass">{{ row.amount }}</span>
-              </template>
-            </el-table-column>
-          </el-table>
-          <el-empty v-if="!recentActivities.length" description="暂无流水" :image-size="64" />
-        </el-card>
-      </el-col>
-    </el-row>
+          </el-col>
+        </el-row>
+
+        <div class="section-title">发放与持仓</div>
+        <el-row :gutter="14" class="metric-row">
+          <el-col v-for="card in extraCards" :key="card.key" :xs="12" :sm="8" :md="6" :lg="6">
+            <div class="metric-card tint" :class="{ clickable: !!card.path }" @click="card.path && go(card.path)">
+              <div class="metric-head">
+                <span class="metric-title">{{ card.title }}</span>
+                <span class="metric-tag" :class="{ stock: card.stock }">{{ card.tag || '今日' }}</span>
+              </div>
+              <div v-if="card.dualMoney" class="metric-value dual">
+                <div>{{ card.today }}</div>
+                <div>{{ card.todayUsdt }}</div>
+              </div>
+              <div v-else class="metric-value">
+                {{ card.today }}
+                <span v-if="card.unit" class="unit">{{ card.unit }}</span>
+              </div>
+              <div v-if="card.sub" class="metric-sub">{{ card.sub }}</div>
+              <div class="metric-foot">
+                <span>{{ card.footLabel || '总计' }}</span>
+                <span v-if="card.dualMoney" class="foot-dual">
+                  <span>{{ card.total }}</span>
+                  <span>{{ card.totalUsdt }}</span>
+                </span>
+                <span v-else>{{ card.total }}</span>
+              </div>
+            </div>
+          </el-col>
+        </el-row>
+
+        <div class="section-title">钱包余额</div>
+        <el-row :gutter="14" class="metric-row">
+          <el-col v-for="card in walletCards" :key="card.key" :xs="12" :sm="8" :md="6" :lg="6">
+            <div class="metric-card">
+              <div class="metric-head">
+                <span class="metric-title">{{ card.title }}</span>
+                <span class="metric-tag stock">累计</span>
+              </div>
+              <div class="metric-value">{{ card.today }}<span class="unit">{{ card.unit }}</span></div>
+              <div class="metric-sub">{{ card.sub }}</div>
+            </div>
+          </el-col>
+        </el-row>
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
@@ -222,11 +244,16 @@ interface MetricCard {
   tag?: string
   stock?: boolean
   footLabel?: string
+  /** CNY / USDT 同级双行展示 */
+  dualMoney?: boolean
+  todayUsdt?: string
+  totalUsdt?: string
 }
 
 const router = useRouter()
 const userStore = useUserStore()
 const permissionStore = usePermissionStore()
+const activeTab = ref('dashboard')
 
 const nickName = computed(() => userStore.nickName || '运营同学')
 const greeting = computed(() => {
@@ -276,15 +303,52 @@ function moneyToday(m: any) {
   return `${fmtMoney(m.todayCny)} CNY`
 }
 
+function moneyTodayUsdt(m: any) {
+  return `${fmtMoney(m.todayUsdt)} USDT`
+}
+
 function moneySub(m: any, countLabel?: string) {
   const usdt = `${fmtMoney(m.todayUsdt)} USDT`
   if (!countLabel) return usdt
   return `${countLabel} ${fmtInt(m.todayCount)} · ${usdt}`
 }
 
+function moneyCountHint(m: any, countLabel: string) {
+  const totalHint = m.totalCount ? ` · 累计 ${fmtInt(m.totalCount)} 笔` : ''
+  return `${countLabel} ${fmtInt(m.todayCount)}${totalHint}`
+}
+
 function moneyTotal(m: any) {
   const extra = m.totalCount ? ` / ${fmtInt(m.totalCount)} 笔` : ''
   return `${fmtMoney(m.totalCny)} CNY · ${fmtMoney(m.totalUsdt)} USDT${extra}`
+}
+
+function moneyTotalCny(m: any) {
+  return `${fmtMoney(m.totalCny)} CNY`
+}
+
+function moneyTotalUsdt(m: any) {
+  return `${fmtMoney(m.totalUsdt)} USDT`
+}
+
+function dualMoneyCard(
+  key: string,
+  title: string,
+  m: any,
+  countLabel: string,
+  path?: string
+): MetricCard {
+  return {
+    key,
+    title,
+    dualMoney: true,
+    today: moneyToday(m),
+    todayUsdt: moneyTodayUsdt(m),
+    total: moneyTotalCny(m),
+    totalUsdt: moneyTotalUsdt(m),
+    sub: moneyCountHint(m, countLabel),
+    path
+  }
 }
 
 function flattenMenus(routes: any[], basePath = ''): FlatMenu[] {
@@ -371,17 +435,17 @@ const userFundCards = computed<MetricCard[]>(() => {
     { key: 'register', title: '注册人数', today: fmtInt(register.today), total: fmtInt(register.total), unit: '人', path: memberPath.value },
     { key: 'kyc', title: '实名人数', today: fmtInt(kyc.today), total: fmtInt(kyc.total), unit: '人', path: memberPath.value },
     { key: 'checkin', title: 'App 签到', today: fmtInt(checkin.today), total: fmtInt(checkin.total), unit: '次', path: checkinPath.value },
-    { key: 'recharge', title: '充值', today: moneyToday(recharge), total: moneyTotal(recharge), sub: moneySub(recharge, '成功单数'), path: rechargePath.value },
+    dualMoneyCard('recharge', '充值', recharge, '成功单数', rechargePath.value),
     { key: 'rechargeUsers', title: '充值用户数', today: fmtInt(rechargeUsers.today), total: fmtInt(rechargeUsers.total), unit: '人', path: rechargePath.value },
     { key: 'rechargeOrders', title: '充值成功单数', today: fmtInt(rechargeOrders.today), total: fmtInt(rechargeOrders.total), unit: '单', path: rechargePath.value },
     { key: 'pullCount', title: '拉单数量', today: fmtInt(pullCount.today), total: fmtInt(pullCount.total), unit: '笔', path: orderPath.value },
-    { key: 'pullAmount', title: '拉单金额', today: moneyToday(pullAmount), total: moneyTotal(pullAmount), sub: moneySub(pullAmount, '认购笔数'), path: orderPath.value },
+    dualMoneyCard('pullAmount', '拉单金额', pullAmount, '认购笔数', orderPath.value),
     { key: 'subscribeUsers', title: '认购用户数', today: fmtInt(subscribeUsers.today), total: fmtInt(subscribeUsers.total), unit: '人', path: orderPath.value },
     { key: 'subscribeNew', title: '当日新增认购用户', today: fmtInt(subscribeNew.today), total: fmtInt(subscribeNew.total), unit: '人', path: orderPath.value },
-    { key: 'wdProduct', title: '提现成功-产品收益', today: moneyToday(wdProduct), total: moneyTotal(wdProduct), sub: moneySub(wdProduct, '成功笔数'), path: withdrawPath.value },
-    { key: 'wdPromo', title: '提现成功-推广收益', today: moneyToday(wdPromo), total: moneyTotal(wdPromo), sub: moneySub(wdPromo, '成功笔数'), path: withdrawPath.value },
-    { key: 'wdAssist', title: '提现成功-助力值', today: moneyToday(wdAssist), total: moneyTotal(wdAssist), sub: moneySub(wdAssist, '成功笔数'), path: withdrawPath.value },
-    { key: 'wdTotal', title: '提现成功-总额', today: moneyToday(wdTotal), total: moneyTotal(wdTotal), sub: moneySub(wdTotal, '成功笔数'), path: withdrawPath.value },
+    dualMoneyCard('wdProduct', '提现成功-产品收益', wdProduct, '成功笔数', withdrawPath.value),
+    dualMoneyCard('wdPromo', '提现成功-推广收益', wdPromo, '成功笔数', withdrawPath.value),
+    dualMoneyCard('wdAssist', '提现成功-助力值', wdAssist, '成功笔数', withdrawPath.value),
+    dualMoneyCard('wdTotal', '提现成功-总额', wdTotal, '成功笔数', withdrawPath.value),
     { key: 'wdCount', title: '提现成功-总数量', today: fmtInt(wdCount.today), total: fmtInt(wdCount.total), unit: '笔', path: withdrawPath.value }
   ]
 })
@@ -586,6 +650,13 @@ function onResize(): void {
   chart?.resize()
 }
 
+async function onTabChange(name: string | number) {
+  if (name !== 'dashboard') return
+  await nextTick()
+  renderTrendChart()
+  chart?.resize()
+}
+
 async function reload() {
   loading.value = true
   try {
@@ -596,7 +667,9 @@ async function reload() {
     stats.value = (statsRes as any).data || {}
     trend.value = (trendRes as any).data || {}
     await nextTick()
-    renderTrendChart()
+    if (activeTab.value === 'dashboard') {
+      renderTrendChart()
+    }
   } finally {
     loading.value = false
   }
@@ -655,6 +728,16 @@ onBeforeUnmount(() => {
 
 .hint-alert {
   margin-bottom: 16px;
+}
+
+.home-tabs {
+  :deep(.el-tabs__header) {
+    margin-bottom: 16px;
+  }
+
+  :deep(.el-tabs__nav-wrap::after) {
+    height: 1px;
+  }
 }
 
 .section-title {
@@ -728,6 +811,14 @@ onBeforeUnmount(() => {
     line-height: 1.2;
     word-break: break-all;
 
+    &.dual {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 18px;
+      line-height: 1.35;
+    }
+
     .unit {
       margin-left: 4px;
       font-size: 13px;
@@ -747,10 +838,21 @@ onBeforeUnmount(() => {
     padding-top: 10px;
     display: flex;
     justify-content: space-between;
+    align-items: flex-start;
     gap: 8px;
     font-size: 12px;
     color: var(--el-text-color-secondary);
     border-top: 1px dashed var(--el-border-color-lighter);
+
+    .foot-dual {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+      color: var(--el-text-color-regular);
+      font-weight: 500;
+      text-align: right;
+    }
   }
 }
 
