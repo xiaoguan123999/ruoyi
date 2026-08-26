@@ -2,7 +2,10 @@ import { displayText, formatBalance } from '@/api/app-auth';
 import { ApiError, request } from '@/api/request';
 import type {
   AppAmountBody,
+  AppCheckinInfo,
+  AppCheckinPrizeRule,
   AppCheckinRecord,
+  AppCheckinRule,
   AppFundRecord,
   AppOrderRecord,
   AppSubscribeBody,
@@ -501,6 +504,72 @@ function mapCheckin(raw: unknown): AppCheckinRecord | null {
   };
 }
 
+function mapCheckinPrize(raw: unknown): AppCheckinPrizeRule | null {
+  if (!isRecord(raw)) {
+    return null;
+  }
+  const days = pickNumber(raw, ['days', 'streakDays']);
+  const name = pickString(raw, ['name', 'prizeName']);
+  if (!days || !name) {
+    return null;
+  }
+  const enabledRaw = raw.enabled;
+  const enabled =
+    enabledRaw === true ||
+    enabledRaw === 1 ||
+    enabledRaw === '1' ||
+    enabledRaw === 'true' ||
+    enabledRaw === 'Y';
+  return {
+    days,
+    name,
+    rate: pickNumber(raw, ['rate', 'probability']),
+    enabled,
+  };
+}
+
+function mapCheckinRule(raw: unknown): AppCheckinRule {
+  if (!isRecord(raw)) {
+    return { amount: 0, oncePerDay: true, prizes: [] };
+  }
+  const prizesRaw = Array.isArray(raw.prizes) ? raw.prizes : [];
+  return {
+    amount: pickNumber(raw, ['amount', 'reward', 'checkinAmount']),
+    oncePerDay: raw.oncePerDay !== false,
+    prizes: prizesRaw
+      .map(mapCheckinPrize)
+      .filter((item): item is AppCheckinPrizeRule => item !== null),
+  };
+}
+
+function mapCheckinInfo(raw: unknown): AppCheckinInfo {
+  if (!isRecord(raw)) {
+    return {
+      amount: 0,
+      currency: 'CNY',
+      streakDays: 0,
+      checkedToday: false,
+      rule: { amount: 0, oncePerDay: true, prizes: [] },
+    };
+  }
+  const checkedRaw = raw.checkedToday ?? raw.checked;
+  const checkedToday =
+    checkedRaw === true || checkedRaw === 1 || checkedRaw === '1' || checkedRaw === 'true';
+  return {
+    checkinId: pickNumber(raw, ['checkinId', 'id']) || undefined,
+    checkinDate: formatDateOnly(raw.checkinDate ?? raw.date) || undefined,
+    amount: pickNumber(raw, ['amount', 'reward']),
+    currency: pickString(raw, ['currency'], 'CNY') || 'CNY',
+    streakDays: pickNumber(raw, ['streakDays', 'streak', 'continuousDays']),
+    checkedToday,
+    rule: mapCheckinRule(raw.rule),
+    prizeDrawn: typeof raw.prizeDrawn === 'boolean' ? raw.prizeDrawn : undefined,
+    prizeWon: typeof raw.prizeWon === 'boolean' ? raw.prizeWon : undefined,
+    prizeName: pickString(raw, ['prizeName']) || undefined,
+    prizeDays: pickNumber(raw, ['prizeDays']) || undefined,
+  };
+}
+
 export async function fetchAppCheckinList(): Promise<AppCheckinRecord[]> {
   const res = await request('/app/checkin/list');
   return extractRows(res)
@@ -508,16 +577,37 @@ export async function fetchAppCheckinList(): Promise<AppCheckinRecord[]> {
     .filter((item): item is AppCheckinRecord => item !== null);
 }
 
-export async function appCheckin(): Promise<{ message: string; amount?: number }> {
+/** GET /app/checkin/info — 签到状态与规则 */
+export async function fetchAppCheckinInfo(): Promise<AppCheckinInfo> {
+  const res = await request<unknown>('/app/checkin/info');
+  const root = extractDataRoot(res as Record<string, unknown>);
+  return mapCheckinInfo(root ?? res);
+}
+
+export async function appCheckin(): Promise<{
+  message: string;
+  amount?: number;
+  streakDays?: number;
+  prizeDrawn?: boolean;
+  prizeWon?: boolean;
+  prizeName?: string;
+}> {
   const res = await request<unknown>('/app/checkin', { method: 'POST' });
   const root = extractDataRoot(res as Record<string, unknown>);
-  let amount: number | undefined;
-  if (isRecord(root)) {
-    amount = pickNumber(root, ['amount', 'reward', 'cny']) || undefined;
+  const info = mapCheckinInfo(root ?? {});
+  let message = res.msg || (info.amount ? `签到成功，获得 ${info.amount} 元` : '签到成功');
+  if (info.prizeDrawn && info.prizeWon && info.prizeName) {
+    message = `${message}，恭喜抽中「${info.prizeName}」`;
+  } else if (info.prizeDrawn && info.prizeWon === false) {
+    message = `${message}，本次未中奖`;
   }
   return {
-    message: res.msg || (amount ? `签到成功，获得 ${amount} 元` : '签到成功'),
-    amount,
+    message,
+    amount: info.amount || undefined,
+    streakDays: info.streakDays,
+    prizeDrawn: info.prizeDrawn,
+    prizeWon: info.prizeWon,
+    prizeName: info.prizeName,
   };
 }
 

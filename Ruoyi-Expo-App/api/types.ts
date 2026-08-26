@@ -217,6 +217,34 @@ export type AppCheckinRecord = {
   amount?: number;
 };
 
+export type AppCheckinPrizeRule = {
+  days: number;
+  name: string;
+  rate: number;
+  enabled: boolean;
+};
+
+export type AppCheckinRule = {
+  amount: number;
+  oncePerDay: boolean;
+  prizes: AppCheckinPrizeRule[];
+};
+
+/** GET /app/checkin/info */
+export type AppCheckinInfo = {
+  checkinId?: number;
+  checkinDate?: string;
+  amount: number;
+  currency: string;
+  streakDays: number;
+  checkedToday: boolean;
+  rule: AppCheckinRule;
+  prizeDrawn?: boolean;
+  prizeWon?: boolean;
+  prizeName?: string;
+  prizeDays?: number;
+};
+
 export type AppOrderRecord = {
   orderId: number;
   productId?: number;

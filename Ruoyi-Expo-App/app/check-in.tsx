@@ -10,7 +10,8 @@ import {
 import { Image } from 'expo-image';
 
 import { ApiError } from '@/api/request';
-import { appCheckin, fetchAppCheckinList } from '@/api/app-trade';
+import { appCheckin, fetchAppCheckinInfo, fetchAppCheckinList } from '@/api/app-trade';
+import type { AppCheckinInfo } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -35,18 +36,39 @@ function buildCalendarCells(year: number, month: number) {
   return cells;
 }
 
-function calcStreak(dates: Set<string>, today: Date): number {
-  let streak = 0;
-  const cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  while (true) {
-    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
-    if (!dates.has(key)) {
-      break;
-    }
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
+function formatAmountText(amount: number): string {
+  if (!Number.isFinite(amount)) {
+    return '0';
   }
-  return streak;
+  if (Number.isInteger(amount)) {
+    return String(amount);
+  }
+  return amount.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function buildRuleLines(info: AppCheckinInfo | null): string[] {
+  if (!info) {
+    return [];
+  }
+  const lines: string[] = [];
+  const amountText = formatAmountText(info.rule.amount || info.amount);
+  lines.push(`1、每天签到可以获得${amountText}元`);
+
+  const prizes = info.rule.prizes.filter((item) => item.enabled);
+  prizes.forEach((prize, index) => {
+    const rateText = formatAmountText(prize.rate);
+    lines.push(
+      `${index + 2}、连续签到${prize.days}天可抽奖「${prize.name}」（中奖概率${rateText}%）`,
+    );
+  });
+
+  if (info.rule.oncePerDay !== false && prizes.length === 0) {
+    lines.push('2、每个账户每天只能签到一次');
+  } else if (info.rule.oncePerDay !== false) {
+    lines.push(`${prizes.length + 2}、每个账户每天只能签到一次`);
+  }
+
+  return lines;
 }
 
 export default function CheckInScreen() {
@@ -58,7 +80,7 @@ export default function CheckInScreen() {
   const todayKey = `${year}-${String(month).padStart(2, '0')}-${String(today).padStart(2, '0')}`;
 
   const [signedDays, setSignedDays] = useState<Set<string>>(new Set());
-  const [streak, setStreak] = useState(0);
+  const [info, setInfo] = useState<AppCheckinInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -67,17 +89,18 @@ export default function CheckInScreen() {
   const cardPad = 14;
   const gap = 6;
   const cellSize = Math.floor((width - pad * 2 - cardPad * 2 - gap * 6) / 7);
-  const checkedToday = signedDays.has(todayKey);
+  const checkedToday = info?.checkedToday ?? signedDays.has(todayKey);
+  const streak = info?.streakDays ?? 0;
+  const ruleLines = useMemo(() => buildRuleLines(info), [info]);
 
   const load = useCallback(async () => {
     try {
-      const list = await fetchAppCheckinList();
-      const dates = new Set(list.map((item) => item.checkinDate));
-      setSignedDays(dates);
-      setStreak(calcStreak(dates, new Date()));
+      const [nextInfo, list] = await Promise.all([fetchAppCheckinInfo(), fetchAppCheckinList()]);
+      setInfo(nextInfo);
+      setSignedDays(new Set(list.map((item) => item.checkinDate)));
     } catch (error) {
       if (!(error instanceof ApiError) || error.code !== 401) {
-        modalError(error instanceof ApiError ? error.message : '获取签到记录失败');
+        modalError(error instanceof ApiError ? error.message : '获取签到信息失败');
       }
     } finally {
       setLoading(false);
@@ -180,8 +203,15 @@ export default function CheckInScreen() {
 
         <GlassCard style={styles.ruleCard}>
           <Text style={styles.ruleTitle}>签到规则</Text>
-          <Text style={styles.rule}>1、每天签到可以获得2元</Text>
-          <Text style={styles.rule}>2、</Text>
+          {ruleLines.length > 0 ? (
+            ruleLines.map((line) => (
+              <Text key={line} style={styles.rule}>
+                {line}
+              </Text>
+            ))
+          ) : (
+            <Text style={styles.rule}>暂无规则说明</Text>
+          )}
         </GlassCard>
       </RefreshableScrollView>
     </AppBackground>
