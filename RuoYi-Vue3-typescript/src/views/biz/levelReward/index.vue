@@ -86,12 +86,12 @@
             <el-button icon="Refresh" @click="resetQuery">重置</el-button>
           </el-form-item>
         </el-form>
-        <el-table v-loading="loading" :data="dataList">
-          <el-table-column label="等级" align="center" prop="levelName" width="100" />
-          <el-table-column label="团队要求" align="center" prop="teamDepth" width="100" />
+        <el-table v-loading="loading" :data="dataList" style="width: 100%">
+          <el-table-column label="等级" align="center" prop="levelName" min-width="100" />
+          <el-table-column label="团队要求" align="center" prop="teamDepth" min-width="100" />
           <el-table-column label="有效成员" align="center" prop="minValidMembers" width="90" />
-          <el-table-column label="充值金额CNY" align="center" prop="minTeamPerfCny" width="110" />
-          <el-table-column label="充值金额USDT" align="center" prop="minTeamPerfUsdt" width="120" />
+          <el-table-column label="充值金额CNY" align="center" prop="minTeamPerfCny" min-width="120" />
+          <el-table-column label="充值金额USDT" align="center" prop="minTeamPerfUsdt" min-width="130" />
           <el-table-column label="奖励开关" align="center" width="90">
             <template #default="scope">
               <el-tag :type="scope.row.rewardEnabled === '1' ? 'success' : 'info'">{{ scope.row.rewardEnabled === '1' ? '开' : '关' }}</el-tag>
@@ -103,8 +103,8 @@
           <el-table-column label="发放" align="center" width="90">
             <template #default="scope">{{ scope.row.rewardMode === 'MANUAL' ? '客服' : '自动' }}</template>
           </el-table-column>
-          <el-table-column label="团队奖励CNY" align="center" prop="rewardCny" width="110" />
-          <el-table-column label="团队奖励USDT" align="center" prop="rewardUsdt" width="120" />
+          <el-table-column label="团队奖励CNY" align="center" prop="rewardCny" min-width="120" />
+          <el-table-column label="团队奖励USDT" align="center" prop="rewardUsdt" min-width="130" />
           <el-table-column label="等级状态" align="center" width="90">
             <template #default="scope">
               <el-tag :type="scope.row.status === '0' ? 'success' : 'info'">{{ scope.row.status === '0' ? '正常' : '停用' }}</el-tag>

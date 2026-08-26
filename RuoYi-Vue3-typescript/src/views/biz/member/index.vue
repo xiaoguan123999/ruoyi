@@ -45,7 +45,7 @@
       <el-table-column label="ID" align="center" prop="memberId" width="90" />
       <el-table-column label="邀请码" align="center" prop="inviteCode" width="110" />
       <el-table-column label="手机号" align="center" prop="phone" width="120" />
-      <el-table-column label="姓名" align="center" prop="realName" />
+      <el-table-column label="姓名" align="center" prop="realName" min-width="100" />
       <el-table-column label="身份证" align="center" prop="idCard" width="180" />
       <el-table-column label="谷歌验证" align="center" prop="gaStatus" width="100">
         <template #default="scope">

@@ -36,18 +36,18 @@
       </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
-    <el-table v-loading="loading" :data="dataList">
+    <el-table v-loading="loading" :data="dataList" style="width: 100%">
       <el-table-column label="ID" align="center" prop="grantId" width="80" />
       <el-table-column label="会员ID" align="center" prop="memberId" width="90" />
-      <el-table-column label="手机号" align="center" prop="phone" width="120" />
-      <el-table-column label="等级" align="center" prop="levelName" width="100" />
-      <el-table-column label="周期键" align="center" prop="cycleKey" width="140" />
+      <el-table-column label="手机号" align="center" prop="phone" min-width="120" />
+      <el-table-column label="等级" align="center" prop="levelName" min-width="100" />
+      <el-table-column label="周期键" align="center" prop="cycleKey" min-width="140" show-overflow-tooltip />
       <el-table-column label="周期" align="center" prop="grantCycle" width="90" />
       <el-table-column label="方式" align="center" width="80">
         <template #default="scope">{{ scope.row.grantMode === 'MANUAL' ? '客服' : '自动' }}</template>
       </el-table-column>
       <el-table-column label="币种" align="center" prop="currency" width="80" />
-      <el-table-column label="金额" align="center" prop="amount" width="100" />
+      <el-table-column label="金额" align="center" prop="amount" min-width="100" />
       <el-table-column label="状态" align="center" prop="status" width="90">
         <template #default="scope">
           <el-tag v-if="scope.row.status === '0'" type="warning">待发放</el-tag>
@@ -55,10 +55,10 @@
           <el-tag v-else type="danger">已拒绝</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="时间" align="center" prop="createTime" width="160">
+      <el-table-column label="时间" align="center" prop="createTime" min-width="160">
         <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
       </el-table-column>
-      <el-table-column label="操作人" align="center" prop="payBy" width="100" />
+      <el-table-column label="操作人" align="center" prop="payBy" min-width="100" />
       <el-table-column label="操作" align="center" width="180" fixed="right">
         <template #default="scope">
           <el-button

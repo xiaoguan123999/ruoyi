@@ -61,6 +61,7 @@
 
   /* 表格紧接工具栏时形成整块卡片；无工具栏时单独成卡 */
   > .el-table {
+    width: 100%;
     background: var(--el-bg-color);
     border: var(--ops-border);
     border-radius: var(--ops-radius);
@@ -70,6 +71,15 @@
 
     &::before {
       display: none;
+    }
+
+    .el-table__header,
+    .el-table__body {
+      width: 100% !important;
+    }
+
+    .el-table__empty-block {
+      width: 100% !important;
     }
 
     .el-table__header th {
@@ -199,6 +209,7 @@
       }
 
       > .el-table {
+        width: 100%;
         background: transparent;
         border: var(--ops-border);
         border-radius: 6px;
@@ -208,6 +219,15 @@
 
         &::before {
           display: none;
+        }
+
+        .el-table__header,
+        .el-table__body {
+          width: 100% !important;
+        }
+
+        .el-table__empty-block {
+          width: 100% !important;
         }
 
         .el-table__header th {

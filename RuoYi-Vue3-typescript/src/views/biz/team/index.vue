@@ -86,8 +86,8 @@
         <el-table-column label="层级" align="center" width="70">
           <template #default>{{ teamLevel }}</template>
         </el-table-column>
-        <el-table-column label="手机号" align="center" prop="phone" width="130" />
-        <el-table-column label="姓名" align="center" prop="realName" />
+        <el-table-column label="手机号" align="center" prop="phone" min-width="130" />
+        <el-table-column label="姓名" align="center" prop="realName" min-width="100" />
         <el-table-column label="等级" align="center" prop="levelName" width="90" />
         <el-table-column label="实名" align="center" prop="kycStatus" width="80">
           <template #default="scope">

@@ -30,7 +30,7 @@
       <el-table-column label="手机号" align="center" prop="phone" width="120" />
       <el-table-column label="签到ID" align="center" prop="checkinId" width="90" />
       <el-table-column label="连续天数" align="center" prop="streakDays" width="100" />
-      <el-table-column label="奖品" align="center" prop="prizeName" />
+      <el-table-column label="奖品" align="center" prop="prizeName" min-width="160" show-overflow-tooltip />
       <el-table-column label="结果" align="center" prop="won" width="100">
         <template #default="scope">
           <el-tag :type="scope.row.won === '1' ? 'success' : 'info'">{{ scope.row.won === '1' ? '已中奖' : '未中奖' }}</el-tag>
