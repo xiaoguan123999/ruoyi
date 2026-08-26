@@ -112,6 +112,7 @@
 
 <script setup lang="ts" name="BizTeam">
 import { listTeam, listMemberTeam, getTeamSummary } from "@/api/biz"
+import { resolveMenuPath } from "@/utils/menu"
 
 const { proxy } = getCurrentInstance() as any
 const dataList = ref<any[]>([])
@@ -173,13 +174,19 @@ function openTeam(row: any) {
   loadSummary(row.memberId)
   loadTeamMembers()
 }
+function openBizMenu(titles: string[], keyword: string) {
+  const path = resolveMenuPath(...titles)
+  if (!path) {
+    proxy.$modal.msgWarning(`未找到菜单「${titles[0]}」，请先在系统管理 → 菜单管理中配置该页面`)
+    return
+  }
+  proxy.$router.push({ path, query: { keyword } })
+}
 function openTree(row: any) {
-  const q = row.phone || String(row.memberId)
-  proxy.$router.push({ path: "/biz/teamTree", query: { keyword: q } })
+  openBizMenu(["会员结构图"], row.phone || String(row.memberId))
 }
 function openRelation(row: any) {
-  const q = row.phone || String(row.memberId)
-  proxy.$router.push({ path: "/biz/teamRelation", query: { keyword: q } })
+  openBizMenu(["推荐关系图"], row.phone || String(row.memberId))
 }
 function drillDown(row: any) {
   currentMemberId.value = row.memberId
