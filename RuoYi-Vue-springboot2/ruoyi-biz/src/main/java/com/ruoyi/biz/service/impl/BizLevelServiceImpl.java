@@ -71,13 +71,41 @@ public class BizLevelServiceImpl implements IBizLevelService
         {
             level.setRewardUsdt(BigDecimal.ZERO);
         }
+        enableOnceAutoIfAmount(level);
         return levelMapper.insertLevel(level);
     }
 
     @Override
     public int updateLevel(BizLevel level)
     {
+        enableOnceAutoIfAmount(level);
         return levelMapper.updateLevel(level);
+    }
+
+    private void enableOnceAutoIfAmount(BizLevel level)
+    {
+        boolean hasAmount = positive(level.getRewardCny()) || positive(level.getRewardUsdt());
+        if (!hasAmount)
+        {
+            return;
+        }
+        if (StringUtils.isEmpty(level.getRewardEnabled()) || "0".equals(level.getRewardEnabled()))
+        {
+            level.setRewardEnabled("1");
+        }
+        if (StringUtils.isEmpty(level.getRewardCycle()) || "NONE".equalsIgnoreCase(level.getRewardCycle()))
+        {
+            level.setRewardCycle("ONCE");
+        }
+        if (StringUtils.isEmpty(level.getRewardMode()))
+        {
+            level.setRewardMode("AUTO");
+        }
+    }
+
+    private boolean positive(BigDecimal amount)
+    {
+        return amount != null && amount.compareTo(BigDecimal.ZERO) > 0;
     }
 
     @Override

@@ -165,4 +165,26 @@ public class BizLevel extends BaseEntity
     public java.math.BigDecimal getRewardUsdt() { return rewardUsdt; }
     public void setRewardUsdt(java.math.BigDecimal rewardUsdt) { this.rewardUsdt = rewardUsdt; }
 
+    @ApiModelProperty("团队奖励CNY，达到该等级后发给本人")
+    public java.math.BigDecimal getTeamRewardCny()
+    {
+        return rewardCny;
+    }
+
+    public void setTeamRewardCny(java.math.BigDecimal teamRewardCny)
+    {
+        this.rewardCny = teamRewardCny;
+    }
+
+    @ApiModelProperty("团队奖励USDT，达到该等级后发给本人")
+    public java.math.BigDecimal getTeamRewardUsdt()
+    {
+        return rewardUsdt;
+    }
+
+    public void setTeamRewardUsdt(java.math.BigDecimal teamRewardUsdt)
+    {
+        this.rewardUsdt = teamRewardUsdt;
+    }
+
 }

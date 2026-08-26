@@ -24,6 +24,8 @@
       <el-table-column label="累计充值USDT" align="center" prop="minRechargeUsdt" />
       <el-table-column label="团队业绩CNY" align="center" prop="minTeamPerfCny" />
       <el-table-column label="团队业绩USDT" align="center" prop="minTeamPerfUsdt" />
+      <el-table-column label="团队奖励CNY" align="center" prop="rewardCny" />
+      <el-table-column label="团队奖励USDT" align="center" prop="rewardUsdt" />
       <el-table-column label="排序" align="center" prop="sort" />
       <el-table-column label="状态" align="center" prop="status" width="80">
         <template #default="scope">
@@ -39,8 +41,8 @@
     </el-table>
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
-    <el-dialog :title="title" v-model="open" width="520px" append-to-body>
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+    <el-dialog :title="title" v-model="open" width="560px" append-to-body>
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="130px">
         <el-form-item label="等级名称" prop="levelName"><el-input v-model="form.levelName" /></el-form-item>
         <el-form-item label="团队要求" prop="teamDepth">
           <el-input v-model="form.teamDepth" placeholder="例如 一级内，对应 App 等级表该列" />
@@ -50,6 +52,13 @@
         <el-form-item label="累计充值USDT" prop="minRechargeUsdt"><el-input-number v-model="form.minRechargeUsdt" :min="0" :precision="2" style="width: 100%" /></el-form-item>
         <el-form-item label="团队业绩CNY"><el-input-number v-model="form.minTeamPerfCny" :min="0" :precision="2" style="width: 100%" /></el-form-item>
         <el-form-item label="团队业绩USDT"><el-input-number v-model="form.minTeamPerfUsdt" :min="0" :precision="2" style="width: 100%" /></el-form-item>
+        <el-form-item label="团队奖励CNY">
+          <el-input-number v-model="form.rewardCny" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="团队奖励USDT">
+          <el-input-number v-model="form.rewardUsdt" :min="0" :precision="2" style="width: 100%" />
+          <div style="color:#909399;font-size:12px;line-height:1.4;margin-top:6px">会员达到该等级后自动发给本人一次，对应 App 等级表「团队奖励」。已达标会员可到「等级奖励」点立即核算。</div>
+        </el-form-item>
         <el-form-item label="排序" prop="sort"><el-input-number v-model="form.sort" :min="0" style="width: 100%" /></el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="form.status">
@@ -94,7 +103,7 @@ function getList() {
 }
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
-function reset() { form.value = { status: "0", teamDepth: "", minValidMembers: 0, minRechargeCny: 0, minRechargeUsdt: 0, minTeamPerfCny: 0, minTeamPerfUsdt: 0, sort: 0 } }
+function reset() { form.value = { status: "0", teamDepth: "", minValidMembers: 0, minRechargeCny: 0, minRechargeUsdt: 0, minTeamPerfCny: 0, minTeamPerfUsdt: 0, rewardCny: 0, rewardUsdt: 0, sort: 0 } }
 function handleAdd() { reset(); open.value = true; title.value = "新增等级" }
 function handleUpdate(row: any) {
   getLevel(row.levelId).then((res: any) => {

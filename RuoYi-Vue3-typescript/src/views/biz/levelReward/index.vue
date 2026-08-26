@@ -78,8 +78,8 @@
       <el-table-column label="发放" align="center" width="90">
         <template #default="scope">{{ scope.row.rewardMode === 'MANUAL' ? '客服' : '自动' }}</template>
       </el-table-column>
-      <el-table-column label="CNY" align="center" prop="rewardCny" width="90" />
-      <el-table-column label="USDT" align="center" prop="rewardUsdt" width="90" />
+      <el-table-column label="团队奖励CNY" align="center" prop="rewardCny" width="110" />
+      <el-table-column label="团队奖励USDT" align="center" prop="rewardUsdt" width="120" />
       <el-table-column label="等级状态" align="center" width="90">
         <template #default="scope">
           <el-tag :type="scope.row.status === '0' ? 'success' : 'info'">{{ scope.row.status === '0' ? '正常' : '停用' }}</el-tag>
@@ -142,10 +142,10 @@
             <el-option label="不限次数（客服额外发放）" value="UNLIMITED" />
           </el-select>
         </el-form-item>
-        <el-form-item label="奖励金额CNY">
+        <el-form-item label="团队奖励CNY">
           <el-input-number v-model="form.rewardCny" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="奖励金额USDT">
+        <el-form-item label="团队奖励USDT">
           <el-input-number v-model="form.rewardUsdt" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
         <el-form-item label="等级状态">
