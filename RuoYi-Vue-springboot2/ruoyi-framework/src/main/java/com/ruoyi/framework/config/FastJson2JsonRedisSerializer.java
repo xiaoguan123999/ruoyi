@@ -1,9 +1,11 @@
 package com.ruoyi.framework.config;
 
 import java.nio.charset.Charset;
+import java.text.SimpleDateFormat;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.SerializationException;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -17,10 +19,13 @@ import com.ruoyi.common.core.domain.model.LoginUser;
 /**
  * LoginUser / AppLoginMember use Jackson. Fastjson2 breaks Chrome login sessions
  * (getInfo 401) on OS/browser strings and nested SysUser getters.
+ * Old Redis values written by Fastjson keep yyyy-MM-dd HH:mm:ss dates and @type.
  */
 public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T>
 {
     public static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
+
+    private static final String DATE_PATTERN = "yyyy-MM-dd HH:mm:ss";
 
     private static final ObjectMapper SESSION_MAPPER = buildSessionMapper();
 
@@ -42,6 +47,8 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T>
         mapper.configure(MapperFeature.AUTO_DETECT_SETTERS, false);
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+        mapper.setDateFormat(new SimpleDateFormat(DATE_PATTERN));
         return mapper;
     }
 
@@ -83,11 +90,11 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T>
         {
             if (LoginUser.class == clazz || looksLikeLoginUser(str))
             {
-                return (T) SESSION_MAPPER.readValue(str, LoginUser.class);
+                return (T) readLoginUser(str);
             }
             if (AppLoginMember.class == clazz || looksLikeAppMember(str))
             {
-                return (T) SESSION_MAPPER.readValue(str, AppLoginMember.class);
+                return (T) readAppMember(str);
             }
             return (T) JSON.parse(str);
         }
@@ -99,6 +106,30 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T>
         {
             throw new SerializationException("Redis JSON deserialize failed: " + e.getClass().getSimpleName()
                     + (e.getMessage() == null ? "" : (": " + e.getMessage())), e);
+        }
+    }
+
+    private static LoginUser readLoginUser(String str) throws Exception
+    {
+        try
+        {
+            return SESSION_MAPPER.readValue(str, LoginUser.class);
+        }
+        catch (Exception jacksonEx)
+        {
+            return JSON.parseObject(str, LoginUser.class, JSONReader.Feature.FieldBased);
+        }
+    }
+
+    private static AppLoginMember readAppMember(String str) throws Exception
+    {
+        try
+        {
+            return SESSION_MAPPER.readValue(str, AppLoginMember.class);
+        }
+        catch (Exception jacksonEx)
+        {
+            return JSON.parseObject(str, AppLoginMember.class, JSONReader.Feature.FieldBased);
         }
     }
 

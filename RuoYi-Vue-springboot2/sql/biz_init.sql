@@ -196,10 +196,11 @@ create table biz_commission_log (
   to_member_id      bigint(20)      not null                   comment '获得分佣会员',
   team_level        int(4)          not null                   comment '层级 1/2/3',
   currency          varchar(16)     not null                   comment '币种',
-  base_amount       decimal(18,4)   not null                   comment '充值本金',
+  base_amount       decimal(18,4)   not null                   comment '认购本金',
   rate              decimal(10,4)   not null                   comment '比例',
   amount            decimal(18,4)   not null                   comment '分佣金额',
-  recharge_id       bigint(20)      default null               comment '充值单ID',
+  recharge_id       bigint(20)      default null               comment '充值单ID（历史）',
+  order_id          bigint(20)      default null               comment '认购订单ID',
   create_time       datetime                                   comment '创建时间',
   primary key (commission_id),
   key idx_biz_commission_to (to_member_id),
@@ -238,9 +239,9 @@ insert into biz_product values(2, 'USDT Product', 'USDT', 100.0000, 5.0000, 30, 
 delete from sys_config where config_id between 20 and 38;
 insert into sys_config values(20, '签到奖励金额', 'biz.checkin.amount', '2', 'N', 'admin', sysdate(), '', null, '每日签到奖励人民币金额');
 insert into sys_config values(21, '提现最低金额', 'biz.withdraw.minAmount', '105', 'N', 'admin', sysdate(), '', null, '人民币最低提现金额');
-insert into sys_config values(22, '团队一级分佣比例', 'biz.team.rate.l1', '9', 'N', 'admin', sysdate(), '', null, '充值一级分佣百分比');
-insert into sys_config values(23, '团队二级分佣比例', 'biz.team.rate.l2', '3', 'N', 'admin', sysdate(), '', null, '充值二级分佣百分比');
-insert into sys_config values(24, '团队三级分佣比例', 'biz.team.rate.l3', '1', 'N', 'admin', sysdate(), '', null, '充值三级分佣百分比');
+insert into sys_config values(22, '团队一级分佣比例', 'biz.team.rate.l1', '9', 'N', 'admin', sysdate(), '', null, '认购一级分佣百分比');
+insert into sys_config values(23, '团队二级分佣比例', 'biz.team.rate.l2', '3', 'N', 'admin', sysdate(), '', null, '认购二级分佣百分比');
+insert into sys_config values(24, '团队三级分佣比例', 'biz.team.rate.l3', '1', 'N', 'admin', sysdate(), '', null, '认购三级分佣百分比');
 insert into sys_config values(25, '邀请奖励金额', 'biz.invite.reward', '0', 'N', 'admin', sysdate(), '', null, '邀请好友奖励，0表示暂无奖励');
 insert into sys_config values(26, 'USDT业务开关', 'biz.usdt.enabled', 'true', 'N', 'admin', sysdate(), '', null, 'false表示USDT充提暂未开放');
 insert into sys_config values(27, 'USDT min withdraw', 'biz.withdraw.minAmount.usdt', '105', 'N', 'admin', sysdate(), '', null, 'USDT min withdraw');

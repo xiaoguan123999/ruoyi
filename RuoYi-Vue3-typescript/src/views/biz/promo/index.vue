@@ -1,7 +1,7 @@
 <template>
   <div class="app-container ops-page">
     <el-alert
-      title="实名后用户自行领取 14 元或 2 USDT（可改）；被邀请人实名后自动给邀请人发推广奖；充值通过后按三级比例返佣。金额、比例、开关和规则说明都在本页配置。"
+      title="实名后用户自行领取 14 元或 2 USDT（可改）；被邀请人实名后自动给邀请人发推广奖；下级认购产品后按三级比例返佣，充值不分佣。金额、比例、开关和规则说明都在本页配置。"
       type="info"
       :closable="false"
       show-icon
@@ -49,7 +49,7 @@
       <el-divider content-position="left">三、团队返佣</el-divider>
       <el-form-item label="团队返佣开关">
         <el-switch v-model="rule.teamEnabled" />
-        <span class="tip">关闭后充值审核通过不再给上级分佣</span>
+        <span class="tip">关闭后认购成功不再给上级分佣</span>
       </el-form-item>
       <el-form-item label="一级返佣(%)" prop="teamRateL1">
         <el-input-number v-model="rule.teamRateL1" :min="0" :max="100" :precision="2" :step="1" style="width: 240px" />
@@ -156,6 +156,7 @@ function buildRuleText() {
     "二、实名推广奖励",
     `每成功邀请 1 名新用户完成实名注册，邀请人可获得 ${fmt(rule.value.inviteAmount)}${unit}推广奖励。上下级不可以转移，请核对好正确的邀请码再注册。`,
     "三、团队返佣机制",
+    "下级成功认购产品后按认购金额返佣，充值到账不返佣。",
     `一级返佣 ${fmt(rule.value.teamRateL1)}%、二级返佣 ${fmt(rule.value.teamRateL2)}%、三级返佣 ${fmt(rule.value.teamRateL3)}%`,
     "",
     "奖励资格、返佣计算及发放结果以平台系统实际核算为准；如发现异常注册、批量账户或其他违规行为，平台有权取消相关奖励资格。"

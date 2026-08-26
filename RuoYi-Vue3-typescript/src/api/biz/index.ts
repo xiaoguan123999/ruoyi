@@ -109,6 +109,16 @@ export function listWalletLog(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/walletLog/list', method: 'get', params: query })
 }
 
+export function adjustWallet(data: {
+  memberId: number
+  currency: string
+  direction: string
+  amount: number | string
+  remark: string
+}): Promise<AjaxResult> {
+  return request({ url: '/biz/walletLog/adjust', method: 'put', data })
+}
+
 export function listTeam(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/team/list', method: 'get', params: query })
 }

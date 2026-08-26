@@ -40,8 +40,11 @@ public class BizCommissionLog extends BaseEntity
     /** 分佣金额 */
     private BigDecimal amount;
 
-    /** 充值单ID */
+    /** 充值单ID（历史充值分佣） */
     private Long rechargeId;
+
+    /** 认购订单ID */
+    private Long orderId;
 
     /** 查询：会员ID，匹配来源或收款人 */
     private Long memberId;
@@ -157,6 +160,16 @@ public class BizCommissionLog extends BaseEntity
     public void setRechargeId(Long rechargeId)
     {
         this.rechargeId = rechargeId;
+    }
+
+    public Long getOrderId()
+    {
+        return orderId;
+    }
+
+    public void setOrderId(Long orderId)
+    {
+        this.orderId = orderId;
     }
 
     public Long getMemberId()

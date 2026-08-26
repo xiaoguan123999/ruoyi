@@ -70,6 +70,8 @@ public class BizConstants
 
     public static final String BIZ_INVITE = "INVITE";
 
+    public static final String BIZ_ADJUST = "ADJUST";
+
     public static final String PROMO_KYC_SELF = "KYC_SELF";
 
     public static final String PROMO_INVITE = "INVITE";

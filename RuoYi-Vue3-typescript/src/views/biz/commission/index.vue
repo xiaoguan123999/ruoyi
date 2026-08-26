@@ -68,7 +68,8 @@ function commissionRemark(row: any) {
   const phone = row.fromPhone || row.fromMemberId || "来源会员"
   const base = row.baseAmount ?? 0
   const level = row.teamLevel ?? ""
-  return phone + " 充值 " + base + " 的 " + level + " 级分佣"
+  const kind = row.orderId ? "认购" : (row.rechargeId ? "充值" : "认购")
+  return phone + " " + kind + " " + base + " 的 " + level + " 级分佣"
 }
 function getList() {
   loading.value = true

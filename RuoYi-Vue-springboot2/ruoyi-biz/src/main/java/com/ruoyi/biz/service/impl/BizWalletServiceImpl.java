@@ -1,6 +1,7 @@
 package com.ruoyi.biz.service.impl;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -78,6 +79,62 @@ public class BizWalletServiceImpl implements IBizWalletService
     public void debit(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark)
     {
         change(memberId, currency, amount.negate(), BigDecimal.ZERO, bizType, bizId, remark);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void adjust(Long memberId, String currency, String direction, BigDecimal amount, String remark, String operator)
+    {
+        if (memberId == null)
+        {
+            throw new ServiceException("请选择会员");
+        }
+        String unit = currency == null ? "" : currency.trim().toUpperCase();
+        if (!BizConstants.CURRENCY_CNY.equals(unit) && !BizConstants.CURRENCY_USDT.equals(unit))
+        {
+            throw new ServiceException("币种只能是 CNY 或 USDT");
+        }
+        String dir = direction == null ? "" : direction.trim().toUpperCase();
+        if (!"PLUS".equals(dir) && !"MINUS".equals(dir))
+        {
+            throw new ServiceException("请选择增加或减少");
+        }
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            throw new ServiceException("金额必须大于 0");
+        }
+        if (amount.scale() > 4)
+        {
+            amount = amount.setScale(4, RoundingMode.DOWN);
+        }
+        if (amount.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            throw new ServiceException("金额必须大于 0");
+        }
+        if (amount.compareTo(new BigDecimal("999999999999")) > 0)
+        {
+            throw new ServiceException("金额过大");
+        }
+        String note = remark == null ? "" : remark.trim();
+        if (note.length() == 0)
+        {
+            throw new ServiceException("请填写备注");
+        }
+        if (note.length() > 200)
+        {
+            throw new ServiceException("备注不能超过200字");
+        }
+        String op = operator == null || operator.trim().length() == 0 ? "admin" : operator.trim();
+        String stored = "调账 " + op + ": " + note;
+        initWallets(memberId);
+        if ("PLUS".equals(dir))
+        {
+            credit(memberId, unit, amount, BizConstants.BIZ_ADJUST, null, stored);
+        }
+        else
+        {
+            debit(memberId, unit, amount, BizConstants.BIZ_ADJUST, null, stored);
+        }
     }
 
     @Override
@@ -332,6 +389,10 @@ public class BizWalletServiceImpl implements IBizWalletService
         if (BizConstants.BIZ_INVITE.equals(bizType))
         {
             return "推广奖励";
+        }
+        if (BizConstants.BIZ_ADJUST.equals(bizType))
+        {
+            return "后台调账";
         }
         if (BizConstants.BIZ_WITHDRAW_FREEZE.equals(bizType))
         {

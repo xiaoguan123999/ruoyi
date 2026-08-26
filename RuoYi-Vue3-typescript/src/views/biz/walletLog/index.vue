@@ -30,6 +30,9 @@
       </el-form-item>
     </el-form>
     <el-row :gutter="10" class="mb8">
+      <el-col :span="1.5">
+        <el-button type="primary" plain icon="Wallet" @click="openAdjust" v-hasPermi="['biz:wallet:adjust']">调账</el-button>
+      </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
     <el-table v-loading="loading" :data="dataList">
@@ -54,11 +57,13 @@
       <el-table-column label="备注" align="center" prop="remark" min-width="160" show-overflow-tooltip />
     </el-table>
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+    <WalletAdjustDialog v-model="adjustOpen" @success="getList" />
   </div>
 </template>
 
 <script setup lang="ts" name="BizWalletLog">
 import { listWalletLog } from "@/api/biz"
+import WalletAdjustDialog from "@/views/biz/components/WalletAdjustDialog.vue"
 
 const { proxy } = getCurrentInstance() as any
 const dataList = ref<any[]>([])
@@ -67,12 +72,15 @@ const showSearch = ref(true)
 const total = ref(0)
 const dateRange = ref<string[]>([])
 const queryParams = ref({ pageNum: 1, pageSize: 100, memberId: undefined, phone: undefined, remark: undefined, currency: undefined, bizType: undefined })
+const adjustOpen = ref(false)
+function openAdjust() { adjustOpen.value = true }
 const bizTypeOptions = [
   { value: "RECHARGE", label: "充值" },
   { value: "SUBSCRIBE", label: "认购" },
   { value: "REBATE", label: "产品日返" },
   { value: "COMMISSION", label: "推广奖金" },
   { value: "INVITE", label: "推广奖励" },
+  { value: "ADJUST", label: "后台调账" },
   { value: "CHECKIN", label: "签到" },
   { value: "KYC_REWARD", label: "实名注册奖励" },
   { value: "LEVEL_REWARD", label: "等级奖励" },

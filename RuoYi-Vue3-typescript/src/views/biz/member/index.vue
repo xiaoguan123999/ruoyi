@@ -76,9 +76,10 @@
           <span>{{ parseTime(scope.row.createTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="360" class-name="small-padding fixed-width" fixed="right">
+      <el-table-column label="操作" align="center" width="420" class-name="small-padding fixed-width" fixed="right">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:member:edit']">修改</el-button>
+          <el-button link type="primary" icon="Wallet" @click="openAdjust(scope.row)" v-hasPermi="['biz:wallet:adjust']">调账</el-button>
           <el-button link type="primary" icon="Key" @click="handleResetPwd(scope.row)" v-hasPermi="['biz:member:resetPwd']">登录密码</el-button>
           <el-button link type="primary" icon="Lock" @click="handleResetPayPwd(scope.row)" v-hasPermi="['biz:member:resetPayPwd']">交易密码</el-button>
           <el-button v-if="scope.row.gaStatus === '1'" link type="primary" icon="Unlock" @click="handleResetGoogle(scope.row)" v-hasPermi="['biz:member:edit']">解绑谷歌</el-button>
@@ -132,11 +133,13 @@
         </div>
       </template>
     </el-dialog>
+    <WalletAdjustDialog v-model="adjustOpen" :member-id="adjustMemberId" :phone="adjustPhone" @success="getList" />
   </div>
 </template>
 
 <script setup lang="ts" name="BizMember">
 import { listMember, getMember, addMember, updateMember, resetMemberGoogle, resetMemberPwd, resetMemberPayPwd } from "@/api/biz"
+import WalletAdjustDialog from "@/views/biz/components/WalletAdjustDialog.vue"
 
 const { proxy } = getCurrentInstance() as any
 const memberList = ref<any[]>([])
@@ -146,6 +149,9 @@ const loading = ref(true)
 const showSearch = ref(true)
 const total = ref(0)
 const title = ref("")
+const adjustOpen = ref(false)
+const adjustMemberId = ref<number | undefined>()
+const adjustPhone = ref("")
 
 const data = reactive({
   form: {} as any,
@@ -209,6 +215,11 @@ function handleUpdate(row: any) {
     open.value = true
     title.value = "修改会员"
   })
+}
+function openAdjust(row: any) {
+  adjustMemberId.value = row.memberId
+  adjustPhone.value = row.phone || ""
+  adjustOpen.value = true
 }
 function handleResetGoogle(row: any) {
   proxy.$modal.confirm('确认解绑会员 ' + row.phone + ' 的谷歌验证器？解绑后需重新绑定。').then(() => {

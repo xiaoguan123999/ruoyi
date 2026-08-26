@@ -14,12 +14,13 @@
         <result property="rate"         column="rate"/>
         <result property="amount"       column="amount"/>
         <result property="rechargeId"   column="recharge_id"/>
+        <result property="orderId"      column="order_id"/>
         <result property="createTime"   column="create_time"/>
     </resultMap>
 
     <select id="selectCommissionList" parameterType="BizCommissionLog" resultMap="BizCommissionLogResult">
         select c.commission_id, c.from_member_id, fm.phone as from_phone, c.to_member_id, tm.phone as to_phone,
-               c.team_level, c.currency, c.base_amount, c.rate, c.amount, c.recharge_id, c.create_time
+               c.team_level, c.currency, c.base_amount, c.rate, c.amount, c.recharge_id, c.order_id, c.create_time
         from biz_commission_log c
         left join biz_member fm on fm.member_id = c.from_member_id
         left join biz_member tm on tm.member_id = c.to_member_id
@@ -38,9 +39,9 @@
 
     <insert id="insertCommissionLog" parameterType="BizCommissionLog" useGeneratedKeys="true" keyProperty="commissionId">
         insert into biz_commission_log (
-            from_member_id, to_member_id, team_level, currency, base_amount, rate, amount, recharge_id, create_time
+            from_member_id, to_member_id, team_level, currency, base_amount, rate, amount, recharge_id, order_id, create_time
         ) values (
-            #{fromMemberId}, #{toMemberId}, #{teamLevel}, #{currency}, #{baseAmount}, #{rate}, #{amount}, #{rechargeId}, sysdate()
+            #{fromMemberId}, #{toMemberId}, #{teamLevel}, #{currency}, #{baseAmount}, #{rate}, #{amount}, #{rechargeId}, #{orderId}, sysdate()
         )
     </insert>
 </mapper>

@@ -124,10 +124,10 @@ public class BizPromoServiceImpl implements IBizPromoService
         saveConfig(BizConstants.CONFIG_PROMO_LOCK_PARENT, "邀请后不可改上级",
                 boolStr(rule.getLockParent(), true), "注册时绑定邀请码后不可转移");
         saveConfig(BizConstants.CONFIG_TEAM_ENABLED, "团队返佣开关",
-                boolStr(rule.getTeamEnabled(), true), "false关闭充值三级返佣");
-        saveConfig(BizConstants.CONFIG_RATE_L1, "团队一级分佣比例", fmt(l1), "充值一级分佣百分比");
-        saveConfig(BizConstants.CONFIG_RATE_L2, "团队二级分佣比例", fmt(l2), "充值二级分佣百分比");
-        saveConfig(BizConstants.CONFIG_RATE_L3, "团队三级分佣比例", fmt(l3), "充值三级分佣百分比");
+                boolStr(rule.getTeamEnabled(), true), "false关闭认购三级返佣");
+        saveConfig(BizConstants.CONFIG_RATE_L1, "团队一级分佣比例", fmt(l1), "认购一级分佣百分比");
+        saveConfig(BizConstants.CONFIG_RATE_L2, "团队二级分佣比例", fmt(l2), "认购二级分佣百分比");
+        saveConfig(BizConstants.CONFIG_RATE_L3, "团队三级分佣比例", fmt(l3), "认购三级分佣百分比");
         saveConfig(BizConstants.CONFIG_INVITE_REWARD, "邀请奖励金额", fmt(inviteAmount), "每成功邀请1名实名用户给邀请人的金额");
         saveConfig(BizConstants.CONFIG_PROMO_RULE_TEXT, "注册推广规则说明", ruleText, "App邀请/规则页展示全文");
     }
@@ -349,6 +349,7 @@ public class BizPromoServiceImpl implements IBizPromoService
         sb.append("每成功邀请 1 名新用户完成实名注册，邀请人可获得 ").append(fmt(nvl(rule.getInviteAmount()))).append(inviteUnit)
                 .append("推广奖励。上下级不可以转移，请核对好正确的邀请码再注册。\n");
         sb.append("三、团队返佣机制\n");
+        sb.append("下级成功认购产品后，按认购金额给上级发放三级返佣，充值到账不返佣。\n");
         sb.append("一级返佣 ").append(fmt(nvl(rule.getTeamRateL1()))).append("%、二级返佣 ")
                 .append(fmt(nvl(rule.getTeamRateL2()))).append("%、三级返佣 ").append(fmt(nvl(rule.getTeamRateL3())))
                 .append("%\n\n");

@@ -29,7 +29,7 @@ insert into sys_config values(65, '实名推广奖励开关', 'biz.promo.invite.
 insert into sys_config values(66, '实名推广奖励金额', 'biz.promo.invite.amount', '2', 'N', 'admin', sysdate(), '', null, '每成功邀请1名实名用户的奖励');
 insert into sys_config values(67, '实名推广奖励币种', 'biz.promo.invite.currency', 'CNY', 'N', 'admin', sysdate(), '', null, '邀请奖励币种 CNY或USDT');
 insert into sys_config values(68, '邀请后不可改上级', 'biz.promo.invite.lockParent', 'true', 'N', 'admin', sysdate(), '', null, '注册时绑定邀请码后不可转移');
-insert into sys_config values(69, '团队返佣开关', 'biz.team.enabled', 'true', 'N', 'admin', sysdate(), '', null, 'false关闭充值三级返佣');
+insert into sys_config values(69, '团队返佣开关', 'biz.team.enabled', 'true', 'N', 'admin', sysdate(), '', null, 'false关闭认购三级返佣');
 insert into sys_config values(70, '注册推广规则说明', 'biz.promo.ruleText', '用户注册与推广奖励规则：
 一、实名注册奖励
 新用户完成注册并通过实名认证后，可获得 14 元或 2 USDT 平台余额，两种奖励方式任选其一。

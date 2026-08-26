@@ -87,6 +87,7 @@ public class SysUser extends BaseEntity
     private Date loginDate;
 
     /** 密码最后更新时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date pwdUpdateDate;
 
     /** 部门对象 */

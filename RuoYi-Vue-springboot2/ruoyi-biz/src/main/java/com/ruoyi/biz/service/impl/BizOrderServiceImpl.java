@@ -16,6 +16,7 @@ import com.ruoyi.biz.domain.BizRebateLog;
 import com.ruoyi.biz.mapper.BizOrderMapper;
 import com.ruoyi.biz.mapper.BizProductMapper;
 import com.ruoyi.biz.mapper.BizRebateLogMapper;
+import com.ruoyi.biz.service.IBizCommissionService;
 import com.ruoyi.biz.service.IBizConfigService;
 import com.ruoyi.biz.service.IBizMemberService;
 import com.ruoyi.biz.service.IBizOrderService;
@@ -48,6 +49,9 @@ public class BizOrderServiceImpl implements IBizOrderService
 
     @Autowired
     private IBizConfigService configService;
+
+    @Autowired
+    private IBizCommissionService commissionService;
 
     @Override
     public BizOrder selectOrderById(Long orderId)
@@ -118,6 +122,7 @@ public class BizOrderServiceImpl implements IBizOrderService
         order.setWithdrawRequired(product.getWithdrawRequired());
         order.setStatus(BizConstants.ORDER_HOLDING);
         orderMapper.insertOrder(order);
+        commissionService.grantForSubscribe(order);
 
         memberService.refreshLevel(memberId);
         if (member.getParentId() != null)
