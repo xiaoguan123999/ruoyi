@@ -85,7 +85,7 @@ const config: ExpoConfig = {
   android: {
     package: 'com.ruoyi.expoapp',
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
+      backgroundColor: '#0B1A33',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -108,9 +108,9 @@ const config: ExpoConfig = {
       {
         image: './assets/images/splash-icon.png',
         resizeMode: 'contain',
-        backgroundColor: '#ffffff',
+        backgroundColor: '#0B1A33',
         dark: {
-          backgroundColor: '#000000',
+          backgroundColor: '#0B1A33',
         },
       },
     ],
