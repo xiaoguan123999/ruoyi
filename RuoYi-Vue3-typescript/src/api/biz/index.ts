@@ -368,3 +368,11 @@ export function listBlacklistLog(query: any): Promise<TableDataInfo<any[]>> {
 export function delBlacklistLog(logId: number | number[]): Promise<AjaxResult> {
   return request({ url: '/biz/blacklist/log/' + logId, method: 'delete' })
 }
+
+export function getDashboardStats(date?: string): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/dashboard/stats', method: 'get', params: { date }, timeout: 20000 })
+}
+
+export function getDashboardTrend(date?: string): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/dashboard/trend', method: 'get', params: { date }, timeout: 20000 })
+}

@@ -53,7 +53,8 @@ public class SysRole extends BaseEntity
     /** 删除标志（0代表存在 2代表删除） */
     private String delFlag;
 
-    /** 用户是否存在此角色标识 默认不存在 */
+    /** 用户是否存在此角色标识 默认不存在。不进 Redis 会话，避免 Fastjson2 把 false 当类型名解析失败 */
+    @JSONField(serialize = false)
     private boolean flag = false;
 
     /** 菜单组 */
@@ -181,6 +182,7 @@ public class SysRole extends BaseEntity
         this.delFlag = delFlag;
     }
 
+    @JSONField(serialize = false)
     public boolean isFlag()
     {
         return flag;

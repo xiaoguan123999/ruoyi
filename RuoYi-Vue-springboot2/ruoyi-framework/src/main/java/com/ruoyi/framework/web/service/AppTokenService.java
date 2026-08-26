@@ -56,11 +56,21 @@ public class AppTokenService
                 {
                     return null;
                 }
-                return redisCache.getCacheObject(getTokenKey(uuid));
+                Object cached = redisCache.getCacheObject(getTokenKey(uuid));
+                if (cached instanceof AppLoginMember)
+                {
+                    return (AppLoginMember) cached;
+                }
+                if (cached != null)
+                {
+                    log.error("App登录缓存类型异常 {}", cached.getClass().getName());
+                    redisCache.deleteObject(getTokenKey(uuid));
+                }
+                return null;
             }
             catch (Exception e)
             {
-                log.error("获取App会员信息异常'{}'", e.getMessage());
+                log.error("获取App会员信息异常 {}", e.getClass().getSimpleName());
             }
         }
         return null;

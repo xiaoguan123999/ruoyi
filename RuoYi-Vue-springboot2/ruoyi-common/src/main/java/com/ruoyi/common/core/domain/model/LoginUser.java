@@ -126,6 +126,7 @@ public class LoginUser implements UserDetails
         return user.getPassword();
     }
 
+    @JSONField(serialize = false)
     @Override
     public String getUsername()
     {
@@ -258,6 +259,7 @@ public class LoginUser implements UserDetails
         this.user = user;
     }
 
+    @JSONField(serialize = false)
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities()
     {

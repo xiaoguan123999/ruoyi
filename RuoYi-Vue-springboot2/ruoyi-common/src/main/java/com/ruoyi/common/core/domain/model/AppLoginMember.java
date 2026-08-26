@@ -87,6 +87,7 @@ public class AppLoginMember implements UserDetails
         return null;
     }
 
+    @JSONField(serialize = false)
     @Override
     public String getUsername()
     {

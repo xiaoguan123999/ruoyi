@@ -1,38 +1,86 @@
 <template>
-  <div class="app-container ops-home">
-    <!-- 顶部欢迎 -->
+  <div class="app-container ops-home" v-loading="loading">
     <div class="welcome-bar">
       <div class="welcome-left">
         <h2>{{ greeting }}，{{ nickName }}</h2>
-        <p>XFZL 运营工作台 · 以下为模拟数据，便于先确认页面布局</p>
+        <p>经营日报按所选自然日统计「当日」数据，「总计」为累计值。金额按币种分开，不把 CNY 与 USDT 相加。</p>
       </div>
       <div class="welcome-right">
-        <el-tag type="warning" effect="plain">模拟数据</el-tag>
-        <span class="update-time">数据更新：{{ mockUpdatedAt }}</span>
+        <el-date-picker
+          v-model="queryDate"
+          type="date"
+          value-format="YYYY-MM-DD"
+          placeholder="统计日期"
+          :clearable="false"
+          style="width: 160px"
+          @change="reload"
+        />
+        <el-button type="primary" icon="Search" @click="reload">查询</el-button>
+        <span class="update-time">数据日期：{{ stats.date || queryDate }}</span>
       </div>
     </div>
 
-    <!-- 核心指标 -->
-    <el-row :gutter="16" class="stat-row">
-      <el-col v-for="item in statCards" :key="item.key" :xs="12" :sm="12" :md="8" :lg="4">
-        <div class="stat-card" :class="{ clickable: !!item.path }" :style="{ '--accent': item.color }" @click="go(item.path)">
-          <div class="stat-top">
-            <span class="stat-label">{{ item.label }}</span>
-            <el-icon :size="18"><component :is="item.icon" /></el-icon>
+    <el-alert type="info" :closable="false" show-icon class="hint-alert">
+      充值/提现成功按审核通过时间计入当日。拉单即认购订单。提现拆分按申请备注页签：产品收益、助力值/推广收益；未带页签的成功提现只计入总额。今日实名按会员资料最后更新日估算。
+    </el-alert>
+
+    <div class="section-title">用户与资金</div>
+    <el-row :gutter="14" class="metric-row">
+      <el-col v-for="card in userFundCards" :key="card.key" :xs="12" :sm="8" :md="6" :lg="6">
+        <div class="metric-card" :class="{ clickable: !!card.path }" @click="card.path && go(card.path)">
+          <div class="metric-head">
+            <span class="metric-title">{{ card.title }}</span>
+            <span class="metric-tag">今日</span>
           </div>
-          <div class="stat-value">{{ item.value }}</div>
-          <div class="stat-foot">
-            <span :class="item.trend >= 0 ? 'up' : 'down'">
-              {{ item.trend >= 0 ? '+' : '' }}{{ item.trend }}%
-            </span>
-            <span class="muted">较昨日</span>
+          <div class="metric-value">
+            {{ card.today }}
+            <span v-if="card.unit" class="unit">{{ card.unit }}</span>
+          </div>
+          <div v-if="card.sub" class="metric-sub">{{ card.sub }}</div>
+          <div class="metric-foot">
+            <span>总计</span>
+            <span>{{ card.total }}</span>
           </div>
         </div>
       </el-col>
     </el-row>
 
+    <div class="section-title">发放与持仓</div>
+    <el-row :gutter="14" class="metric-row">
+      <el-col v-for="card in extraCards" :key="card.key" :xs="12" :sm="8" :md="6" :lg="6">
+        <div class="metric-card tint" :class="{ clickable: !!card.path }" @click="card.path && go(card.path)">
+          <div class="metric-head">
+            <span class="metric-title">{{ card.title }}</span>
+            <span class="metric-tag" :class="{ stock: card.stock }">{{ card.tag || '今日' }}</span>
+          </div>
+          <div class="metric-value">
+            {{ card.today }}
+            <span v-if="card.unit" class="unit">{{ card.unit }}</span>
+          </div>
+          <div v-if="card.sub" class="metric-sub">{{ card.sub }}</div>
+          <div class="metric-foot">
+            <span>{{ card.footLabel || '总计' }}</span>
+            <span>{{ card.total }}</span>
+          </div>
+        </div>
+      </el-col>
+    </el-row>
+
+    <div class="section-title">钱包余额</div>
+    <el-row :gutter="14" class="metric-row">
+      <el-col v-for="card in walletCards" :key="card.key" :xs="12" :sm="8" :md="6" :lg="6">
+        <div class="metric-card">
+          <div class="metric-head">
+            <span class="metric-title">{{ card.title }}</span>
+            <span class="metric-tag stock">累计</span>
+          </div>
+          <div class="metric-value">{{ card.today }}<span class="unit">{{ card.unit }}</span></div>
+          <div class="metric-sub">{{ card.sub }}</div>
+        </div>
+      </el-col>
+    </el-row>
+
     <el-row :gutter="16">
-      <!-- 待办审核 -->
       <el-col :xs="24" :lg="10">
         <el-card shadow="never" class="panel-card">
           <template #header>
@@ -60,7 +108,6 @@
         </el-card>
       </el-col>
 
-      <!-- 近7日趋势 -->
       <el-col :xs="24" :lg="14">
         <el-card shadow="never" class="panel-card">
           <template #header>
@@ -79,7 +126,6 @@
     </el-row>
 
     <el-row :gutter="16" class="bottom-row">
-      <!-- 运营快捷入口 -->
       <el-col :xs="24" :lg="10">
         <el-card shadow="never" class="panel-card">
           <template #header>
@@ -102,7 +148,6 @@
         </el-card>
       </el-col>
 
-      <!-- 最近动态 -->
       <el-col :xs="24" :lg="14">
         <el-card shadow="never" class="panel-card">
           <template #header>
@@ -120,12 +165,13 @@
             </el-table-column>
             <el-table-column prop="user" label="会员" width="120" show-overflow-tooltip />
             <el-table-column prop="content" label="摘要" min-width="180" show-overflow-tooltip />
-            <el-table-column prop="amount" label="金额" width="120" align="right">
+            <el-table-column prop="amount" label="金额" width="130" align="right">
               <template #default="{ row }">
                 <span :class="row.amountClass">{{ row.amount }}</span>
               </template>
             </el-table-column>
           </el-table>
+          <el-empty v-if="!recentActivities.length" description="暂无流水" :image-size="64" />
         </el-card>
       </el-col>
     </el-row>
@@ -136,12 +182,8 @@
 import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import {
-  User,
-  ShoppingCart,
   Wallet,
   CreditCard,
-  Coin,
-  Warning,
   Document,
   Picture,
   ChatDotRound,
@@ -150,16 +192,30 @@ import {
   Stamp,
   Present
 } from '@element-plus/icons-vue'
-import { getNormalPath } from '@/utils/ruoyi'
+import { getNormalPath, parseTime } from '@/utils/ruoyi'
 import { isHttp } from '@/utils/validate'
 import auth from '@/plugins/auth'
 import useUserStore from '@/store/modules/user'
 import usePermissionStore from '@/store/modules/permission'
+import { getDashboardStats, getDashboardTrend } from '@/api/biz'
 
 interface FlatMenu {
   title: string
   path: string
   icon: string
+}
+
+interface MetricCard {
+  key: string
+  title: string
+  today: string
+  total: string
+  unit?: string
+  sub?: string
+  path?: string
+  tag?: string
+  stock?: boolean
+  footLabel?: string
 }
 
 const router = useRouter()
@@ -174,9 +230,57 @@ const greeting = computed(() => {
   return '晚上好'
 })
 
-const mockUpdatedAt = '2026-08-24 18:30'
+function todayText() {
+  const d = new Date()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
 
-/** 从动态菜单树扁平化出可跳转页面（路径随上级目录变化自动适配） */
+const queryDate = ref(todayText())
+const loading = ref(false)
+const stats = ref<any>({})
+const trend = ref<any>({})
+
+const emptyCount = { today: 0, total: 0 }
+const emptyMoney = { todayCny: 0, todayUsdt: 0, totalCny: 0, totalUsdt: 0, todayCount: 0, totalCount: 0 }
+
+function n(v: any) {
+  const num = Number(v)
+  return Number.isFinite(num) ? num : 0
+}
+
+function fmtInt(v: any) {
+  return n(v).toLocaleString('zh-CN')
+}
+
+function fmtMoney(v: any) {
+  return n(v).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function countOf(key: string) {
+  return stats.value?.[key] || emptyCount
+}
+
+function moneyOf(key: string) {
+  return stats.value?.[key] || emptyMoney
+}
+
+function moneyToday(m: any) {
+  return `${fmtMoney(m.todayCny)} CNY`
+}
+
+function moneySub(m: any, countLabel?: string) {
+  const usdt = `${fmtMoney(m.todayUsdt)} USDT`
+  if (!countLabel) return usdt
+  return `${countLabel} ${fmtInt(m.todayCount)} · ${usdt}`
+}
+
+function moneyTotal(m: any) {
+  const extra = m.totalCount ? ` / ${fmtInt(m.totalCount)} 笔` : ''
+  return `${fmtMoney(m.totalCny)} CNY · ${fmtMoney(m.totalUsdt)} USDT${extra}`
+}
+
 function flattenMenus(routes: any[], basePath = ''): FlatMenu[] {
   const list: FlatMenu[] = []
   for (const route of routes || []) {
@@ -186,13 +290,8 @@ function flattenMenus(routes: any[], basePath = ''): FlatMenu[] {
     const fullPath = isHttp(raw) ? raw : getNormalPath(basePath + segment)
     const title = route.meta?.title as string | undefined
     const hasChildren = Array.isArray(route.children) && route.children.length > 0
-
     if (title && !hasChildren && !isHttp(fullPath) && route.redirect !== 'noRedirect') {
-      list.push({
-        title,
-        path: fullPath,
-        icon: (route.meta?.icon as string) || ''
-      })
+      list.push({ title, path: fullPath, icon: (route.meta?.icon as string) || '' })
     }
     if (hasChildren) {
       list.push(...flattenMenus(route.children, fullPath))
@@ -225,7 +324,6 @@ function resolveMenuIcon(...titles: string[]): string {
   return ''
 }
 
-/** 同时满足：当前角色拥有权限字符 + 动态菜单里能解析到页面 */
 function canShow(path: string, perms: string[]): boolean {
   void userStore.permissions
   return !!path && auth.hasPermiOr(perms)
@@ -236,24 +334,89 @@ function menuPathIfAllowed(titles: string[], perms: string[]): string {
   return canShow(path, perms) ? path : ''
 }
 
-/** 核心指标（模拟；无菜单/权限则不可点） */
-const statCards = computed(() => [
-  { key: 'member', label: '会员总数', value: '12,846', trend: 2.4, color: '#409EFF', icon: User, path: menuPathIfAllowed(['会员管理'], ['biz:member:list']) },
-  { key: 'todayMember', label: '今日新增', value: '86', trend: 12.1, color: '#67C23A', icon: User, path: menuPathIfAllowed(['会员管理'], ['biz:member:list']) },
-  { key: 'order', label: '今日认购单', value: '142', trend: -3.2, color: '#E6A23C', icon: ShoppingCart, path: menuPathIfAllowed(['认购订单'], ['biz:order:list']) },
-  { key: 'recharge', label: '今日充值(元)', value: '328,600', trend: 8.6, color: '#F56C6C', icon: Wallet, path: menuPathIfAllowed(['充值审核'], ['biz:recharge:list', 'biz:recharge:query']) },
-  { key: 'withdraw', label: '今日提现(元)', value: '96,400', trend: 1.5, color: '#909399', icon: CreditCard, path: menuPathIfAllowed(['提现审核'], ['biz:withdraw:list', 'biz:withdraw:query']) },
-  { key: 'commission', label: '今日分佣(元)', value: '18,230', trend: 5.0, color: '#9B59B6', icon: Coin, path: menuPathIfAllowed(['分佣记录'], ['biz:commission:list', 'biz:commission:query']) }
-])
+const memberPath = computed(() => menuPathIfAllowed(['会员管理'], ['biz:member:list']))
+const checkinPath = computed(() => menuPathIfAllowed(['签到记录'], ['biz:checkin:list']))
+const rechargePath = computed(() => menuPathIfAllowed(['充值审核'], ['biz:recharge:list', 'biz:recharge:query']))
+const orderPath = computed(() => menuPathIfAllowed(['认购订单'], ['biz:order:list']))
+const withdrawPath = computed(() => menuPathIfAllowed(['提现审核'], ['biz:withdraw:list', 'biz:withdraw:query']))
+const commissionPath = computed(() => menuPathIfAllowed(['分佣记录'], ['biz:commission:list', 'biz:commission:query']))
+const walletLogPath = computed(() => {
+  const path = resolveMenuPath('资金流水')
+  return canShow(path, ['biz:walletLog:list', 'biz:walletLog:query']) ? path : ''
+})
 
-/** 待办审核：必须有对应审核/查看权限，且菜单对当前账号可见 */
+const userFundCards = computed<MetricCard[]>(() => {
+  const register = countOf('register')
+  const kyc = countOf('kyc')
+  const checkin = countOf('checkin')
+  const recharge = moneyOf('recharge')
+  const rechargeUsers = countOf('rechargeUsers')
+  const rechargeOrders = countOf('rechargeOrders')
+  const subscribeUsers = countOf('subscribeUsers')
+  const subscribeNew = countOf('subscribeNewUsers')
+  const pullCount = countOf('pullCount')
+  const pullAmount = moneyOf('pullAmount')
+  const wdProduct = moneyOf('withdrawProduct')
+  const wdPromo = moneyOf('withdrawPromo')
+  const wdAssist = moneyOf('withdrawAssist')
+  const wdTotal = moneyOf('withdrawTotal')
+  const wdCount = countOf('withdrawCount')
+  return [
+    { key: 'register', title: '注册人数', today: fmtInt(register.today), total: fmtInt(register.total), unit: '人', path: memberPath.value },
+    { key: 'kyc', title: '实名人数', today: fmtInt(kyc.today), total: fmtInt(kyc.total), unit: '人', path: memberPath.value },
+    { key: 'checkin', title: 'App 签到', today: fmtInt(checkin.today), total: fmtInt(checkin.total), unit: '次', path: checkinPath.value },
+    { key: 'recharge', title: '充值', today: moneyToday(recharge), total: moneyTotal(recharge), sub: moneySub(recharge, '成功单数'), path: rechargePath.value },
+    { key: 'rechargeUsers', title: '充值用户数', today: fmtInt(rechargeUsers.today), total: fmtInt(rechargeUsers.total), unit: '人', path: rechargePath.value },
+    { key: 'rechargeOrders', title: '充值成功单数', today: fmtInt(rechargeOrders.today), total: fmtInt(rechargeOrders.total), unit: '单', path: rechargePath.value },
+    { key: 'pullCount', title: '拉单数量', today: fmtInt(pullCount.today), total: fmtInt(pullCount.total), unit: '笔', path: orderPath.value },
+    { key: 'pullAmount', title: '拉单金额', today: moneyToday(pullAmount), total: moneyTotal(pullAmount), sub: moneySub(pullAmount, '认购笔数'), path: orderPath.value },
+    { key: 'subscribeUsers', title: '认购用户数', today: fmtInt(subscribeUsers.today), total: fmtInt(subscribeUsers.total), unit: '人', path: orderPath.value },
+    { key: 'subscribeNew', title: '当日新增认购用户', today: fmtInt(subscribeNew.today), total: fmtInt(subscribeNew.total), unit: '人', path: orderPath.value },
+    { key: 'wdProduct', title: '提现成功-产品收益', today: moneyToday(wdProduct), total: moneyTotal(wdProduct), sub: moneySub(wdProduct, '成功笔数'), path: withdrawPath.value },
+    { key: 'wdPromo', title: '提现成功-推广收益', today: moneyToday(wdPromo), total: moneyTotal(wdPromo), sub: moneySub(wdPromo, '成功笔数'), path: withdrawPath.value },
+    { key: 'wdAssist', title: '提现成功-助力值', today: moneyToday(wdAssist), total: moneyTotal(wdAssist), sub: moneySub(wdAssist, '成功笔数'), path: withdrawPath.value },
+    { key: 'wdTotal', title: '提现成功-总额', today: moneyToday(wdTotal), total: moneyTotal(wdTotal), sub: moneySub(wdTotal, '成功笔数'), path: withdrawPath.value },
+    { key: 'wdCount', title: '提现成功-总数量', today: fmtInt(wdCount.today), total: fmtInt(wdCount.total), unit: '笔', path: withdrawPath.value }
+  ]
+})
+
+const extraCards = computed<MetricCard[]>(() => {
+  const reward = moneyOf('checkinReward')
+  const rebate = moneyOf('rebate')
+  const commission = moneyOf('commission')
+  const invite = moneyOf('invite')
+  const apply = moneyOf('withdrawApply')
+  const holdingOrders = countOf('holdingOrders')
+  const holdingUsers = countOf('holdingUsers')
+  return [
+    { key: 'checkinReward', title: '签到奖励发放', today: moneyToday(reward), total: moneyTotal(reward), sub: moneySub(reward, '发放人次'), path: checkinPath.value },
+    { key: 'rebate', title: '产品日返发放', today: moneyToday(rebate), total: moneyTotal(rebate), sub: moneySub(rebate, '发放笔数'), path: orderPath.value },
+    { key: 'commission', title: '团队分佣发放', today: moneyToday(commission), total: moneyTotal(commission), sub: moneySub(commission, '发放笔数'), path: commissionPath.value },
+    { key: 'invite', title: '邀请奖励发放', today: moneyToday(invite), total: moneyTotal(invite), sub: `${fmtMoney(invite.todayUsdt)} USDT`, path: commissionPath.value },
+    { key: 'wdApply', title: '提现申请', today: moneyToday(apply), total: `${fmtInt(apply.todayCount)} 笔`, sub: moneySub(apply), path: withdrawPath.value, footLabel: '申请笔数' },
+    { key: 'holdingOrders', title: '持仓订单', today: fmtInt(holdingOrders.today), total: fmtInt(holdingUsers.today) + ' 人', unit: '笔', tag: '当前', stock: true, footLabel: '持仓用户', path: orderPath.value },
+    { key: 'holdingUsers', title: '持仓用户', today: fmtInt(holdingUsers.today), total: fmtInt(holdingOrders.today) + ' 笔', unit: '人', tag: '当前', stock: true, footLabel: '持仓订单', path: orderPath.value }
+  ]
+})
+
+const walletCards = computed<MetricCard[]>(() => {
+  const available = moneyOf('walletAvailable')
+  const frozen = moneyOf('walletFrozen')
+  return [
+    { key: 'cnyAvail', title: '可用余额 · CNY', today: fmtMoney(available.totalCny), total: '', unit: '元', sub: '会员钱包合计' },
+    { key: 'usdtAvail', title: '可用余额 · USDT', today: fmtMoney(available.totalUsdt), total: '', unit: 'USDT', sub: '会员钱包合计' },
+    { key: 'cnyFrozen', title: '冻结余额 · CNY', today: fmtMoney(frozen.totalCny), total: '', unit: '元', sub: '含待审提现冻结' },
+    { key: 'usdtFrozen', title: '冻结余额 · USDT', today: fmtMoney(frozen.totalUsdt), total: '', unit: 'USDT', sub: '含待审提现冻结' }
+  ]
+})
+
 const todoList = computed(() => {
   const defs = [
     {
       key: 'recharge',
       title: '充值审核',
       desc: '含 CNY / USDT 待审申请',
-      count: 12,
+      count: n(stats.value.pendingRecharge),
       menuTitles: ['充值审核'],
       perms: ['biz:recharge:audit'],
       icon: Wallet,
@@ -265,7 +428,7 @@ const todoList = computed(() => {
       key: 'withdraw',
       title: '提现审核',
       desc: '请先线下打款再确认',
-      count: 7,
+      count: n(stats.value.pendingWithdraw),
       menuTitles: ['提现审核'],
       perms: ['biz:withdraw:audit'],
       icon: CreditCard,
@@ -276,26 +439,14 @@ const todoList = computed(() => {
     {
       key: 'reward',
       title: '等级奖励发放',
-      desc: '领航 / 星域待发放',
-      count: 4,
+      desc: '待发放申请',
+      count: n(stats.value.pendingLevelReward),
       menuTitles: ['等级奖励发放'],
       perms: ['biz:levelReward:grant', 'biz:levelReward:pay'],
       icon: Present,
       color: '#409EFF',
       bg: 'rgba(64, 158, 255, 0.12)',
       tagType: 'primary' as const
-    },
-    {
-      key: 'risk',
-      title: '异常提醒',
-      desc: '大额提现 / 重复充值',
-      count: 2,
-      menuTitles: ['资金流水'],
-      perms: ['biz:walletLog:list', 'biz:walletLog:query'],
-      icon: Warning,
-      color: '#909399',
-      bg: 'rgba(144, 147, 153, 0.12)',
-      tagType: 'info' as const
     }
   ]
   return defs
@@ -305,7 +456,6 @@ const todoList = computed(() => {
 
 const todoTotal = computed(() => todoList.value.reduce((s, i) => s + i.count, 0))
 
-/** 运营快捷入口：菜单可见 + 拥有 list/query 权限才显示 */
 const shortcutDefs = [
   { name: '新闻资讯', menuTitles: ['新闻资讯'], perms: ['biz:news:list', 'biz:news:query'], icon: Document, color: '#409EFF', bg: 'rgba(64,158,255,.1)' },
   { name: '视频轮播', menuTitles: ['视频轮播'], perms: ['biz:carousel:list', 'biz:carousel:query'], icon: Picture, color: '#67C23A', bg: 'rgba(103,194,58,.1)' },
@@ -325,36 +475,36 @@ const shortcuts = computed(() =>
     .filter((item) => canShow(item.path, item.perms))
 )
 
-const walletLogPath = computed(() => {
-  const path = resolveMenuPath('资金流水')
-  return canShow(path, ['biz:walletLog:list', 'biz:walletLog:query']) ? path : ''
-})
-
-/** 最近动态（模拟） */
-const recentActivities = [
-  { time: '2026-08-24 18:12', type: '充值', tagType: 'success', user: '会员 U8821', content: '提交 USDT 充值申请', amount: '+5,000 USDT', amountClass: 'amt-plus' },
-  { time: '2026-08-24 17:58', type: '认购', tagType: 'warning', user: '会员 U1034', content: '认购「星耀计划 A」', amount: '¥12,000', amountClass: '' },
-  { time: '2026-08-24 17:40', type: '提现', tagType: 'danger', user: '会员 U5510', content: '申请银行卡提现', amount: '-¥8,600', amountClass: 'amt-minus' },
-  { time: '2026-08-24 16:22', type: '注册', tagType: 'info', user: '会员 U9902', content: '邀请码注册成功', amount: '—', amountClass: 'muted' },
-  { time: '2026-08-24 15:05', type: '分佣', tagType: 'primary', user: '会员 U2201', content: '直推认购分佣入账', amount: '+¥360', amountClass: 'amt-plus' },
-  { time: '2026-08-24 14:18', type: '签到', tagType: '', user: '会员 U7740', content: '连续签到第 7 天抽奖', amount: '+¥20', amountClass: 'amt-plus' }
-]
-
-/** 趋势图模拟数据 */
-const trendDates = ['08-18', '08-19', '08-20', '08-21', '08-22', '08-23', '08-24']
-const trendSeries: Record<string, { name: string; data: number[]; color: string }[]> = {
-  register: [
-    { name: '新增注册', data: [62, 71, 58, 80, 76, 90, 86], color: '#409EFF' }
-  ],
-  order: [
-    { name: '认购笔数', data: [98, 112, 105, 130, 121, 148, 142], color: '#E6A23C' },
-    { name: '认购人数', data: [70, 82, 75, 95, 88, 102, 96], color: '#67C23A' }
-  ],
-  fund: [
-    { name: '充值金额(千元)', data: [210, 245, 198, 280, 260, 310, 328], color: '#F56C6C' },
-    { name: '提现金额(千元)', data: [80, 95, 72, 110, 88, 102, 96], color: '#909399' }
-  ]
+const bizTypeMap: Record<string, { label: string; tagType: string }> = {
+  RECHARGE: { label: '充值', tagType: 'success' },
+  SUBSCRIBE: { label: '认购', tagType: 'warning' },
+  REBATE: { label: '日返', tagType: 'primary' },
+  COMMISSION: { label: '分佣', tagType: 'primary' },
+  INVITE: { label: '邀请', tagType: 'success' },
+  CHECKIN: { label: '签到', tagType: '' },
+  KYC_REWARD: { label: '实名奖励', tagType: 'info' },
+  LEVEL_REWARD: { label: '等级奖励', tagType: 'info' },
+  WITHDRAW_FREEZE: { label: '提现', tagType: 'danger' },
+  WITHDRAW_SUCCESS: { label: '提现成功', tagType: 'danger' },
+  WITHDRAW_REJECT: { label: '提现退回', tagType: 'info' }
 }
+
+const recentActivities = computed(() => {
+  const rows = Array.isArray(stats.value.recent) ? stats.value.recent : []
+  return rows.map((row: any) => {
+    const meta = bizTypeMap[row.bizType] || { label: row.bizType || '流水', tagType: 'info' }
+    const amount = n(row.amount)
+    return {
+      time: parseTime(row.createTime) || '',
+      type: meta.label,
+      tagType: meta.tagType,
+      user: row.phone || (row.memberId ? `ID ${row.memberId}` : '—'),
+      content: row.remark || meta.label,
+      amount: `${amount >= 0 ? '+' : ''}${fmtMoney(amount)} ${row.currency || ''}`.trim(),
+      amountClass: amount >= 0 ? 'amt-plus' : 'amt-minus'
+    }
+  })
+})
 
 const trendType = ref<'register' | 'order' | 'fund'>('fund')
 const trendChartRef = ref<HTMLElement | null>(null)
@@ -365,7 +515,19 @@ function renderTrendChart(): void {
   if (!chart) {
     chart = echarts.init(trendChartRef.value)
   }
-  const series = trendSeries[trendType.value]
+  const dates = trend.value.dates || []
+  const seriesMap: Record<string, { name: string; data: any[]; color: string }[]> = {
+    register: [{ name: '新增注册', data: trend.value.register || [], color: '#409EFF' }],
+    order: [
+      { name: '认购笔数', data: trend.value.orderCount || [], color: '#E6A23C' },
+      { name: '认购人数', data: trend.value.orderUsers || [], color: '#67C23A' }
+    ],
+    fund: [
+      { name: '充值CNY', data: trend.value.rechargeCny || [], color: '#F56C6C' },
+      { name: '提现CNY', data: trend.value.withdrawCny || [], color: '#909399' }
+    ]
+  }
+  const series = seriesMap[trendType.value]
   chart.setOption({
     color: series.map((s) => s.color),
     tooltip: { trigger: 'axis' },
@@ -374,7 +536,7 @@ function renderTrendChart(): void {
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: trendDates,
+      data: dates,
       axisLine: { lineStyle: { color: '#DCDFE6' } },
       axisLabel: { color: '#909399' }
     },
@@ -409,11 +571,25 @@ function onResize(): void {
   chart?.resize()
 }
 
-onMounted(() => {
-  nextTick(() => {
+async function reload() {
+  loading.value = true
+  try {
+    const [statsRes, trendRes] = await Promise.all([
+      getDashboardStats(queryDate.value),
+      getDashboardTrend(queryDate.value)
+    ])
+    stats.value = (statsRes as any).data || {}
+    trend.value = (trendRes as any).data || {}
+    await nextTick()
     renderTrendChart()
-    window.addEventListener('resize', onResize)
-  })
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('resize', onResize)
+  reload()
 })
 
 onBeforeUnmount(() => {
@@ -453,6 +629,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
   }
 
   .update-time {
@@ -461,18 +638,35 @@ onBeforeUnmount(() => {
   }
 }
 
-.stat-row {
+.hint-alert {
+  margin-bottom: 16px;
+}
+
+.section-title {
+  margin: 4px 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.metric-row {
   margin-bottom: 8px;
 }
 
-.stat-card {
+.metric-card {
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 10px;
-  padding: 14px 16px;
-  margin-bottom: 16px;
+  padding: 14px 16px 12px;
+  margin-bottom: 14px;
+  min-height: 122px;
+  display: flex;
+  flex-direction: column;
   transition: box-shadow 0.2s, transform 0.2s;
-  border-top: 3px solid var(--accent);
+
+  &.tint {
+    background: linear-gradient(180deg, #f7fbff 0%, var(--el-bg-color) 72%);
+  }
 
   &.clickable {
     cursor: pointer;
@@ -483,32 +677,65 @@ onBeforeUnmount(() => {
     }
   }
 
-  .stat-top {
+  .metric-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: var(--el-text-color-secondary);
-    font-size: 13px;
+    gap: 8px;
   }
 
-  .stat-value {
+  .metric-title {
+    font-size: 13px;
+    color: var(--el-text-color-regular);
+    line-height: 1.3;
+  }
+
+  .metric-tag {
+    flex-shrink: 0;
+    font-size: 11px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    color: #3d7eff;
+    background: #eaf2ff;
+
+    &.stock {
+      color: #606266;
+      background: #eef0f3;
+    }
+  }
+
+  .metric-value {
     margin-top: 10px;
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 700;
     color: var(--el-text-color-primary);
-    letter-spacing: 0.5px;
+    letter-spacing: 0.2px;
+    line-height: 1.2;
+    word-break: break-all;
+
+    .unit {
+      margin-left: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--el-text-color-secondary);
+    }
   }
 
-  .stat-foot {
-    margin-top: 8px;
+  .metric-sub {
+    margin-top: 6px;
     font-size: 12px;
-    display: flex;
-    gap: 6px;
-    align-items: center;
+    color: var(--el-text-color-secondary);
+  }
 
-    .up { color: #67c23a; }
-    .down { color: #f56c6c; }
-    .muted { color: var(--el-text-color-placeholder); }
+  .metric-foot {
+    margin-top: auto;
+    padding-top: 10px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+    border-top: 1px dashed var(--el-border-color-lighter);
   }
 }
 
@@ -618,7 +845,6 @@ onBeforeUnmount(() => {
 
 .amt-plus { color: #67c23a; font-weight: 600; }
 .amt-minus { color: #f56c6c; font-weight: 600; }
-.muted { color: var(--el-text-color-placeholder); }
 
 .bottom-row {
   margin-top: 0;

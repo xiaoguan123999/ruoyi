@@ -62,22 +62,40 @@ public class TokenService
      */
     public LoginUser getLoginUser(HttpServletRequest request)
     {
-        // 获取请求携带的令牌
         String token = getToken(request);
-        if (StringUtils.isNotEmpty(token))
+        if (StringUtils.isEmpty(token))
         {
-            try
+            return null;
+        }
+        String userKey = null;
+        try
+        {
+            Claims claims = parseToken(token);
+            String uuid = (String) claims.get(Constants.LOGIN_USER_KEY);
+            userKey = getTokenKey(uuid);
+            Object cached = redisCache.getCacheObject(userKey);
+            if (cached instanceof LoginUser)
             {
-                Claims claims = parseToken(token);
-                // 解析对应的权限以及用户信息
-                String uuid = (String) claims.get(Constants.LOGIN_USER_KEY);
-                String userKey = getTokenKey(uuid);
-                LoginUser user = redisCache.getCacheObject(userKey);
-                return user;
+                return (LoginUser) cached;
             }
-            catch (Exception e)
+            if (cached != null)
             {
-                log.error("获取用户信息异常'{}'", e.getMessage());
+                log.error("登录缓存类型异常 {}", cached.getClass().getName());
+                redisCache.deleteObject(userKey);
+            }
+        }
+        catch (Exception e)
+        {
+            log.error("获取用户信息异常 {}", e.getClass().getSimpleName());
+            if (StringUtils.isNotEmpty(userKey))
+            {
+                try
+                {
+                    redisCache.deleteObject(userKey);
+                }
+                catch (Exception ignored)
+                {
+                }
             }
         }
         return null;
@@ -248,8 +266,13 @@ public class TokenService
         }
         for (String key : keys)
         {
-            LoginUser loginUser = redisCache.getCacheObject(key);
-            if (loginUser == null || loginUser.getUser() == null || loginUser.getUser().isAdmin())
+            Object cached = redisCache.getCacheObject(key);
+            if (!(cached instanceof LoginUser))
+            {
+                continue;
+            }
+            LoginUser loginUser = (LoginUser) cached;
+            if (loginUser.getUser() == null || loginUser.getUser().isAdmin())
             {
                 // 管理员拥有所有权限，跳过
                 continue;
