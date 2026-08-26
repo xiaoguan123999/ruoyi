@@ -26,7 +26,6 @@ import { modalError } from '@/utils/toast';
 type DisplayLevelRow = {
   levelId: number;
   levelName: string;
-  /** 接口暂无此字段时为空 */
   teamDepth: string;
   minRechargeCny: number;
   minRechargeUsdt: number;
@@ -44,7 +43,7 @@ function mapLevelRows(apiLevels: AppLevel[]): DisplayLevelRow[] {
   return apiLevels.map((apiLevel) => ({
     levelId: apiLevel.levelId,
     levelName: apiLevel.levelName?.trim() || `等级${apiLevel.levelId}`,
-    teamDepth: '',
+    teamDepth: apiLevel.teamDepth?.trim() || '',
     minRechargeCny: toNumberOrZero(apiLevel.minRechargeCny),
     minRechargeUsdt: toNumberOrZero(apiLevel.minRechargeUsdt),
     minTeamPerfCny: toNumberOrZero(apiLevel.minTeamPerfCny),
