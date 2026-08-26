@@ -65,5 +65,8 @@ const styles = StyleSheet.create({
     margin: 0,
     borderWidth: 0,
     backgroundColor: 'transparent',
+    // RN Web：去掉浏览器默认 focus 描边（+html 的 CSS 在 metro web 常不生效）
+    outlineStyle: 'none',
+    outlineWidth: 0,
   },
 });

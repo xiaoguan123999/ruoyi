@@ -29,12 +29,17 @@ body {
   margin: 0;
   overscroll-behavior: none;
 }
-input, textarea {
+input, textarea, [contenteditable="true"] {
   outline: none !important;
   box-shadow: none !important;
   font-size: 16px; /* 避免 iOS 聚焦自动放大 */
+  -webkit-tap-highlight-color: transparent;
 }
-input:focus, textarea:focus {
+input:focus, textarea:focus, [contenteditable="true"]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+input:focus-visible, textarea:focus-visible {
   outline: none !important;
   box-shadow: none !important;
 }

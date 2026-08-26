@@ -83,6 +83,7 @@ function mapLevel(raw: unknown): AppLevel | null {
     minRechargeCny: pickNumber(raw, ['minRechargeCny', 'rechargeCny']),
     minRechargeUsdt: pickNumber(raw, ['minRechargeUsdt', 'rechargeUsdt']),
     minValidMembers: pickNumber(raw, ['minValidMembers', 'validMembers', 'teamCount']),
+    teamDepth: pickString(raw, ['teamDepth', 'depth', 'teamRequirement']) || undefined,
     minTeamPerfCny: pickNumber(raw, ['minTeamPerfCny', 'teamPerfCny']) || undefined,
     minTeamPerfUsdt: pickNumber(raw, ['minTeamPerfUsdt', 'teamPerfUsdt']) || undefined,
     teamRewardCny: pickNumber(raw, ['teamRewardCny', 'rewardCny', 'levelRewardCny']) || undefined,

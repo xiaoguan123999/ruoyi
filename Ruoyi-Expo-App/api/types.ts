@@ -265,6 +265,8 @@ export type AppLevel = {
   minRechargeCny: number;
   minRechargeUsdt: number;
   minValidMembers: number;
+  /** 团队要求文案，如「一级内」 */
+  teamDepth?: string;
   /** 最低团队业绩 */
   minTeamPerfCny?: number;
   minTeamPerfUsdt?: number;

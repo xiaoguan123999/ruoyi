@@ -77,6 +77,8 @@ const styles = StyleSheet.create({
     margin: 0,
     borderWidth: 0,
     backgroundColor: 'transparent',
+    outlineStyle: 'none',
+    outlineWidth: 0,
   },
   captchaBox: {
     borderRadius: 6,

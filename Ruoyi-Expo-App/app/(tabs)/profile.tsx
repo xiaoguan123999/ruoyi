@@ -157,7 +157,7 @@ export default function ProfileScreen() {
                 <View style={styles.assetUnitCol} />
                 <Text style={[styles.assetLabel, styles.assetCol]}>余额</Text>
                 <Text style={[styles.assetLabel, styles.assetCol]}>产品收益</Text>
-                <Text style={[styles.assetLabel, styles.assetCol]}>助力值</Text>
+                <Text style={[styles.assetLabel, styles.assetCol]}>推广收益</Text>
               </View>
               <View style={styles.assetDivider} />
               <View style={styles.assetValueRow}>

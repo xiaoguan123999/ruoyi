@@ -26,7 +26,7 @@ type WithdrawTab = 'income' | 'assist';
 
 const tabs: { key: WithdrawTab; label: string }[] = [
   { key: 'income', label: '产品收益' },
-  { key: 'assist', label: '助力值' },
+  { key: 'assist', label: '推广收益' },
 ];
 
 function accountIcon(account: AppPayAccount): number {

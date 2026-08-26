@@ -63,7 +63,7 @@ scripts：`start` / `ios` / `android` / `web`（`expo start --web`）/ `build:we
 - `tsconfig`：`paths` `@/*` → `./*`
 - `babel`：`@tamagui/babel-plugin` + **最后** `react-native-reanimated/plugin`
 - `metro`：`withTamagui(...)`，`config: "./tamagui.config.ts"`
-- `app.config.ts`：`web.bundler = "metro"`，`web.output = "static"`；Android 开发开 `usesCleartextTraffic`
+- `app.config.ts`：`web.bundler = "metro"`，`web.output = "single"`（SPA，产物主要为 `_expo`/`assets` + `index.html`）；Android 开发开 `usesCleartextTraffic`
 - `eas.json`：`development` / `preview` / `production`，channel 同名
 - `.env`：`EXPO_PUBLIC_API_URL=http://192.168.x.x:8080`（不要加 `/dev-api`，那是若依 Vue 的代理前缀）
 
