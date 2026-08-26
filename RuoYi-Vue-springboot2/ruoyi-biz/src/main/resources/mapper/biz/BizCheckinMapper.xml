@@ -37,6 +37,10 @@
         limit 400
     </select>
 
+    <select id="countByMemberId" resultType="int">
+        select count(1) from biz_checkin where member_id = #{memberId}
+    </select>
+
     <insert id="insertCheckin" parameterType="BizCheckin" useGeneratedKeys="true" keyProperty="checkinId">
         insert into biz_checkin (member_id, checkin_date, amount, currency, create_time)
         values (#{memberId}, #{checkinDate}, #{amount}, #{currency}, sysdate())

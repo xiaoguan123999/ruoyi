@@ -14,11 +14,15 @@
         <result property="auditRemark"  column="audit_remark"/>
         <result property="createTime"   column="create_time"/>
         <result property="remark"       column="remark"/>
+        <result property="payMode"      column="pay_mode"/>
+        <result property="channelCode"  column="channel_code"/>
+        <result property="outTradeNo"   column="out_trade_no"/>
     </resultMap>
 
     <select id="selectRechargeById" parameterType="Long" resultMap="BizRechargeResult">
         select r.recharge_id, r.member_id, m.phone, r.currency, r.amount, r.status,
-               r.audit_by, r.audit_time, r.audit_remark, r.create_time, r.remark
+               r.audit_by, r.audit_time, r.audit_remark, r.create_time, r.remark,
+               r.pay_mode, r.channel_code, r.out_trade_no
         from biz_recharge r
         left join biz_member m on m.member_id = r.member_id
         where r.recharge_id = #{rechargeId}
@@ -26,7 +30,8 @@
 
     <select id="selectRechargeList" parameterType="BizRecharge" resultMap="BizRechargeResult">
         select r.recharge_id, r.member_id, m.phone, r.currency, r.amount, r.status,
-               r.audit_by, r.audit_time, r.audit_remark, r.create_time, r.remark
+               r.audit_by, r.audit_time, r.audit_remark, r.create_time, r.remark,
+               r.pay_mode, r.channel_code, r.out_trade_no
         from biz_recharge r
         left join biz_member m on m.member_id = r.member_id
         <where>
@@ -57,8 +62,9 @@
     </select>
 
     <insert id="insertRecharge" parameterType="BizRecharge" useGeneratedKeys="true" keyProperty="rechargeId">
-        insert into biz_recharge (member_id, currency, amount, status, create_time, remark)
-        values (#{memberId}, #{currency}, #{amount}, #{status}, sysdate(), #{remark})
+        insert into biz_recharge (member_id, currency, amount, status, create_time, remark, pay_mode, channel_code, out_trade_no)
+        values (#{memberId}, #{currency}, #{amount}, #{status}, sysdate(), #{remark},
+                ifnull(#{payMode}, '0'), ifnull(#{channelCode}, ''), ifnull(#{outTradeNo}, ''))
     </insert>
 
     <update id="updateRecharge" parameterType="BizRecharge">
@@ -68,6 +74,9 @@
             <if test="auditBy != null">audit_by = #{auditBy},</if>
             <if test="auditTime != null">audit_time = #{auditTime},</if>
             <if test="auditRemark != null">audit_remark = #{auditRemark},</if>
+            <if test="payMode != null">pay_mode = #{payMode},</if>
+            <if test="channelCode != null">channel_code = #{channelCode},</if>
+            <if test="outTradeNo != null">out_trade_no = #{outTradeNo},</if>
         </set>
         where recharge_id = #{rechargeId}
     </update>

@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
     <el-alert
-      title="可查看某会员 1～7 级下线。按手机号或会员ID精确查找后，上方会展示该会员的分级汇总。"
+      title="团队查询：按手机号或会员ID查找后，可看 1～7 级下线汇总。结构图看下级树，推荐关系图看从顶点到该会员的路径及同级列表。"
       type="info"
       :closable="false"
       show-icon
@@ -37,6 +37,10 @@
         <el-descriptions-item label="实名">{{ summaryMember.kycStatus === "1" ? "已实名" : "未实名" }}</el-descriptions-item>
         <el-descriptions-item label="注册时间" :span="2">{{ parseTime(summaryMember.createTime) }}</el-descriptions-item>
       </el-descriptions>
+      <div class="mb8">
+        <el-button type="primary" plain @click="openTree(summaryMember)" v-hasPermi="['biz:team:tree']">会员结构图</el-button>
+        <el-button type="primary" plain @click="openRelation(summaryMember)" v-hasPermi="['biz:team:relation']">推荐关系图</el-button>
+      </div>
       <el-table :data="summaryRows" size="small" border>
         <el-table-column label="层级" align="center" prop="teamLevel" width="80">
           <template #default="scope">{{ scope.row.teamLevel }}级</template>
@@ -63,9 +67,11 @@
       <el-table-column label="注册时间" align="center" prop="createTime" width="160">
         <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="150" fixed="right">
+      <el-table-column label="操作" align="center" width="260" fixed="right">
         <template #default="scope">
           <el-button link type="primary" @click="openTeam(scope.row)" v-hasPermi="['biz:team:list']">查看下线</el-button>
+          <el-button link type="primary" @click="openTree(scope.row)" v-hasPermi="['biz:team:tree']">结构图</el-button>
+          <el-button link type="primary" @click="openRelation(scope.row)" v-hasPermi="['biz:team:relation']">关系图</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -166,6 +172,14 @@ function openTeam(row: any) {
   teamOpen.value = true
   loadSummary(row.memberId)
   loadTeamMembers()
+}
+function openTree(row: any) {
+  const q = row.phone || String(row.memberId)
+  proxy.$router.push({ path: "/biz/teamTree", query: { keyword: q } })
+}
+function openRelation(row: any) {
+  const q = row.phone || String(row.memberId)
+  proxy.$router.push({ path: "/biz/teamRelation", query: { keyword: q } })
 }
 function drillDown(row: any) {
   currentMemberId.value = row.memberId

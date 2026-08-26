@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Param;
 import com.ruoyi.biz.api.AppTeamLevelStats;
 import com.ruoyi.biz.api.AppTeamMemberItem;
 import com.ruoyi.biz.domain.BizMember;
+import com.ruoyi.biz.domain.BizTeamTreeNode;
 
 public interface BizMemberMapper
 {
@@ -47,4 +48,8 @@ public interface BizMemberMapper
             @Param("viewerDepth") int viewerDepth);
 
     int countByIdCard(@Param("idCard") String idCard, @Param("excludeMemberId") Long excludeMemberId);
+
+    BizTeamTreeNode selectTeamTreeNode(Long memberId);
+
+    List<BizTeamTreeNode> selectTeamTreeChildren(Long parentId);
 }

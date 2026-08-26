@@ -33,6 +33,8 @@ public class BizDashboardStats
     private long pendingRecharge;
     private long pendingWithdraw;
     private long pendingLevelReward;
+    private long pendingKyc;
+    private BizDashboardMoney pendingWithdrawAmount;
     private List<BizDashboardActivity> recent = new ArrayList<BizDashboardActivity>();
 
     public String getDate() { return date; }
@@ -91,6 +93,10 @@ public class BizDashboardStats
     public void setPendingWithdraw(long pendingWithdraw) { this.pendingWithdraw = pendingWithdraw; }
     public long getPendingLevelReward() { return pendingLevelReward; }
     public void setPendingLevelReward(long pendingLevelReward) { this.pendingLevelReward = pendingLevelReward; }
+    public long getPendingKyc() { return pendingKyc; }
+    public void setPendingKyc(long pendingKyc) { this.pendingKyc = pendingKyc; }
+    public BizDashboardMoney getPendingWithdrawAmount() { return pendingWithdrawAmount; }
+    public void setPendingWithdrawAmount(BizDashboardMoney pendingWithdrawAmount) { this.pendingWithdrawAmount = pendingWithdrawAmount; }
     public List<BizDashboardActivity> getRecent() { return recent; }
     public void setRecent(List<BizDashboardActivity> recent) { this.recent = recent; }
 }

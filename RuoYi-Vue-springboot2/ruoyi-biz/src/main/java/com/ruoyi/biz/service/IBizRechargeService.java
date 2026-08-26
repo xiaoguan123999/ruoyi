@@ -12,5 +12,8 @@ public interface IBizRechargeService
 
     BizRecharge apply(Long memberId, String currency, BigDecimal amount, String remark);
 
+    BizRecharge applyOnline(Long memberId, String currency, BigDecimal amount, String remark,
+            String channelCode, String outTradeNo);
+
     void audit(Long rechargeId, String status, String auditBy, String auditRemark);
 }

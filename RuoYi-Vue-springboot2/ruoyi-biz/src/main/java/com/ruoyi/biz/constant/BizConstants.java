@@ -149,6 +149,20 @@ public class BizConstants
 
     public static final String BLACKLIST_HIT_BANK_CARD = "BANK_CARD";
 
+    public static final String PAY_MOCK_YES = "1";
+    public static final String PAY_MOCK_NO = "0";
+    public static final String PAY_MODE_MANUAL = "0";
+    public static final String PAY_MODE_ONLINE = "1";
+    public static final String PAY_ORDER_WAIT = "0";
+    public static final String PAY_ORDER_SUCCESS = "1";
+    public static final String PAY_ORDER_FAIL = "2";
+    public static final String PAY_ORDER_CLOSED = "3";
+    public static final String PAY_TRADE_SUCCESS = "1";
+    public static final String PAY_SCENE_ALIPAY = "alipay";
+    public static final String PAY_SCENE_WECHAT = "wechat";
+    public static final String PAY_SCENE_UNION = "union";
+    public static final String PAY_SCENE_USDT = "usdt";
+
     public static final String CONFIG_SERVICE_TITLE = "biz.service.title";
     public static final String CONFIG_SERVICE_WORK_TIME = "biz.service.workTime";
     public static final String CONFIG_SERVICE_HINT = "biz.service.hint";

@@ -109,6 +109,18 @@ export function getTeamSummary(memberId: number): Promise<AjaxResult<any>> {
   return request({ url: '/biz/team/summary/' + memberId, method: 'get' })
 }
 
+export function getTeamTree(keyword: string): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/team/tree', method: 'get', params: { keyword } })
+}
+
+export function listTeamChildren(memberId: number): Promise<AjaxResult<any[]>> {
+  return request({ url: '/biz/team/children/' + memberId, method: 'get' })
+}
+
+export function listTeamRelation(keyword: string): Promise<AjaxResult<any[]>> {
+  return request({ url: '/biz/team/relation', method: 'get', params: { keyword } })
+}
+
 export function listLevel(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/level/list', method: 'get', params: query })
 }
@@ -375,4 +387,40 @@ export function getDashboardStats(date?: string): Promise<AjaxResult<any>> {
 
 export function getDashboardTrend(date?: string): Promise<AjaxResult<any>> {
   return request({ url: '/biz/dashboard/trend', method: 'get', params: { date }, timeout: 20000 })
+}
+
+export function listPayChannel(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/payChannel/list', method: 'get', params: query })
+}
+
+export function getPayChannel(channelId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/payChannel/' + channelId, method: 'get' })
+}
+
+export function updatePayChannel(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/payChannel', method: 'put', data })
+}
+
+export function listPayProvider(query?: any): Promise<AjaxResult<any[]>> {
+  return request({ url: '/biz/payChannel/providers', method: 'get', params: query })
+}
+
+export function listPayProviderPage(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/payProvider/list', method: 'get', params: query })
+}
+
+export function getPayProvider(providerId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/payProvider/' + providerId, method: 'get' })
+}
+
+export function updatePayProvider(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/payProvider', method: 'put', data })
+}
+
+export function listPayOrder(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/payOrder/list', method: 'get', params: query })
+}
+
+export function simulatePayOrder(outTradeNo: string): Promise<AjaxResult> {
+  return request({ url: '/biz/payOrder/simulate/' + outTradeNo, method: 'put' })
 }

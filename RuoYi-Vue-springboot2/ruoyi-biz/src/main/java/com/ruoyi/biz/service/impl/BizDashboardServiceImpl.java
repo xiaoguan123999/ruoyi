@@ -95,6 +95,12 @@ public class BizDashboardServiceImpl implements IBizDashboardService
         stats.setPendingRecharge(BizDashboardCount.nvl(row.getPendingRecharge()));
         stats.setPendingWithdraw(BizDashboardCount.nvl(row.getPendingWithdraw()));
         stats.setPendingLevelReward(BizDashboardCount.nvl(row.getPendingLevelReward()));
+        stats.setPendingKyc(BizDashboardCount.nvl(row.getPendingKyc()));
+        BizDashboardMoney pendingWithdrawAmount = new BizDashboardMoney();
+        pendingWithdrawAmount.setTotalCny(BizDashboardCount.nvl(row.getPendingWithdrawCny()));
+        pendingWithdrawAmount.setTotalUsdt(BizDashboardCount.nvl(row.getPendingWithdrawUsdt()));
+        pendingWithdrawAmount.setTotalCount(BizDashboardCount.nvl(row.getPendingWithdraw()));
+        stats.setPendingWithdrawAmount(pendingWithdrawAmount);
         List<BizDashboardActivity> recent = dashboardMapper.selectRecent(8);
         stats.setRecent(recent == null ? new ArrayList<BizDashboardActivity>() : recent);
         return stats;

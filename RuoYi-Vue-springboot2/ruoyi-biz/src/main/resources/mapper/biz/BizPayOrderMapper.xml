@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizPayOrderMapper">
+    <resultMap type="BizPayOrder" id="BizPayOrderResult">
+        <id property="payOrderId" column="pay_order_id"/>
+        <result property="outTradeNo" column="out_trade_no"/>
+        <result property="rechargeId" column="recharge_id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="phone" column="phone"/>
+        <result property="providerCode" column="provider_code"/>
+        <result property="providerName" column="provider_name"/>
+        <result property="channelCode" column="channel_code"/>
+        <result property="channelName" column="channelName"/>
+        <result property="productId" column="product_id"/>
+        <result property="currency" column="currency"/>
+        <result property="amount" column="amount"/>
+        <result property="providerAmount" column="provider_amount"/>
+        <result property="status" column="status"/>
+        <result property="payType" column="pay_type"/>
+        <result property="payUrl" column="pay_url"/>
+        <result property="providerTradeNo" column="provider_trade_no"/>
+        <result property="notifyPayload" column="notify_payload"/>
+        <result property="expireTime" column="expire_time"/>
+        <result property="paidTime" column="paid_time"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+        <result property="mockMode" column="mock_mode"/>
+    </resultMap>
+    <sql id="joinCols">
+        o.pay_order_id, o.out_trade_no, o.recharge_id, o.member_id, m.phone,
+        o.provider_code, p.provider_name, o.channel_code,
+        ifnull(nullif(c.display_name,''), c.channel_name) as channelName,
+        o.product_id, o.currency, o.amount, o.provider_amount, o.status, o.pay_type, o.pay_url,
+        o.provider_trade_no, o.notify_payload, o.expire_time, o.paid_time, o.create_time, o.update_time,
+        o.remark, p.mock_mode
+    </sql>
+    <select id="selectPayOrderById" resultMap="BizPayOrderResult">
+        select <include refid="joinCols"/>
+        from biz_pay_order o
+        left join biz_member m on m.member_id = o.member_id
+        left join biz_pay_provider p on p.provider_code = o.provider_code
+        left join biz_pay_channel c on c.channel_code = o.channel_code
+        where o.pay_order_id = #{payOrderId}
+    </select>
+    <select id="selectPayOrderByOutTradeNo" resultMap="BizPayOrderResult">
+        select <include refid="joinCols"/>
+        from biz_pay_order o
+        left join biz_member m on m.member_id = o.member_id
+        left join biz_pay_provider p on p.provider_code = o.provider_code
+        left join biz_pay_channel c on c.channel_code = o.channel_code
+        where o.out_trade_no = #{outTradeNo}
+    </select>
+    <select id="selectPayOrderByOutTradeNoForUpdate" resultMap="BizPayOrderResult">
+        select pay_order_id, out_trade_no, recharge_id, member_id, provider_code, channel_code,
+               product_id, currency, amount, provider_amount, status, pay_type, pay_url,
+               provider_trade_no, notify_payload, expire_time, paid_time, create_time, update_time, remark
+        from biz_pay_order where out_trade_no = #{outTradeNo} for update
+    </select>
+    <select id="selectPayOrderList" resultMap="BizPayOrderResult">
+        select <include refid="joinCols"/>
+        from biz_pay_order o
+        left join biz_member m on m.member_id = o.member_id
+        left join biz_pay_provider p on p.provider_code = o.provider_code
+        left join biz_pay_channel c on c.channel_code = o.channel_code
+        <where>
+            <if test="memberId != null">and o.member_id = #{memberId}</if>
+            <if test="outTradeNo != null and outTradeNo != ''">and o.out_trade_no = #{outTradeNo}</if>
+            <if test="providerCode != null and providerCode != ''">and o.provider_code = #{providerCode}</if>
+            <if test="channelCode != null and channelCode != ''">and o.channel_code = #{channelCode}</if>
+            <if test="status != null and status != ''">and o.status = #{status}</if>
+            <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
+            <if test="params.beginTime != null and params.beginTime != ''">and o.create_time &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''">and o.create_time &lt; date_add(#{params.endTime}, interval 1 day)</if>
+        </where>
+        order by o.pay_order_id desc
+    </select>
+    <insert id="insertPayOrder" parameterType="BizPayOrder" useGeneratedKeys="true" keyProperty="payOrderId">
+        insert into biz_pay_order (
+            out_trade_no, recharge_id, member_id, provider_code, channel_code, product_id,
+            currency, amount, provider_amount, status, pay_type, pay_url, provider_trade_no,
+            expire_time, create_time, remark
+        ) values (
+            #{outTradeNo}, #{rechargeId}, #{memberId}, #{providerCode}, #{channelCode}, #{productId},
+            #{currency}, #{amount}, #{providerAmount}, #{status}, #{payType}, #{payUrl}, #{providerTradeNo},
+            #{expireTime}, sysdate(), #{remark}
+        )
+    </insert>
+    <update id="updatePayOrder" parameterType="BizPayOrder">
+        update biz_pay_order
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="payType != null">pay_type = #{payType},</if>
+            <if test="payUrl != null">pay_url = #{payUrl},</if>
+            <if test="providerTradeNo != null">provider_trade_no = #{providerTradeNo},</if>
+            <if test="notifyPayload != null">notify_payload = #{notifyPayload},</if>
+            <if test="paidTime != null">paid_time = #{paidTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where pay_order_id = #{payOrderId}
+    </update>
+</mapper>

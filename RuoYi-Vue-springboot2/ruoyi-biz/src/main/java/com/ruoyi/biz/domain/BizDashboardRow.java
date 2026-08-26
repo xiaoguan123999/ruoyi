@@ -85,6 +85,9 @@ public class BizDashboardRow
     private Long pendingRecharge;
     private Long pendingWithdraw;
     private Long pendingLevelReward;
+    private Long pendingKyc;
+    private java.math.BigDecimal pendingWithdrawCny;
+    private java.math.BigDecimal pendingWithdrawUsdt;
 
     public Long getRegisterToday() { return registerToday; }
     public void setRegisterToday(Long registerToday) { this.registerToday = registerToday; }
@@ -246,4 +249,10 @@ public class BizDashboardRow
     public void setPendingWithdraw(Long pendingWithdraw) { this.pendingWithdraw = pendingWithdraw; }
     public Long getPendingLevelReward() { return pendingLevelReward; }
     public void setPendingLevelReward(Long pendingLevelReward) { this.pendingLevelReward = pendingLevelReward; }
+    public Long getPendingKyc() { return pendingKyc; }
+    public void setPendingKyc(Long pendingKyc) { this.pendingKyc = pendingKyc; }
+    public java.math.BigDecimal getPendingWithdrawCny() { return pendingWithdrawCny; }
+    public void setPendingWithdrawCny(java.math.BigDecimal pendingWithdrawCny) { this.pendingWithdrawCny = pendingWithdrawCny; }
+    public java.math.BigDecimal getPendingWithdrawUsdt() { return pendingWithdrawUsdt; }
+    public void setPendingWithdrawUsdt(java.math.BigDecimal pendingWithdrawUsdt) { this.pendingWithdrawUsdt = pendingWithdrawUsdt; }
 }

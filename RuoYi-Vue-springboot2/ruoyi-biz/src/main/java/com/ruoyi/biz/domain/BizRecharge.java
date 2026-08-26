@@ -51,6 +51,15 @@ public class BizRecharge extends BaseEntity
     @ApiModelProperty("审核备注")
     private String auditRemark;
 
+    @ApiModelProperty("0人工 1线上")
+    private String payMode;
+
+    @ApiModelProperty("支付通道")
+    private String channelCode;
+
+    @ApiModelProperty("线上商户单号")
+    private String outTradeNo;
+
     public Long getRechargeId()
     {
         return rechargeId;
@@ -140,5 +149,12 @@ public class BizRecharge extends BaseEntity
     {
         this.auditRemark = auditRemark;
     }
+
+    public String getPayMode() { return payMode; }
+    public void setPayMode(String payMode) { this.payMode = payMode; }
+    public String getChannelCode() { return channelCode; }
+    public void setChannelCode(String channelCode) { this.channelCode = channelCode; }
+    public String getOutTradeNo() { return outTradeNo; }
+    public void setOutTradeNo(String outTradeNo) { this.outTradeNo = outTradeNo; }
 
 }

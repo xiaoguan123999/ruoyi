@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizPayChannelMapper">
+    <resultMap type="BizPayChannel" id="BizPayChannelResult">
+        <id property="channelId" column="channel_id"/>
+        <result property="providerCode" column="provider_code"/>
+        <result property="channelCode" column="channel_code"/>
+        <result property="channelName" column="channel_name"/>
+        <result property="displayName" column="display_name"/>
+        <result property="scene" column="scene"/>
+        <result property="productId" column="product_id"/>
+        <result property="currency" column="currency"/>
+        <result property="minAmount" column="min_amount"/>
+        <result property="maxAmount" column="max_amount"/>
+        <result property="weight" column="weight"/>
+        <result property="status" column="status"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="remark" column="remark"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="providerName" column="provider_name"/>
+        <result property="mockMode" column="mock_mode"/>
+        <result property="providerStatus" column="provider_status"/>
+        <result property="adapterFamily" column="adapter_family"/>
+    </resultMap>
+    <sql id="joinCols">
+        c.channel_id, c.provider_code, c.channel_code, c.channel_name, c.display_name, c.scene,
+        c.product_id, c.currency, c.min_amount, c.max_amount, c.weight, c.status, c.sort_order,
+        c.remark, c.create_time, c.update_time, p.provider_name, p.mock_mode, p.status as provider_status,
+        p.adapter_family
+    </sql>
+    <select id="selectPayChannelById" resultMap="BizPayChannelResult">
+        select <include refid="joinCols"/>
+        from biz_pay_channel c
+        left join biz_pay_provider p on p.provider_code = c.provider_code
+        where c.channel_id = #{channelId}
+    </select>
+    <select id="selectPayChannelByCode" resultMap="BizPayChannelResult">
+        select <include refid="joinCols"/>
+        from biz_pay_channel c
+        left join biz_pay_provider p on p.provider_code = c.provider_code
+        where c.channel_code = #{channelCode}
+    </select>
+    <select id="selectPayChannelList" resultMap="BizPayChannelResult">
+        select <include refid="joinCols"/>
+        from biz_pay_channel c
+        left join biz_pay_provider p on p.provider_code = c.provider_code
+        <where>
+            <if test="providerCode != null and providerCode != ''">and c.provider_code = #{providerCode}</if>
+            <if test="channelCode != null and channelCode != ''">and c.channel_code = #{channelCode}</if>
+            <if test="scene != null and scene != ''">and c.scene = #{scene}</if>
+            <if test="status != null and status != ''">and c.status = #{status}</if>
+        </where>
+        order by c.sort_order, c.channel_id
+    </select>
+    <select id="selectOperationalChannels" resultMap="BizPayChannelResult">
+        select <include refid="joinCols"/>
+        from biz_pay_channel c
+        inner join biz_pay_provider p on p.provider_code = c.provider_code
+        where c.status = '0' and p.status = '0'
+        <if test="providerCode != null and providerCode != ''">and c.provider_code = #{providerCode}</if>
+        <if test="scene != null and scene != ''">and c.scene = #{scene}</if>
+        <if test="channelCode != null and channelCode != ''">and c.channel_code = #{channelCode}</if>
+        order by c.weight desc, c.sort_order, c.channel_id
+    </select>
+    <update id="updatePayChannel" parameterType="BizPayChannel">
+        update biz_pay_channel
+        <set>
+            <if test="displayName != null">display_name = #{displayName},</if>
+            <if test="minAmount != null">min_amount = #{minAmount},</if>
+            <if test="maxAmount != null">max_amount = #{maxAmount},</if>
+            <if test="weight != null">weight = #{weight},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where channel_id = #{channelId}
+    </update>
+</mapper>

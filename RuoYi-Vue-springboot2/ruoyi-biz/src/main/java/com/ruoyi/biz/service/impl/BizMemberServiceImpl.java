@@ -18,6 +18,10 @@ import com.ruoyi.biz.domain.AppKycBody;
 import com.ruoyi.biz.domain.AppRegisterBody;
 import com.ruoyi.biz.domain.BizLevel;
 import com.ruoyi.biz.domain.BizMember;
+import com.ruoyi.biz.domain.BizTeamRelationPeer;
+import com.ruoyi.biz.domain.BizTeamRelationRow;
+import com.ruoyi.biz.domain.BizTeamTreeNode;
+import com.ruoyi.biz.mapper.BizCheckinMapper;
 import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.service.IBizBlacklistService;
 import com.ruoyi.biz.service.IBizLevelRewardService;
@@ -47,6 +51,9 @@ public class BizMemberServiceImpl implements IBizMemberService
 
     @Autowired
     private IBizBlacklistService blacklistService;
+
+    @Autowired
+    private BizCheckinMapper checkinMapper;
 
     @Override
     public BizMember selectMemberById(Long memberId)
@@ -528,6 +535,168 @@ public class BizMemberServiceImpl implements IBizMemberService
             count++;
         }
         return count;
+    }
+
+    @Override
+    public BizTeamTreeNode selectTeamTreeRoot(String keyword)
+    {
+        BizMember member = requireTeamMember(keyword);
+        return fillTreeNode(memberMapper.selectTeamTreeNode(member.getMemberId()));
+    }
+
+    @Override
+    public List<BizTeamTreeNode> selectTeamTreeChildren(Long memberId)
+    {
+        if (memberId == null)
+        {
+            throw new ServiceException("会员不存在");
+        }
+        List<BizTeamTreeNode> rows = memberMapper.selectTeamTreeChildren(memberId);
+        List<BizTeamTreeNode> list = new ArrayList<BizTeamTreeNode>();
+        if (rows == null)
+        {
+            return list;
+        }
+        for (int i = 0; i < rows.size(); i++)
+        {
+            list.add(fillTreeNode(rows.get(i)));
+        }
+        return list;
+    }
+
+    @Override
+    public List<BizTeamRelationRow> selectRecommendRelation(String keyword)
+    {
+        BizMember target = requireTeamMember(keyword);
+        List<Long> path = parseAncestorIds(target.getAncestors());
+        path.add(target.getMemberId());
+        List<BizTeamRelationRow> rows = new ArrayList<BizTeamRelationRow>();
+        for (int i = 0; i < path.size(); i++)
+        {
+            Long id = path.get(i);
+            BizMember member = memberMapper.selectMemberById(id);
+            if (member == null)
+            {
+                continue;
+            }
+            List<BizTeamTreeNode> siblings;
+            if (isRootParent(member.getParentId()))
+            {
+                siblings = new ArrayList<BizTeamTreeNode>();
+                BizTeamTreeNode self = memberMapper.selectTeamTreeNode(member.getMemberId());
+                if (self != null)
+                {
+                    siblings.add(self);
+                }
+            }
+            else
+            {
+                siblings = memberMapper.selectTeamTreeChildren(member.getParentId());
+            }
+            List<BizTeamRelationPeer> peers = new ArrayList<BizTeamRelationPeer>();
+            StringBuilder peerText = new StringBuilder();
+            if (siblings != null)
+            {
+                for (int p = 0; p < siblings.size(); p++)
+                {
+                    BizTeamTreeNode sib = siblings.get(p);
+                    boolean current = id.equals(sib.getMemberId());
+                    peers.add(BizTeamRelationPeer.of(sib.getMemberId(), sib.getPhone(), current));
+                    if (peerText.length() > 0)
+                    {
+                        peerText.append(' ');
+                    }
+                    peerText.append(sib.getMemberId()).append(':').append(nvl(sib.getPhone(), ""));
+                }
+            }
+            BizTeamRelationRow row = new BizTeamRelationRow();
+            row.setMemberId(member.getMemberId());
+            row.setTeamLevel(Integer.valueOf(i + 1));
+            row.setBalance(member.getCnyAvailable() == null ? BigDecimal.ZERO : member.getCnyAvailable());
+            row.setCheckinDays(Integer.valueOf(checkinMapper.countByMemberId(member.getMemberId())));
+            row.setAccount(member.getPhone());
+            row.setPeers(peers);
+            row.setPeerList(peerText.toString());
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    private BizMember requireTeamMember(String keyword)
+    {
+        if (StringUtils.isEmpty(keyword))
+        {
+            throw new ServiceException("请输入手机号或会员ID");
+        }
+        String q = keyword.trim();
+        Long id = parseLong(q);
+        if (id != null)
+        {
+            BizMember byId = memberMapper.selectMemberById(id);
+            if (byId != null)
+            {
+                return byId;
+            }
+        }
+        BizMember byPhone = memberMapper.selectMemberByPhone(q);
+        if (byPhone != null)
+        {
+            return byPhone;
+        }
+        BizMember byCode = memberMapper.selectMemberByInviteCode(q);
+        if (byCode != null)
+        {
+            return byCode;
+        }
+        throw new ServiceException("会员不存在");
+    }
+
+    private BizTeamTreeNode fillTreeNode(BizTeamTreeNode node)
+    {
+        if (node == null)
+        {
+            return null;
+        }
+        String name = StringUtils.isEmpty(node.getRealName()) ? "-" : node.getRealName();
+        node.setLabel(node.getMemberId() + " / " + nvl(node.getPhone(), "-") + " / " + name);
+        boolean has = node.getChildCount() != null && node.getChildCount().intValue() > 0;
+        node.setHasChildren(Boolean.valueOf(has));
+        node.setLeaf(Boolean.valueOf(!has));
+        return node;
+    }
+
+    private List<Long> parseAncestorIds(String ancestors)
+    {
+        List<Long> ids = new ArrayList<Long>();
+        if (StringUtils.isEmpty(ancestors))
+        {
+            return ids;
+        }
+        String[] parts = ancestors.split(",");
+        for (int i = 0; i < parts.length; i++)
+        {
+            String part = parts[i] == null ? "" : parts[i].trim();
+            if (part.length() == 0 || "0".equals(part))
+            {
+                continue;
+            }
+            Long id = parseLong(part);
+            if (id != null)
+            {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
+    private static boolean isRootParent(Long parentId)
+    {
+        return parentId == null || parentId.longValue() == 0L;
+    }
+
+    private static String nvl(String value, String fallback)
+    {
+        return StringUtils.isEmpty(value) ? fallback : value;
     }
 
     private String nextInviteCode()

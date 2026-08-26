@@ -5,6 +5,8 @@ import com.ruoyi.biz.api.AppTeamData;
 import com.ruoyi.biz.domain.AppKycBody;
 import com.ruoyi.biz.domain.AppRegisterBody;
 import com.ruoyi.biz.domain.BizMember;
+import com.ruoyi.biz.domain.BizTeamRelationRow;
+import com.ruoyi.biz.domain.BizTeamTreeNode;
 
 public interface IBizMemberService
 {
@@ -31,6 +33,12 @@ public interface IBizMemberService
     List<BizMember> selectTeamMembers(Long memberId, Integer teamLevel);
 
     AppTeamData getAppTeam(Long memberId);
+
+    BizTeamTreeNode selectTeamTreeRoot(String keyword);
+
+    List<BizTeamTreeNode> selectTeamTreeChildren(Long memberId);
+
+    List<BizTeamRelationRow> selectRecommendRelation(String keyword);
 
     void refreshLevel(Long memberId);
 

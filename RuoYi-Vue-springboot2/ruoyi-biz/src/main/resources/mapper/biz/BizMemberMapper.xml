@@ -239,4 +239,29 @@
             and member_id &lt;&gt; #{excludeMemberId}
         </if>
     </select>
+
+    <resultMap type="com.ruoyi.biz.domain.BizTeamTreeNode" id="TeamTreeNodeResult">
+        <id     property="memberId"   column="member_id"/>
+        <result property="parentId"   column="parent_id"/>
+        <result property="phone"      column="phone"/>
+        <result property="realName"   column="real_name"/>
+        <result property="childCount" column="child_count"/>
+    </resultMap>
+
+    <sql id="selectTeamTreeNodeVo">
+        select m.member_id, m.parent_id, m.phone, m.real_name,
+               (select count(1) from biz_member c where c.parent_id = m.member_id) as child_count
+        from biz_member m
+    </sql>
+
+    <select id="selectTeamTreeNode" parameterType="Long" resultMap="TeamTreeNodeResult">
+        <include refid="selectTeamTreeNodeVo"/>
+        where m.member_id = #{memberId}
+    </select>
+
+    <select id="selectTeamTreeChildren" parameterType="Long" resultMap="TeamTreeNodeResult">
+        <include refid="selectTeamTreeNodeVo"/>
+        where m.parent_id = #{parentId}
+        order by m.member_id
+    </select>
 </mapper>

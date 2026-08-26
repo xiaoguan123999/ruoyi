@@ -166,6 +166,14 @@ const data = reactive({
   }
 })
 const { queryParams, form, rules } = toRefs(data)
+const route = useRoute()
+
+function applyRouteQuery() {
+  const kyc = String(route.query.kycStatus || "")
+  if (kyc === "0" || kyc === "1") {
+    queryParams.value.kycStatus = kyc
+  }
+}
 
 function getList() {
   loading.value = true
@@ -229,5 +237,13 @@ function submitForm() {
     })
   })
 }
+applyRouteQuery()
 getList()
+watch(
+  () => String(route.query.kycStatus || ""),
+  () => {
+    applyRouteQuery()
+    handleQuery()
+  }
+)
 </script>

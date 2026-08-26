@@ -130,6 +130,13 @@ const open = ref(false)
 const current = ref<any>({})
 const dateRange = ref<string[]>([])
 const queryParams = ref({ pageNum: 1, pageSize: 10, withdrawId: undefined, memberId: undefined, phone: undefined, currency: undefined, status: undefined })
+const route = useRoute()
+function applyRouteQuery() {
+  const status = String(route.query.status || "")
+  if (status === "0" || status === "1" || status === "2") {
+    queryParams.value.status = status
+  }
+}
 const form = ref({ id: undefined as number | undefined, status: "1", auditRemark: "", payProofUrl: "" })
 const rules = {
   auditRemark: [{
@@ -181,5 +188,13 @@ function submitAudit() {
     })
   })
 }
+applyRouteQuery()
 getList()
+watch(
+  () => String(route.query.status || ""),
+  () => {
+    applyRouteQuery()
+    handleQuery()
+  }
+)
 </script>

@@ -85,7 +85,7 @@
         <el-card shadow="never" class="panel-card">
           <template #header>
             <div class="panel-header">
-              <span>待办审核</span>
+              <span>待办事项</span>
               <el-badge :value="todoTotal" :max="99" type="danger" />
             </div>
           </template>
@@ -93,7 +93,7 @@
             v-for="todo in todoList"
             :key="todo.key"
             class="todo-item"
-            @click="go(todo.path)"
+            @click="go(todo.path, todo.query)"
           >
             <div class="todo-icon" :style="{ background: todo.bg }">
               <el-icon :size="18" :color="todo.color"><component :is="todo.icon" /></el-icon>
@@ -102,7 +102,13 @@
               <div class="todo-title">{{ todo.title }}</div>
               <div class="todo-desc">{{ todo.desc }}</div>
             </div>
-            <el-tag :type="todo.tagType" effect="light" round>{{ todo.count }} 待处理</el-tag>
+            <div class="todo-right">
+              <template v-if="todo.amountText">
+                <div class="todo-amount">{{ todo.amountText }}</div>
+                <div v-if="todo.amountSub" class="todo-amount-sub">{{ todo.amountSub }}</div>
+              </template>
+              <el-tag v-else :type="todo.tagType" effect="light" round>{{ fmtInt(todo.count) }} {{ todo.unit }}</el-tag>
+            </div>
           </div>
           <el-empty v-if="!todoList.length" description="暂无待办权限" :image-size="64" />
         </el-card>
@@ -190,7 +196,7 @@ import {
   Headset,
   DataBoard,
   Stamp,
-  Present
+  User
 } from '@element-plus/icons-vue'
 import { getNormalPath, parseTime } from '@/utils/ruoyi'
 import { isHttp } from '@/utils/validate'
@@ -411,39 +417,48 @@ const walletCards = computed<MetricCard[]>(() => {
 })
 
 const todoList = computed(() => {
+  const pendingAmount = moneyOf('pendingWithdrawAmount')
   const defs = [
     {
-      key: 'recharge',
-      title: '充值审核',
-      desc: '含 CNY / USDT 待审申请',
-      count: n(stats.value.pendingRecharge),
-      menuTitles: ['充值审核'],
-      perms: ['biz:recharge:audit'],
-      icon: Wallet,
+      key: 'kyc',
+      title: '待审核实名',
+      desc: '尚未实名的会员',
+      count: n(stats.value.pendingKyc),
+      unit: '人',
+      menuTitles: ['会员管理'],
+      perms: ['biz:member:list'],
+      query: { kycStatus: '0' },
+      icon: User,
       color: '#F56C6C',
       bg: 'rgba(245, 108, 108, 0.12)',
       tagType: 'danger' as const
     },
     {
-      key: 'withdraw',
-      title: '提现审核',
-      desc: '请先线下打款再确认',
+      key: 'withdrawCount',
+      title: '待处理提现笔数',
+      desc: '待打款申请',
       count: n(stats.value.pendingWithdraw),
+      unit: '笔',
       menuTitles: ['提现审核'],
-      perms: ['biz:withdraw:audit'],
+      perms: ['biz:withdraw:list', 'biz:withdraw:query', 'biz:withdraw:audit'],
+      query: { status: '0' },
       icon: CreditCard,
       color: '#E6A23C',
       bg: 'rgba(230, 162, 60, 0.12)',
       tagType: 'warning' as const
     },
     {
-      key: 'reward',
-      title: '等级奖励发放',
-      desc: '待发放申请',
-      count: n(stats.value.pendingLevelReward),
-      menuTitles: ['等级奖励发放'],
-      perms: ['biz:levelReward:grant', 'biz:levelReward:pay'],
-      icon: Present,
+      key: 'withdrawAmount',
+      title: '待处理提现金额',
+      desc: '待打款金额，CNY / USDT 分开',
+      count: n(stats.value.pendingWithdraw),
+      unit: '笔',
+      amountText: `${fmtMoney(pendingAmount.totalCny)} CNY`,
+      amountSub: `${fmtMoney(pendingAmount.totalUsdt)} USDT`,
+      menuTitles: ['提现审核'],
+      perms: ['biz:withdraw:list', 'biz:withdraw:query', 'biz:withdraw:audit'],
+      query: { status: '0' },
+      icon: Wallet,
       color: '#409EFF',
       bg: 'rgba(64, 158, 255, 0.12)',
       tagType: 'primary' as const
@@ -454,7 +469,7 @@ const todoList = computed(() => {
     .filter((item) => canShow(item.path, item.perms))
 })
 
-const todoTotal = computed(() => todoList.value.reduce((s, i) => s + i.count, 0))
+const todoTotal = computed(() => n(stats.value.pendingKyc) + n(stats.value.pendingWithdraw))
 
 const shortcutDefs = [
   { name: '新闻资讯', menuTitles: ['新闻资讯'], perms: ['biz:news:list', 'biz:news:query'], icon: Document, color: '#409EFF', bg: 'rgba(64,158,255,.1)' },
@@ -557,12 +572,12 @@ function renderTrendChart(): void {
   }, true)
 }
 
-function go(path?: string): void {
+function go(path?: string, query?: Record<string, string>): void {
   if (!path) {
     ElMessage.warning('当前账号无对应菜单权限，或菜单尚未配置')
     return
   }
-  router.push(path).catch(() => {
+  router.push({ path, query }).catch(() => {
     ElMessage.warning('菜单路径跳转失败，请从侧边栏进入')
   })
 }
@@ -800,6 +815,23 @@ onBeforeUnmount(() => {
   }
 
   .todo-desc {
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+  }
+
+  .todo-right {
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .todo-amount {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+  }
+
+  .todo-amount-sub {
     margin-top: 2px;
     font-size: 12px;
     color: var(--el-text-color-secondary);

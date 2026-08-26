@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizPayProviderMapper">
+    <resultMap type="BizPayProvider" id="BizPayProviderResult">
+        <id property="providerId" column="provider_id"/>
+        <result property="providerCode" column="provider_code"/>
+        <result property="providerName" column="provider_name"/>
+        <result property="adapterFamily" column="adapter_family"/>
+        <result property="gatewayUrl" column="gateway_url"/>
+        <result property="appId" column="app_id"/>
+        <result property="secretKey" column="secret_key"/>
+        <result property="mockMode" column="mock_mode"/>
+        <result property="status" column="status"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="remark" column="remark"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+    <select id="selectPayProviderById" resultMap="BizPayProviderResult">
+        select * from biz_pay_provider where provider_id = #{providerId}
+    </select>
+    <select id="selectPayProviderByCode" resultMap="BizPayProviderResult">
+        select * from biz_pay_provider where provider_code = #{providerCode}
+    </select>
+    <select id="selectPayProviderList" resultMap="BizPayProviderResult">
+        select * from biz_pay_provider
+        <where>
+            <if test="providerCode != null and providerCode != ''">and provider_code = #{providerCode}</if>
+            <if test="providerName != null and providerName != ''">and provider_name like concat('%', #{providerName}, '%')</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+            <if test="mockMode != null and mockMode != ''">and mock_mode = #{mockMode}</if>
+        </where>
+        order by sort_order, provider_id
+    </select>
+    <update id="updatePayProvider" parameterType="BizPayProvider">
+        update biz_pay_provider
+        <set>
+            <if test="providerName != null">provider_name = #{providerName},</if>
+            <if test="gatewayUrl != null">gateway_url = #{gatewayUrl},</if>
+            <if test="appId != null">app_id = #{appId},</if>
+            <if test="secretKey != null">secret_key = #{secretKey},</if>
+            <if test="mockMode != null">mock_mode = #{mockMode},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where provider_id = #{providerId}
+    </update>
+</mapper>
