@@ -1,8 +1,11 @@
 package com.ruoyi.biz.service.impl;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,9 +82,10 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
         }
         String mixed = StringUtils.isEmpty(rule.getMixedPayCurrency()) ? BizConstants.CURRENCY_USDT
                 : rule.getMixedPayCurrency().toUpperCase();
-        if (!BizConstants.CURRENCY_CNY.equals(mixed) && !BizConstants.CURRENCY_USDT.equals(mixed))
+        if (!BizConstants.CURRENCY_CNY.equals(mixed) && !BizConstants.CURRENCY_USDT.equals(mixed)
+                && !"BOTH".equals(mixed))
         {
-            throw new ServiceException("混合业绩发放币种只能是CNY或USDT");
+            throw new ServiceException("混合业绩发放币种只能是CNY、USDT或BOTH");
         }
         String source = StringUtils.isEmpty(rule.getPerformanceSource()) ? "SUBSCRIBE" : rule.getPerformanceSource().toUpperCase();
         if (!"SUBSCRIBE".equals(source) && !"RECHARGE".equals(source) && !"BOTH".equals(source))
@@ -91,7 +95,7 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
         saveConfig(BizConstants.CONFIG_LEVEL_REWARD_ENABLED, "等级奖励开关",
                 boolStr(rule.getEnabled(), true), "false表示关闭成长激励金");
         saveConfig(BizConstants.CONFIG_LEVEL_REWARD_MIXED_PAY, "混合业绩发放币种", mixed,
-                "团队同时有人民币和USDT业绩时发这个币种");
+                "CNY或USDT=两种业绩都有时发该币种；BOTH=人民币和USDT金额都发");
         saveConfig(BizConstants.CONFIG_LEVEL_REWARD_PERF_SOURCE, "团队业绩口径", source,
                 "SUBSCRIBE认购 RECHARGE充值 BOTH两者相加");
         saveConfig(BizConstants.CONFIG_LEVEL_REWARD_INCLUDE_SELF, "团队业绩含本人",
@@ -114,6 +118,13 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
             throw new ServiceException("请选择等级");
         }
         fillRewardDefaults(level);
+        String source = StringUtils.isEmpty(level.getPerformanceSource()) ? "RECHARGE"
+                : level.getPerformanceSource().toUpperCase();
+        if (!"SUBSCRIBE".equals(source) && !"RECHARGE".equals(source) && !"BOTH".equals(source))
+        {
+            throw new ServiceException("团队业绩口径只能是认购、充值或认购+充值");
+        }
+        level.setPerformanceSource(source);
         String cycle = level.getRewardCycle() == null ? "NONE" : level.getRewardCycle().toUpperCase();
         if (!"NONE".equals(cycle) && !"ONCE".equals(cycle) && !"MONTHLY".equals(cycle) && !"PERMANENT".equals(cycle))
         {
@@ -132,6 +143,30 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
             throw new ServiceException("永久档领取方式只能是 NONE/MONTHLY/UNLIMITED");
         }
         level.setRewardRepeat(repeat);
+        if (StringUtils.isEmpty(level.getWalletTypeCode()))
+        {
+            level.setWalletTypeCode("PROMO");
+        }
+        else
+        {
+            level.setWalletTypeCode(level.getWalletTypeCode().trim().toUpperCase());
+        }
+        String mixedPay = StringUtils.isEmpty(level.getMixedPayCurrency()) ? BizConstants.CURRENCY_USDT
+                : level.getMixedPayCurrency().toUpperCase();
+        if (!BizConstants.CURRENCY_CNY.equals(mixedPay) && !BizConstants.CURRENCY_USDT.equals(mixedPay)
+                && !"BOTH".equals(mixedPay))
+        {
+            throw new ServiceException("发放币种只能是CNY、USDT或BOTH");
+        }
+        level.setMixedPayCurrency(mixedPay);
+        if (StringUtils.isEmpty(level.getValidNeedKyc()))
+        {
+            level.setValidNeedKyc("1");
+        }
+        if (StringUtils.isEmpty(level.getValidNeedOrder()))
+        {
+            level.setValidNeedOrder("1");
+        }
         return levelMapper.updateLevel(level);
     }
 
@@ -148,14 +183,16 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
         {
             return;
         }
-        Stats stats = loadStats(memberId);
+        Map<String, Stats> cache = new HashMap<String, Stats>();
+        int viewerDepth = viewerDepth(memberId);
         BizLevel query = new BizLevel();
         query.setStatus(BizConstants.STATUS_OK);
         List<BizLevel> levels = levelMapper.selectLevelList(query);
-        BizLevel current = pickHighest(levels, stats);
+        BizLevel current = pickHighest(levels, memberId, viewerDepth, cache);
         for (int i = 0; i < levels.size(); i++)
         {
             BizLevel level = levels.get(i);
+            Stats stats = statsOf(memberId, viewerDepth, level, cache);
             if (matches(stats, level) && rewardOn(level) && "ONCE".equalsIgnoreCase(level.getRewardCycle()))
             {
                 tryGrant(member, level, stats, "ONCE");
@@ -165,21 +202,22 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
         {
             return;
         }
+        Stats currentStats = statsOf(memberId, viewerDepth, current, cache);
         String cycle = current.getRewardCycle() == null ? "" : current.getRewardCycle().toUpperCase();
         if ("MONTHLY".equals(cycle))
         {
-            tryGrant(member, current, stats, DateUtils.parseDateToStr(DateUtils.YYYY_MM, new Date()));
+            tryGrant(member, current, currentStats, DateUtils.parseDateToStr(DateUtils.YYYY_MM, new Date()));
         }
         else if ("PERMANENT".equals(cycle))
         {
             String repeat = current.getRewardRepeat() == null ? "UNLIMITED" : current.getRewardRepeat().toUpperCase();
             if ("MONTHLY".equals(repeat))
             {
-                tryGrant(member, current, stats, DateUtils.parseDateToStr(DateUtils.YYYY_MM, new Date()));
+                tryGrant(member, current, currentStats, DateUtils.parseDateToStr(DateUtils.YYYY_MM, new Date()));
             }
             else
             {
-                tryGrant(member, current, stats, "FIRST");
+                tryGrant(member, current, currentStats, "FIRST");
             }
         }
     }
@@ -191,19 +229,19 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
         {
             return null;
         }
-        Stats stats = loadStats(memberId);
         BizLevel query = new BizLevel();
         query.setStatus(BizConstants.STATUS_OK);
-        return pickHighest(levelMapper.selectLevelList(query), stats);
+        return pickHighest(levelMapper.selectLevelList(query), memberId, viewerDepth(memberId),
+                new HashMap<String, Stats>());
     }
 
-    private BizLevel pickHighest(List<BizLevel> levels, Stats stats)
+    private BizLevel pickHighest(List<BizLevel> levels, Long memberId, int viewerDepth, Map<String, Stats> cache)
     {
         BizLevel current = null;
         for (int i = 0; i < levels.size(); i++)
         {
             BizLevel level = levels.get(i);
-            if (!matches(stats, level))
+            if (!matches(statsOf(memberId, viewerDepth, level, cache), level))
             {
                 continue;
             }
@@ -252,7 +290,8 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
             throw new ServiceException("发放金额必须大于0");
         }
         walletService.credit(grant.getMemberId(), grant.getCurrency(), grant.getAmount(),
-                BizConstants.BIZ_LEVEL_REWARD, grant.getGrantId(), "等级奖励:" + grant.getLevelName());
+                BizConstants.BIZ_LEVEL_REWARD, grant.getGrantId(), "等级奖励:" + grant.getLevelName(),
+                walletOf(levelMapper.selectLevelById(grant.getLevelId())));
         BizLevelRewardGrant update = new BizLevelRewardGrant();
         update.setGrantId(grantId);
         update.setStatus(BizConstants.AUDIT_PASS);
@@ -305,24 +344,37 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
         {
             throw new ServiceException("仅永久档可额外发放");
         }
-        Stats stats = loadStats(member.getMemberId());
+        Stats stats = statsOf(member.getMemberId(), viewerDepth(member.getMemberId()), level,
+                new HashMap<String, Stats>());
         if (!matches(stats, level))
         {
             throw new ServiceException("该会员当前未达成该等级条件");
         }
         String cycleKey = "PAY-" + DateUtils.dateTimeNow();
-        BizLevelRewardGrant grant = buildGrant(member, level, stats, cycleKey);
-        if (grant == null)
+        List<String> currencies = payCurrencies(stats, level);
+        if (currencies.isEmpty())
         {
             throw new ServiceException("奖励金额未配置或为0");
         }
-        grant.setStatus(BizConstants.AUDIT_PASS);
-        grant.setPayBy(operator);
-        grant.setPayTime(new Date());
-        grant.setRemark(body.getRemark());
-        grantMapper.insertGrant(grant);
-        walletService.credit(member.getMemberId(), grant.getCurrency(), grant.getAmount(),
-                BizConstants.BIZ_LEVEL_REWARD, grant.getGrantId(), "等级奖励:" + level.getLevelName());
+        boolean both = currencies.size() > 1;
+        for (int i = 0; i < currencies.size(); i++)
+        {
+            String currency = currencies.get(i);
+            String key = both ? cycleKey + "-" + currency : cycleKey;
+            BizLevelRewardGrant grant = buildGrant(member, level, key, currency);
+            if (grant == null)
+            {
+                continue;
+            }
+            grant.setStatus(BizConstants.AUDIT_PASS);
+            grant.setPayBy(operator);
+            grant.setPayTime(new Date());
+            grant.setRemark(body.getRemark());
+            grantMapper.insertGrant(grant);
+            walletService.credit(member.getMemberId(), grant.getCurrency(), grant.getAmount(),
+                    BizConstants.BIZ_LEVEL_REWARD, grant.getGrantId(), "等级奖励:" + level.getLevelName(),
+                    walletOf(level));
+        }
     }
 
     private void tryGrant(BizMember member, BizLevel level, Stats stats, String cycleKey)
@@ -332,55 +384,56 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
         {
             return;
         }
-        BizLevelRewardGrant existing = grantMapper.selectByCycle(member.getMemberId(), level.getLevelId(), cycleKey);
-        if (existing != null)
+        List<String> currencies = payCurrencies(stats, level);
+        boolean both = currencies.size() > 1;
+        for (int i = 0; i < currencies.size(); i++)
         {
-            if (BizConstants.AUDIT_REJECT.equals(existing.getStatus())
-                    && "MANUAL".equalsIgnoreCase(level.getRewardMode()))
+            String currency = currencies.get(i);
+            String key = both ? cycleKey + "-" + currency : cycleKey;
+            BizLevelRewardGrant existing = grantMapper.selectByCycle(member.getMemberId(), level.getLevelId(), key);
+            if (existing != null)
             {
-                BizLevelRewardGrant reopen = new BizLevelRewardGrant();
-                reopen.setGrantId(existing.getGrantId());
-                reopen.setStatus(BizConstants.AUDIT_PENDING);
-                reopen.setPayBy("");
-                reopen.setRemark("待客服发放");
-                grantMapper.updateGrant(reopen);
+                if (BizConstants.AUDIT_REJECT.equals(existing.getStatus())
+                        && "MANUAL".equalsIgnoreCase(level.getRewardMode()))
+                {
+                    BizLevelRewardGrant reopen = new BizLevelRewardGrant();
+                    reopen.setGrantId(existing.getGrantId());
+                    reopen.setStatus(BizConstants.AUDIT_PENDING);
+                    reopen.setPayBy("");
+                    reopen.setRemark("待客服发放");
+                    grantMapper.updateGrant(reopen);
+                }
+                continue;
             }
-            return;
-        }
-        BizLevelRewardGrant grant = buildGrant(member, level, stats, cycleKey);
-        if (grant == null)
-        {
-            return;
-        }
-        boolean auto = "AUTO".equalsIgnoreCase(level.getRewardMode());
-        if (auto)
-        {
-            grant.setStatus(BizConstants.AUDIT_PASS);
-            grant.setPayBy("system");
-            grant.setPayTime(new Date());
-            grant.setRemark("系统自动发放");
-            grantMapper.insertGrant(grant);
-            walletService.credit(member.getMemberId(), grant.getCurrency(), grant.getAmount(),
-                    BizConstants.BIZ_LEVEL_REWARD, grant.getGrantId(), "等级奖励:" + level.getLevelName());
-        }
-        else
-        {
-            grant.setStatus(BizConstants.AUDIT_PENDING);
-            grant.setRemark("待客服发放");
-            grantMapper.insertGrant(grant);
+            BizLevelRewardGrant grant = buildGrant(member, level, key, currency);
+            if (grant == null)
+            {
+                continue;
+            }
+            boolean auto = "AUTO".equalsIgnoreCase(level.getRewardMode());
+            if (auto)
+            {
+                grant.setStatus(BizConstants.AUDIT_PASS);
+                grant.setPayBy("system");
+                grant.setPayTime(new Date());
+                grant.setRemark("系统自动发放");
+                grantMapper.insertGrant(grant);
+                walletService.credit(member.getMemberId(), grant.getCurrency(), grant.getAmount(),
+                        BizConstants.BIZ_LEVEL_REWARD, grant.getGrantId(), "等级奖励:" + level.getLevelName(),
+                        walletOf(level));
+            }
+            else
+            {
+                grant.setStatus(BizConstants.AUDIT_PENDING);
+                grant.setRemark("待客服发放");
+                grantMapper.insertGrant(grant);
+            }
         }
     }
 
-    private BizLevelRewardGrant buildGrant(BizMember member, BizLevel level, Stats stats, String cycleKey)
+    private BizLevelRewardGrant buildGrant(BizMember member, BizLevel level, String cycleKey, String currency)
     {
-        String currency = resolveCurrency(stats);
         BigDecimal amount = amountOf(level, currency);
-        if (amount.compareTo(BigDecimal.ZERO) <= 0)
-        {
-            String other = BizConstants.CURRENCY_USDT.equals(currency) ? BizConstants.CURRENCY_CNY : BizConstants.CURRENCY_USDT;
-            amount = amountOf(level, other);
-            currency = other;
-        }
         if (amount.compareTo(BigDecimal.ZERO) <= 0)
         {
             return null;
@@ -397,13 +450,45 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
         return grant;
     }
 
-    private String resolveCurrency(Stats stats)
+    private List<String> payCurrencies(Stats stats, BizLevel level)
     {
-        boolean hasCny = stats.teamCny.compareTo(BigDecimal.ZERO) > 0;
-        boolean hasUsdt = stats.teamUsdt.compareTo(BigDecimal.ZERO) > 0;
+        String mixed = mixedOf(level);
+        List<String> list = new ArrayList<String>();
+        if ("BOTH".equals(mixed))
+        {
+            if (amountOf(level, BizConstants.CURRENCY_CNY).compareTo(BigDecimal.ZERO) > 0)
+            {
+                list.add(BizConstants.CURRENCY_CNY);
+            }
+            if (amountOf(level, BizConstants.CURRENCY_USDT).compareTo(BigDecimal.ZERO) > 0)
+            {
+                list.add(BizConstants.CURRENCY_USDT);
+            }
+            return list;
+        }
+        String currency = resolveCurrency(stats, level);
+        BigDecimal amount = amountOf(level, currency);
+        if (amount.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            currency = BizConstants.CURRENCY_USDT.equals(currency)
+                    ? BizConstants.CURRENCY_CNY : BizConstants.CURRENCY_USDT;
+        }
+        if (amountOf(level, currency).compareTo(BigDecimal.ZERO) > 0)
+        {
+            list.add(currency);
+        }
+        return list;
+    }
+
+    private String resolveCurrency(Stats stats, BizLevel level)
+    {
+        BigDecimal teamCny = teamAmount(stats, level, true);
+        BigDecimal teamUsdt = teamAmount(stats, level, false);
+        boolean hasCny = teamCny.compareTo(BigDecimal.ZERO) > 0;
+        boolean hasUsdt = teamUsdt.compareTo(BigDecimal.ZERO) > 0;
         if (hasCny && hasUsdt)
         {
-            String mixed = strVal(BizConstants.CONFIG_LEVEL_REWARD_MIXED_PAY, BizConstants.CURRENCY_USDT).toUpperCase();
+            String mixed = mixedOf(level);
             return BizConstants.CURRENCY_CNY.equals(mixed) ? BizConstants.CURRENCY_CNY : BizConstants.CURRENCY_USDT;
         }
         if (hasUsdt)
@@ -433,15 +518,79 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
         {
             return false;
         }
-        if (!reach(stats.teamCny, level.getMinTeamPerfCny()))
+        BigDecimal teamCny = teamAmount(stats, level, true);
+        BigDecimal teamUsdt = teamAmount(stats, level, false);
+        if (!reach(teamCny, level.getMinTeamRechargeCny()))
         {
             return false;
         }
-        if (!reach(stats.teamUsdt, level.getMinTeamPerfUsdt()))
+        if (!reach(teamUsdt, level.getMinTeamRechargeUsdt()))
+        {
+            return false;
+        }
+        if (!reach(teamCny, level.getMinTeamPerfCny()))
+        {
+            return false;
+        }
+        if (!reach(teamUsdt, level.getMinTeamPerfUsdt()))
         {
             return false;
         }
         return true;
+    }
+
+    private BigDecimal teamAmount(Stats stats, BizLevel level, boolean cny)
+    {
+        String source = sourceOf(level);
+        BigDecimal order = cny ? stats.downlineOrderCny : stats.downlineOrderUsdt;
+        BigDecimal rec = cny ? stats.downlineRechargeCny : stats.downlineRechargeUsdt;
+        if ("RECHARGE".equals(source))
+        {
+            return rec;
+        }
+        if ("BOTH".equals(source))
+        {
+            return order.add(rec);
+        }
+        return order;
+    }
+
+    private String mixedOf(BizLevel level)
+    {
+        String mixed = level == null ? null : level.getMixedPayCurrency();
+        if (StringUtils.isEmpty(mixed))
+        {
+            mixed = strVal(BizConstants.CONFIG_LEVEL_REWARD_MIXED_PAY, BizConstants.CURRENCY_USDT);
+        }
+        return mixed.toUpperCase();
+    }
+
+    private String walletOf(BizLevel level)
+    {
+        if (level != null && StringUtils.isNotEmpty(level.getWalletTypeCode()))
+        {
+            return level.getWalletTypeCode().trim().toUpperCase();
+        }
+        return null;
+    }
+
+    private boolean flagOn(String value, boolean defaultValue)
+    {
+        if (StringUtils.isEmpty(value))
+        {
+            return defaultValue;
+        }
+        return "1".equals(value) || "true".equalsIgnoreCase(value);
+    }
+
+    private String sourceOf(BizLevel level)
+    {
+        String source = level == null ? null : level.getPerformanceSource();
+        if (StringUtils.isEmpty(source))
+        {
+            source = strVal(BizConstants.CONFIG_LEVEL_REWARD_PERF_SOURCE, "SUBSCRIBE");
+        }
+        return source.toUpperCase();
     }
 
     private boolean reach(BigDecimal actual, BigDecimal min)
@@ -459,36 +608,76 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
                 && level.getRewardCycle() != null && !"NONE".equalsIgnoreCase(level.getRewardCycle());
     }
 
-    private Stats loadStats(Long memberId)
+    private Stats statsOf(Long memberId, int viewerDepth, BizLevel level, Map<String, Stats> cache)
     {
-        BizLevelRewardRule rule = getRule();
-        boolean needKyc = rule.getValidNeedKyc() == null || rule.getValidNeedKyc().booleanValue();
-        boolean needOrder = rule.getValidNeedOrder() == null || rule.getValidNeedOrder().booleanValue();
-        boolean includeSelf = rule.getIncludeSelf() != null && rule.getIncludeSelf().booleanValue();
-        String source = rule.getPerformanceSource() == null ? "SUBSCRIBE" : rule.getPerformanceSource().toUpperCase();
+        Integer maxDepth = parseTeamDepthLimit(level == null ? null : level.getTeamDepth());
+        boolean needKyc = flagOn(level == null ? null : level.getValidNeedKyc(),
+                boolVal(BizConstants.CONFIG_LEVEL_REWARD_NEED_KYC, true));
+        boolean needOrder = flagOn(level == null ? null : level.getValidNeedOrder(),
+                boolVal(BizConstants.CONFIG_LEVEL_REWARD_NEED_ORDER, true));
+        String key = (maxDepth == null ? "all" : maxDepth.toString()) + ":" + needKyc + ":" + needOrder;
+        Stats cached = cache.get(key);
+        if (cached != null)
+        {
+            return cached;
+        }
+        Stats stats = loadStats(memberId, maxDepth, viewerDepth, needKyc, needOrder);
+        cache.put(key, stats);
+        return stats;
+    }
+
+    private Integer parseTeamDepthLimit(String teamDepth)
+    {
+        if (StringUtils.isEmpty(teamDepth))
+        {
+            return null;
+        }
+        String text = teamDepth.trim();
+        String[] labels = new String[] {"一级内", "二级内", "三级内", "四级内", "五级内", "六级内", "七级内"};
+        for (int i = 0; i < labels.length; i++)
+        {
+            if (labels[i].equals(text) || text.startsWith(String.valueOf(i + 1)))
+            {
+                return Integer.valueOf(i + 1);
+            }
+        }
+        return null;
+    }
+
+    private int viewerDepth(Long memberId)
+    {
+        BizMember member = memberMapper.selectMemberById(memberId);
+        if (member == null || StringUtils.isEmpty(member.getAncestors()) || "0".equals(member.getAncestors()))
+        {
+            return 0;
+        }
+        int n = 0;
+        String ancestors = member.getAncestors();
+        for (int i = 0; i < ancestors.length(); i++)
+        {
+            if (ancestors.charAt(i) == ',')
+            {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private Stats loadStats(Long memberId, Integer maxDepth, int viewerDepth, boolean needKyc, boolean needOrder)
+    {
         Stats stats = new Stats();
-        stats.validMembers = memberMapper.countValidTeamMembersConfig(memberId, needKyc, needOrder);
+        stats.validMembers = memberMapper.countValidTeamMembersConfig(memberId, needKyc, needOrder, maxDepth,
+                Integer.valueOf(viewerDepth));
         stats.rechargeCny = nvl(rechargeMapper.sumPassedRecharge(memberId, BizConstants.CURRENCY_CNY));
         stats.rechargeUsdt = nvl(rechargeMapper.sumPassedRecharge(memberId, BizConstants.CURRENCY_USDT));
-        BigDecimal orderCny = nvl(orderMapper.sumTeamOrderAmount(memberId, BizConstants.CURRENCY_CNY, includeSelf));
-        BigDecimal orderUsdt = nvl(orderMapper.sumTeamOrderAmount(memberId, BizConstants.CURRENCY_USDT, includeSelf));
-        BigDecimal recCny = nvl(rechargeMapper.sumTeamPassedRecharge(memberId, BizConstants.CURRENCY_CNY, includeSelf));
-        BigDecimal recUsdt = nvl(rechargeMapper.sumTeamPassedRecharge(memberId, BizConstants.CURRENCY_USDT, includeSelf));
-        if ("RECHARGE".equals(source))
-        {
-            stats.teamCny = recCny;
-            stats.teamUsdt = recUsdt;
-        }
-        else if ("BOTH".equals(source))
-        {
-            stats.teamCny = orderCny.add(recCny);
-            stats.teamUsdt = orderUsdt.add(recUsdt);
-        }
-        else
-        {
-            stats.teamCny = orderCny;
-            stats.teamUsdt = orderUsdt;
-        }
+        stats.downlineOrderCny = nvl(orderMapper.sumTeamOrderAmount(memberId, BizConstants.CURRENCY_CNY, false,
+                maxDepth, Integer.valueOf(viewerDepth)));
+        stats.downlineOrderUsdt = nvl(orderMapper.sumTeamOrderAmount(memberId, BizConstants.CURRENCY_USDT, false,
+                maxDepth, Integer.valueOf(viewerDepth)));
+        stats.downlineRechargeCny = nvl(rechargeMapper.sumTeamPassedRecharge(memberId, BizConstants.CURRENCY_CNY, false,
+                maxDepth, Integer.valueOf(viewerDepth)));
+        stats.downlineRechargeUsdt = nvl(rechargeMapper.sumTeamPassedRecharge(memberId, BizConstants.CURRENCY_USDT, false,
+                maxDepth, Integer.valueOf(viewerDepth)));
         return stats;
     }
 
@@ -517,6 +706,34 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
         if (level.getRewardUsdt() == null)
         {
             level.setRewardUsdt(BigDecimal.ZERO);
+        }
+        if (level.getMinTeamRechargeCny() == null)
+        {
+            level.setMinTeamRechargeCny(BigDecimal.ZERO);
+        }
+        if (level.getMinTeamRechargeUsdt() == null)
+        {
+            level.setMinTeamRechargeUsdt(BigDecimal.ZERO);
+        }
+        if (StringUtils.isEmpty(level.getPerformanceSource()))
+        {
+            level.setPerformanceSource("RECHARGE");
+        }
+        if (StringUtils.isEmpty(level.getWalletTypeCode()))
+        {
+            level.setWalletTypeCode("PROMO");
+        }
+        if (StringUtils.isEmpty(level.getMixedPayCurrency()))
+        {
+            level.setMixedPayCurrency(BizConstants.CURRENCY_USDT);
+        }
+        if (StringUtils.isEmpty(level.getValidNeedKyc()))
+        {
+            level.setValidNeedKyc("1");
+        }
+        if (StringUtils.isEmpty(level.getValidNeedOrder()))
+        {
+            level.setValidNeedOrder("1");
         }
     }
 
@@ -579,7 +796,9 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
         private int validMembers;
         private BigDecimal rechargeCny = BigDecimal.ZERO;
         private BigDecimal rechargeUsdt = BigDecimal.ZERO;
-        private BigDecimal teamCny = BigDecimal.ZERO;
-        private BigDecimal teamUsdt = BigDecimal.ZERO;
+        private BigDecimal downlineRechargeCny = BigDecimal.ZERO;
+        private BigDecimal downlineRechargeUsdt = BigDecimal.ZERO;
+        private BigDecimal downlineOrderCny = BigDecimal.ZERO;
+        private BigDecimal downlineOrderUsdt = BigDecimal.ZERO;
     }
 }

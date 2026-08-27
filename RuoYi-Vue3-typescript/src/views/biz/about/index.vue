@@ -1,7 +1,7 @@
 <template>
-  <div class="app-container ops-page">
+  <div class="app-container ops-page" v-loading="loading">
     <el-alert
-      title="纯页面设计预览：关于我们仅一条内容。选择文本或 PDF 模式后，下方展示对应编辑区。暂不对接接口。"
+      title="全局仅一条。选文本或 PDF 后保存即生效，App 按当前模式展示。"
       type="info"
       :closable="false"
       show-icon
@@ -35,8 +35,8 @@
         <editor v-model="textForm.content" :min-height="220" />
       </el-form-item>
       <el-form-item label-width="0" class="form-actions">
-        <el-button type="primary">保存文本内容</el-button>
-        <el-button>重 置</el-button>
+        <el-button type="primary" @click="saveForm" v-hasPermi="['biz:about:edit']">保存文本内容</el-button>
+        <el-button @click="loadForm">重 置</el-button>
       </el-form-item>
     </el-form>
 
@@ -51,8 +51,8 @@
               <div class="field-tip">仅支持 pdf，建议不超过 20MB。App 将按此文件逐页渲染</div>
             </el-form-item>
             <el-form-item label-width="0" class="form-actions">
-              <el-button type="primary">保存 PDF 设置</el-button>
-              <el-button>取 消</el-button>
+              <el-button type="primary" @click="saveForm" v-hasPermi="['biz:about:edit']">保存 PDF 设置</el-button>
+              <el-button @click="loadForm">取 消</el-button>
             </el-form-item>
           </el-form>
         </el-col>
@@ -84,28 +84,67 @@
 </template>
 
 <script setup lang="ts" name="BizAbout">
+import { getAboutConfig, saveAboutConfig } from "@/api/biz"
 import { isExternal } from "@/utils/validate"
 
+const { proxy } = getCurrentInstance() as any
+const loading = ref(false)
+const previewOpen = ref(false)
 const display = ref({
   mode: "TEXT" as "TEXT" | "PDF",
   pdfUrl: ""
 })
-const previewOpen = ref(false)
 const textForm = ref({
-  title: "星帆智联",
-  subtitle: "连接星空 · 智联未来",
+  title: "",
+  subtitle: "",
   imageUrl: "",
-  content: "<p>星帆智联聚焦商业航天与卫星互联网应用，以科技连接万物，让星辰触手可及。</p>"
+  content: ""
 })
 
 const pdfSrc = computed(() => {
   const url = (display.value.pdfUrl || "").trim()
   if (!url) return ""
-  // 外链或 R2 公网地址直接用；相对路径走管理端代理前缀
   if (isExternal(url)) return url
   const path = url.startsWith("/") ? url : `/${url}`
   return import.meta.env.VITE_APP_BASE_API + path
 })
+
+function applyData(data: any) {
+  const row = data || {}
+  display.value = {
+    mode: row.mode === "PDF" ? "PDF" : "TEXT",
+    pdfUrl: row.pdfUrl || ""
+  }
+  textForm.value = {
+    title: row.title || "",
+    subtitle: row.subtitle || "",
+    imageUrl: row.imageUrl || "",
+    content: row.content || ""
+  }
+}
+
+function loadForm() {
+  loading.value = true
+  return getAboutConfig().then((res: any) => {
+    applyData(res.data)
+  }).finally(() => { loading.value = false })
+}
+
+function saveForm() {
+  saveAboutConfig({
+    mode: display.value.mode,
+    title: textForm.value.title,
+    subtitle: textForm.value.subtitle,
+    imageUrl: textForm.value.imageUrl,
+    content: textForm.value.content,
+    pdfUrl: display.value.pdfUrl
+  }).then(() => {
+    proxy.$modal.msgSuccess(display.value.mode === "PDF" ? "PDF 设置已保存" : "文本内容已保存")
+    loadForm()
+  })
+}
+
+loadForm()
 </script>
 
 <style scoped>

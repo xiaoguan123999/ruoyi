@@ -7,8 +7,11 @@
         <result property="levelName"         column="level_name"/>
         <result property="minValidMembers"   column="min_valid_members"/>
         <result property="teamDepth"         column="team_depth"/>
+        <result property="performanceSource" column="performance_source"/>
         <result property="minRechargeCny"    column="min_recharge_cny"/>
         <result property="minRechargeUsdt"   column="min_recharge_usdt"/>
+        <result property="minTeamRechargeCny" column="min_team_recharge_cny"/>
+        <result property="minTeamRechargeUsdt" column="min_team_recharge_usdt"/>
         <result property="minTeamPerfCny"    column="min_team_perf_cny"/>
         <result property="minTeamPerfUsdt"   column="min_team_perf_usdt"/>
         <result property="sort"              column="sort"/>
@@ -19,6 +22,10 @@
         <result property="rewardRepeat"      column="reward_repeat"/>
         <result property="rewardCny"         column="reward_cny"/>
         <result property="rewardUsdt"        column="reward_usdt"/>
+        <result property="walletTypeCode"    column="wallet_type_code"/>
+        <result property="mixedPayCurrency"  column="mixed_pay_currency"/>
+        <result property="validNeedKyc"      column="valid_need_kyc"/>
+        <result property="validNeedOrder"    column="valid_need_order"/>
         <result property="createBy"          column="create_by"/>
         <result property="createTime"        column="create_time"/>
         <result property="updateBy"          column="update_by"/>
@@ -27,9 +34,10 @@
     </resultMap>
 
     <sql id="selectLevelVo">
-        select level_id, level_name, min_valid_members, team_depth, min_recharge_cny, min_recharge_usdt,
-               min_team_perf_cny, min_team_perf_usdt, sort, status,
+        select level_id, level_name, min_valid_members, team_depth, performance_source, min_recharge_cny, min_recharge_usdt,
+               min_team_recharge_cny, min_team_recharge_usdt, min_team_perf_cny, min_team_perf_usdt, sort, status,
                reward_enabled, reward_cycle, reward_mode, reward_repeat, reward_cny, reward_usdt,
+               wallet_type_code, mixed_pay_currency, valid_need_kyc, valid_need_order,
                create_by, create_time, update_by, update_time, remark
         from biz_level
     </sql>
@@ -50,14 +58,16 @@
 
     <insert id="insertLevel" parameterType="BizLevel" useGeneratedKeys="true" keyProperty="levelId">
         insert into biz_level (
-            level_name, min_valid_members, team_depth, min_recharge_cny, min_recharge_usdt,
-            min_team_perf_cny, min_team_perf_usdt, sort, status,
+            level_name, min_valid_members, team_depth, performance_source, min_recharge_cny, min_recharge_usdt,
+            min_team_recharge_cny, min_team_recharge_usdt, min_team_perf_cny, min_team_perf_usdt, sort, status,
             reward_enabled, reward_cycle, reward_mode, reward_repeat, reward_cny, reward_usdt,
+            wallet_type_code, mixed_pay_currency, valid_need_kyc, valid_need_order,
             create_by, create_time, remark
         ) values (
-            #{levelName}, #{minValidMembers}, #{teamDepth}, #{minRechargeCny}, #{minRechargeUsdt},
-            #{minTeamPerfCny}, #{minTeamPerfUsdt}, #{sort}, #{status},
+            #{levelName}, #{minValidMembers}, #{teamDepth}, #{performanceSource}, #{minRechargeCny}, #{minRechargeUsdt},
+            #{minTeamRechargeCny}, #{minTeamRechargeUsdt}, #{minTeamPerfCny}, #{minTeamPerfUsdt}, #{sort}, #{status},
             #{rewardEnabled}, #{rewardCycle}, #{rewardMode}, #{rewardRepeat}, #{rewardCny}, #{rewardUsdt},
+            #{walletTypeCode}, #{mixedPayCurrency}, #{validNeedKyc}, #{validNeedOrder},
             #{createBy}, sysdate(), #{remark}
         )
     </insert>
@@ -68,8 +78,11 @@
             <if test="levelName != null and levelName != ''">level_name = #{levelName},</if>
             <if test="minValidMembers != null">min_valid_members = #{minValidMembers},</if>
             <if test="teamDepth != null">team_depth = #{teamDepth},</if>
+            <if test="performanceSource != null and performanceSource != ''">performance_source = #{performanceSource},</if>
             <if test="minRechargeCny != null">min_recharge_cny = #{minRechargeCny},</if>
             <if test="minRechargeUsdt != null">min_recharge_usdt = #{minRechargeUsdt},</if>
+            <if test="minTeamRechargeCny != null">min_team_recharge_cny = #{minTeamRechargeCny},</if>
+            <if test="minTeamRechargeUsdt != null">min_team_recharge_usdt = #{minTeamRechargeUsdt},</if>
             <if test="minTeamPerfCny != null">min_team_perf_cny = #{minTeamPerfCny},</if>
             <if test="minTeamPerfUsdt != null">min_team_perf_usdt = #{minTeamPerfUsdt},</if>
             <if test="sort != null">sort = #{sort},</if>
@@ -80,6 +93,10 @@
             <if test="rewardRepeat != null">reward_repeat = #{rewardRepeat},</if>
             <if test="rewardCny != null">reward_cny = #{rewardCny},</if>
             <if test="rewardUsdt != null">reward_usdt = #{rewardUsdt},</if>
+            <if test="walletTypeCode != null and walletTypeCode != ''">wallet_type_code = #{walletTypeCode},</if>
+            <if test="mixedPayCurrency != null and mixedPayCurrency != ''">mixed_pay_currency = #{mixedPayCurrency},</if>
+            <if test="validNeedKyc != null">valid_need_kyc = #{validNeedKyc},</if>
+            <if test="validNeedOrder != null">valid_need_order = #{validNeedOrder},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             <if test="remark != null">remark = #{remark},</if>
             update_time = sysdate()

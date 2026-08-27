@@ -6,9 +6,9 @@ import io.swagger.annotations.ApiModel;
 
 @ApiModel("关于我们响应")
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class AppAboutResult extends AppDataResult<java.util.List<AppAboutItem>>
+public class AppAboutResult extends AppDataResult<AppAboutItem>
 {
-    public static AppAboutResult ok(java.util.List<AppAboutItem> data)
+    public static AppAboutResult ok(AppAboutItem data)
     {
         return fillOk(new AppAboutResult(), data);
     }

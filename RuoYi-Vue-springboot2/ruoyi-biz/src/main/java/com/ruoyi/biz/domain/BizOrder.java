@@ -83,6 +83,22 @@ public class BizOrder extends BaseEntity
     @ApiModelProperty("是否提现指定产品")
     private String withdrawRequired;
 
+    @ApiModelProperty("一拖二份数快照，0关闭")
+    private Integer unlockDirectQty;
+
+    @ApiModelProperty("等待小时快照")
+    private Integer unlockDelayHours;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @ApiModelProperty("收益开始时间")
+    private Date incomeStartTime;
+
+    @ApiModelProperty("激活状态：0未激活 1已激活")
+    private String activateStatus;
+
+    @ApiModelProperty("直属下级已认购该产品份数")
+    private Integer unlockDirectHave;
+
     /** 状态 */
     @ApiModelProperty("订单状态：0持仓中 1已完成")
     private String status;
@@ -287,6 +303,17 @@ public class BizOrder extends BaseEntity
     {
         this.withdrawRequired = withdrawRequired;
     }
+
+    public Integer getUnlockDirectQty() { return unlockDirectQty; }
+    public void setUnlockDirectQty(Integer unlockDirectQty) { this.unlockDirectQty = unlockDirectQty; }
+    public Integer getUnlockDelayHours() { return unlockDelayHours; }
+    public void setUnlockDelayHours(Integer unlockDelayHours) { this.unlockDelayHours = unlockDelayHours; }
+    public Date getIncomeStartTime() { return incomeStartTime; }
+    public void setIncomeStartTime(Date incomeStartTime) { this.incomeStartTime = incomeStartTime; }
+    public String getActivateStatus() { return activateStatus; }
+    public void setActivateStatus(String activateStatus) { this.activateStatus = activateStatus; }
+    public Integer getUnlockDirectHave() { return unlockDirectHave; }
+    public void setUnlockDirectHave(Integer unlockDirectHave) { this.unlockDirectHave = unlockDirectHave; }
 
     public String getStatus()
     {

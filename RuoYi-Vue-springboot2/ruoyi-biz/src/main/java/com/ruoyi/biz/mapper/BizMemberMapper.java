@@ -28,7 +28,8 @@ public interface BizMemberMapper
     int countValidTeamMembers(Long memberId);
 
     int countValidTeamMembersConfig(@Param("memberId") Long memberId, @Param("needKyc") boolean needKyc,
-            @Param("needOrder") boolean needOrder);
+            @Param("needOrder") boolean needOrder, @Param("maxDepth") Integer maxDepth,
+            @Param("viewerDepth") Integer viewerDepth);
 
     int countDirectMembers(Long memberId);
 

@@ -25,11 +25,14 @@ public class BizLevel extends BaseEntity
     @ApiModelProperty("最低有效会员人数")
     private Integer minValidMembers;
 
-    @ApiModelProperty("团队要求，App等级表展示")
+    @ApiModelProperty("团队要求：一级内只算直属，空则整条下级线")
     private String teamDepth;
 
+    @ApiModelProperty("团队业绩口径：SUBSCRIBE认购 RECHARGE充值 BOTH认购+充值")
+    private String performanceSource;
+
     /** 最低累计充值CNY */
-    @ApiModelProperty("最低累计充值CNY")
+    @ApiModelProperty("最低累计充值CNY，只看本人已通过充值")
     private BigDecimal minRechargeCny;
 
     /** 最低累计充值USDT */
@@ -43,6 +46,12 @@ public class BizLevel extends BaseEntity
     /** 状态 */
     @ApiModelProperty("状态")
     private String status;
+
+    @ApiModelProperty("团队累计金额CNY，按本等级口径和团队要求层数，不含本人，0不限制")
+    private java.math.BigDecimal minTeamRechargeCny;
+
+    @ApiModelProperty("团队累计金额USDT，按本等级口径和团队要求层数，不含本人，0不限制")
+    private java.math.BigDecimal minTeamRechargeUsdt;
 
     @ApiModelProperty("最低团队业绩CNY，0不限制")
     private java.math.BigDecimal minTeamPerfCny;
@@ -67,6 +76,18 @@ public class BizLevel extends BaseEntity
 
     @ApiModelProperty("奖励金额USDT")
     private java.math.BigDecimal rewardUsdt;
+
+    @ApiModelProperty("到账钱包类型")
+    private String walletTypeCode;
+
+    @ApiModelProperty("发放币种：USDT/CNY/BOTH")
+    private String mixedPayCurrency;
+
+    @ApiModelProperty("有效成员需实名：1是 0否")
+    private String validNeedKyc;
+
+    @ApiModelProperty("有效成员需认购：1是 0否")
+    private String validNeedOrder;
 
     public Long getLevelId()
     {
@@ -106,6 +127,16 @@ public class BizLevel extends BaseEntity
     public void setTeamDepth(String teamDepth)
     {
         this.teamDepth = teamDepth;
+    }
+
+    public String getPerformanceSource()
+    {
+        return performanceSource;
+    }
+
+    public void setPerformanceSource(String performanceSource)
+    {
+        this.performanceSource = performanceSource;
     }
 
     public BigDecimal getMinRechargeCny()
@@ -148,6 +179,10 @@ public class BizLevel extends BaseEntity
         this.status = status;
     }
 
+    public java.math.BigDecimal getMinTeamRechargeCny() { return minTeamRechargeCny; }
+    public void setMinTeamRechargeCny(java.math.BigDecimal minTeamRechargeCny) { this.minTeamRechargeCny = minTeamRechargeCny; }
+    public java.math.BigDecimal getMinTeamRechargeUsdt() { return minTeamRechargeUsdt; }
+    public void setMinTeamRechargeUsdt(java.math.BigDecimal minTeamRechargeUsdt) { this.minTeamRechargeUsdt = minTeamRechargeUsdt; }
     public java.math.BigDecimal getMinTeamPerfCny() { return minTeamPerfCny; }
     public void setMinTeamPerfCny(java.math.BigDecimal minTeamPerfCny) { this.minTeamPerfCny = minTeamPerfCny; }
     public java.math.BigDecimal getMinTeamPerfUsdt() { return minTeamPerfUsdt; }
@@ -164,5 +199,13 @@ public class BizLevel extends BaseEntity
     public void setRewardCny(java.math.BigDecimal rewardCny) { this.rewardCny = rewardCny; }
     public java.math.BigDecimal getRewardUsdt() { return rewardUsdt; }
     public void setRewardUsdt(java.math.BigDecimal rewardUsdt) { this.rewardUsdt = rewardUsdt; }
+    public String getWalletTypeCode() { return walletTypeCode; }
+    public void setWalletTypeCode(String walletTypeCode) { this.walletTypeCode = walletTypeCode; }
+    public String getMixedPayCurrency() { return mixedPayCurrency; }
+    public void setMixedPayCurrency(String mixedPayCurrency) { this.mixedPayCurrency = mixedPayCurrency; }
+    public String getValidNeedKyc() { return validNeedKyc; }
+    public void setValidNeedKyc(String validNeedKyc) { this.validNeedKyc = validNeedKyc; }
+    public String getValidNeedOrder() { return validNeedOrder; }
+    public void setValidNeedOrder(String validNeedOrder) { this.validNeedOrder = validNeedOrder; }
 
 }

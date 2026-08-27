@@ -300,24 +300,12 @@ export function delOverview(itemId: number | number[]): Promise<AjaxResult> {
   return request({ url: '/biz/overview/' + itemId, method: 'delete' })
 }
 
-export function listAbout(query: any): Promise<TableDataInfo<any[]>> {
-  return request({ url: '/biz/about/list', method: 'get', params: query })
+export function getAboutConfig(): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/about', method: 'get' })
 }
 
-export function getAbout(aboutId: number): Promise<AjaxResult<any>> {
-  return request({ url: '/biz/about/' + aboutId, method: 'get' })
-}
-
-export function addAbout(data: any): Promise<AjaxResult> {
-  return request({ url: '/biz/about', method: 'post', data })
-}
-
-export function updateAbout(data: any): Promise<AjaxResult> {
+export function saveAboutConfig(data: any): Promise<AjaxResult> {
   return request({ url: '/biz/about', method: 'put', data })
-}
-
-export function delAbout(aboutId: number | number[]): Promise<AjaxResult> {
-  return request({ url: '/biz/about/' + aboutId, method: 'delete' })
 }
 
 export function listGroupChat(query: any): Promise<TableDataInfo<any[]>> {

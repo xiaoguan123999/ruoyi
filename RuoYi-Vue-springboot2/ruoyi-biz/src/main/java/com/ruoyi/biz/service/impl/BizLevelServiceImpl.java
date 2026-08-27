@@ -39,6 +39,38 @@ public class BizLevelServiceImpl implements IBizLevelService
         {
             level.setTeamDepth("");
         }
+        if (StringUtils.isEmpty(level.getPerformanceSource()))
+        {
+            level.setPerformanceSource("RECHARGE");
+        }
+        else
+        {
+            level.setPerformanceSource(level.getPerformanceSource().toUpperCase());
+        }
+        if (StringUtils.isEmpty(level.getWalletTypeCode()))
+        {
+            level.setWalletTypeCode("PROMO");
+        }
+        if (StringUtils.isEmpty(level.getMixedPayCurrency()))
+        {
+            level.setMixedPayCurrency(BizConstants.CURRENCY_USDT);
+        }
+        if (StringUtils.isEmpty(level.getValidNeedKyc()))
+        {
+            level.setValidNeedKyc("1");
+        }
+        if (StringUtils.isEmpty(level.getValidNeedOrder()))
+        {
+            level.setValidNeedOrder("1");
+        }
+        if (level.getMinTeamRechargeCny() == null)
+        {
+            level.setMinTeamRechargeCny(BigDecimal.ZERO);
+        }
+        if (level.getMinTeamRechargeUsdt() == null)
+        {
+            level.setMinTeamRechargeUsdt(BigDecimal.ZERO);
+        }
         if (level.getMinTeamPerfCny() == null)
         {
             level.setMinTeamPerfCny(BigDecimal.ZERO);

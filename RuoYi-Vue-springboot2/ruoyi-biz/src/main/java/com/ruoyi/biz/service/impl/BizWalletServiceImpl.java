@@ -107,7 +107,15 @@ public class BizWalletServiceImpl implements IBizWalletService
     @Transactional(rollbackFor = Exception.class)
     public void credit(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark)
     {
-        change(memberId, creditRuleService.resolveTypeCode(bizType), currency, amount, BigDecimal.ZERO, bizType, bizId, remark);
+        credit(memberId, currency, amount, bizType, bizId, remark, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void credit(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark, String typeCode)
+    {
+        String code = StringUtils.isEmpty(typeCode) ? creditRuleService.resolveTypeCode(bizType) : typeCode.trim().toUpperCase();
+        change(memberId, code, currency, amount, BigDecimal.ZERO, bizType, bizId, remark);
     }
 
     @Override

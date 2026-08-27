@@ -1,83 +1,12 @@
 <template>
   <div class="app-container ops-page">
     <el-alert
-      title="星链伙伴成长激励金：先配全局规则和各等级金额，再把对应等级改为正常。启航到星域（前6级）一次自动发放；仅星链找客服领取，后台「等级奖励发放」手动下发。"
+      title="到账钱包、发放币种、有效成员在「会员等级」里按每个等级配置。这里只配奖励周期和金额。启航到星域自动发放；星链到「等级奖励发放」手动下发。"
       type="info"
       :closable="false"
       show-icon
       class="mb8"
     />
-
-    <div class="ops-section-card">
-      <div class="ops-section-card__hd">全局规则</div>
-      <div class="ops-section-card__bd">
-        <el-form ref="ruleRef" :model="rule" label-width="140px" v-loading="ruleLoading">
-          <el-row :gutter="16">
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="成长激励金开关">
-                <el-switch v-model="rule.enabled" />
-                <span class="tip">关闭后不核算发放</span>
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="混合业绩币种">
-                <el-radio-group v-model="rule.mixedPayCurrency">
-                  <el-radio value="USDT">USDT</el-radio>
-                  <el-radio value="CNY">人民币</el-radio>
-                </el-radio-group>
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="团队业绩口径">
-                <el-select v-model="rule.performanceSource" style="width: 100%">
-                  <el-option label="认购金额" value="SUBSCRIBE" />
-                  <el-option label="已通过充值" value="RECHARGE" />
-                  <el-option label="认购 + 充值" value="BOTH" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-          </el-row>
-          <el-row :gutter="16">
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="团队业绩含本人">
-                <el-switch v-model="rule.includeSelf" />
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="有效成员需实名">
-                <el-switch v-model="rule.validNeedKyc" />
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="有效成员需认购">
-                <el-switch v-model="rule.validNeedOrder" />
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="到账钱包">
-                <WalletTypeSelect v-model="rule.walletTypeCode" width="100%" />
-              </el-form-item>
-            </el-col>
-          </el-row>
-          <el-row :gutter="16">
-            <el-col :xs="24" :md="12">
-              <el-form-item label="规则说明">
-                <el-input v-model="rule.ruleText" type="textarea" :rows="3" maxlength="500" show-word-limit placeholder="App 右上角「规则说明」正文" />
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="12">
-              <el-form-item label="页面注释">
-                <el-input v-model="rule.hint" type="textarea" :rows="3" maxlength="500" show-word-limit placeholder="App 等级表上方的「注」" />
-              </el-form-item>
-            </el-col>
-          </el-row>
-          <el-form-item label-width="0" class="form-actions">
-            <el-button type="primary" @click="saveRule" v-hasPermi="['biz:levelReward:edit']">保存全局规则</el-button>
-            <el-button type="warning" @click="runEvaluate" v-hasPermi="['biz:levelReward:edit']">立即核算全部会员</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-    </div>
 
     <div class="ops-section-card">
       <div class="ops-section-card__hd">各等级奖励</div>
@@ -89,11 +18,15 @@
           <el-form-item>
             <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
             <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <el-button type="warning" @click="runEvaluate" v-hasPermi="['biz:levelReward:edit']">立即核算全部会员</el-button>
           </el-form-item>
         </el-form>
         <el-table v-loading="loading" :data="dataList" style="width: 100%">
           <el-table-column label="等级" align="center" prop="levelName" min-width="100" />
           <el-table-column label="团队要求" align="center" prop="teamDepth" min-width="100" />
+          <el-table-column label="团队口径" align="center" min-width="110">
+            <template #default="scope">{{ sourceLabel(scope.row.performanceSource) }}</template>
+          </el-table-column>
           <el-table-column label="奖励开关" align="center" width="90">
             <template #default="scope">
               <el-tag :type="scope.row.rewardEnabled === '1' ? 'success' : 'info'">{{ scope.row.rewardEnabled === '1' ? '开' : '关' }}</el-tag>
@@ -123,19 +56,47 @@
     </div>
 
     <el-dialog :title="title" v-model="open" width="640px" append-to-body>
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="150px">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="160px">
         <el-form-item label="等级名称">
           <el-input v-model="form.levelName" disabled />
         </el-form-item>
         <el-form-item label="团队要求" prop="teamDepth">
-          <el-input v-model="form.teamDepth" placeholder="例如 一级内" />
-          <div class="tip">App 会员等级表「团队要求」列，对应接口 teamDepth</div>
+          <el-select v-model="form.teamDepth" placeholder="请选择" style="width: 100%">
+            <el-option v-for="item in teamDepthOptions" :key="item" :label="item" :value="item" />
+          </el-select>
+          <div class="tip">一级内=邀请关系第1层，二级内=第1+2层。下面团队累计按这个范围统计。</div>
         </el-form-item>
-        <el-form-item label="本人充值CNY">
+        <el-form-item label="团队业绩口径">
+          <el-select v-model="form.performanceSource" style="width: 100%">
+            <el-option label="认购金额" value="SUBSCRIBE" />
+            <el-option label="已通过充值" value="RECHARGE" />
+            <el-option label="认购 + 充值" value="BOTH" />
+          </el-select>
+          <div class="tip">只改这个等级的团队累计怎么算。本人累计充值始终看充值，不受此项影响。</div>
+        </el-form-item>
+        <el-form-item label="本人累计充值CNY">
           <el-input-number v-model="form.minRechargeCny" :min="0" :precision="2" style="width: 100%" />
+          <div class="tip">只看这个会员自己、审核通过的充值，不是团队。两边都填则两种币都要达标；填 0 不限制。</div>
         </el-form-item>
-        <el-form-item label="本人充值USDT">
+        <el-form-item label="本人累计充值USDT">
           <el-input-number v-model="form.minRechargeUsdt" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item :label="'团队累计' + sourceLabel(form.performanceSource) + 'CNY'">
+          <el-input-number v-model="form.minTeamRechargeCny" :min="0" :precision="2" style="width: 100%" />
+          <div class="tip">按上面口径和「团队要求」范围合计，不含本人。填 0 不限制。</div>
+        </el-form-item>
+        <el-form-item :label="'团队累计' + sourceLabel(form.performanceSource) + 'USDT'">
+          <el-input-number v-model="form.minTeamRechargeUsdt" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="发放币种">
+          <el-radio-group v-model="form.mixedPayCurrency">
+            <el-radio value="USDT">只发USDT</el-radio>
+            <el-radio value="CNY">只发人民币</el-radio>
+            <el-radio value="BOTH">人民币和USDT都发</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="到账钱包">
+          <WalletTypeSelect v-model="form.walletTypeCode" width="100%" />
         </el-form-item>
         <el-form-item label="启用该等级奖励">
           <el-switch v-model="form.rewardEnabled" active-value="1" inactive-value="0" />
@@ -186,30 +147,24 @@
 </template>
 
 <script setup lang="ts" name="BizLevelReward">
-import { getLevelRewardRule, saveLevelRewardRule, listLevelRewardLevel, updateLevelRewardLevel, evaluateLevelReward, getLevel, getWalletCreditByBiz, saveWalletCreditByBiz } from "@/api/biz"
+import { listLevelRewardLevel, updateLevelRewardLevel, evaluateLevelReward, getLevel } from "@/api/biz"
 import WalletTypeSelect from "@/views/biz/components/WalletTypeSelect.vue"
 
 const { proxy } = getCurrentInstance() as any
-const ruleLoading = ref(false)
 const loading = ref(true)
 const dataList = ref<any[]>([])
 const total = ref(0)
 const open = ref(false)
 const title = ref("")
-const rule = ref({
-  enabled: true,
-  mixedPayCurrency: "USDT",
-  performanceSource: "SUBSCRIBE",
-  includeSelf: false,
-  validNeedKyc: true,
-  validNeedOrder: true,
-  ruleText: "",
-  hint: "",
-  walletTypeCode: "PROMO"
-})
 const queryParams = ref({ pageNum: 1, pageSize: 100, levelName: undefined as string | undefined })
 const form = ref<any>({})
 const rules = {}
+const TEAM_DEPTH_PRESET = ["一级内", "二级内", "三级内", "四级内", "五级内", "六级内", "七级内"]
+const teamDepthOptions = computed(() => {
+  const cur = form.value?.teamDepth
+  if (cur && !TEAM_DEPTH_PRESET.includes(cur)) return [cur, ...TEAM_DEPTH_PRESET]
+  return TEAM_DEPTH_PRESET
+})
 
 function cycleLabel(v: string) {
   if (v === "ONCE") return "一次"
@@ -218,18 +173,10 @@ function cycleLabel(v: string) {
   return "无"
 }
 
-function loadRule() {
-  ruleLoading.value = true
-  Promise.all([getLevelRewardRule(), getWalletCreditByBiz("LEVEL_REWARD")]).then(([res, credit]: any[]) => {
-    rule.value = Object.assign(rule.value, res.data || {}, { walletTypeCode: credit.data?.typeCode || "PROMO" })
-  }).finally(() => { ruleLoading.value = false })
-}
-
-function saveRule() {
-  saveLevelRewardRule(rule.value).then(() => saveWalletCreditByBiz("LEVEL_REWARD", rule.value.walletTypeCode)).then(() => {
-    proxy.$modal.msgSuccess("保存成功")
-    loadRule()
-  })
+function sourceLabel(v: string) {
+  if (v === "SUBSCRIBE") return "认购"
+  if (v === "BOTH") return "认购+充值"
+  return "充值"
 }
 
 function runEvaluate() {
@@ -252,7 +199,10 @@ function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
 function handleUpdate(row: any) {
   getLevel(row.levelId).then((res: any) => {
-    form.value = res.data
+    form.value = Object.assign({ performanceSource: "RECHARGE", mixedPayCurrency: "USDT", walletTypeCode: "PROMO" }, res.data || {})
+    if (!form.value.performanceSource) form.value.performanceSource = "RECHARGE"
+    if (!form.value.mixedPayCurrency) form.value.mixedPayCurrency = "USDT"
+    if (!form.value.walletTypeCode) form.value.walletTypeCode = "PROMO"
     open.value = true
     title.value = "配置 " + row.levelName
   })
@@ -268,7 +218,6 @@ function submitForm() {
   })
 }
 
-loadRule()
 getList()
 </script>
 

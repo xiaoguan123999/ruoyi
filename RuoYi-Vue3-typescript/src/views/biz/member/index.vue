@@ -82,7 +82,9 @@
           <el-tag :type="scope.row.kycStatus === '1' ? 'success' : 'info'">{{ scope.row.kycStatus === '1' ? '已实名' : '未实名' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="等级" align="center" prop="levelName" width="80" />
+      <el-table-column label="等级" align="center" prop="levelName" width="90">
+        <template #default="scope">{{ scope.row.levelName || "无等级" }}</template>
+      </el-table-column>
       <el-table-column label="上级ID" align="center" prop="parentId" width="90" />
       <el-table-column label="余额CNY" align="center" prop="cnyAvailable" width="100" />
       <el-table-column label="产品收益CNY" align="center" prop="cnyProductIncome" width="120" />

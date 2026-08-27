@@ -1,7 +1,7 @@
 <template>
   <div class="app-container ops-page">
     <el-alert
-      title="同一产品可同时配人民币和 USDT 价格。每人限购填累计可买份数，0 或不填表示不限制。"
+      title="同一产品可同时配人民币和 USDT 价格。每人限购填累计可买份数，0 或不填表示不限制。一拖二：自己认购后，直属下级再认购同一产品达到设定份数，再等设定小时数才开始日返；两处填 0 表示关闭，认购即可出收益。"
       type="info"
       :closable="false"
       show-icon
@@ -67,6 +67,11 @@
           <span>{{ scope.row.buyLimit > 0 ? scope.row.buyLimit + "份" : "不限" }}</span>
         </template>
       </el-table-column>
+      <el-table-column label="一拖二" align="center" min-width="120">
+        <template #default="scope">
+          <span>{{ unlockText(scope.row) }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="提现指定" align="center" prop="withdrawRequired" width="90">
         <template #default="scope">
           <el-tag :type="scope.row.withdrawRequired === '1' ? 'warning' : 'info'">{{ scope.row.withdrawRequired === '1' ? '是' : '否' }}</el-tag>
@@ -86,7 +91,7 @@
     </el-table>
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
-    <el-dialog :title="title" v-model="open" width="560px" append-to-body>
+    <el-dialog :title="title" v-model="open" width="640px" append-to-body>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
         <el-form-item label="所属系列" prop="categoryId">
           <el-select v-model="form.categoryId" placeholder="请选择系列" style="width: 100%">
@@ -117,6 +122,14 @@
         <el-form-item label="每人限购" prop="buyLimit">
           <el-input-number v-model="form.buyLimit" :min="0" :step="1" style="width: 100%" />
           <div class="el-form-item-msg" style="color:#909399;font-size:12px;line-height:1.4">0 或不填表示不限制。按该会员已购该产品的累计份数计算。</div>
+        </el-form-item>
+        <el-form-item label="一拖二份数" prop="unlockDirectQty">
+          <el-input-number v-model="form.unlockDirectQty" :min="0" :step="1" style="width: 100%" />
+          <div class="el-form-item-msg" style="color:#909399;font-size:12px;line-height:1.4">直属下级认购本产品的累计份数。填 2 即一拖二；填 0 关闭，自己认购即可出收益。先后顺序不限。</div>
+        </el-form-item>
+        <el-form-item label="激活等待小时" prop="unlockDelayHours">
+          <el-input-number v-model="form.unlockDelayHours" :min="0" :step="1" style="width: 100%" />
+          <div class="el-form-item-msg" style="color:#909399;font-size:12px;line-height:1.4">条件达成后再等多少小时开始日返。一拖二通常填 24；填 0 表示达标后立即进入收益（仍按每日 00:05 任务发放）。</div>
         </el-form-item>
         <el-form-item label="收益发放方式" prop="payoutMethod">
           <el-input v-model="form.payoutMethod" maxlength="100" placeholder="仅 App 展示，例如：每日发放" />
@@ -207,6 +220,15 @@ function getList() {
     loading.value = false
   })
 }
+function unlockText(row: any) {
+  const qty = Number(row.unlockDirectQty || 0)
+  const hours = Number(row.unlockDelayHours || 0)
+  if (qty <= 0 && hours <= 0) return "关闭"
+  const parts: string[] = []
+  if (qty > 0) parts.push("直属" + qty + "份")
+  if (hours > 0) parts.push(hours + "小时")
+  return parts.join(" / ")
+}
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
 function reset() {
@@ -214,6 +236,8 @@ function reset() {
     status: "0",
     withdrawRequired: "0",
     buyLimit: 0,
+    unlockDirectQty: 0,
+    unlockDelayHours: 0,
     payoutMethod: "",
     riskLevel: "",
     sort: 0,
@@ -246,6 +270,8 @@ function submitForm() {
       return
     }
     form.value.buyLimit = Number(form.value.buyLimit || 0)
+    form.value.unlockDirectQty = Number(form.value.unlockDirectQty || 0)
+    form.value.unlockDelayHours = Number(form.value.unlockDelayHours || 0)
     const req = form.value.productId ? updateProduct(form.value) : addProduct(form.value)
     req.then(() => {
       proxy.$modal.msgSuccess("保存成功")

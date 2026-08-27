@@ -16,10 +16,13 @@ public interface BizOrderMapper
 
     int countMemberProductOrders(@Param("memberId") Long memberId, @Param("productId") Long productId);
 
+    List<BizOrder> selectDirectDownlineProductOrders(@Param("parentId") Long parentId, @Param("productId") Long productId);
+
     int countWithdrawRequiredOrders(@Param("memberId") Long memberId, @Param("currency") String currency);
 
     java.math.BigDecimal sumTeamOrderAmount(@Param("memberId") Long memberId, @Param("currency") String currency,
-            @Param("includeSelf") boolean includeSelf);
+            @Param("includeSelf") boolean includeSelf, @Param("maxDepth") Integer maxDepth,
+            @Param("viewerDepth") Integer viewerDepth);
 
     int insertOrder(BizOrder order);
 

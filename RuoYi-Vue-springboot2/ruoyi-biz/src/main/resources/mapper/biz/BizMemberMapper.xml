@@ -87,7 +87,7 @@
             kyc_status, level_id, status, create_by, create_time, remark
         ) values (
             #{phone}, #{password}, #{payPassword}, #{inviteCode}, #{parentId}, #{ancestors}, #{realName}, #{idCard},
-            #{kycStatus}, #{levelId}, #{status}, #{createBy}, sysdate(), #{remark}
+            #{kycStatus}, #{levelId,jdbcType=BIGINT}, #{status}, #{createBy}, sysdate(), #{remark}
         )
     </insert>
 
@@ -136,6 +136,9 @@
         select count(1)
         from biz_member m
         where find_in_set(#{memberId}, m.ancestors)
+        <if test="maxDepth != null">
+            and (length(ifnull(m.ancestors,'')) - length(replace(ifnull(m.ancestors,''), ',', '')) - ifnull(#{viewerDepth}, 0)) between 1 and #{maxDepth}
+        </if>
         <if test="needKyc">
             and m.kyc_status = '1'
         </if>

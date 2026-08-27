@@ -29,7 +29,7 @@ Swagger：`http://localhost:8080/swagger-ui/index.html`，分组 `App-*`。每�
 Authorization: Bearer <token>
 ```
 
-token 来自注册或登录返回。
+token 来自注册或登录返回。App token 有效期 7 天；期间调用需登录接口且剩余不足 1 天时，服务端自动续签再给 7 天。超过 7 天完全没请求则 401，需重新登录。后台管理端 token 仍是 30 分钟。
 
 ### 1. 注册
 
@@ -445,15 +445,17 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 
 团队奖励只使用 `rewardCny` / `rewardUsdt`（表 `biz_level.reward_cny` / `reward_usdt`），不再提供 `teamRewardCny` 别名。
 
-等级匹配（全部启用中的等级取 sort 最高的一档）：有效成员人数、本人累计充值 CNY/USDT、团队业绩 CNY/USDT。某项阈值填 0 表示不限制。
+等级匹配（全部启用中的等级取 sort 最高的一档）：有效成员人数、本人累计充值 CNY/USDT、团队累计充值 CNY/USDT、团队业绩 CNY/USDT。某项阈值填 0 表示不限制。团队累计充值按 `teamDepth`（一级内～七级内）范围内已通过充值加总，不含本人。
 
-有效成员、团队业绩口径、是否含本人，都在后台「等级奖励」里配。
+`teamDepth`（一级内～七级内）限制该档统计的下级层数：一级内只算直属，二级内算到第二层。不填则整条线都算。有效成员人数和团队业绩都按这个层数截取；本人充值仍看自己。
+
+有效成员是否要实名/认购、团队业绩口径、是否含本人，都在后台「等级奖励」全局规则里配。
 
 成长激励金发放：
 
 - `ONCE` + `AUTO`：达标自动入账 1 次（启航/探索/开拓/星耀/领航/星域，前6级）
 - `PERMANENT` + `MANUAL` + `UNLIMITED`：仅第7级星链。达标后生成待发放，客服在「等级奖励发放」确认入账；之后可「额外发放」
-- 团队业绩同时有人民币和 USDT 时，按全局「混合业绩发放币种」发放（默认 USDT）
+- 发放币种：`USDT`/`CNY` 表示团队两种业绩都有时只打这一币种的金额；`BOTH` 表示配置里大于 0 的人民币和 USDT 金额都发
 
 预置的启航～星链默认是**停用**，配好人数/业绩/金额后再改成正常，避免未配金额就升级。
 
@@ -555,6 +557,8 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
       "supportsUsdt": true,
       "durationDays": 30,
       "withdrawRequired": "1",
+      "unlockDirectQty": 2,
+      "unlockDelayHours": 24,
       "coverUrl": "",
       "status": "0"
     }
@@ -568,8 +572,12 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 | priceUsdt / dailyRebateUsdt | USDT 认购价和日返，大于 0 才支持 USDT 下单 |
 | supportsCny / supportsUsdt | 是否支持该币种按钮 |
 | price / dailyRebate / currency | 兼容旧字段，优先等于人民币价 |
+| unlockDirectQty | 直属下级需认购同一产品的总份数。`0` 关闭一拖二，自己认购即可出收益；`2` 即一拖二 |
+| unlockDelayHours | 条件达成后再等待多少小时才开始日返。一拖二通常为 `24`；`0` 表示达标后不再额外等待 |
 
 `withdrawRequired = 1` 表示认购该币种指定产品后，才允许提现对应币种（看订单当时选的币）。
+
+一拖二：自己买 1 份，直属下级累计认购同一产品达到 `unlockDirectQty` 份后（先后顺序不限），再等 `unlockDelayHours` 小时，自己的订单才开始日返。未激活期间不扣 `remainingDays`。
 
 `GET /app/products/{productId}`  
 `GET /app/product/{productId}` 也可以。
@@ -593,10 +601,10 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 | currency | 建议填 | `CNY` 或 `USDT`。不传：有人民币价走人民币，否则走 USDT |
 | amount | 否 | **忽略**，以产品配置的对应币种价格为准 |
 
-`CNY` 扣人民币钱包、日返人民币；`USDT` 扣 USDT 钱包、日返 USDT。产品没配该币种价格会 500。每天 00:05 按订单币种打 `dailyRebate`，打满 `durationDays` 天结束。
+`CNY` 扣人民币钱包、日返人民币；`USDT` 扣 USDT 钱包、日返 USDT。产品没配该币种价格会 500。每天 00:05 按订单币种打 `dailyRebate`，打满 `durationDays` 天结束。订单未激活（一拖二未达标或未到等待小时）当日不发、不扣剩余天数。
 
 `GET /app/orders?pageNum=1&pageSize=10` 我的订单。  
-订单 `status`：`0` 持仓中，`1` 已完成。订单带 `currency` 字段，以及所属产品系列：
+订单 `status`：`0` 持仓中，`1` 已完成。**是否开始出收益看 `activateStatus`，不要用 `status==='1'` 当已激活**（`status=1` 是已完成）。订单带 `currency` 字段，以及所属产品系列：
 
 ```json
 {
@@ -616,6 +624,11 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
       "dailyRebate": 5,
       "durationDays": 30,
       "remainingDays": 29,
+      "unlockDirectQty": 2,
+      "unlockDirectHave": 1,
+      "unlockDelayHours": 24,
+      "incomeStartTime": null,
+      "activateStatus": "0",
       "status": "0"
     }
   ]
@@ -627,8 +640,13 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 | seriesId / categoryId | 产品所属系列，和产品列表同一套 |
 | seriesName / categoryName | 系列名称 |
 | seriesCoverUrl | 系列封面，空字符串表示没有图 |
+| activateStatus | `0` 未激活（一拖二未达标或未到等待时间），`1` 已开始收益。App 用这个字段，不要用 `status` |
+| incomeStartTime | 收益开始时间。未达标为 `null` |
+| unlockDirectQty | 下单时快照：直属下级需认购同一产品的份数，`0` 表示该单无一带二 |
+| unlockDirectHave | 直属下级已认购该产品的累计份数 |
+| unlockDelayHours | 下单时快照：达标后再等多少小时 |
 
-产品改了所属系列后，历史订单按**当前产品挂的系列**返回。
+产品改了所属系列后，历史订单按**当前产品挂的系列**返回。新订单按当时产品配置写入一拖二快照；改产品只影响之后的新单。
 
 ### 13. 钱包
 
@@ -994,7 +1012,7 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 
 ### 19. 关于我们
 
-后台在 **业务管理 → 关于我们** 新增/修改。可多段内容，按 `sort` 排序后给 App 展示。没有真实业务逻辑。
+后台 **运营内容 → 关于我们** 全局一条，文本模式 / PDF 模式二选一。App 按 `mode` 展示。
 
 不需要登录。
 
@@ -1003,27 +1021,27 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 ```json
 {
   "code": 200,
-  "data": [
-    {
-      "aboutId": 1,
-      "title": "星帆智联",
-      "subtitle": "连接星空 · 智联未来",
-      "content": "星帆智联聚焦商业航天与卫星互联网应用，以科技连接万物，让星辰触手可及。",
-      "imageUrl": "",
-      "sort": 1
-    }
-  ]
+  "data": {
+    "mode": "TEXT",
+    "title": "星帆智联",
+    "subtitle": "连接星空 · 智联未来",
+    "content": "星帆智联聚焦商业航天与卫星互联网应用，以科技连接万物，让星辰触手可及。",
+    "imageUrl": "",
+    "pdfUrl": ""
+  }
 }
 ```
 
 | 字段 | 说明 |
 |---|---|
-| title | 大标题 |
+| mode | `TEXT` 文本模式，`PDF` PDF 模式 |
+| title | 大标题，文本模式用 |
 | subtitle | 副标题，可空 |
-| content | 正文，已去掉 HTML，可直接展示 |
-| imageUrl | 可选配图 URL |
+| content | 正文纯文本，文本模式用；已去掉 HTML |
+| imageUrl | 配图 URL，可空 |
+| pdfUrl | PDF 文件 URL，PDF 模式用；App 按此逐页渲染 |
 
-隐藏的内容不会返回。初始化脚本：`sql/biz_about_patch.sql`
+`data` 是对象，不再是数组。初始化 / 升级脚本：`sql/biz_about_patch.sql`、`sql/biz_about_singleton_patch.sql`
 
 ### 20. 官方群聊
 

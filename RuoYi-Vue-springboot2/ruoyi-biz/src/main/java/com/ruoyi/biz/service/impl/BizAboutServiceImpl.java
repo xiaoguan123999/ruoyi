@@ -1,6 +1,5 @@
 package com.ruoyi.biz.service.impl;
 
-import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.biz.constant.BizConstants;
@@ -17,45 +16,44 @@ public class BizAboutServiceImpl implements IBizAboutService
     private BizAboutMapper aboutMapper;
 
     @Override
-    public BizAbout selectAboutById(Long aboutId)
+    public BizAbout getSingleton()
     {
-        return aboutMapper.selectAboutById(aboutId);
+        BizAbout about = aboutMapper.selectAboutSingleton();
+        if (about != null)
+        {
+            fillDefaults(about);
+            return about;
+        }
+        about = new BizAbout();
+        about.setTitle("星帆智联");
+        about.setSubtitle("连接星空 · 智联未来");
+        about.setContent("<p>星帆智联聚焦商业航天与卫星互联网应用，以科技连接万物，让星辰触手可及。</p>");
+        about.setImageUrl("");
+        about.setMode(BizConstants.ABOUT_MODE_TEXT);
+        about.setPdfUrl("");
+        about.setSort(Integer.valueOf(1));
+        about.setStatus(BizConstants.STATUS_OK);
+        about.setCreateBy("admin");
+        aboutMapper.insertAbout(about);
+        return aboutMapper.selectAboutSingleton();
     }
 
     @Override
-    public List<BizAbout> selectAboutList(BizAbout about)
-    {
-        return aboutMapper.selectAboutList(about);
-    }
-
-    @Override
-    public List<BizAbout> selectAppAboutList()
-    {
-        BizAbout query = new BizAbout();
-        query.setStatus(BizConstants.STATUS_OK);
-        return aboutMapper.selectAboutList(query);
-    }
-
-    @Override
-    public int insertAbout(BizAbout about)
+    public int saveSingleton(BizAbout about)
     {
         fillDefaults(about);
         checkRequired(about);
-        return aboutMapper.insertAbout(about);
-    }
-
-    @Override
-    public int updateAbout(BizAbout about)
-    {
-        fillDefaults(about);
-        checkRequired(about);
+        BizAbout current = aboutMapper.selectAboutSingleton();
+        if (current == null)
+        {
+            if (StringUtils.isEmpty(about.getCreateBy()))
+            {
+                about.setCreateBy("admin");
+            }
+            return aboutMapper.insertAbout(about);
+        }
+        about.setAboutId(current.getAboutId());
         return aboutMapper.updateAbout(about);
-    }
-
-    @Override
-    public int deleteAboutByIds(Long[] aboutIds)
-    {
-        return aboutMapper.deleteAboutByIds(aboutIds);
     }
 
     private void fillDefaults(BizAbout about)
@@ -76,14 +74,32 @@ public class BizAboutServiceImpl implements IBizAboutService
         {
             about.setContent("");
         }
+        if (about.getPdfUrl() == null)
+        {
+            about.setPdfUrl("");
+        }
         if (about.getSort() == null)
         {
-            about.setSort(0);
+            about.setSort(Integer.valueOf(1));
         }
+        String mode = about.getMode() == null ? "" : about.getMode().trim().toUpperCase();
+        if (!BizConstants.ABOUT_MODE_PDF.equals(mode))
+        {
+            mode = BizConstants.ABOUT_MODE_TEXT;
+        }
+        about.setMode(mode);
     }
 
     private void checkRequired(BizAbout about)
     {
+        if (BizConstants.ABOUT_MODE_PDF.equals(about.getMode()))
+        {
+            if (StringUtils.isEmpty(about.getPdfUrl()))
+            {
+                throw new ServiceException("请上传 PDF 文件");
+            }
+            return;
+        }
         if (StringUtils.isEmpty(about.getTitle()))
         {
             throw new ServiceException("请填写标题");

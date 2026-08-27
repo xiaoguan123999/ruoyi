@@ -121,7 +121,6 @@ public class BizMemberServiceImpl implements IBizMemberService
         }
         member.setInviteCode(nextInviteCode());
         member.setKycStatus(BizConstants.KYC_NONE);
-        member.setLevelId(1L);
         member.setStatus(BizConstants.STATUS_OK);
         member.setRealName("");
         member.setIdCard("");

@@ -15,7 +15,7 @@ create table biz_member (
   real_name         varchar(50)     default ''                 comment '真实姓名',
   id_card           varchar(32)     default ''                 comment '身份证号',
   kyc_status        char(1)         default '0'                comment '实名状态（0未实名 1已实名）',
-  level_id          bigint(20)      default 1                  comment '会员等级ID',
+  level_id          bigint(20)      default null               comment '会员等级ID，空表示无等级',
   status            char(1)         default '0'                comment '状态（0正常 1停用）',
   ga_secret         varchar(64)     default ''                 comment '谷歌验证密钥',
   ga_status         char(1)         default '0'                comment '谷歌验证（0未绑定 1已绑定）',
@@ -302,6 +302,8 @@ create table biz_about (
   subtitle          varchar(200)    default ''                 comment '副标题',
   content           mediumtext                                 comment '正文，后台富文本',
   image_url         varchar(500)    default ''                 comment '可选配图',
+  display_mode      varchar(16)     not null default 'TEXT'    comment '展示模式 TEXT/PDF',
+  pdf_url           varchar(500)    default ''                 comment 'PDF文件地址',
   sort              int(4)          default 0                  comment '排序',
   status            char(1)         default '0'                comment '状态（0显示 1隐藏）',
   create_by         varchar(64)     default ''                 comment '创建者',
@@ -310,9 +312,9 @@ create table biz_about (
   update_time       datetime                                   comment '更新时间',
   remark            varchar(500)    default null               comment '备注',
   primary key (about_id)
-) engine=innodb comment = 'App关于我们';
+) engine=innodb comment = 'App关于我们（全局一条）';
 
-insert into biz_about values(1, '星帆智联', '连接星空 · 智联未来', '<p>星帆智联聚焦商业航天与卫星互联网应用，以科技连接万物，让星辰触手可及。</p>', '', 1, '0', 'admin', sysdate(), '', null, null);
+insert into biz_about values(1, '星帆智联', '连接星空 · 智联未来', '<p>星帆智联聚焦商业航天与卫星互联网应用，以科技连接万物，让星辰触手可及。</p>', '', 'TEXT', '', 1, '0', 'admin', sysdate(), '', null, null);
 
 
 -- App官方群聊（展示用，后台上传二维码）

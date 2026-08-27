@@ -20,7 +20,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 
 /**
- * App会员 token
+ * App会员 token：默认 7 天，剩余不足 1 天且有请求时自动续签。
  */
 @Component
 public class AppTokenService
@@ -33,12 +33,14 @@ public class AppTokenService
     @Value("${token.secret}")
     private String secret;
 
-    @Value("${token.expireTime}")
+    /** App 有效期（分钟），默认 7 天 */
+    @Value("${token.appExpireTime:10080}")
     private int expireTime;
 
     protected static final long MILLIS_MINUTE = 60 * 1000L;
 
-    private static final Long MILLIS_MINUTE_TWENTY = 20 * 60 * 1000L;
+    /** 剩余不足 1 天则续签 */
+    private static final long MILLIS_DAY = 24 * 60 * 60 * 1000L;
 
     @Autowired
     private RedisCache redisCache;
@@ -81,7 +83,7 @@ public class AppTokenService
         String token = IdUtils.fastUUID();
         loginMember.setToken(token);
         refreshToken(loginMember);
-        Map<String, Object> claims = new HashMap<>();
+        Map<String, Object> claims = new HashMap<String, Object>();
         claims.put(Constants.LOGIN_APP_MEMBER_KEY, token);
         claims.put(Constants.JWT_USERNAME, loginMember.getPhone());
         return Jwts.builder().setClaims(claims).signWith(SignatureAlgorithm.HS512, secret).compact();
@@ -89,9 +91,13 @@ public class AppTokenService
 
     public void verifyToken(AppLoginMember loginMember)
     {
-        long expire = loginMember.getExpireTime();
+        if (loginMember == null || loginMember.getExpireTime() == null)
+        {
+            return;
+        }
+        long expire = loginMember.getExpireTime().longValue();
         long currentTime = System.currentTimeMillis();
-        if (expire - currentTime <= MILLIS_MINUTE_TWENTY)
+        if (expire - currentTime <= MILLIS_DAY)
         {
             refreshToken(loginMember);
         }
@@ -100,7 +106,7 @@ public class AppTokenService
     public void refreshToken(AppLoginMember loginMember)
     {
         loginMember.setLoginTime(System.currentTimeMillis());
-        loginMember.setExpireTime(loginMember.getLoginTime() + expireTime * MILLIS_MINUTE);
+        loginMember.setExpireTime(Long.valueOf(loginMember.getLoginTime() + expireTime * MILLIS_MINUTE));
         redisCache.setCacheObject(getTokenKey(loginMember.getToken()), loginMember, expireTime, TimeUnit.MINUTES);
     }
 

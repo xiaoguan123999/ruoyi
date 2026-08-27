@@ -56,7 +56,12 @@
         inner join biz_member m on m.member_id = r.member_id
         where r.currency = #{currency} and r.status = '1'
           and (
-            find_in_set(#{memberId}, m.ancestors)
+            (
+              find_in_set(#{memberId}, m.ancestors)
+              <if test="maxDepth != null">
+                and (length(ifnull(m.ancestors,'')) - length(replace(ifnull(m.ancestors,''), ',', '')) - ifnull(#{viewerDepth}, 0)) between 1 and #{maxDepth}
+              </if>
+            )
             <if test="includeSelf">or m.member_id = #{memberId}</if>
           )
     </select>

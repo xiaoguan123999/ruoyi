@@ -51,6 +51,14 @@ public class BizProductServiceImpl implements IBizProductService
         {
             product.setBuyLimit(Integer.valueOf(0));
         }
+        if (product.getUnlockDirectQty() == null || product.getUnlockDirectQty().intValue() < 0)
+        {
+            product.setUnlockDirectQty(Integer.valueOf(0));
+        }
+        if (product.getUnlockDelayHours() == null || product.getUnlockDelayHours().intValue() < 0)
+        {
+            product.setUnlockDelayHours(Integer.valueOf(0));
+        }
         fillDualPrices(product);
         return productMapper.insertProduct(product);
     }
@@ -58,6 +66,14 @@ public class BizProductServiceImpl implements IBizProductService
     @Override
     public int updateProduct(BizProduct product)
     {
+        if (product.getUnlockDirectQty() != null && product.getUnlockDirectQty().intValue() < 0)
+        {
+            product.setUnlockDirectQty(Integer.valueOf(0));
+        }
+        if (product.getUnlockDelayHours() != null && product.getUnlockDelayHours().intValue() < 0)
+        {
+            product.setUnlockDelayHours(Integer.valueOf(0));
+        }
         fillDualPrices(product);
         return productMapper.updateProduct(product);
     }

@@ -8,7 +8,7 @@ public class BizLevelRewardRule
 {
     @ApiModelProperty("总开关")
     private Boolean enabled;
-    @ApiModelProperty("团队同时有人民币和USDT业绩时发放的币种")
+    @ApiModelProperty("发放币种：CNY/USDT 二选一，BOTH 两种金额都发")
     private String mixedPayCurrency;
     @ApiModelProperty("团队业绩口径：SUBSCRIBE认购 RECHARGE充值 BOTH两者相加")
     private String performanceSource;

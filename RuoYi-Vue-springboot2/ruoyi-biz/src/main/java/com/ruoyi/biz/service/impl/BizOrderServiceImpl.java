@@ -1,6 +1,7 @@
 package com.ruoyi.biz.service.impl;
 
 import java.math.BigDecimal;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import org.slf4j.Logger;
@@ -56,13 +57,21 @@ public class BizOrderServiceImpl implements IBizOrderService
     @Override
     public BizOrder selectOrderById(Long orderId)
     {
-        return orderMapper.selectOrderById(orderId);
+        return fillActivate(orderMapper.selectOrderById(orderId));
     }
 
     @Override
     public List<BizOrder> selectOrderList(BizOrder order)
     {
-        return orderMapper.selectOrderList(order);
+        List<BizOrder> list = orderMapper.selectOrderList(order);
+        if (list != null)
+        {
+            for (int i = 0; i < list.size(); i++)
+            {
+                fillActivate(list.get(i));
+            }
+        }
+        return list;
     }
 
     @Override
@@ -135,6 +144,8 @@ public class BizOrderServiceImpl implements IBizOrderService
         order.setDurationDays(product.getDurationDays());
         order.setRemainingDays(product.getDurationDays());
         order.setWithdrawRequired(product.getWithdrawRequired());
+        order.setUnlockDirectQty(nz(product.getUnlockDirectQty()));
+        order.setUnlockDelayHours(nz(product.getUnlockDelayHours()));
         order.setStatus(BizConstants.ORDER_HOLDING);
         orderMapper.insertOrder(order);
         commissionService.grantForSubscribe(order);
@@ -144,8 +155,12 @@ public class BizOrderServiceImpl implements IBizOrderService
         {
             memberService.refreshLevel(member.getParentId());
         }
-        BizOrder created = orderMapper.selectOrderById(order.getOrderId());
-        return created != null ? created : order;
+        refreshUnlockForMemberProduct(memberId, productId);
+        if (member.getParentId() != null)
+        {
+            refreshUnlockForMemberProduct(member.getParentId(), productId);
+        }
+        return fillActivate(orderMapper.selectOrderById(order.getOrderId()));
     }
 
     private int resolveQuantity(Integer quantity)
@@ -216,6 +231,12 @@ public class BizOrderServiceImpl implements IBizOrderService
         {
             return;
         }
+        persistIncomeStartIfReady(order);
+        fillActivate(order);
+        if (!"1".equals(order.getActivateStatus()))
+        {
+            return;
+        }
         String currency = StringUtils.isEmpty(order.getCurrency())
                 ? BizConstants.CURRENCY_CNY : order.getCurrency().toUpperCase();
         walletService.credit(order.getMemberId(), currency, order.getDailyRebate(),
@@ -238,5 +259,148 @@ public class BizOrderServiceImpl implements IBizOrderService
             update.setStatus(BizConstants.ORDER_FINISHED);
         }
         orderMapper.updateOrder(update);
+    }
+
+    private void refreshUnlockForMemberProduct(Long memberId, Long productId)
+    {
+        if (memberId == null || productId == null)
+        {
+            return;
+        }
+        BizOrder query = new BizOrder();
+        query.setMemberId(memberId);
+        query.setProductId(productId);
+        query.setStatus(BizConstants.ORDER_HOLDING);
+        List<BizOrder> list = orderMapper.selectOrderList(query);
+        if (list == null)
+        {
+            return;
+        }
+        for (int i = 0; i < list.size(); i++)
+        {
+            persistIncomeStartIfReady(list.get(i));
+        }
+    }
+
+    private void persistIncomeStartIfReady(BizOrder order)
+    {
+        if (order == null || order.getIncomeStartTime() != null)
+        {
+            return;
+        }
+        Date start = computeIncomeStart(order);
+        if (start == null)
+        {
+            return;
+        }
+        BizOrder update = new BizOrder();
+        update.setOrderId(order.getOrderId());
+        update.setIncomeStartTime(start);
+        orderMapper.updateOrder(update);
+        order.setIncomeStartTime(start);
+    }
+
+    private BizOrder fillActivate(BizOrder order)
+    {
+        if (order == null)
+        {
+            return null;
+        }
+        persistIncomeStartIfReady(order);
+        int need = nz(order.getUnlockDirectQty());
+        int delay = nz(order.getUnlockDelayHours());
+        if (need > 0)
+        {
+            order.setUnlockDirectHave(Integer.valueOf(sumDirectDownlineQty(order.getMemberId(), order.getProductId())));
+        }
+        else
+        {
+            order.setUnlockDirectHave(Integer.valueOf(0));
+        }
+        if (need <= 0 && delay <= 0)
+        {
+            order.setActivateStatus("1");
+            return order;
+        }
+        Date start = order.getIncomeStartTime();
+        Date now = DateUtils.getNowDate();
+        if (start != null && !now.before(start))
+        {
+            order.setActivateStatus("1");
+        }
+        else
+        {
+            order.setActivateStatus("0");
+        }
+        return order;
+    }
+
+    private Date computeIncomeStart(BizOrder order)
+    {
+        int need = nz(order.getUnlockDirectQty());
+        int delay = nz(order.getUnlockDelayHours());
+        if (need <= 0 && delay <= 0)
+        {
+            return null;
+        }
+        Date ownTime = order.getCreateTime() != null ? order.getCreateTime() : DateUtils.getNowDate();
+        Date conditionTime = ownTime;
+        if (need > 0)
+        {
+            Date reached = firstReachTime(order.getMemberId(), order.getProductId(), need);
+            if (reached == null)
+            {
+                return null;
+            }
+            if (reached.after(ownTime))
+            {
+                conditionTime = reached;
+            }
+        }
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(conditionTime);
+        calendar.add(Calendar.HOUR_OF_DAY, delay);
+        return calendar.getTime();
+    }
+
+    private Date firstReachTime(Long memberId, Long productId, int need)
+    {
+        List<BizOrder> downs = orderMapper.selectDirectDownlineProductOrders(memberId, productId);
+        if (downs == null || downs.isEmpty())
+        {
+            return null;
+        }
+        int acc = 0;
+        for (int i = 0; i < downs.size(); i++)
+        {
+            BizOrder row = downs.get(i);
+            acc += nz(row.getQuantity()) <= 0 ? 1 : nz(row.getQuantity());
+            if (acc >= need)
+            {
+                return row.getCreateTime() != null ? row.getCreateTime() : DateUtils.getNowDate();
+            }
+        }
+        return null;
+    }
+
+    private int sumDirectDownlineQty(Long memberId, Long productId)
+    {
+        List<BizOrder> downs = orderMapper.selectDirectDownlineProductOrders(memberId, productId);
+        if (downs == null)
+        {
+            return 0;
+        }
+        int acc = 0;
+        for (int i = 0; i < downs.size(); i++)
+        {
+            int qty = nz(downs.get(i).getQuantity());
+            acc += qty <= 0 ? 1 : qty;
+        }
+        return acc;
+    }
+
+    private int nz(Integer value)
+    {
+        return value == null ? 0 : value.intValue();
     }
 }

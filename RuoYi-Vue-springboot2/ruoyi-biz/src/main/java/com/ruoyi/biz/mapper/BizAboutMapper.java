@@ -7,6 +7,8 @@ public interface BizAboutMapper
 {
     BizAbout selectAboutById(Long aboutId);
 
+    BizAbout selectAboutSingleton();
+
     List<BizAbout> selectAboutList(BizAbout about);
 
     int insertAbout(BizAbout about);

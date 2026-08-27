@@ -210,6 +210,10 @@ public class BizConstants
     public static final String PAY_SCENE_UNION = "union";
     public static final String PAY_SCENE_USDT = "usdt";
 
+    public static final String ABOUT_MODE_TEXT = "TEXT";
+
+    public static final String ABOUT_MODE_PDF = "PDF";
+
     public static final String CONFIG_SERVICE_TITLE = "biz.service.title";
     public static final String CONFIG_SERVICE_WORK_TIME = "biz.service.workTime";
     public static final String CONFIG_SERVICE_HINT = "biz.service.hint";

@@ -1,5 +1,28 @@
 <template>
   <div class="app-container ops-page">
+    <div class="ops-section-card mb8">
+      <div class="ops-section-card__hd">App 等级页文案</div>
+      <div class="ops-section-card__bd">
+        <el-form :model="appCopy" label-width="110px" v-loading="copyLoading">
+          <el-row :gutter="16">
+            <el-col :xs="24" :md="12">
+              <el-form-item label="规则说明">
+                <el-input v-model="appCopy.ruleText" type="textarea" :rows="3" maxlength="500" show-word-limit placeholder="App 右上角「规则说明」正文" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <el-form-item label="页面注释">
+                <el-input v-model="appCopy.hint" type="textarea" :rows="3" maxlength="500" show-word-limit placeholder="App 等级表上方的「注」" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label-width="0">
+            <el-button type="primary" @click="saveAppCopy" v-hasPermi="['biz:levelReward:edit']">保存文案</el-button>
+            <el-button type="warning" @click="runEvaluate" v-hasPermi="['biz:levelReward:edit']">立即核算全部会员</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+    </div>
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
       <el-form-item label="等级名称" prop="levelName">
         <el-input v-model="queryParams.levelName" placeholder="等级名称" clearable style="width: 180px" @keyup.enter="handleQuery" />
@@ -19,8 +42,13 @@
       <el-table-column label="ID" align="center" prop="levelId" width="80" />
       <el-table-column label="等级" align="center" prop="levelName" />
       <el-table-column label="团队要求" align="center" prop="teamDepth" min-width="100" />
-      <el-table-column label="累计充值CNY" align="center" prop="minRechargeCny" />
-      <el-table-column label="累计充值USDT" align="center" prop="minRechargeUsdt" />
+      <el-table-column label="团队口径" align="center" min-width="110">
+        <template #default="scope">{{ sourceLabel(scope.row.performanceSource) }}</template>
+      </el-table-column>
+      <el-table-column label="本人累计充值CNY" align="center" prop="minRechargeCny" min-width="140" />
+      <el-table-column label="本人累计充值USDT" align="center" prop="minRechargeUsdt" min-width="150" />
+      <el-table-column label="团队累计CNY" align="center" prop="minTeamRechargeCny" min-width="140" />
+      <el-table-column label="团队累计USDT" align="center" prop="minTeamRechargeUsdt" min-width="150" />
       <el-table-column label="团队奖励CNY" align="center" prop="rewardCny" />
       <el-table-column label="团队奖励USDT" align="center" prop="rewardUsdt" />
       <el-table-column label="排序" align="center" prop="sort" />
@@ -38,14 +66,53 @@
     </el-table>
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
-    <el-dialog :title="title" v-model="open" width="560px" append-to-body>
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="130px">
+    <el-dialog :title="title" v-model="open" width="640px" append-to-body>
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="150px">
         <el-form-item label="等级名称" prop="levelName"><el-input v-model="form.levelName" /></el-form-item>
         <el-form-item label="团队要求" prop="teamDepth">
-          <el-input v-model="form.teamDepth" placeholder="例如 一级内，对应 App 等级表该列" />
+          <el-select v-model="form.teamDepth" placeholder="请选择" style="width: 100%">
+            <el-option v-for="item in teamDepthOptions" :key="item" :label="item" :value="item" />
+          </el-select>
+          <div style="color:#909399;font-size:12px;line-height:1.4;margin-top:6px">一级内=邀请关系第1层，二级内=第1+2层。团队累计按这个范围统计。不选则整条线都算。</div>
         </el-form-item>
-        <el-form-item label="累计充值CNY" prop="minRechargeCny"><el-input-number v-model="form.minRechargeCny" :min="0" :precision="2" style="width: 100%" /></el-form-item>
-        <el-form-item label="累计充值USDT" prop="minRechargeUsdt"><el-input-number v-model="form.minRechargeUsdt" :min="0" :precision="2" style="width: 100%" /></el-form-item>
+        <el-form-item label="团队业绩口径">
+          <el-select v-model="form.performanceSource" style="width: 100%">
+            <el-option label="认购金额" value="SUBSCRIBE" />
+            <el-option label="已通过充值" value="RECHARGE" />
+            <el-option label="认购 + 充值" value="BOTH" />
+          </el-select>
+          <div style="color:#909399;font-size:12px;line-height:1.4;margin-top:6px">只改这个等级的团队累计怎么算。本人累计充值始终看充值。</div>
+        </el-form-item>
+        <el-form-item label="本人累计充值CNY" prop="minRechargeCny">
+          <el-input-number v-model="form.minRechargeCny" :min="0" :precision="2" style="width: 100%" />
+          <div style="color:#909399;font-size:12px;line-height:1.4;margin-top:6px">只看这个会员自己、审核通过的充值，不是团队累计。两边都填则两种币都要达标；填 0 不限制。</div>
+        </el-form-item>
+        <el-form-item label="本人累计充值USDT" prop="minRechargeUsdt"><el-input-number v-model="form.minRechargeUsdt" :min="0" :precision="2" style="width: 100%" /></el-form-item>
+        <el-form-item :label="'团队累计' + sourceLabel(form.performanceSource) + 'CNY'" prop="minTeamRechargeCny">
+          <el-input-number v-model="form.minTeamRechargeCny" :min="0" :precision="2" style="width: 100%" />
+          <div style="color:#909399;font-size:12px;line-height:1.4;margin-top:6px">按上面口径和「团队要求」范围合计，不含本人。填 0 不限制。</div>
+        </el-form-item>
+        <el-form-item :label="'团队累计' + sourceLabel(form.performanceSource) + 'USDT'" prop="minTeamRechargeUsdt"><el-input-number v-model="form.minTeamRechargeUsdt" :min="0" :precision="2" style="width: 100%" /></el-form-item>
+        <el-form-item label="最低有效成员">
+          <el-input-number v-model="form.minValidMembers" :min="0" :precision="0" style="width: 100%" />
+          <div style="color:#909399;font-size:12px;line-height:1.4;margin-top:6px">按「团队要求」范围统计。填 0 不限制人数。</div>
+        </el-form-item>
+        <el-form-item label="有效成员需实名">
+          <el-switch v-model="form.validNeedKyc" active-value="1" inactive-value="0" />
+        </el-form-item>
+        <el-form-item label="有效成员需认购">
+          <el-switch v-model="form.validNeedOrder" active-value="1" inactive-value="0" />
+        </el-form-item>
+        <el-form-item label="发放币种">
+          <el-radio-group v-model="form.mixedPayCurrency">
+            <el-radio value="USDT">只发USDT</el-radio>
+            <el-radio value="CNY">只发人民币</el-radio>
+            <el-radio value="BOTH">人民币和USDT都发</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="到账钱包">
+          <WalletTypeSelect v-model="form.walletTypeCode" width="100%" />
+        </el-form-item>
         <el-form-item label="团队奖励CNY">
           <el-input-number v-model="form.rewardCny" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
@@ -71,7 +138,8 @@
 </template>
 
 <script setup lang="ts" name="BizLevel">
-import { listLevel, getLevel, addLevel, updateLevel, delLevel } from "@/api/biz"
+import { listLevel, getLevel, addLevel, updateLevel, delLevel, getLevelRewardRule, saveLevelRewardRule, evaluateLevelReward } from "@/api/biz"
+import WalletTypeSelect from "@/views/biz/components/WalletTypeSelect.vue"
 
 const { proxy } = getCurrentInstance() as any
 const dataList = ref<any[]>([])
@@ -86,6 +154,12 @@ const data = reactive({
   rules: { levelName: [{ required: true, message: "等级名称不能为空", trigger: "blur" }] }
 })
 const { queryParams, form, rules } = toRefs(data)
+const TEAM_DEPTH_PRESET = ["一级内", "二级内", "三级内", "四级内", "五级内", "六级内", "七级内"]
+const teamDepthOptions = computed(() => {
+  const cur = form.value?.teamDepth
+  if (cur && !TEAM_DEPTH_PRESET.includes(cur)) return [cur, ...TEAM_DEPTH_PRESET]
+  return TEAM_DEPTH_PRESET
+})
 
 function getList() {
   loading.value = true
@@ -97,11 +171,38 @@ function getList() {
 }
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
-function reset() { form.value = { status: "0", teamDepth: "", minValidMembers: 0, minRechargeCny: 0, minRechargeUsdt: 0, minTeamPerfCny: 0, minTeamPerfUsdt: 0, rewardCny: 0, rewardUsdt: 0, sort: 0 } }
+function sourceLabel(v: string) {
+  if (v === "SUBSCRIBE") return "认购"
+  if (v === "BOTH") return "认购+充值"
+  return "充值"
+}
+const copyLoading = ref(false)
+const appCopy = ref({ ruleText: "", hint: "", enabled: true, mixedPayCurrency: "USDT", performanceSource: "SUBSCRIBE", includeSelf: false, validNeedKyc: true, validNeedOrder: true })
+function loadAppCopy() {
+  copyLoading.value = true
+  getLevelRewardRule().then((res: any) => {
+    appCopy.value = Object.assign(appCopy.value, res.data || {})
+  }).finally(() => { copyLoading.value = false })
+}
+function saveAppCopy() {
+  saveLevelRewardRule(appCopy.value).then(() => proxy.$modal.msgSuccess("保存成功"))
+}
+function runEvaluate() {
+  proxy.$modal.confirm("将按当前各等级规则核算全部会员，是否继续？").then(() => evaluateLevelReward()).then((res: any) => {
+    proxy.$modal.msgSuccess(res.msg || "核算完成")
+    getList()
+  }).catch(() => {})
+}
+function reset() { form.value = { status: "0", teamDepth: "", performanceSource: "RECHARGE", mixedPayCurrency: "USDT", walletTypeCode: "PROMO", validNeedKyc: "1", validNeedOrder: "1", minValidMembers: 0, minRechargeCny: 0, minRechargeUsdt: 0, minTeamRechargeCny: 0, minTeamRechargeUsdt: 0, minTeamPerfCny: 0, minTeamPerfUsdt: 0, rewardCny: 0, rewardUsdt: 0, sort: 0 } }
 function handleAdd() { reset(); open.value = true; title.value = "新增等级" }
 function handleUpdate(row: any) {
   getLevel(row.levelId).then((res: any) => {
-    form.value = res.data
+    form.value = Object.assign({ performanceSource: "RECHARGE", mixedPayCurrency: "USDT", walletTypeCode: "PROMO", validNeedKyc: "1", validNeedOrder: "1" }, res.data || {})
+    if (!form.value.performanceSource) form.value.performanceSource = "RECHARGE"
+    if (!form.value.mixedPayCurrency) form.value.mixedPayCurrency = "USDT"
+    if (!form.value.walletTypeCode) form.value.walletTypeCode = "PROMO"
+    if (!form.value.validNeedKyc) form.value.validNeedKyc = "1"
+    if (!form.value.validNeedOrder) form.value.validNeedOrder = "1"
     open.value = true
     title.value = "修改等级"
   })
@@ -124,5 +225,6 @@ function handleDelete(row: any) {
     proxy.$modal.msgSuccess("删除成功")
   }).catch(() => {})
 }
+loadAppCopy()
 getList()
 </script>

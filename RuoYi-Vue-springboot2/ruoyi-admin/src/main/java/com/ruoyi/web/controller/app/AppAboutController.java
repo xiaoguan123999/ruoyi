@@ -1,7 +1,5 @@
 package com.ruoyi.web.controller.app;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -9,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.HtmlUtils;
 import com.ruoyi.biz.api.AppAboutItem;
 import com.ruoyi.biz.api.AppAboutResult;
+import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.BizAbout;
 import com.ruoyi.biz.service.IBizAboutService;
 import com.ruoyi.common.annotation.Anonymous;
@@ -26,24 +25,23 @@ public class AppAboutController extends BaseController
     private IBizAboutService aboutService;
 
     @Anonymous
-    @ApiOperation(value = "关于我们", notes = "data 为数组。content 已转成纯文本。")
+    @ApiOperation(value = "关于我们", notes = "data 为单条。mode=TEXT 看 title/subtitle/content/imageUrl；mode=PDF 看 pdfUrl。content 已转成纯文本。")
     @GetMapping
-    public AppAboutResult list()
+    public AppAboutResult get()
     {
-        List<BizAbout> items = aboutService.selectAppAboutList();
-        List<AppAboutItem> rows = new ArrayList<AppAboutItem>();
-        for (BizAbout item : items)
+        BizAbout item = aboutService.getSingleton();
+        if (item == null || !BizConstants.STATUS_OK.equals(item.getStatus()))
         {
-            AppAboutItem row = new AppAboutItem();
-            row.setAboutId(item.getAboutId());
-            row.setTitle(item.getTitle());
-            row.setSubtitle(item.getSubtitle() == null ? "" : item.getSubtitle());
-            row.setContent(toPlainText(item.getContent()));
-            row.setImageUrl(item.getImageUrl() == null ? "" : item.getImageUrl());
-            row.setSort(item.getSort());
-            rows.add(row);
+            return AppAboutResult.fail("暂无内容");
         }
-        return AppAboutResult.ok(rows);
+        AppAboutItem row = new AppAboutItem();
+        row.setMode(item.getMode());
+        row.setTitle(item.getTitle() == null ? "" : item.getTitle());
+        row.setSubtitle(item.getSubtitle() == null ? "" : item.getSubtitle());
+        row.setContent(toPlainText(item.getContent()));
+        row.setImageUrl(item.getImageUrl() == null ? "" : item.getImageUrl());
+        row.setPdfUrl(item.getPdfUrl() == null ? "" : item.getPdfUrl());
+        return AppAboutResult.ok(row);
     }
 
     private String toPlainText(String html)

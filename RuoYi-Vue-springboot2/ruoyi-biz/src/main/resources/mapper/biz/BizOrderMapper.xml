@@ -20,6 +20,9 @@
         <result property="remainingDays"     column="remaining_days"/>
         <result property="lastRebateDate"    column="last_rebate_date"/>
         <result property="withdrawRequired"  column="withdraw_required"/>
+        <result property="unlockDirectQty"   column="unlock_direct_qty"/>
+        <result property="unlockDelayHours"  column="unlock_delay_hours"/>
+        <result property="incomeStartTime"   column="income_start_time"/>
         <result property="status"            column="status"/>
         <result property="createTime"        column="create_time"/>
         <result property="updateTime"        column="update_time"/>
@@ -31,7 +34,8 @@
                p.category_id, c.category_name, c.cover_url as series_cover_url,
                o.currency, o.price, ifnull(o.quantity, 1) as quantity,
                o.daily_rebate, o.duration_days, o.remaining_days, o.last_rebate_date,
-               o.withdraw_required, o.status, o.create_time, o.update_time, o.remark
+               o.withdraw_required, o.unlock_direct_qty, o.unlock_delay_hours, o.income_start_time,
+               o.status, o.create_time, o.update_time, o.remark
         from biz_order o
         left join biz_member m on m.member_id = o.member_id
         left join biz_product p on p.product_id = o.product_id
@@ -73,6 +77,13 @@
         select ifnull(sum(ifnull(quantity, 1)), 0) from biz_order where member_id = #{memberId} and product_id = #{productId}
     </select>
 
+    <select id="selectDirectDownlineProductOrders" resultMap="BizOrderResult">
+        <include refid="selectOrderVo"/>
+        where o.product_id = #{productId}
+          and m.parent_id = #{parentId}
+        order by o.create_time asc, o.order_id asc
+    </select>
+
     <select id="countWithdrawRequiredOrders" resultType="int">
         select count(1) from biz_order
         where member_id = #{memberId} and withdraw_required = '1' and currency = #{currency}
@@ -84,7 +95,12 @@
         inner join biz_member m on m.member_id = o.member_id
         where o.currency = #{currency}
           and (
-            find_in_set(#{memberId}, m.ancestors)
+            (
+              find_in_set(#{memberId}, m.ancestors)
+              <if test="maxDepth != null">
+                and (length(ifnull(m.ancestors,'')) - length(replace(ifnull(m.ancestors,''), ',', '')) - ifnull(#{viewerDepth}, 0)) between 1 and #{maxDepth}
+              </if>
+            )
             <if test="includeSelf">or m.member_id = #{memberId}</if>
           )
     </select>
@@ -92,10 +108,12 @@
     <insert id="insertOrder" parameterType="BizOrder" useGeneratedKeys="true" keyProperty="orderId">
         insert into biz_order (
             order_no, member_id, product_id, product_name, currency, price, quantity, daily_rebate,
-            duration_days, remaining_days, last_rebate_date, withdraw_required, status, create_time
+            duration_days, remaining_days, last_rebate_date, withdraw_required,
+            unlock_direct_qty, unlock_delay_hours, income_start_time, status, create_time
         ) values (
             #{orderNo}, #{memberId}, #{productId}, #{productName}, #{currency}, #{price}, #{quantity}, #{dailyRebate},
-            #{durationDays}, #{remainingDays}, #{lastRebateDate}, #{withdrawRequired}, #{status}, sysdate()
+            #{durationDays}, #{remainingDays}, #{lastRebateDate}, #{withdrawRequired},
+            #{unlockDirectQty}, #{unlockDelayHours}, #{incomeStartTime}, #{status}, sysdate()
         )
     </insert>
 
@@ -104,6 +122,7 @@
         <set>
             <if test="remainingDays != null">remaining_days = #{remainingDays},</if>
             <if test="lastRebateDate != null">last_rebate_date = #{lastRebateDate},</if>
+            <if test="incomeStartTime != null">income_start_time = #{incomeStartTime},</if>
             <if test="status != null">status = #{status},</if>
             update_time = sysdate()
         </set>

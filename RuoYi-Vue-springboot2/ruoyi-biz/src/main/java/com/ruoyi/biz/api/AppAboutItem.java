@@ -9,21 +9,21 @@ import io.swagger.annotations.ApiModelProperty;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AppAboutItem
 {
-    @ApiModelProperty("记录ID")
-    private Long aboutId;
+    @ApiModelProperty("展示模式 TEXT / PDF")
+    private String mode;
     @ApiModelProperty("标题")
     private String title;
     @ApiModelProperty("副标题")
     private String subtitle;
-    @ApiModelProperty("正文纯文本")
+    @ApiModelProperty("正文纯文本，文本模式用")
     private String content;
-    @ApiModelProperty("配图URL")
+    @ApiModelProperty("配图URL，文本模式用")
     private String imageUrl;
-    @ApiModelProperty("排序")
-    private Integer sort;
+    @ApiModelProperty("PDF地址，PDF模式用")
+    private String pdfUrl;
 
-    public Long getAboutId() { return aboutId; }
-    public void setAboutId(Long aboutId) { this.aboutId = aboutId; }
+    public String getMode() { return mode; }
+    public void setMode(String mode) { this.mode = mode; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getSubtitle() { return subtitle; }
@@ -32,6 +32,6 @@ public class AppAboutItem
     public void setContent(String content) { this.content = content; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
-    public Integer getSort() { return sort; }
-    public void setSort(Integer sort) { this.sort = sort; }
+    public String getPdfUrl() { return pdfUrl; }
+    public void setPdfUrl(String pdfUrl) { this.pdfUrl = pdfUrl; }
 }

@@ -55,6 +55,12 @@ public class BizProduct extends BaseEntity
     @ApiModelProperty("每人限购份数，0表示不限制")
     private Integer buyLimit;
 
+    @ApiModelProperty("直属下级需认购同一产品的总份数，0表示关闭一拖二")
+    private Integer unlockDirectQty;
+
+    @ApiModelProperty("条件达成后再等待多少小时才开始日返，0表示立即")
+    private Integer unlockDelayHours;
+
     @ApiModelProperty("收益发放方式，App 展示")
     private String payoutMethod;
 
@@ -270,6 +276,26 @@ public class BizProduct extends BaseEntity
     public void setBuyLimit(Integer buyLimit)
     {
         this.buyLimit = buyLimit;
+    }
+
+    public Integer getUnlockDirectQty()
+    {
+        return unlockDirectQty;
+    }
+
+    public void setUnlockDirectQty(Integer unlockDirectQty)
+    {
+        this.unlockDirectQty = unlockDirectQty;
+    }
+
+    public Integer getUnlockDelayHours()
+    {
+        return unlockDelayHours;
+    }
+
+    public void setUnlockDelayHours(Integer unlockDelayHours)
+    {
+        this.unlockDelayHours = unlockDelayHours;
     }
 
     public String getPayoutMethod()

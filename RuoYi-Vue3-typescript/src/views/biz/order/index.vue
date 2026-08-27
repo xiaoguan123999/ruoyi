@@ -54,10 +54,23 @@
       <el-table-column label="到期日" align="center" width="120">
         <template #default="scope">{{ expireDate(scope.row) }}</template>
       </el-table-column>
+      <el-table-column label="激活" align="center" width="90">
+        <template #default="scope">
+          <el-tag :type="scope.row.activateStatus === '1' ? 'success' : 'info'">{{ scope.row.activateStatus === '1' ? '已激活' : '未激活' }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="一拖二" align="center" min-width="110">
+        <template #default="scope">
+          <span>{{ unlockProgress(scope.row) }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" align="center" prop="status" width="90">
         <template #default="scope">
-          <el-tag :type="scope.row.status === '0' ? 'warning' : 'success'">{{ scope.row.status === '0' ? '收益中' : '已完成' }}</el-tag>
+          <el-tag :type="orderStatusType(scope.row)">{{ orderStatusText(scope.row) }}</el-tag>
         </template>
+      </el-table-column>
+      <el-table-column label="收益开始" align="center" width="170">
+        <template #default="scope"><span>{{ parseTime(scope.row.incomeStartTime) || "—" }}</span></template>
       </el-table-column>
       <el-table-column label="申购时间" align="center" prop="createTime" width="170">
         <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
@@ -85,9 +98,27 @@ function progressText(row: any) {
   const done = Math.max(0, totalDays - remain)
   return done + "/" + totalDays
 }
+function unlockProgress(row: any) {
+  const need = Number(row.unlockDirectQty || 0)
+  if (need <= 0) return "—"
+  const have = Number(row.unlockDirectHave || 0)
+  return have + "/" + need + "份"
+}
+function orderStatusText(row: any) {
+  if (row.status === "1") return "已完成"
+  if (row.activateStatus === "1") return "收益中"
+  return "未激活"
+}
+function orderStatusType(row: any) {
+  if (row.status === "1") return "success"
+  if (row.activateStatus === "1") return "warning"
+  return "info"
+}
 function expireDate(row: any) {
-  if (!row.createTime || !row.durationDays) return "—"
-  const raw = String(row.createTime).replace(/-/g, "/")
+  if (row.activateStatus !== "1") return "待激活"
+  const start = row.incomeStartTime || row.createTime
+  if (!start || !row.durationDays) return "—"
+  const raw = String(start).replace(/-/g, "/")
   const d = new Date(raw)
   if (Number.isNaN(d.getTime())) return "—"
   d.setDate(d.getDate() + Number(row.durationDays))

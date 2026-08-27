@@ -28,7 +28,7 @@
         <el-descriptions-item label="账号">{{ summaryMember.phone }}</el-descriptions-item>
         <el-descriptions-item label="姓名">{{ summaryMember.realName || "—" }}</el-descriptions-item>
         <el-descriptions-item label="状态">{{ summaryMember.status === "1" ? "停用" : "正常" }}</el-descriptions-item>
-        <el-descriptions-item label="等级">{{ summaryMember.levelName || "—" }}</el-descriptions-item>
+        <el-descriptions-item label="等级">{{ summaryMember.levelName || "无等级" }}</el-descriptions-item>
         <el-descriptions-item label="CNY可用">{{ summaryMember.cnyAvailable ?? 0 }}</el-descriptions-item>
         <el-descriptions-item label="USDT可用">{{ summaryMember.usdtAvailable ?? 0 }}</el-descriptions-item>
         <el-descriptions-item label="推广收益CNY">{{ summaryMember.cnyAssistValue ?? 0 }}</el-descriptions-item>
@@ -60,7 +60,7 @@
       <el-table-column label="姓名" align="center" prop="realName" />
       <el-table-column label="上级ID" align="center" prop="parentId" width="90" />
       <el-table-column label="祖级" align="center" prop="ancestors" min-width="140" show-overflow-tooltip />
-      <el-table-column label="等级" align="center" prop="levelName" width="80" />
+      <el-table-column label="等级" align="center" min-width="90"><template #default="scope">{{ scope.row.levelName || "无等级" }}</template></el-table-column>
       <el-table-column label="CNY可用" align="center" prop="cnyAvailable" width="100" />
       <el-table-column label="USDT可用" align="center" prop="usdtAvailable" width="100" />
       <el-table-column label="团队人数" align="center" prop="teamCount" width="90" />
@@ -88,7 +88,7 @@
         </el-table-column>
         <el-table-column label="手机号" align="center" prop="phone" min-width="130" />
         <el-table-column label="姓名" align="center" prop="realName" min-width="100" />
-        <el-table-column label="等级" align="center" prop="levelName" width="90" />
+        <el-table-column label="等级" align="center" min-width="90"><template #default="scope">{{ scope.row.levelName || "无等级" }}</template></el-table-column>
         <el-table-column label="实名" align="center" prop="kycStatus" width="80">
           <template #default="scope">
             <el-tag :type="scope.row.kycStatus === '1' ? 'success' : 'info'">{{ scope.row.kycStatus === '1' ? '已实名' : '未实名' }}</el-tag>

@@ -20,6 +20,8 @@ public interface IBizWalletService
 
     void credit(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark);
 
+    void credit(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark, String typeCode);
+
     void debit(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark);
 
     void adjust(Long memberId, String typeCode, String currency, String direction, BigDecimal amount, String remark, String operator);

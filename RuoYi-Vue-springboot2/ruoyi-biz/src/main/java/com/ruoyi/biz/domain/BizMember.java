@@ -55,8 +55,8 @@ public class BizMember extends BaseEntity
     @ApiModelProperty("实名状态：0未实名 1已实名")
     private String kycStatus;
 
-    /** 等级ID */
-    @ApiModelProperty("等级ID")
+    /** 等级ID，空表示无等级 */
+    @ApiModelProperty("等级ID，空表示无等级")
     private Long levelId;
 
     /** 等级名称 */
