@@ -8,6 +8,8 @@ ruoyi:
   copyrightYear: 2026
   # 获取ip地址开关
   addressEnabled: false
+  # 文件路径 示例（ Windows配置D:/ruoyi/uploadPath，Linux配置 /home/ruoyi/uploadPath）
+  profile: /Users/xiaoguan/go/project/ruoyi/uploadPath
   # 验证码类型 math 数字计算 char 字符验证
   captchaType: math
   # Cloudflare R2 对象存储（密钥、公开域名在各环境 yml 中覆盖）
@@ -70,11 +72,31 @@ spring:
     restart:
       # 热部署开关（各环境可覆盖）
       enabled: false
+  # redis 配置（各环境可覆盖）
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    password: 123456
+    timeout: 10s
+    lettuce:
+      pool:
+        min-idle: 0
+        max-idle: 8
+        max-active: 8
+        max-wait: -1ms
+
+# 日志配置
+logging:
+  level:
+    com.ruoyi: debug
+    org.springframework: warn
 
 # token配置
 token:
   # 令牌自定义标识
   header: Authorization
+  secret: abcdefghijklmnopqrstuvwxyz
   # 令牌有效期（默认30分钟）
   expireTime: 30
   # App会员令牌有效期（分钟），7天；剩余不足1天有请求则自动续签
@@ -97,6 +119,8 @@ pagehelper:
 
 # Swagger配置
 swagger:
+  # 是否开启swagger
+  enabled: true
   # 请求前缀
   pathMapping: /api
 

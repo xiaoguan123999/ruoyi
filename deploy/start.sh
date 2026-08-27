@@ -79,14 +79,6 @@ if [ -f "$APP_DIR/.r2.env" ]; then
   echo "已加载 R2 环境变量"
 fi
 
-if [ "$ENV" = "prod" ]; then
-  if [ -z "$DB_HOST" ] || [ -z "$DB_USERNAME" ] || [ -z "$DB_PASSWORD" ]; then
-    echo "生产环境请在 $APP_DIR/.env 中配置 DB_HOST、DB_USERNAME、DB_PASSWORD"
-    echo "可选: REDIS_HOST、REDIS_PASSWORD、TOKEN_SECRET、R2_ACCESS_KEY、R2_SECRET_KEY"
-    exit 1
-  fi
-fi
-
 nohup "$JAVA_CMD" -Xms256m -Xmx512m -jar "$JAR" \
   --spring.profiles.active="druid,$ENV" \
   --server.port=8080 \
