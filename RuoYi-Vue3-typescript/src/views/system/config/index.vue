@@ -1,5 +1,12 @@
 <template>
    <div class="app-container">
+      <el-alert
+         title="这里只保留系统参数（皮肤、验证码、初始密码等）。提现限额、签到、推广返佣、等级奖励、客服文案请到对应业务页面修改，运营不用在这里找。"
+         type="warning"
+         :closable="false"
+         show-icon
+         style="margin-bottom: 12px"
+      />
       <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
          <el-form-item label="参数名称" prop="configName">
             <el-input

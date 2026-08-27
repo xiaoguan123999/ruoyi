@@ -32,10 +32,21 @@ public class AppPromoController extends BaseController
         return AppPromoResult.ok(promoService.getAppPromo(AppSecurityUtils.getMemberIdOrNull()));
     }
 
-    @ApiOperation(value = "领取实名注册奖励", notes = "实名后 CNY 或 USDT 任选其一，每人一次。别名 POST /app/registerReward")
-    @PostMapping({"/promo/kycReward", "/registerReward"})
+    @Anonymous
+    @ApiOperation(value = "实名认证奖励配置", notes = "弹窗用：kycRewardCny / kycRewardUsdt。已登录返回是否可领。")
+    @GetMapping({"/kyc/reward", "/kycReward"})
+    public AppPromoResult kycReward()
+    {
+        return AppPromoResult.ok(promoService.getAppPromo(AppSecurityUtils.getMemberIdOrNull()));
+    }
+
+    @ApiOperation(value = "领取实名注册奖励", notes = "实名后 CNY 或 USDT 任选其一入账，每人一次。别名 POST /app/kyc/reward 、 /app/kycReward 、 /app/registerReward")
+    @PostMapping({"/promo/kycReward", "/registerReward", "/kyc/reward", "/kycReward"})
     public AppPromoClaimResult claimKycReward(@RequestBody AppPromoClaimBody body)
     {
-        return AppPromoClaimResult.ok(promoService.claimKycReward(AppSecurityUtils.getMemberId(), body));
+        AppPromoClaimResult result = AppPromoClaimResult.ok(
+                promoService.claimKycReward(AppSecurityUtils.getMemberId(), body));
+        result.setMsg("领取成功，已到账");
+        return result;
     }
 }

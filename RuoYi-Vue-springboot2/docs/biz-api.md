@@ -163,7 +163,7 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 `kycStatus`：`0` 未实名，`1` 已实名  
 `status`：`0` 正常，`1` 停用  
 
-资产卡字段：`available` 可用余额，`productIncome` 该币种累计产品日返，`assistValue` 推广收益累计（邀请奖励 `INVITE` + 团队分佣 `COMMISSION`）。App 仍用该字段展示助力值，无需改前端。
+资产卡字段：`available` 可用余额，`productIncome` 该币种累计产品日返，`assistValue` 推广收益累计（签到 `CHECKIN`、实名奖励 `KYC_REWARD`、邀请 `INVITE`、团队分佣 `COMMISSION`、等级奖励 `LEVEL_REWARD`）。App 仍用该字段展示，无需改前端。
 
 ### 6. 实名
 
@@ -321,9 +321,15 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 | kycRewardClaimable | 当前是否可领（已实名且未领且开关打开） |
 | claimedCurrency / claimedAmount | 已领时返回当时选择的币种和金额 |
 
-领取实名注册奖励（需登录，实名后调用）：
+弹窗金额与能否领取：
 
-`POST /app/promo/kycReward`（别名 `POST /app/registerReward`）
+`GET /app/kyc/reward`（别名 `GET /app/kycReward`，也可继续用 `GET /app/promo`）
+
+已登录看 `kycRewardClaimable`。弹窗左侧用 `kycRewardCny`，右侧用 `kycRewardUsdt`。
+
+领取实名注册奖励（需登录，实名后调用，选一种币种入账）：
+
+`POST /app/kyc/reward`（别名 `POST /app/kycReward` 、 `POST /app/promo/kycReward` 、 `POST /app/registerReward`）
 
 ```json
 { "currency": "CNY" }
@@ -332,7 +338,7 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 `currency` 只能是 `CNY` 或 `USDT`，每人只能成功一次。
 
 ```json
-{ "code": 200, "msg": "操作成功", "data": { "currency": "CNY", "amount": 14 } }
+{ "code": 200, "msg": "领取成功，已到账", "data": { "currency": "CNY", "amount": 14 } }
 ```
 
 失败 `msg`：请先完成实名认证、已领取实名注册奖励、只能选择人民币或USDT、实名注册奖励暂未开放、USDT暂未开放。
@@ -436,6 +442,8 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
   }
 }
 ```
+
+团队奖励只使用 `rewardCny` / `rewardUsdt`（表 `biz_level.reward_cny` / `reward_usdt`），不再提供 `teamRewardCny` 别名。
 
 等级匹配（全部启用中的等级取 sort 最高的一档）：有效成员人数、本人累计充值 CNY/USDT、团队业绩 CNY/USDT。某项阈值填 0 表示不限制。
 
@@ -649,7 +657,7 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 | available | 可用余额 |
 | frozen | 冻结金额（提现审核中） |
 | productIncome | 该币种累计产品日返（持仓订单每天打入的 `dailyRebate` 合计） |
-| assistValue | 推广收益累计（邀请奖励 `INVITE` + 团队分佣 `COMMISSION`）。JSON 字段名不变，App 助力值列直接展示该值 |
+| assistValue | 推广收益累计（签到、实名奖励、邀请、分佣、等级奖励）。JSON 字段名不变，App 推广收益列直接展示该值 |
 
 CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币种单独结算：用人民币买产品就返人民币、提人民币；用 USDT 买产品就返 U、提 U。签到奖励仍走 CNY。
 
@@ -659,7 +667,18 @@ CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币
 
 给资金明细「充值余额」Tab 用，返回**可用余额变动**流水（认购扣款、充值入账、签到、日返、推广奖金、提现冻结、提现退回等）。只记可用余额变化，提现打款成功只扣冻结的那条不出现。
 
-别名：`GET /app/wallet/logs` 、 `GET /app/funds`。可选 `currency=CNY|USDT`、`bizType`。
+别名：`GET /app/wallet/logs` 、 `GET /app/funds`。可选 `currency=CNY|USDT`、`bizType`（别名 `type`）。
+
+按类型筛选示例：
+
+- 全部：`GET /app/walletLog?pageNum=1&pageSize=10`
+- 充值记录：`GET /app/walletLog?bizType=RECHARGE`
+- 提现记录：`GET /app/walletLog?bizType=WITHDRAW`（含 `WITHDRAW_FREEZE` / `WITHDRAW_SUCCESS` / `WITHDRAW_REJECT`）
+- 推广收益：`GET /app/walletLog?bizType=PROMO`（签到、实名奖励、邀请、分佣、等级奖励）
+- 产品收益：`GET /app/walletLog?bizType=PRODUCT`（产品日返 `REBATE`）
+- 多个类型：`GET /app/walletLog?bizType=RECHARGE,SUBSCRIBE`
+
+`bizType=WITHDRAW` 是分组查询；`bizType=PROMO` / `ASSIST` / `推广收益` 查推广收益（签到、实名奖励、邀请、分佣、等级奖励）；`bizType=PRODUCT` / `产品收益` 查产品日返。精确值如 `SUBSCRIBE`、`CHECKIN` 仍按原值过滤。
 
 ```json
 {
@@ -691,7 +710,50 @@ CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币
 | direction | `IN` / `OUT` |
 | date | `yyyy-MM-dd`，可直接展示 |
 
-`bizType`：`SUBSCRIBE` 认购、`RECHARGE` 充值、`COMMISSION` 推广奖金、`INVITE` 推广奖励、`KYC_REWARD` 实名注册奖励、`CHECKIN` 签到、`REBATE` 产品日返、`LEVEL_REWARD` 等级奖励、`WITHDRAW_FREEZE` 提现、`WITHDRAW_REJECT` 提现退回。
+`bizType` 筛选：`RECHARGE` 充值记录，`WITHDRAW` 提现记录（分组）。精确值：`SUBSCRIBE` 认购、`RECHARGE` 充值、`COMMISSION` 推广奖金、`INVITE` 推广奖励、`KYC_REWARD` 实名注册奖励、`CHECKIN` 签到、`REBATE` 产品日返、`LEVEL_REWARD` 等级奖励、`ADJUST` 后台调账、`WITHDRAW_FREEZE` 提现、`WITHDRAW_SUCCESS` 提现成功、`WITHDRAW_REJECT` 提现退回。
+
+### 13.2 充值/提现申请记录（含全部状态）
+
+`GET /app/fundRecords?pageNum=1&pageSize=10`
+
+查的是**申请单**，不是余额流水。待审、通过/已打款、拒绝都会返回。
+
+别名：`GET /app/fund/records` 、 `GET /app/bills`。
+
+| 参数 | 说明 |
+|---|---|
+| type / bizType | `RECHARGE` 充值申请，`WITHDRAW` 提现申请。不传则两类都返回 |
+| currency | 可选 `CNY` / `USDT` |
+| status | 可选。不传=全部。`0` 待处理，`1` 成功，`2` 拒绝 |
+
+```
+GET /app/fundRecords?bizType=RECHARGE
+GET /app/fundRecords?bizType=WITHDRAW
+GET /app/fundRecords?bizType=RECHARGE&status=0
+```
+
+```json
+{
+  "total": 2,
+  "rows": [
+    {
+      "id": 12,
+      "bizType": "RECHARGE",
+      "bizTypeLabel": "充值",
+      "title": "充值待审",
+      "amount": 300,
+      "currency": "CNY",
+      "status": "0",
+      "statusLabel": "待审",
+      "createTime": "2026-08-26 21:00:00"
+    }
+  ]
+}
+```
+
+充值 `statusLabel`：待审 / 已通过 / 已拒绝。提现：待打款 / 已打款 / 已拒绝。
+
+---
 
 ### 14.1 收款账户（钱包管理）
 
@@ -780,9 +842,10 @@ App 提现不需要绑定或填写谷歌验证码，`googleCode` 可省略。
 | googleCode | 否 | 忽略，App 提现不校验谷歌验证 |
 
 规则：
-- 人民币最低提现 `biz.withdraw.minAmount`（默认 105）
-- USDT 最低提现 `biz.withdraw.minAmount.usdt`（默认 105）
-- 提现某币种前，必须已认购该币种且 `withdrawRequired=1` 的产品
+- 人民币最低/最高提现：后台「提现审核」页配置，最高 0 表示不限
+- USDT 最低/最高提现：同上
+- 产品收益提现：必须已认购该币种且 `withdrawRequired=1` 的产品
+- 推广收益提现：App 会把备注写成「推广收益-…」。未购买过任何产品时拒绝，提示请先购买产品后再提现推广收益
 - 申请时冻结对应币种余额
 
 `GET /app/withdraw?pageNum=1&pageSize=10` 我的提现单。
@@ -1159,42 +1222,20 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 
 ---
 
-## 四、可改参数（系统管理 → 参数设置）
+## 四、运营配置（到对应功能页，不要改参数设置里的 biz.*）
 
-| 键 | 当前值 | 说明 |
-|---|---|---|
-| biz.checkin.amount | 2 | 每日签到金额（CNY），建议走后台「签到规则」 |
-| biz.checkin.prize1.days / name / rate / enabled | 180 / 华为手机 / 1 / true | 连续签到第一档抽奖 |
-| biz.checkin.prize2.days / name / rate / enabled | 365 / 华硕ROG笔记本电脑 / 0.5 / true | 连续签到第二档抽奖 |
-| biz.withdraw.minAmount | 105 | 人民币最低提现 |
-| biz.withdraw.minAmount.usdt | 105 | USDT 最低提现 |
-| biz.team.enabled | true | 充值三级返佣开关 |
-| biz.team.rate.l1 / l2 / l3 | 9 / 3 / 1 | 充值分佣百分比（同币种） |
-| biz.invite.reward | 2 | 与 biz.promo.invite.amount 同步，每邀请 1 名实名用户 |
-| biz.promo.enabled | true | 实名自领+邀请奖励总开关 |
-| biz.promo.kycSelf.enabled | true | 实名注册奖励开关 |
-| biz.promo.kycSelf.cny | 14 | 实名注册奖励人民币 |
-| biz.promo.kycSelf.usdt | 2 | 实名注册奖励 USDT |
-| biz.promo.invite.enabled | true | 实名推广奖励开关 |
-| biz.promo.invite.amount | 2 | 每成功邀请 1 名实名用户 |
-| biz.promo.invite.currency | CNY | 邀请奖励币种 |
-| biz.promo.invite.lockParent | true | 注册绑定后不可改上级 |
-| biz.promo.ruleText | （规则全文） | App 邀请/规则页文案 |
-| biz.usdt.enabled | true | USDT 开关 |
-| biz.google.enabled | true | 谷歌验证总开关 |
-| biz.google.requireWithdraw | false | App 提现不要求谷歌验证（代码侧已固定关闭） |
-| biz.google.issuer | App | 验证器里显示的名称 |
-| biz.levelReward.enabled | true | 成长激励金总开关 |
-| biz.levelReward.mixedPayCurrency | USDT | 团队同时有人民币和USDT业绩时发这个币种 |
-| biz.levelReward.performanceSource | SUBSCRIBE | 团队业绩口径：SUBSCRIBE认购 / RECHARGE充值 / BOTH |
-| biz.levelReward.includeSelf | false | 团队业绩是否含本人 |
-| biz.levelReward.validNeedKyc | true | 有效成员是否必须已实名 |
-| biz.levelReward.validNeedOrder | true | 有效成员是否必须有认购 |
-| biz.levelReward.ruleText | （规则文案） | App 会员等级页右上角「规则说明」 |
-| biz.levelReward.hint | （页面注释） | App 会员等级页表格上方的「注」 |
-| biz.service.title | 客服中心 | App 客服页标题 |
-| biz.service.workTime | 09:00 - 21:00 | App 客服工作时间 |
-| biz.service.hint | 通道拥堵可联系在线客服 | App 客服提示 |
+参数设置只保留系统项。业务键仍存在 `sys_config`，但后台列表会隐藏 `biz.*`。
+
+| 功能页 | 可改内容 |
+|---|---|
+| 资金中心 → 提现审核 | 人民币/USDT 最低、最高提现（最高 0=不限），USDT 充提开关 |
+| 会员中心 → 会员管理 | App 谷歌验证开关、验证器名称 |
+| 会员中心 → 注册推广规则 | 实名自领、邀请奖励、三级返佣比例与规则文案 |
+| 会员中心 → 实名认证奖励 | 实名自领金额（与注册推广同步） |
+| 会员中心 → 等级奖励 | 成长激励金开关、业绩口径、各等级金额 |
+| 产品交易 → 签到规则 | 每日签到金额、连续签到抽奖两档 |
+| 运营内容 → 客服中心 | 标题、工作时间、提示文案 |
+| 系统管理 → 参数设置 | 皮肤、验证码、初始密码、后台谷歌验证等 sys.* |
 
 每日返利任务：定时任务里「产品每日返利」，`dailyRebateTask.execute()`，cron `0 5 0 * * ?`。  
 成长激励金任务：定时任务里「等级奖励核算」，`levelRewardTask.execute()`，cron `0 15 0 * * ?`。也可在后台「等级奖励」点立即核算。

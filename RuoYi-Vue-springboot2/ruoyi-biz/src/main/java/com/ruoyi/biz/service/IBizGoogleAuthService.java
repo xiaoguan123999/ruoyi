@@ -1,10 +1,15 @@
 package com.ruoyi.biz.service;
 
+import com.ruoyi.biz.domain.BizGoogleConfig;
 import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.GoogleBindInfo;
 
 public interface IBizGoogleAuthService
 {
+    BizGoogleConfig getAdminConfig();
+
+    void saveAdminConfig(BizGoogleConfig config);
+
     GoogleBindInfo status(Long memberId);
 
     GoogleBindInfo startBind(Long memberId);

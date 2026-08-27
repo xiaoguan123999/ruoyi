@@ -22,7 +22,7 @@ public class AppWalletRow
     @ApiModelProperty(value = "累计产品收益（该币种日返合计）", example = "12.50")
     private BigDecimal productIncome;
 
-    @ApiModelProperty(value = "推广收益累计（邀请奖励+团队分佣），字段名仍为 assistValue 以兼容 App 助力值展示", example = "0")
+    @ApiModelProperty(value = "推广收益累计（签到、实名奖励、邀请、分佣、等级奖励），字段名仍为 assistValue", example = "0")
     private BigDecimal assistValue;
 
     public String getCurrency() { return currency; }

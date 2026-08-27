@@ -133,6 +133,28 @@ public class BizPromoServiceImpl implements IBizPromoService
     }
 
     @Override
+    public void saveKycSelfReward(BizPromoRule incoming)
+    {
+        BizPromoRule rule = getRule();
+        if (incoming != null)
+        {
+            if (incoming.getKycSelfEnabled() != null)
+            {
+                rule.setKycSelfEnabled(incoming.getKycSelfEnabled());
+            }
+            if (incoming.getKycRewardCny() != null)
+            {
+                rule.setKycRewardCny(incoming.getKycRewardCny());
+            }
+            if (incoming.getKycRewardUsdt() != null)
+            {
+                rule.setKycRewardUsdt(incoming.getKycRewardUsdt());
+            }
+        }
+        saveRule(rule);
+    }
+
+    @Override
     public AppPromoData getAppPromo(Long memberId)
     {
         BizPromoRule rule = getRule();

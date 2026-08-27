@@ -40,8 +40,8 @@
                (select w.frozen from biz_wallet w where w.member_id = m.member_id and w.currency = 'CNY') as cny_frozen,
                (select w.available from biz_wallet w where w.member_id = m.member_id and w.currency = 'USDT') as usdt_available,
                (select w.frozen from biz_wallet w where w.member_id = m.member_id and w.currency = 'USDT') as usdt_frozen,
-               (select ifnull(sum(l.amount), 0) from biz_wallet_log l where l.member_id = m.member_id and l.currency = 'CNY' and l.biz_type in ('INVITE', 'COMMISSION')) as cny_assist_value,
-               (select ifnull(sum(l.amount), 0) from biz_wallet_log l where l.member_id = m.member_id and l.currency = 'USDT' and l.biz_type in ('INVITE', 'COMMISSION')) as usdt_assist_value,
+               (select ifnull(sum(l.amount), 0) from biz_wallet_log l where l.member_id = m.member_id and l.currency = 'CNY' and l.biz_type in ('CHECKIN', 'KYC_REWARD', 'INVITE', 'COMMISSION', 'LEVEL_REWARD')) as cny_assist_value,
+               (select ifnull(sum(l.amount), 0) from biz_wallet_log l where l.member_id = m.member_id and l.currency = 'USDT' and l.biz_type in ('CHECKIN', 'KYC_REWARD', 'INVITE', 'COMMISSION', 'LEVEL_REWARD')) as usdt_assist_value,
                (select count(1) from biz_member t where find_in_set(m.member_id, t.ancestors)) as team_count
         from biz_member m
         left join biz_level l on l.level_id = m.level_id

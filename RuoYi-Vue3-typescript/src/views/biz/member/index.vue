@@ -1,5 +1,30 @@
 <template>
   <div class="app-container ops-page">
+    <div class="ops-section-card">
+      <div class="ops-section-card__hd">App 谷歌验证</div>
+      <div class="ops-section-card__bd">
+        <el-form :model="google" label-width="140px" v-loading="googleLoading" class="ops-form-full">
+          <el-row :gutter="16">
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="谷歌验证开关">
+                <el-switch v-model="google.enabled" />
+                <span class="tip">关闭后 App 不能绑定谷歌验证器</span>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="10">
+              <el-form-item label="验证器名称">
+                <el-input v-model="google.issuer" placeholder="显示在谷歌验证器里的名称" maxlength="32" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="6">
+              <el-form-item label-width="0">
+                <el-button type="primary" @click="saveGoogle" v-hasPermi="['biz:member:edit']">保存</el-button>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
+      </div>
+    </div>
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
       <el-form-item label="会员" prop="memberId">
         <MemberSelect v-model="queryParams.memberId" />
@@ -138,7 +163,7 @@
 </template>
 
 <script setup lang="ts" name="BizMember">
-import { listMember, getMember, addMember, updateMember, resetMemberGoogle, resetMemberPwd, resetMemberPayPwd } from "@/api/biz"
+import { listMember, getMember, addMember, updateMember, resetMemberGoogle, resetMemberPwd, resetMemberPayPwd, getMemberGoogleConfig, saveMemberGoogleConfig } from "@/api/biz"
 import WalletAdjustDialog from "@/views/biz/components/WalletAdjustDialog.vue"
 
 const { proxy } = getCurrentInstance() as any
@@ -152,6 +177,8 @@ const title = ref("")
 const adjustOpen = ref(false)
 const adjustMemberId = ref<number | undefined>()
 const adjustPhone = ref("")
+const googleLoading = ref(false)
+const google = ref({ enabled: true, issuer: "App" })
 
 const data = reactive({
   form: {} as any,
@@ -180,6 +207,22 @@ function applyRouteQuery() {
   }
 }
 
+function loadGoogle() {
+  googleLoading.value = true
+  getMemberGoogleConfig().then((res: any) => {
+    const data = res.data || {}
+    google.value = {
+      enabled: data.enabled !== false,
+      issuer: data.issuer || "App"
+    }
+  }).finally(() => { googleLoading.value = false })
+}
+function saveGoogle() {
+  saveMemberGoogleConfig(google.value).then(() => {
+    proxy.$modal.msgSuccess("谷歌验证配置已保存")
+    loadGoogle()
+  })
+}
 function getList() {
   loading.value = true
   listMember(queryParams.value).then((res: any) => {
@@ -282,6 +325,7 @@ function submitForm() {
   })
 }
 applyRouteQuery()
+loadGoogle()
 getList()
 watch(
   () => String(route.query.kycStatus || ""),
@@ -291,3 +335,7 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+.tip { margin-left: 12px; color: #909399; font-size: 13px; }
+</style>

@@ -103,11 +103,11 @@ public class BizMember extends BaseEntity
     private BigDecimal usdtProductIncome;
 
     /** 人民币推广收益（兼容 App 助力值字段） */
-    @ApiModelProperty("人民币推广收益累计（邀请奖励+团队分佣）")
+    @ApiModelProperty("人民币推广收益累计（签到、实名奖励、邀请、分佣、等级奖励）")
     private BigDecimal cnyAssistValue;
 
     /** USDT推广收益（兼容 App 助力值字段） */
-    @ApiModelProperty("USDT推广收益累计（邀请奖励+团队分佣）")
+    @ApiModelProperty("USDT推广收益累计（签到、实名奖励、邀请、分佣、等级奖励）")
     private BigDecimal usdtAssistValue;
 
     /** 团队人数 */

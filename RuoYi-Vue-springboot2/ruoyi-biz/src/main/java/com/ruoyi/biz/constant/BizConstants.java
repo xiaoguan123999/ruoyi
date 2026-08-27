@@ -72,6 +72,25 @@ public class BizConstants
 
     public static final String BIZ_ADJUST = "ADJUST";
 
+    /** 推广收益：签到、实名奖励、邀请、分佣、等级奖励 */
+    public static boolean isPromoIncome(String bizType)
+    {
+        return BIZ_CHECKIN.equals(bizType)
+                || BIZ_KYC_REWARD.equals(bizType)
+                || BIZ_INVITE.equals(bizType)
+                || BIZ_COMMISSION.equals(bizType)
+                || BIZ_LEVEL_REWARD.equals(bizType);
+    }
+
+    public static void addPromoIncomeTypes(java.util.Set<String> types)
+    {
+        types.add(BIZ_CHECKIN);
+        types.add(BIZ_KYC_REWARD);
+        types.add(BIZ_INVITE);
+        types.add(BIZ_COMMISSION);
+        types.add(BIZ_LEVEL_REWARD);
+    }
+
     public static final String PROMO_KYC_SELF = "KYC_SELF";
 
     public static final String PROMO_INVITE = "INVITE";
@@ -81,6 +100,10 @@ public class BizConstants
     public static final String CONFIG_WITHDRAW_MIN = "biz.withdraw.minAmount";
 
     public static final String CONFIG_WITHDRAW_MIN_USDT = "biz.withdraw.minAmount.usdt";
+
+    public static final String CONFIG_WITHDRAW_MAX = "biz.withdraw.maxAmount";
+
+    public static final String CONFIG_WITHDRAW_MAX_USDT = "biz.withdraw.maxAmount.usdt";
 
     public static final String CONFIG_RATE_L1 = "biz.team.rate.l1";
 

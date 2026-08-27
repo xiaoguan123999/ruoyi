@@ -83,6 +83,10 @@ public class SysConfigController extends BaseController
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysConfig config)
     {
+        if (isBizConfigKey(config.getConfigKey()))
+        {
+            return error("业务参数请到对应功能页配置，不要在参数设置里新增");
+        }
         if (!configService.checkConfigKeyUnique(config))
         {
             return error("新增参数'" + config.getConfigName() + "'失败，参数键名已存在");
@@ -99,6 +103,15 @@ public class SysConfigController extends BaseController
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysConfig config)
     {
+        if (isBizConfigKey(config.getConfigKey()))
+        {
+            return error("业务参数请到对应功能页修改");
+        }
+        SysConfig existing = configService.selectConfigById(config.getConfigId());
+        if (existing != null && isBizConfigKey(existing.getConfigKey()))
+        {
+            return error("业务参数请到对应功能页修改");
+        }
         if (!configService.checkConfigKeyUnique(config))
         {
             return error("修改参数'" + config.getConfigName() + "'失败，参数键名已存在");
@@ -129,5 +142,10 @@ public class SysConfigController extends BaseController
     {
         configService.resetConfigCache();
         return success();
+    }
+
+    private boolean isBizConfigKey(String configKey)
+    {
+        return configKey != null && configKey.startsWith("biz.");
     }
 }

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.biz.domain.BizAuditBody;
 import com.ruoyi.biz.domain.BizWithdraw;
+import com.ruoyi.biz.domain.BizWithdrawRule;
 import com.ruoyi.biz.service.IBizWithdrawService;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
@@ -27,6 +28,24 @@ public class BizWithdrawController extends BaseController
 {
     @Autowired
     private IBizWithdrawService withdrawService;
+
+    @ApiOperation("提现规则")
+    @PreAuthorize("@ss.hasPermi('biz:withdraw:list')")
+    @GetMapping("/config")
+    public AjaxResult config()
+    {
+        return success(withdrawService.getRule());
+    }
+
+    @ApiOperation("保存提现规则")
+    @PreAuthorize("@ss.hasPermi('biz:withdraw:audit')")
+    @Log(title = "提现规则", businessType = BusinessType.UPDATE)
+    @PutMapping("/config")
+    public AjaxResult saveConfig(@RequestBody BizWithdrawRule rule)
+    {
+        withdrawService.saveRule(rule);
+        return success();
+    }
 
     @ApiOperation("提现列表")
     @PreAuthorize("@ss.hasPermi('biz:withdraw:list')")

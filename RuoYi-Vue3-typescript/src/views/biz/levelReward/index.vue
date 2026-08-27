@@ -89,9 +89,6 @@
         <el-table v-loading="loading" :data="dataList" style="width: 100%">
           <el-table-column label="等级" align="center" prop="levelName" min-width="100" />
           <el-table-column label="团队要求" align="center" prop="teamDepth" min-width="100" />
-          <el-table-column label="有效成员" align="center" prop="minValidMembers" width="90" />
-          <el-table-column label="充值金额CNY" align="center" prop="minTeamPerfCny" min-width="120" />
-          <el-table-column label="充值金额USDT" align="center" prop="minTeamPerfUsdt" min-width="130" />
           <el-table-column label="奖励开关" align="center" width="90">
             <template #default="scope">
               <el-tag :type="scope.row.rewardEnabled === '1' ? 'success' : 'info'">{{ scope.row.rewardEnabled === '1' ? '开' : '关' }}</el-tag>
@@ -129,21 +126,11 @@
           <el-input v-model="form.teamDepth" placeholder="例如 一级内" />
           <div class="tip">App 会员等级表「团队要求」列，对应接口 teamDepth</div>
         </el-form-item>
-        <el-form-item label="有效成员人数" prop="minValidMembers">
-          <el-input-number v-model="form.minValidMembers" :min="0" style="width: 100%" />
-        </el-form-item>
         <el-form-item label="本人充值CNY">
           <el-input-number v-model="form.minRechargeCny" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
         <el-form-item label="本人充值USDT">
           <el-input-number v-model="form.minRechargeUsdt" :min="0" :precision="2" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="充值金额CNY">
-          <el-input-number v-model="form.minTeamPerfCny" :min="0" :precision="2" style="width: 100%" />
-          <div class="tip">填 0 表示不限制</div>
-        </el-form-item>
-        <el-form-item label="充值金额USDT">
-          <el-input-number v-model="form.minTeamPerfUsdt" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
         <el-form-item label="启用该等级奖励">
           <el-switch v-model="form.rewardEnabled" active-value="1" inactive-value="0" />
@@ -215,9 +202,7 @@ const rule = ref({
 })
 const queryParams = ref({ pageNum: 1, pageSize: 100, levelName: undefined as string | undefined })
 const form = ref<any>({})
-const rules = {
-  minValidMembers: [{ required: true, message: "请填写有效成员人数", trigger: "blur" }]
-}
+const rules = {}
 
 function cycleLabel(v: string) {
   if (v === "ONCE") return "一次"

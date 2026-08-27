@@ -45,7 +45,12 @@
         where l.member_id = #{memberId}
           and l.available_before &lt;&gt; l.available_after
         <if test="currency != null and currency != ''">and l.currency = #{currency}</if>
-        <if test="bizType != null and bizType != ''">and l.biz_type = #{bizType}</if>
+        <if test="bizTypes != null and bizTypes.size() &gt; 0">
+          and l.biz_type in
+          <foreach collection="bizTypes" item="item" open="(" separator="," close=")">
+            #{item}
+          </foreach>
+        </if>
         order by l.log_id desc
     </select>
 
@@ -54,7 +59,7 @@
         from biz_wallet_log
         where member_id = #{memberId}
           and currency = #{currency}
-          and biz_type in ('INVITE', 'COMMISSION')
+          and biz_type in ('CHECKIN', 'KYC_REWARD', 'INVITE', 'COMMISSION', 'LEVEL_REWARD')
     </select>
 
     <insert id="insertWalletLog" parameterType="BizWalletLog" useGeneratedKeys="true" keyProperty="logId">

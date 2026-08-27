@@ -21,6 +21,14 @@ export function resetMemberGoogle(memberId: number): Promise<AjaxResult> {
   return request({ url: '/biz/member/' + memberId + '/google/reset', method: 'put' })
 }
 
+export function getMemberGoogleConfig(): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/member/googleConfig', method: 'get' })
+}
+
+export function saveMemberGoogleConfig(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/member/googleConfig', method: 'put', data })
+}
+
 export function resetMemberPwd(memberId: number, password: string): Promise<AjaxResult> {
   return request({ url: '/biz/member/resetPwd', method: 'put', data: { memberId, password } })
 }
@@ -99,6 +107,14 @@ export function auditRecharge(data: any): Promise<AjaxResult> {
 
 export function listWithdraw(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/withdraw/list', method: 'get', params: query })
+}
+
+export function getWithdrawConfig(): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/withdraw/config', method: 'get' })
+}
+
+export function saveWithdrawConfig(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/withdraw/config', method: 'put', data })
 }
 
 export function auditWithdraw(data: any): Promise<AjaxResult> {
@@ -369,6 +385,18 @@ export function savePromoRule(data: any): Promise<AjaxResult> {
 
 export function listPromoGrant(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/promo/grant/list', method: 'get', params: query })
+}
+
+export function getKycRewardConfig(): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/kycReward', method: 'get' })
+}
+
+export function saveKycRewardConfig(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/kycReward', method: 'put', data })
+}
+
+export function listKycRewardGrant(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/kycReward/grant/list', method: 'get', params: query })
 }
 
 export function listBlacklist(query: any): Promise<TableDataInfo<any[]>> {

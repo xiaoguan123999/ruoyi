@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizFundRecordMapper">
+
+    <resultMap type="com.ruoyi.biz.api.AppFundRecordItem" id="AppFundRecordResult">
+        <id     property="id"            column="id"/>
+        <result property="bizType"       column="biz_type"/>
+        <result property="amount"        column="amount"/>
+        <result property="currency"      column="currency"/>
+        <result property="status"        column="status"/>
+        <result property="accountInfo"   column="account_info"/>
+        <result property="payMethod"     column="pay_method"/>
+        <result property="payProofUrl"   column="pay_proof_url"/>
+        <result property="payMode"       column="pay_mode"/>
+        <result property="createTime"    column="create_time"/>
+        <result property="auditTime"     column="audit_time"/>
+        <result property="auditRemark"   column="audit_remark"/>
+        <result property="remark"        column="remark"/>
+    </resultMap>
+
+    <select id="selectAppFundRecords" resultMap="AppFundRecordResult">
+        select t.id, t.biz_type, t.currency, t.amount, t.status, t.account_info, t.pay_method,
+               t.pay_proof_url, t.pay_mode, t.create_time, t.audit_time, t.audit_remark, t.remark
+        from (
+            <if test="includeRecharge">
+            select r.recharge_id as id, 'RECHARGE' as biz_type, r.currency, r.amount, r.status,
+                   null as account_info, null as pay_method, null as pay_proof_url, r.pay_mode,
+                   r.create_time, r.audit_time, r.audit_remark, r.remark
+            from biz_recharge r
+            where r.member_id = #{memberId}
+            <if test="currency != null and currency != ''">and r.currency = #{currency}</if>
+            <if test="status != null and status != ''">and r.status = #{status}</if>
+            </if>
+            <if test="includeRecharge and includeWithdraw">
+            union all
+            </if>
+            <if test="includeWithdraw">
+            select w.withdraw_id as id, 'WITHDRAW' as biz_type, w.currency, w.amount, w.status,
+                   w.account_info, w.pay_method, w.pay_proof_url, null as pay_mode,
+                   w.create_time, w.audit_time, w.audit_remark, w.remark
+            from biz_withdraw w
+            where w.member_id = #{memberId}
+            <if test="currency != null and currency != ''">and w.currency = #{currency}</if>
+            <if test="status != null and status != ''">and w.status = #{status}</if>
+            </if>
+        ) t
+        order by t.create_time desc, t.id desc
+    </select>
+</mapper>

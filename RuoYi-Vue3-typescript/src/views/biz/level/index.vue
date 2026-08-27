@@ -19,11 +19,8 @@
       <el-table-column label="ID" align="center" prop="levelId" width="80" />
       <el-table-column label="等级" align="center" prop="levelName" />
       <el-table-column label="团队要求" align="center" prop="teamDepth" min-width="100" />
-      <el-table-column label="有效会员人数" align="center" prop="minValidMembers" />
       <el-table-column label="累计充值CNY" align="center" prop="minRechargeCny" />
       <el-table-column label="累计充值USDT" align="center" prop="minRechargeUsdt" />
-      <el-table-column label="团队业绩CNY" align="center" prop="minTeamPerfCny" />
-      <el-table-column label="团队业绩USDT" align="center" prop="minTeamPerfUsdt" />
       <el-table-column label="团队奖励CNY" align="center" prop="rewardCny" />
       <el-table-column label="团队奖励USDT" align="center" prop="rewardUsdt" />
       <el-table-column label="排序" align="center" prop="sort" />
@@ -47,11 +44,8 @@
         <el-form-item label="团队要求" prop="teamDepth">
           <el-input v-model="form.teamDepth" placeholder="例如 一级内，对应 App 等级表该列" />
         </el-form-item>
-        <el-form-item label="有效会员人数" prop="minValidMembers"><el-input-number v-model="form.minValidMembers" :min="0" style="width: 100%" /></el-form-item>
         <el-form-item label="累计充值CNY" prop="minRechargeCny"><el-input-number v-model="form.minRechargeCny" :min="0" :precision="2" style="width: 100%" /></el-form-item>
         <el-form-item label="累计充值USDT" prop="minRechargeUsdt"><el-input-number v-model="form.minRechargeUsdt" :min="0" :precision="2" style="width: 100%" /></el-form-item>
-        <el-form-item label="团队业绩CNY"><el-input-number v-model="form.minTeamPerfCny" :min="0" :precision="2" style="width: 100%" /></el-form-item>
-        <el-form-item label="团队业绩USDT"><el-input-number v-model="form.minTeamPerfUsdt" :min="0" :precision="2" style="width: 100%" /></el-form-item>
         <el-form-item label="团队奖励CNY">
           <el-input-number v-model="form.rewardCny" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
@@ -115,7 +109,8 @@ function handleUpdate(row: any) {
 function submitForm() {
   proxy.$refs["formRef"].validate((valid: boolean) => {
     if (!valid) return
-    const req = form.value.levelId ? updateLevel(form.value) : addLevel(form.value)
+    const data = form.value
+    const req = data.levelId ? updateLevel(data) : addLevel(data)
     req.then(() => {
       proxy.$modal.msgSuccess("保存成功")
       open.value = false

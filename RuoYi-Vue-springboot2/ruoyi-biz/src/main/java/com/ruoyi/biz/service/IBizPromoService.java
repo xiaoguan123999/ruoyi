@@ -14,6 +14,8 @@ public interface IBizPromoService
 
     void saveRule(BizPromoRule rule);
 
+    void saveKycSelfReward(BizPromoRule rule);
+
     AppPromoData getAppPromo(Long memberId);
 
     void fillInvite(AppInviteData data);

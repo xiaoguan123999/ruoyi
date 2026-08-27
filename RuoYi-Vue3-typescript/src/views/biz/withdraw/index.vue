@@ -7,6 +7,51 @@
       show-icon
       class="mb8"
     />
+
+    <div class="ops-section-card">
+      <div class="ops-section-card__hd">提现规则</div>
+      <div class="ops-section-card__bd">
+        <el-form ref="ruleRef" :model="rule" :rules="ruleRules" label-width="140px" v-loading="ruleLoading">
+          <el-row :gutter="16">
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="人民币最低" prop="minCny">
+                <el-input-number v-model="rule.minCny" :min="0.01" :precision="2" :step="1" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="人民币最高" prop="maxCny">
+                <el-input-number v-model="rule.maxCny" :min="0" :precision="2" :step="1" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="开放USDT充提">
+                <el-switch v-model="rule.usdtEnabled" />
+                <span class="tip">关闭后 App 不能充值/提现 USDT</span>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="16">
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="USDT最低" prop="minUsdt">
+                <el-input-number v-model="rule.minUsdt" :min="0.01" :precision="2" :step="1" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="USDT最高" prop="maxUsdt">
+                <el-input-number v-model="rule.maxUsdt" :min="0" :precision="2" :step="1" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label-width="0">
+                <el-button type="primary" @click="saveRule" v-hasPermi="['biz:withdraw:audit']">保存规则</el-button>
+                <span class="tip">最高填 0 表示不限</span>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
+      </div>
+    </div>
+
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
       <el-form-item label="单号" prop="withdrawId">
         <el-input v-model="queryParams.withdrawId" placeholder="提现单号" clearable style="width: 140px" @keyup.enter="handleQuery" />
@@ -127,10 +172,16 @@
 </template>
 
 <script setup lang="ts" name="BizWithdraw">
-import { listWithdraw, auditWithdraw } from "@/api/biz"
+import { listWithdraw, auditWithdraw, getWithdrawConfig, saveWithdrawConfig } from "@/api/biz"
 import { isExternal } from "@/utils/validate"
 
 const { proxy } = getCurrentInstance() as any
+const ruleLoading = ref(false)
+const rule = ref({ minCny: 105, maxCny: 0, minUsdt: 105, maxUsdt: 0, usdtEnabled: true })
+const ruleRules = {
+  minCny: [{ required: true, message: "请填写人民币最低提现", trigger: "blur" }],
+  minUsdt: [{ required: true, message: "请填写USDT最低提现", trigger: "blur" }]
+}
 const dataList = ref<any[]>([])
 const loading = ref(true)
 const showSearch = ref(true)
@@ -167,6 +218,28 @@ function imgSrc(url: string) {
   return import.meta.env.VITE_APP_BASE_API + url
 }
 
+function loadRule() {
+  ruleLoading.value = true
+  getWithdrawConfig().then((res: any) => {
+    const data = res.data || {}
+    rule.value = {
+      minCny: Number(data.minCny ?? 105),
+      maxCny: Number(data.maxCny ?? 0),
+      minUsdt: Number(data.minUsdt ?? 105),
+      maxUsdt: Number(data.maxUsdt ?? 0),
+      usdtEnabled: data.usdtEnabled !== false
+    }
+  }).finally(() => { ruleLoading.value = false })
+}
+function saveRule() {
+  proxy.$refs["ruleRef"].validate((valid: boolean) => {
+    if (!valid) return
+    saveWithdrawConfig(rule.value).then(() => {
+      proxy.$modal.msgSuccess("提现规则已保存")
+      loadRule()
+    })
+  })
+}
 function getList() {
   loading.value = true
   listWithdraw(proxy.addDateRange(queryParams.value, dateRange.value)).then((res: any) => {
@@ -198,6 +271,7 @@ function submitAudit() {
   })
 }
 applyRouteQuery()
+loadRule()
 getList()
 watch(
   () => String(route.query.status || ""),
@@ -207,3 +281,7 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+.tip { margin-left: 12px; color: #909399; font-size: 13px; }
+</style>

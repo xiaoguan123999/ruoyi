@@ -5,7 +5,9 @@ import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -167,7 +169,7 @@ public class BizWalletServiceImpl implements IBizWalletService
     @Override
     public List<AppWalletLogItem> selectAppWalletLogList(Long memberId, String currency, String bizType)
     {
-        List<BizWalletLog> logs = walletLogMapper.selectAppWalletLogList(memberId, currency, bizType);
+        List<BizWalletLog> logs = walletLogMapper.selectAppWalletLogList(memberId, currency, resolveAppBizTypes(bizType));
         List<AppWalletLogItem> rows = new ArrayList<AppWalletLogItem>();
         for (int i = 0; i < logs.size(); i++)
         {
@@ -354,6 +356,48 @@ public class BizWalletServiceImpl implements IBizWalletService
             return name.length() == 0 ? fallback : name;
         }
         return remark;
+    }
+
+    private List<String> resolveAppBizTypes(String bizType)
+    {
+        if (StringUtils.isEmpty(bizType))
+        {
+            return null;
+        }
+        Set<String> types = new LinkedHashSet<String>();
+        String[] parts = bizType.split("[,|\\s]+");
+        for (int i = 0; i < parts.length; i++)
+        {
+            String key = parts[i] == null ? "" : parts[i].trim();
+            if (key.length() == 0)
+            {
+                continue;
+            }
+            key = key.toUpperCase();
+            if ("WITHDRAW".equals(key) || "WD".equals(key) || "TX".equals(key) || "提现".equals(key))
+            {
+                types.add(BizConstants.BIZ_WITHDRAW_FREEZE);
+                types.add(BizConstants.BIZ_WITHDRAW_SUCCESS);
+                types.add(BizConstants.BIZ_WITHDRAW_REJECT);
+            }
+            else if ("RECHARGE".equals(key) || "CZ".equals(key) || "充值".equals(key))
+            {
+                types.add(BizConstants.BIZ_RECHARGE);
+            }
+            else if ("PROMO".equals(key) || "ASSIST".equals(key) || "推广收益".equals(parts[i].trim()))
+            {
+                BizConstants.addPromoIncomeTypes(types);
+            }
+            else if ("PRODUCT".equals(key) || "INCOME".equals(key) || "产品收益".equals(parts[i].trim()))
+            {
+                types.add(BizConstants.BIZ_REBATE);
+            }
+            else
+            {
+                types.add(key);
+            }
+        }
+        return types.isEmpty() ? null : new ArrayList<String>(types);
     }
 
     private String bizTypeLabel(String bizType)

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.ruoyi.biz.domain.BizGoogleConfig;
 import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.service.IBizGoogleAuthService;
 import com.ruoyi.biz.service.IBizMemberService;
@@ -40,6 +41,24 @@ public class BizMemberController extends BaseController
         startPage();
         List<BizMember> list = memberService.selectMemberList(member);
         return getDataTable(list);
+    }
+
+    @ApiOperation("App谷歌验证配置")
+    @PreAuthorize("@ss.hasPermi('biz:member:list')")
+    @GetMapping("/googleConfig")
+    public AjaxResult googleConfig()
+    {
+        return success(googleAuthService.getAdminConfig());
+    }
+
+    @ApiOperation("保存App谷歌验证配置")
+    @PreAuthorize("@ss.hasPermi('biz:member:edit')")
+    @Log(title = "App谷歌验证", businessType = BusinessType.UPDATE)
+    @PutMapping("/googleConfig")
+    public AjaxResult saveGoogleConfig(@RequestBody BizGoogleConfig config)
+    {
+        googleAuthService.saveAdminConfig(config);
+        return success();
     }
 
     @ApiOperation("会员详情")

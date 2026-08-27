@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.biz.constant.BizConstants;
+import com.ruoyi.biz.domain.BizGoogleConfig;
 import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.GoogleBindInfo;
 import com.ruoyi.biz.mapper.BizMemberMapper;
@@ -27,6 +28,28 @@ public class BizGoogleAuthServiceImpl implements IBizGoogleAuthService
 
     @Autowired
     private RedisCache redisCache;
+
+    @Override
+    public BizGoogleConfig getAdminConfig()
+    {
+        BizGoogleConfig config = new BizGoogleConfig();
+        config.setEnabled(configService.isGoogleEnabled());
+        config.setIssuer(configService.getGoogleIssuer());
+        return config;
+    }
+
+    @Override
+    public void saveAdminConfig(BizGoogleConfig incoming)
+    {
+        if (incoming == null)
+        {
+            throw new ServiceException("请填写谷歌验证配置");
+        }
+        boolean enabled = incoming.getEnabled() == null ? true : incoming.getEnabled().booleanValue();
+        String issuer = StringUtils.isEmpty(incoming.getIssuer()) ? "App" : incoming.getIssuer().trim();
+        configService.saveConfig(BizConstants.CONFIG_GOOGLE_ENABLED, "谷歌验证开关", enabled ? "true" : "false", "false表示关闭App谷歌验证");
+        configService.saveConfig(BizConstants.CONFIG_GOOGLE_ISSUER, "谷歌验证器名称", issuer, "显示在谷歌验证器中的名称");
+    }
 
     @Override
     public GoogleBindInfo status(Long memberId)

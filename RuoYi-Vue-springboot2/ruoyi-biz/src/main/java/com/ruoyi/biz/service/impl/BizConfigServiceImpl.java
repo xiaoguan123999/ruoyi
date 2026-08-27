@@ -7,6 +7,8 @@ import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.service.IBizConfigService;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.system.domain.SysConfig;
+import com.ruoyi.system.mapper.SysConfigMapper;
 import com.ruoyi.system.service.ISysConfigService;
 
 @Service
@@ -14,6 +16,9 @@ public class BizConfigServiceImpl implements IBizConfigService
 {
     @Autowired
     private ISysConfigService configService;
+
+    @Autowired
+    private SysConfigMapper sysConfigMapper;
 
     @Override
     public BigDecimal getCheckinAmount()
@@ -35,6 +40,20 @@ public class BizConfigServiceImpl implements IBizConfigService
             return decimal(BizConstants.CONFIG_WITHDRAW_MIN_USDT, "105");
         }
         return decimal(BizConstants.CONFIG_WITHDRAW_MIN, "105");
+    }
+
+    @Override
+    public BigDecimal getWithdrawMaxAmount(String currency)
+    {
+        String key = BizConstants.CURRENCY_USDT.equalsIgnoreCase(currency)
+                ? BizConstants.CONFIG_WITHDRAW_MAX_USDT
+                : BizConstants.CONFIG_WITHDRAW_MAX;
+        BigDecimal value = optionalDecimal(key);
+        if (value == null || value.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            return null;
+        }
+        return value;
     }
 
     @Override
@@ -101,6 +120,29 @@ public class BizConfigServiceImpl implements IBizConfigService
         return StringUtils.isEmpty(value) ? "App" : value;
     }
 
+    @Override
+    public void saveConfig(String key, String name, String value, String remark)
+    {
+        SysConfig existing = sysConfigMapper.checkConfigKeyUnique(key);
+        if (existing == null)
+        {
+            SysConfig config = new SysConfig();
+            config.setConfigName(name);
+            config.setConfigKey(key);
+            config.setConfigValue(value);
+            config.setConfigType("N");
+            config.setRemark(remark);
+            configService.insertConfig(config);
+        }
+        else
+        {
+            existing.setConfigName(name);
+            existing.setConfigValue(value);
+            existing.setRemark(remark);
+            configService.updateConfig(existing);
+        }
+    }
+
     private boolean bool(String key, boolean defaultValue)
     {
         String value = configService.selectConfigByKey(key);
@@ -117,6 +159,16 @@ public class BizConfigServiceImpl implements IBizConfigService
         if (StringUtils.isEmpty(value))
         {
             value = defaultValue;
+        }
+        return new BigDecimal(value);
+    }
+
+    private BigDecimal optionalDecimal(String key)
+    {
+        String value = configService.selectConfigByKey(key);
+        if (StringUtils.isEmpty(value))
+        {
+            return null;
         }
         return new BigDecimal(value);
     }
