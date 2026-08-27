@@ -144,6 +144,15 @@
       width: 100%;
     }
 
+    /* 内含分区卡片时：表单本身透明，由卡片提供白底 */
+    &.ops-form-stack {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      margin: 0;
+    }
+
     .el-divider {
       margin: 8px 0 20px;
 
@@ -162,7 +171,8 @@
   }
 
   /* 分区卡片：标题 + 内容合一块，避免标题漂在灰底上显得散 */
-  > .ops-section-card {
+  > .ops-section-card,
+  > .el-form.ops-form-stack > .ops-section-card {
     background: var(--el-bg-color);
     border: var(--ops-border);
     border-radius: var(--ops-radius);

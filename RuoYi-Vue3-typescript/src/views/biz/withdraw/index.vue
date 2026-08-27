@@ -8,50 +8,6 @@
       class="mb8"
     />
 
-    <div class="ops-section-card">
-      <div class="ops-section-card__hd">提现规则</div>
-      <div class="ops-section-card__bd">
-        <el-form ref="ruleRef" :model="rule" :rules="ruleRules" label-width="140px" v-loading="ruleLoading">
-          <el-row :gutter="16">
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="人民币最低" prop="minCny">
-                <el-input-number v-model="rule.minCny" :min="0.01" :precision="2" :step="1" style="width: 100%" />
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="人民币最高" prop="maxCny">
-                <el-input-number v-model="rule.maxCny" :min="0" :precision="2" :step="1" style="width: 100%" />
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="开放USDT充提">
-                <el-switch v-model="rule.usdtEnabled" />
-                <span class="tip">关闭后 App 不能充值/提现 USDT</span>
-              </el-form-item>
-            </el-col>
-          </el-row>
-          <el-row :gutter="16">
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="USDT最低" prop="minUsdt">
-                <el-input-number v-model="rule.minUsdt" :min="0.01" :precision="2" :step="1" style="width: 100%" />
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="USDT最高" prop="maxUsdt">
-                <el-input-number v-model="rule.maxUsdt" :min="0" :precision="2" :step="1" style="width: 100%" />
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label-width="0">
-                <el-button type="primary" @click="saveRule" v-hasPermi="['biz:withdraw:audit']">保存规则</el-button>
-                <span class="tip">最高填 0 表示不限</span>
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </el-form>
-      </div>
-    </div>
-
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
       <el-form-item label="单号" prop="withdrawId">
         <el-input v-model="queryParams.withdrawId" placeholder="提现单号" clearable style="width: 140px" @keyup.enter="handleQuery" />
@@ -84,6 +40,9 @@
       </el-form-item>
     </el-form>
     <el-row :gutter="10" class="mb8">
+      <el-col :span="1.5">
+        <el-button type="primary" plain icon="Setting" @click="openRuleDialog" v-hasPermi="['biz:withdraw:audit']">提现规则</el-button>
+      </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
     <el-table v-loading="loading" :data="dataList">
@@ -147,6 +106,40 @@
     </el-table>
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
+    <el-dialog
+      title="提现规则"
+      v-model="ruleOpen"
+      width="480px"
+      append-to-body
+      destroy-on-close
+    >
+      <el-form ref="ruleRef" :model="rule" :rules="ruleRules" label-width="120px" v-loading="ruleLoading">
+        <el-form-item label="人民币最低" prop="minCny">
+          <el-input-number v-model="rule.minCny" :min="0.01" :precision="2" :step="1" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="人民币最高" prop="maxCny">
+          <el-input-number v-model="rule.maxCny" :min="0" :precision="2" :step="1" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="USDT最低" prop="minUsdt">
+          <el-input-number v-model="rule.minUsdt" :min="0.01" :precision="2" :step="1" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="USDT最高" prop="maxUsdt">
+          <el-input-number v-model="rule.maxUsdt" :min="0" :precision="2" :step="1" style="width: 100%" />
+          <div class="tip tip-block">最高填 0 表示不限</div>
+        </el-form-item>
+        <el-form-item label="开放USDT充提">
+          <div class="switch-with-tip">
+            <el-switch v-model="rule.usdtEnabled" />
+            <div class="tip tip-block">关闭后 App 不能充值/提现 USDT</div>
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button type="primary" @click="saveRule" v-hasPermi="['biz:withdraw:audit']">保存规则</el-button>
+        <el-button @click="ruleOpen = false">取 消</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog :title="auditTitle" v-model="open" width="520px" append-to-body>
       <el-descriptions :column="1" border class="mb8">
         <el-descriptions-item label="会员">{{ current.realName || current.phone }}（ID {{ current.memberId }}）</el-descriptions-item>
@@ -176,6 +169,7 @@ import { listWithdraw, auditWithdraw, getWithdrawConfig, saveWithdrawConfig } fr
 import { isExternal } from "@/utils/validate"
 
 const { proxy } = getCurrentInstance() as any
+const ruleOpen = ref(false)
 const ruleLoading = ref(false)
 const rule = ref({ minCny: 105, maxCny: 0, minUsdt: 105, maxUsdt: 0, usdtEnabled: true })
 const ruleRules = {
@@ -220,7 +214,7 @@ function imgSrc(url: string) {
 
 function loadRule() {
   ruleLoading.value = true
-  getWithdrawConfig().then((res: any) => {
+  return getWithdrawConfig().then((res: any) => {
     const data = res.data || {}
     rule.value = {
       minCny: Number(data.minCny ?? 105),
@@ -231,11 +225,16 @@ function loadRule() {
     }
   }).finally(() => { ruleLoading.value = false })
 }
+function openRuleDialog() {
+  ruleOpen.value = true
+  loadRule()
+}
 function saveRule() {
   proxy.$refs["ruleRef"].validate((valid: boolean) => {
     if (!valid) return
     saveWithdrawConfig(rule.value).then(() => {
       proxy.$modal.msgSuccess("提现规则已保存")
+      ruleOpen.value = false
       loadRule()
     })
   })
@@ -271,7 +270,6 @@ function submitAudit() {
   })
 }
 applyRouteQuery()
-loadRule()
 getList()
 watch(
   () => String(route.query.status || ""),
@@ -283,5 +281,20 @@ watch(
 </script>
 
 <style scoped>
-.tip { margin-left: 12px; color: #909399; font-size: 13px; }
+.tip {
+  margin-left: 12px;
+  color: #909399;
+  font-size: 13px;
+}
+.tip-block {
+  display: block;
+  margin-left: 0;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+.switch-with-tip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
 </style>

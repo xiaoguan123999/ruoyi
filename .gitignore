@@ -5,3 +5,5 @@ logs/
 **/logs/
 **/.DS_Store
 .r2.env
+*.env.development
+*.env.production
