@@ -45,7 +45,7 @@
       <el-table-column label="时间" align="center" prop="createTime" width="170">
         <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="90">
+      <el-table-column label="操作" align="center" width="90" fixed="right">
         <template #default="scope">
           <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['biz:blacklistLog:remove']">删除</el-button>
         </template>

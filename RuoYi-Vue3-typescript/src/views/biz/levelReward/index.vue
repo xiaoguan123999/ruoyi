@@ -55,7 +55,7 @@
       </div>
     </div>
 
-    <el-dialog :title="title" v-model="open" width="640px" append-to-body>
+    <el-drawer :title="title" v-model="open" size="560px" append-to-body destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="160px">
         <el-form-item label="等级名称">
           <el-input v-model="form.levelName" disabled />
@@ -101,20 +101,26 @@
         <el-form-item label="启用该等级奖励">
           <el-switch v-model="form.rewardEnabled" active-value="1" inactive-value="0" />
         </el-form-item>
-        <el-form-item label="奖励周期">
-          <el-select v-model="form.rewardCycle" style="width: 100%">
-            <el-option label="无奖励" value="NONE" />
-            <el-option label="达成一次" value="ONCE" />
-            <el-option label="每月一次" value="MONTHLY" />
-            <el-option label="永久资格" value="PERMANENT" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="发放方式">
-          <el-select v-model="form.rewardMode" style="width: 100%">
-            <el-option label="自动入账" value="AUTO" />
-            <el-option label="客服发放" value="MANUAL" />
-          </el-select>
-        </el-form-item>
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="奖励周期" label-width="100px">
+              <el-select v-model="form.rewardCycle" style="width: 100%">
+                <el-option label="无奖励" value="NONE" />
+                <el-option label="达成一次" value="ONCE" />
+                <el-option label="每月一次" value="MONTHLY" />
+                <el-option label="永久资格" value="PERMANENT" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="发放方式" label-width="90px">
+              <el-select v-model="form.rewardMode" style="width: 100%">
+                <el-option label="自动入账" value="AUTO" />
+                <el-option label="客服发放" value="MANUAL" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item v-if="form.rewardCycle === 'PERMANENT'" label="永久档领取">
           <el-select v-model="form.rewardRepeat" style="width: 100%">
             <el-option label="仅一次资格单" value="NONE" />
@@ -139,10 +145,12 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button type="primary" @click="submitForm">确 定</el-button>
-        <el-button @click="open = false">取 消</el-button>
+        <div class="drawer-footer">
+          <el-button type="primary" @click="submitForm">确 定</el-button>
+          <el-button @click="open = false">取 消</el-button>
+        </div>
       </template>
-    </el-dialog>
+    </el-drawer>
   </div>
 </template>
 
@@ -222,11 +230,15 @@ getList()
 </script>
 
 <style scoped>
-.tip { margin-left: 8px; color: #909399; font-size: 12px; }
-.form-actions {
-  margin-bottom: 8px !important;
+.tip {
+  margin-top: 6px;
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.4;
 }
-.form-actions :deep(.el-form-item__content) {
-  margin-left: 0 !important;
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 </style>

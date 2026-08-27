@@ -40,7 +40,7 @@
         </template>
       </el-table-column>
       <el-table-column label="排序" align="center" prop="sort" width="80" />
-      <el-table-column label="操作" align="center" width="160">
+      <el-table-column label="操作" align="center" width="160" fixed="right">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:walletCredit:edit']">修改</el-button>
           <el-button link type="primary" icon="Delete" :disabled="scope.row.builtin === '1'" @click="handleDelete(scope.row)" v-hasPermi="['biz:walletCredit:remove']">删除</el-button>

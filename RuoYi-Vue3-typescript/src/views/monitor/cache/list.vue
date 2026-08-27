@@ -45,8 +45,7 @@
               label="操作"
               width="60"
               align="center"
-              class-name="small-padding fixed-width"
-            >
+              class-name="small-padding fixed-width" fixed="right">
               <template #default="scope">
                 <el-button
                   link
@@ -96,8 +95,7 @@
               label="操作"
               width="60"
               align="center"
-              class-name="small-padding fixed-width"
-            >
+              class-name="small-padding fixed-width" fixed="right">
               <template #default="scope">
                 <el-button
                   link

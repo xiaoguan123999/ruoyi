@@ -57,7 +57,7 @@
           <el-tag :type="scope.row.status === '0' ? 'success' : 'info'">{{ scope.row.status === '0' ? '正常' : '停用' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="160">
+      <el-table-column label="操作" align="center" width="160" fixed="right">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:level:edit']">修改</el-button>
           <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['biz:level:remove']">删除</el-button>
@@ -66,7 +66,7 @@
     </el-table>
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
-    <el-dialog :title="title" v-model="open" width="640px" append-to-body>
+    <el-drawer :title="title" v-model="open" size="560px" append-to-body destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="150px">
         <el-form-item label="等级名称" prop="levelName"><el-input v-model="form.levelName" /></el-form-item>
         <el-form-item label="团队要求" prop="teamDepth">
@@ -97,14 +97,20 @@
           <el-input-number v-model="form.minValidMembers" :min="0" :precision="0" style="width: 100%" />
           <div style="color:#909399;font-size:12px;line-height:1.4;margin-top:6px">按「团队要求」范围统计。填 0 不限制人数。</div>
         </el-form-item>
-        <el-form-item label="有效成员需实名">
-          <el-switch v-model="form.validNeedKyc" active-value="1" inactive-value="0" />
-        </el-form-item>
-        <el-form-item label="有效成员需认购">
-          <el-switch v-model="form.validNeedOrder" active-value="1" inactive-value="0" />
+        <el-form-item label="有效成员条件">
+          <div class="switch-inline">
+            <span class="switch-inline__item">
+              <span>需实名</span>
+              <el-switch v-model="form.validNeedKyc" active-value="1" inactive-value="0" />
+            </span>
+            <span class="switch-inline__item">
+              <span>需认购</span>
+              <el-switch v-model="form.validNeedOrder" active-value="1" inactive-value="0" />
+            </span>
+          </div>
         </el-form-item>
         <el-form-item label="发放币种">
-          <el-radio-group v-model="form.mixedPayCurrency">
+          <el-radio-group v-model="form.mixedPayCurrency" class="currency-radio">
             <el-radio value="USDT">只发USDT</el-radio>
             <el-radio value="CNY">只发人民币</el-radio>
             <el-radio value="BOTH">人民币和USDT都发</el-radio>
@@ -112,6 +118,36 @@
         </el-form-item>
         <el-form-item label="到账钱包">
           <WalletTypeSelect v-model="form.walletTypeCode" width="100%" />
+        </el-form-item>
+        <el-form-item label="启用该等级奖励">
+          <el-switch v-model="form.rewardEnabled" active-value="1" inactive-value="0" />
+        </el-form-item>
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="奖励周期" label-width="100px">
+              <el-select v-model="form.rewardCycle" style="width: 100%">
+                <el-option label="无奖励" value="NONE" />
+                <el-option label="达成一次" value="ONCE" />
+                <el-option label="每月一次" value="MONTHLY" />
+                <el-option label="永久资格" value="PERMANENT" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="发放方式" label-width="90px">
+              <el-select v-model="form.rewardMode" style="width: 100%">
+                <el-option label="自动入账" value="AUTO" />
+                <el-option label="客服发放" value="MANUAL" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item v-if="form.rewardCycle === 'PERMANENT'" label="永久档领取">
+          <el-select v-model="form.rewardRepeat" style="width: 100%">
+            <el-option label="仅一次资格单" value="NONE" />
+            <el-option label="按月待发放" value="MONTHLY" />
+            <el-option label="不限次数（客服额外发放）" value="UNLIMITED" />
+          </el-select>
         </el-form-item>
         <el-form-item label="团队奖励CNY">
           <el-input-number v-model="form.rewardCny" :min="0" :precision="2" style="width: 100%" />
@@ -130,10 +166,12 @@
         <el-form-item label="备注"><el-input v-model="form.remark" type="textarea" /></el-form-item>
       </el-form>
       <template #footer>
-        <el-button type="primary" @click="submitForm">确 定</el-button>
-        <el-button @click="open = false">取 消</el-button>
+        <div class="drawer-footer">
+          <el-button type="primary" @click="submitForm">确 定</el-button>
+          <el-button @click="open = false">取 消</el-button>
+        </div>
       </template>
-    </el-dialog>
+    </el-drawer>
   </div>
 </template>
 
@@ -193,16 +231,54 @@ function runEvaluate() {
     getList()
   }).catch(() => {})
 }
-function reset() { form.value = { status: "0", teamDepth: "", performanceSource: "RECHARGE", mixedPayCurrency: "USDT", walletTypeCode: "PROMO", validNeedKyc: "1", validNeedOrder: "1", minValidMembers: 0, minRechargeCny: 0, minRechargeUsdt: 0, minTeamRechargeCny: 0, minTeamRechargeUsdt: 0, minTeamPerfCny: 0, minTeamPerfUsdt: 0, rewardCny: 0, rewardUsdt: 0, sort: 0 } }
+function reset() {
+  form.value = {
+    status: "0",
+    teamDepth: "",
+    performanceSource: "RECHARGE",
+    mixedPayCurrency: "USDT",
+    walletTypeCode: "PROMO",
+    validNeedKyc: "1",
+    validNeedOrder: "1",
+    rewardEnabled: "1",
+    rewardCycle: "ONCE",
+    rewardMode: "AUTO",
+    rewardRepeat: "NONE",
+    minValidMembers: 0,
+    minRechargeCny: 0,
+    minRechargeUsdt: 0,
+    minTeamRechargeCny: 0,
+    minTeamRechargeUsdt: 0,
+    minTeamPerfCny: 0,
+    minTeamPerfUsdt: 0,
+    rewardCny: 0,
+    rewardUsdt: 0,
+    sort: 0
+  }
+}
 function handleAdd() { reset(); open.value = true; title.value = "新增等级" }
 function handleUpdate(row: any) {
   getLevel(row.levelId).then((res: any) => {
-    form.value = Object.assign({ performanceSource: "RECHARGE", mixedPayCurrency: "USDT", walletTypeCode: "PROMO", validNeedKyc: "1", validNeedOrder: "1" }, res.data || {})
+    form.value = Object.assign({
+      performanceSource: "RECHARGE",
+      mixedPayCurrency: "USDT",
+      walletTypeCode: "PROMO",
+      validNeedKyc: "1",
+      validNeedOrder: "1",
+      rewardEnabled: "1",
+      rewardCycle: "ONCE",
+      rewardMode: "AUTO",
+      rewardRepeat: "NONE"
+    }, res.data || {})
     if (!form.value.performanceSource) form.value.performanceSource = "RECHARGE"
     if (!form.value.mixedPayCurrency) form.value.mixedPayCurrency = "USDT"
     if (!form.value.walletTypeCode) form.value.walletTypeCode = "PROMO"
     if (!form.value.validNeedKyc) form.value.validNeedKyc = "1"
     if (!form.value.validNeedOrder) form.value.validNeedOrder = "1"
+    if (!form.value.rewardEnabled) form.value.rewardEnabled = "1"
+    if (!form.value.rewardCycle) form.value.rewardCycle = "ONCE"
+    if (!form.value.rewardMode) form.value.rewardMode = "AUTO"
+    if (!form.value.rewardRepeat) form.value.rewardRepeat = "NONE"
     open.value = true
     title.value = "修改等级"
   })
@@ -228,3 +304,35 @@ function handleDelete(row: any) {
 loadAppCopy()
 getList()
 </script>
+
+<style scoped>
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.switch-inline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.switch-inline__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--el-text-color-regular);
+  font-size: 14px;
+}
+.currency-radio {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  column-gap: 16px;
+}
+.currency-radio :deep(.el-radio) {
+  margin-right: 0;
+  white-space: nowrap;
+  height: auto;
+}
+</style>

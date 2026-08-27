@@ -77,6 +77,7 @@
       <el-table-column label="冻结后" align="center" width="100">
         <template #default="scope">{{ formatMoney(scope.row.frozenAfter) }}</template>
       </el-table-column>
+      <el-table-column label="操作人" align="center" prop="operator" width="110" show-overflow-tooltip />
       <el-table-column label="操作时间" align="center" prop="createTime" width="170">
         <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
       </el-table-column>

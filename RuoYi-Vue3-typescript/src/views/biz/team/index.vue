@@ -100,7 +100,7 @@
         <el-table-column label="注册时间" align="center" prop="createTime" width="160">
           <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
         </el-table-column>
-        <el-table-column label="操作" align="center" width="90">
+        <el-table-column label="操作" align="center" width="90" fixed="right">
           <template #default="scope">
             <el-button link type="primary" @click="drillDown(scope.row)">下级</el-button>
           </template>

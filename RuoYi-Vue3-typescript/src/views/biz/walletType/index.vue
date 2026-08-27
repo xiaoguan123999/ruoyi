@@ -47,7 +47,7 @@
         </template>
       </el-table-column>
       <el-table-column label="备注" align="center" prop="remark" min-width="180" show-overflow-tooltip />
-      <el-table-column label="操作" align="center" width="160">
+      <el-table-column label="操作" align="center" width="160" fixed="right">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:walletType:edit']">修改</el-button>
           <el-button link type="primary" icon="Delete" :disabled="scope.row.builtin === '1'" @click="handleDelete(scope.row)" v-hasPermi="['biz:walletType:remove']">删除</el-button>

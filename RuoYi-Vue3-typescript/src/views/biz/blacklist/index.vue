@@ -49,7 +49,7 @@
         </template>
       </el-table-column>
       <el-table-column label="备注" align="center" prop="remark" min-width="140" show-overflow-tooltip />
-      <el-table-column label="操作" align="center" width="160">
+      <el-table-column label="操作" align="center" width="160" fixed="right">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:blacklist:edit']">修改</el-button>
           <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['biz:blacklist:remove']">删除</el-button>
