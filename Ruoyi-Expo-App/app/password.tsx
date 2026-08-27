@@ -25,7 +25,8 @@ export default function PasswordScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [mode, setMode] = useState<Mode>('menu');
-  const [hasPayPassword, setHasPayPassword] = useState(user?.hasPayPassword === true);
+  // 注册必填支付密码；仅接口明确返回 false 时才走「首次设置」
+  const [hasPayPassword, setHasPayPassword] = useState(user?.hasPayPassword !== false);
 
   const [oldPwd, setOldPwd] = useState('');
   const [nextPwd, setNextPwd] = useState('');
@@ -35,9 +36,9 @@ export default function PasswordScreen() {
   const refreshProfile = useCallback(async () => {
     try {
       const profile = await fetchAppProfile();
-      setHasPayPassword(profile.hasPayPassword === true);
+      setHasPayPassword(profile.hasPayPassword !== false);
     } catch {
-      setHasPayPassword(user?.hasPayPassword === true);
+      setHasPayPassword(user?.hasPayPassword !== false);
     }
   }, [user?.hasPayPassword]);
 
@@ -147,7 +148,7 @@ export default function PasswordScreen() {
   };
 
   const title =
-    mode === 'login' ? '设置登录密码' : mode === 'pay' ? (hasPayPassword ? '修改支付密码' : '设置支付密码') : '密码设置';
+    mode === 'login' ? '修改登录密码' : mode === 'pay' ? '修改支付密码' : '密码设置';
 
   return (
     <AppBackground>
@@ -163,11 +164,8 @@ export default function PasswordScreen() {
       >
         {mode === 'menu' ? (
           <View style={styles.menuList}>
-            <MenuItem label="设置登录密码" onPress={openLogin} />
-            <MenuItem
-              label={hasPayPassword ? '修改支付密码' : '设置支付密码'}
-              onPress={openPay}
-            />
+            <MenuItem label="修改登录密码" onPress={openLogin} />
+            <MenuItem label="修改支付密码" onPress={openPay} />
           </View>
         ) : null}
 

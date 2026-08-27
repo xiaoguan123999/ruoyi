@@ -1,56 +1,172 @@
-import { useRouter, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { fetchAppProductSeriesList } from '@/api/app-product';
-import { ProductSeriesCard } from '@/components/ui/ProductSeriesCard';
+import {
+  fetchAppProductSeriesList,
+  fetchAppProductSeriesWithItems,
+} from '@/api/app-product';
+import { ProductCard } from '@/components/ui/ProductCard';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
-import type { ProductSeries } from '@/types/product';
 import { colors } from '@/theme/colors';
+import type { ProductItem, ProductSeries } from '@/types/product';
 
 export default function ProductsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { seriesId: seriesIdParam } = useLocalSearchParams<{ seriesId?: string }>();
   const [seriesList, setSeriesList] = useState<ProductSeries[]>([]);
+  const [activeSeriesId, setActiveSeriesId] = useState<string>('');
+  const [items, setItems] = useState<ProductItem[]>([]);
+  const [loadingSeries, setLoadingSeries] = useState(true);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const activeSeriesIdRef = useRef(activeSeriesId);
+  activeSeriesIdRef.current = activeSeriesId;
 
-  const load = useCallback(async () => {
+  const loadItems = useCallback(async (seriesId: string) => {
+    if (!seriesId) {
+      setItems([]);
+      return;
+    }
+    setLoadingItems(true);
     try {
-      setSeriesList(await fetchAppProductSeriesList());
+      const detail = await fetchAppProductSeriesWithItems(seriesId);
+      setItems(detail?.items ?? []);
     } catch {
-      setSeriesList([]);
+      setItems([]);
+    } finally {
+      setLoadingItems(false);
     }
   }, []);
 
+  const loadSeries = useCallback(async () => {
+    setLoadingSeries(true);
+    try {
+      const list = await fetchAppProductSeriesList();
+      setSeriesList(list);
+      const preferred =
+        (typeof seriesIdParam === 'string' && list.some((item) => item.id === seriesIdParam)
+          ? seriesIdParam
+          : null) ||
+        (activeSeriesIdRef.current && list.some((item) => item.id === activeSeriesIdRef.current)
+          ? activeSeriesIdRef.current
+          : null) ||
+        list[0]?.id ||
+        '';
+      setActiveSeriesId(preferred);
+      if (preferred) {
+        await loadItems(preferred);
+      } else {
+        setItems([]);
+      }
+    } catch {
+      setSeriesList([]);
+      setActiveSeriesId('');
+      setItems([]);
+    } finally {
+      setLoadingSeries(false);
+    }
+  }, [loadItems, seriesIdParam]);
+
   useFocusEffect(
     useCallback(() => {
-      void load();
-    }, [load]),
+      void loadSeries();
+    }, [loadSeries]),
   );
+
+  useEffect(() => {
+    if (
+      typeof seriesIdParam === 'string' &&
+      seriesIdParam &&
+      seriesIdParam !== activeSeriesIdRef.current &&
+      seriesList.some((item) => item.id === seriesIdParam)
+    ) {
+      setActiveSeriesId(seriesIdParam);
+      void loadItems(seriesIdParam);
+    }
+  }, [seriesIdParam, seriesList, loadItems]);
+
+  const onSelectSeries = (seriesId: string) => {
+    if (seriesId === activeSeriesId) {
+      return;
+    }
+    setActiveSeriesId(seriesId);
+    void loadItems(seriesId);
+  };
+
+  const onRefresh = useCallback(async () => {
+    if (activeSeriesId) {
+      await loadItems(activeSeriesId);
+      return;
+    }
+    await loadSeries();
+  }, [activeSeriesId, loadItems, loadSeries]);
 
   return (
     <View style={styles.page}>
-      <RefreshableScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}
-        onRefresh={load}
-      >
-        <View style={styles.hero}>
-          <Text style={styles.heroTitle}>连接星空 智联未来</Text>
-          <Text style={styles.heroSub}>以科技连接万物 · 让星辰触手可及</Text>
-        </View>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
+        {seriesList.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabs}
+          >
+            {seriesList.map((series) => {
+              const active = series.id === activeSeriesId;
+              return (
+                <Pressable
+                  key={series.id}
+                  style={styles.tabItem}
+                  onPress={() => onSelectSeries(series.id)}
+                >
+                  <Text style={[styles.tabText, active && styles.tabTextActive]} numberOfLines={1}>
+                    {series.name}
+                  </Text>
+                  <View style={[styles.tabBar, active && styles.tabBarActive]} />
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        ) : (
+          <Text style={styles.headerPlaceholder}>{loadingSeries ? '加载中…' : '暂无产品系列'}</Text>
+        )}
+      </View>
 
-        <View style={styles.list}>
-          {seriesList.map((series) => (
-            <ProductSeriesCard
-              key={series.id}
-              name={series.name}
-              cover={series.cover}
-              onPress={() => router.push(`/products/${series.id}`)}
-            />
-          ))}
+      {loadingSeries && seriesList.length === 0 ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={colors.accent} />
         </View>
-      </RefreshableScrollView>
+      ) : (
+        <RefreshableScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+          onRefresh={onRefresh}
+        >
+          {loadingItems ? (
+            <View style={styles.listLoading}>
+              <ActivityIndicator color={colors.accent} />
+            </View>
+          ) : items.length === 0 ? (
+            <Text style={styles.empty}>产品筹备中，敬请期待...</Text>
+          ) : (
+            items.map((item) => (
+              <ProductCard
+                key={item.id}
+                item={item}
+                onPress={() => router.push(`/products/subscribe/${item.id}`)}
+              />
+            ))
+          )}
+        </RefreshableScrollView>
+      )}
     </View>
   );
 }
@@ -60,25 +176,69 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  content: {
-    paddingBottom: 24,
+  header: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(120, 170, 230, 0.18)',
+    paddingBottom: 4,
   },
-  hero: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+  tabs: {
+    paddingHorizontal: 10,
+    minHeight: 36,
+    alignItems: 'center',
   },
-  heroTitle: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: '800',
+  tabItem: {
+    paddingHorizontal: 10,
+    paddingTop: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  heroSub: {
-    color: colors.muted,
-    marginTop: 6,
+  tabText: {
+    color: 'rgba(180, 200, 230, 0.72)',
     fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '500',
+    maxWidth: 148,
   },
-  list: {
-    marginTop: 12,
+  tabTextActive: {
+    color: colors.text,
+    fontWeight: '600',
+  },
+  tabBar: {
+    marginTop: 6,
+    width: 28,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'transparent',
+  },
+  tabBarActive: {
+    backgroundColor: '#FF2A2A',
+  },
+  headerPlaceholder: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 32,
     gap: 16,
+  },
+  loadingWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listLoading: {
+    paddingTop: 48,
+    alignItems: 'center',
+  },
+  empty: {
+    color: colors.muted,
+    textAlign: 'center',
+    marginTop: 40,
+    fontSize: 14,
   },
 });
