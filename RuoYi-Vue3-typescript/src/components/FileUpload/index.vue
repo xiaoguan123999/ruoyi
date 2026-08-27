@@ -170,7 +170,9 @@ function handleUploadError(err: Error): void {
 // 上传成功回调
 function handleUploadSuccess(res: UploadFileResult, file: any): void {
   if (res.code === 200) {
-    uploadList.value.push({ name: res.fileName, url: res.fileName })
+    const path = resolveUploadPath(res)
+    const displayName = res.originalFilename || res.newFileName || getFileName(path) || file?.name
+    uploadList.value.push({ name: displayName, url: path })
     uploadedSuccessfully()
   } else {
     number.value--
@@ -179,6 +181,27 @@ function handleUploadSuccess(res: UploadFileResult, file: any): void {
     proxy.$refs.fileUpload.handleRemove(file)
     uploadedSuccessfully()
   }
+}
+
+/** 优先用带路径的 fileName；若只有哈希名则从完整 url 取 path，保证预览可访问 */
+function resolveUploadPath(res: UploadFileResult): string {
+  const fileName = (res.fileName || "").trim()
+  if (fileName && (fileName.includes("/") || isExternal(fileName))) {
+    return fileName
+  }
+  const fullUrl = (res.url || "").trim()
+  if (fullUrl) {
+    if (isExternal(fullUrl)) {
+      try {
+        const u = new URL(fullUrl)
+        return u.pathname + u.search
+      } catch {
+        return fullUrl
+      }
+    }
+    return fullUrl.startsWith("/") ? fullUrl : `/${fullUrl}`
+  }
+  return fileName
 }
 
 // 删除文件
