@@ -46,29 +46,51 @@ function formatAmountText(amount: number): string {
   return amount.toFixed(2).replace(/\.?0+$/, '');
 }
 
+const RULE_DISCLAIMER = '规则如有调整将会提前通知，最终解释权归星帆智联所有';
+
+function appendDisclaimer(lines: string[]): string[] {
+  if (lines.length === 0) {
+    return lines;
+  }
+  if (lines.some((line) => line.includes('最终解释权'))) {
+    return lines;
+  }
+  return [...lines, RULE_DISCLAIMER];
+}
+
 function buildRuleLines(info: AppCheckinInfo | null): string[] {
   if (!info) {
     return [];
   }
+
+  const fromApi = info.ruleText?.trim();
+  if (fromApi) {
+    return appendDisclaimer(
+      fromApi
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean),
+    );
+  }
+
   const lines: string[] = [];
   const amountText = formatAmountText(info.rule.amount || info.amount);
   lines.push(`1、每天签到可以获得${amountText}元`);
 
   const prizes = info.rule.prizes.filter((item) => item.enabled);
-  prizes.forEach((prize, index) => {
-    const rateText = formatAmountText(prize.rate);
-    lines.push(
-      `${index + 2}、连续签到${prize.days}天可抽奖「${prize.name}」（中奖概率${rateText}%）`,
+  if (prizes.length > 0) {
+    const prizeParts = prizes.map(
+      (prize) => `连续签到满${prize.days}天可以有机会获得${prize.name}一台`,
     );
-  });
-
-  if (info.rule.oncePerDay !== false && prizes.length === 0) {
-    lines.push('2、每个账户每天只能签到一次');
-  } else if (info.rule.oncePerDay !== false) {
-    lines.push(`${prizes.length + 2}、每个账户每天只能签到一次`);
+    lines.push(`2、${prizeParts.join('；')}`);
   }
 
-  return lines;
+  if (info.rule.oncePerDay !== false) {
+    const index = prizes.length > 0 ? 3 : 2;
+    lines.push(`${index}、每个账户每日仅可签到一次`);
+  }
+
+  return appendDisclaimer(lines);
 }
 
 export default function CheckInScreen() {
@@ -204,8 +226,11 @@ export default function CheckInScreen() {
         <GlassCard style={styles.ruleCard}>
           <Text style={styles.ruleTitle}>签到规则</Text>
           {ruleLines.length > 0 ? (
-            ruleLines.map((line) => (
-              <Text key={line} style={styles.rule}>
+            ruleLines.map((line, index) => (
+              <Text
+                key={`${index}-${line.slice(0, 12)}`}
+                style={[styles.rule, line.includes('最终解释权') ? styles.ruleDisclaimer : null]}
+              >
                 {line}
               </Text>
             ))
@@ -304,5 +329,10 @@ const styles = StyleSheet.create({
     color: 'rgba(200, 215, 235, 0.85)',
     lineHeight: 24,
     fontSize: 14,
+  },
+  ruleDisclaimer: {
+    marginTop: 10,
+    color: 'rgba(180, 198, 220, 0.72)',
+    fontSize: 13,
   },
 });
