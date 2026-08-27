@@ -150,11 +150,7 @@ public class BizOrderServiceImpl implements IBizOrderService
         orderMapper.insertOrder(order);
         commissionService.grantForSubscribe(order);
 
-        memberService.refreshLevel(memberId);
-        if (member.getParentId() != null)
-        {
-            memberService.refreshLevel(member.getParentId());
-        }
+        memberService.refreshLevelAndUplines(memberId);
         refreshUnlockForMemberProduct(memberId, productId);
         if (member.getParentId() != null)
         {

@@ -10,7 +10,8 @@ public interface BizWalletLogMapper
     List<BizWalletLog> selectWalletLogList(BizWalletLog log);
 
     List<BizWalletLog> selectAppWalletLogList(@Param("memberId") Long memberId, @Param("currency") String currency,
-            @Param("bizTypes") List<String> bizTypes);
+            @Param("bizTypes") List<String> bizTypes, @Param("walletTypeCode") String walletTypeCode,
+            @Param("includeAdjust") Boolean includeAdjust);
 
     BigDecimal sumPromoIncome(@Param("memberId") Long memberId, @Param("currency") String currency);
 

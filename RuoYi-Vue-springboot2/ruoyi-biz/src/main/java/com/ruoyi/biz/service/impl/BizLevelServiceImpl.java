@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.BizLevel;
 import com.ruoyi.biz.mapper.BizLevelMapper;
+import com.ruoyi.biz.service.IBizLevelRewardService;
 import com.ruoyi.biz.service.IBizLevelService;
 import com.ruoyi.common.utils.StringUtils;
 
@@ -16,16 +17,23 @@ public class BizLevelServiceImpl implements IBizLevelService
     @Autowired
     private BizLevelMapper levelMapper;
 
+    @Autowired
+    private IBizLevelRewardService levelRewardService;
+
     @Override
     public BizLevel selectLevelById(Long levelId)
     {
-        return levelMapper.selectLevelById(levelId);
+        BizLevel row = levelMapper.selectLevelById(levelId);
+        levelRewardService.fillTeamDepthLabel(row);
+        return row;
     }
 
     @Override
     public List<BizLevel> selectLevelList(BizLevel level)
     {
-        return levelMapper.selectLevelList(level);
+        List<BizLevel> list = levelMapper.selectLevelList(level);
+        levelRewardService.fillTeamDepthLabels(list);
+        return list;
     }
 
     @Override
@@ -104,6 +112,7 @@ public class BizLevelServiceImpl implements IBizLevelService
             level.setRewardUsdt(BigDecimal.ZERO);
         }
         enableOnceAutoIfAmount(level);
+        levelRewardService.normalizeTeamDepth(level);
         return levelMapper.insertLevel(level);
     }
 
@@ -111,6 +120,7 @@ public class BizLevelServiceImpl implements IBizLevelService
     public int updateLevel(BizLevel level)
     {
         enableOnceAutoIfAmount(level);
+        levelRewardService.normalizeTeamDepth(level);
         return levelMapper.updateLevel(level);
     }
 

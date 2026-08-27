@@ -131,6 +131,7 @@ public class AppMemberController extends BaseController
     public AppLevelsResult levels()
     {
         List<BizLevel> list = levelService.selectLevelList(new BizLevel());
+        levelRewardService.fillTeamDepthLabels(list);
         AppLevelsData data = new AppLevelsData();
         data.setCurrent(memberService.selectMemberById(AppSecurityUtils.getMemberId()));
         data.setLevels(list);

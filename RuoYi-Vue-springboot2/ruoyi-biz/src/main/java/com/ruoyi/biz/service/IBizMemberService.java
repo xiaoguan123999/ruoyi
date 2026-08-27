@@ -46,5 +46,7 @@ public interface IBizMemberService
 
     void refreshLevel(Long memberId);
 
+    void refreshLevelAndUplines(Long memberId);
+
     int refreshAllLevels();
 }

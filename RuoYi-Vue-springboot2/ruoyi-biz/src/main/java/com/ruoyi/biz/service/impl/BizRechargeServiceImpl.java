@@ -113,7 +113,7 @@ public class BizRechargeServiceImpl implements IBizRechargeService
         {
             walletService.credit(recharge.getMemberId(), recharge.getCurrency(), recharge.getAmount(),
                     BizConstants.BIZ_RECHARGE, recharge.getRechargeId(), "充值入账");
-            memberService.refreshLevel(recharge.getMemberId());
+            memberService.refreshLevelAndUplines(recharge.getMemberId());
         }
     }
 }
