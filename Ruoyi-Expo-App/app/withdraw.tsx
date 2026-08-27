@@ -163,7 +163,7 @@ export default function WithdrawScreen() {
         <GlassCard>
           <View style={styles.row}>
             <Text style={styles.label}>账户可用余额</Text>
-            <Pressable onPress={() => router.push('/fund-details?tab=withdraw')}>
+            <Pressable onPress={() => router.push('/withdraw-records')}>
               <Text style={styles.link}>提现记录 ›</Text>
             </Pressable>
           </View>
@@ -227,6 +227,17 @@ export default function WithdrawScreen() {
         </GlassCard>
 
         <PrimaryButton title="提 现" onPress={() => void onSubmit()} disabled={submitting} />
+
+        <View style={styles.notice}>
+          <Text style={styles.noticeTitle}>提现须知</Text>
+          <Text style={styles.noticeLine}>1. 请确保提现时填写正确的收款信息；</Text>
+          <Text style={styles.noticeLine}>
+            2. 提现通常在24小时内到账，如有疑问请及时联系客服；
+          </Text>
+          <Text style={styles.noticeLine}>
+            3. 最低提现到账金额100元，提现手续费为3%，提现时间8:30—21:00，请合理安排提现时间。
+          </Text>
+        </View>
       </RefreshableScrollView>
     </AppBackground>
   );
@@ -344,5 +355,21 @@ const styles = StyleSheet.create({
   right: {
     color: colors.text,
     fontSize: 15,
+  },
+  notice: {
+    marginTop: 8,
+    paddingHorizontal: 4,
+    gap: 6,
+  },
+  noticeTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  noticeLine: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 22,
   },
 });

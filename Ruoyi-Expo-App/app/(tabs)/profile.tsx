@@ -76,6 +76,44 @@ function GradientPill({
     </Pressable>
   );
 }
+function BoostValueBox() {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  return (
+    <View
+      onLayout={(event) => {
+        const { width, height } = event.nativeEvent.layout;
+        setSize({ width, height });
+      }}
+      style={styles.boostBox}
+    >
+      {size.width > 0 ? (
+        <Svg width={size.width} height={size.height} style={StyleSheet.absoluteFill}>
+          <Defs>
+            <LinearGradient id="boostGrad" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0%" stopColor="#F8D6AC" />
+              <Stop offset="100%" stopColor="#EFBA8A" />
+            </LinearGradient>
+          </Defs>
+          <Rect
+            x="0"
+            y="0"
+            width={size.width}
+            height={size.height}
+            rx={8}
+            ry={8}
+            fill="url(#boostGrad)"
+          />
+        </Svg>
+      ) : (
+        <View style={[StyleSheet.absoluteFill, styles.boostFallback]} />
+      )}
+      <Text style={styles.boostLabel}>助力值</Text>
+      <Text style={styles.boostValue}>0</Text>
+    </View>
+  );
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -105,6 +143,7 @@ export default function ProfileScreen() {
 
   const displayName = displayText(user?.nickName || user?.userName);
   const displayPhone = displayText(maskPhone(user?.phone || user?.userName));
+  const inviteCode = displayText(user?.inviteCode).trim();
   const verified = isKycVerified(user?.kycStatus);
   const cnyAvailable = toNumberOrZero(wallet?.cnyAvailable);
   const usdtAvailable = toNumberOrZero(wallet?.usdtAvailable);
@@ -141,8 +180,16 @@ export default function ProfileScreen() {
                 </View>
               ) : null}
             </View>
-            <Text style={styles.phone}>{displayPhone}</Text>
-            <Text style={styles.slogan}>连接星空 · 智联未来</Text>
+              <View style={styles.userSubRow}>
+              <View style={styles.userSubText}>
+                <Text style={styles.phone}>
+                  {displayPhone}
+                  {inviteCode ? `  邀请码${inviteCode}` : ''}
+                </Text>
+                <Text style={styles.slogan}>连接星空 · 智联未来</Text>
+              </View>
+              <BoostValueBox />
+            </View>
           </View>
         </View>
 
@@ -155,34 +202,67 @@ export default function ProfileScreen() {
             <View style={[styles.card, styles.assetCard]}>
               <View style={styles.assetLabels}>
                 <View style={styles.assetUnitCol} />
-                <Text style={[styles.assetLabel, styles.assetCol]}>余额</Text>
-                <Text style={[styles.assetLabel, styles.assetCol]}>产品收益</Text>
-                <Text style={[styles.assetLabel, styles.assetCol]}>推广收益</Text>
+                <Pressable
+                  style={styles.assetCol}
+                  onPress={() => router.push('/fund-details?tab=recharge')}
+                >
+                  <Text style={styles.assetLabel}>余额</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.assetCol}
+                  onPress={() => router.push('/fund-details?tab=product')}
+                >
+                  <Text style={styles.assetLabel}>产品收益</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.assetCol}
+                  onPress={() => router.push('/fund-details?tab=promo')}
+                >
+                  <Text style={styles.assetLabel}>推广收益</Text>
+                </Pressable>
               </View>
               <View style={styles.assetDivider} />
               <View style={styles.assetValueRow}>
                 <Text style={styles.assetUnit}>¥</Text>
-                <Text style={[styles.assetValue, styles.assetCol]}>
-                  {formatBalance(cnyAvailable)}
-                </Text>
-                <Text style={[styles.assetValue, styles.assetCol]}>
-                  {formatBalance(cnyProductIncome)}
-                </Text>
-                <Text style={[styles.assetValue, styles.assetCol]}>
-                  {formatBalance(cnyAssistValue)}
-                </Text>
+                <Pressable
+                  style={styles.assetCol}
+                  onPress={() => router.push('/fund-details?tab=recharge')}
+                >
+                  <Text style={styles.assetValue}>{formatBalance(cnyAvailable)}</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.assetCol}
+                  onPress={() => router.push('/fund-details?tab=product')}
+                >
+                  <Text style={styles.assetValue}>{formatBalance(cnyProductIncome)}</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.assetCol}
+                  onPress={() => router.push('/fund-details?tab=promo')}
+                >
+                  <Text style={styles.assetValue}>{formatBalance(cnyAssistValue)}</Text>
+                </Pressable>
               </View>
               <View style={styles.assetValueRow}>
                 <Text style={styles.assetUnit}>USDT</Text>
-                <Text style={[styles.assetValue, styles.assetCol]}>
-                  {formatBalance(usdtAvailable)}
-                </Text>
-                <Text style={[styles.assetValue, styles.assetCol]}>
-                  {formatBalance(usdtProductIncome)}
-                </Text>
-                <Text style={[styles.assetValue, styles.assetCol]}>
-                  {formatBalance(usdtAssistValue)}
-                </Text>
+                <Pressable
+                  style={styles.assetCol}
+                  onPress={() => router.push('/fund-details?tab=recharge')}
+                >
+                  <Text style={styles.assetValue}>{formatBalance(usdtAvailable)}</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.assetCol}
+                  onPress={() => router.push('/fund-details?tab=product')}
+                >
+                  <Text style={styles.assetValue}>{formatBalance(usdtProductIncome)}</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.assetCol}
+                  onPress={() => router.push('/fund-details?tab=promo')}
+                >
+                  <Text style={styles.assetValue}>{formatBalance(usdtAssistValue)}</Text>
+                </Pressable>
               </View>
               <View style={styles.actions}>
                 <GradientPill title="充值" onPress={() => router.push('/recharge')} />
@@ -263,6 +343,44 @@ const styles = StyleSheet.create({
   },
   userMeta: {
     flex: 1,
+    minWidth: 0,
+  },
+  userSubRow: {
+    marginTop: 5,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 10,
+  },
+  userSubText: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+  },
+  boostBox: {
+    width: 58,
+    borderRadius: 8,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  boostFallback: {
+    backgroundColor: '#F8D6AC',
+    borderRadius: 8,
+  },
+  boostLabel: {
+    color: '#2A2208',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  boostValue: {
+    marginTop: 1,
+    color: '#1A1505',
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 20,
   },
   nameRow: {
     flexDirection: 'row',
@@ -288,13 +406,14 @@ const styles = StyleSheet.create({
   },
   phone: {
     color: 'rgba(210, 225, 245, 0.78)',
-    marginTop: 5,
     fontSize: 14,
+    lineHeight: 20,
   },
   slogan: {
     color: 'rgba(170, 195, 225, 0.72)',
     marginTop: 4,
     fontSize: 12,
+    lineHeight: 16,
   },
   loading: {
     marginTop: 40,

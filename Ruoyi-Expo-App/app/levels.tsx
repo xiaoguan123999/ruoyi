@@ -131,7 +131,7 @@ function LevelTableRow({
         <TableDualAmount cny={row.minRechargeCny} usdt={row.minRechargeUsdt} />
       </View>
       <View style={styles.colReward}>
-        <TableDualAmount cny={row.minTeamPerfCny} usdt={row.minTeamPerfUsdt} />
+        <TableDualAmount cny={row.teamRewardCny} usdt={row.teamRewardUsdt} />
       </View>
     </View>
   );
@@ -188,14 +188,14 @@ export default function LevelsScreen() {
     return '';
   }, [levelsView.current.levelName, user?.levelName, currentLevelId, displayRows]);
 
-  const currentTeamPerf = useMemo(() => {
+  const currentTeamReward = useMemo(() => {
     const matched =
       currentLevelId !== undefined
         ? displayRows.find((row) => row.levelId === currentLevelId)
         : displayRows.find((row) => row.levelName === currentLevelName);
     return {
-      cny: matched?.minTeamPerfCny ?? 0,
-      usdt: matched?.minTeamPerfUsdt ?? 0,
+      cny: matched?.teamRewardCny ?? 0,
+      usdt: matched?.teamRewardUsdt ?? 0,
     };
   }, [currentLevelId, currentLevelName, displayRows]);
 
@@ -244,8 +244,8 @@ export default function LevelsScreen() {
           </View>
           <View style={styles.statusCol}>
             <Text style={styles.statusLabel}>团队奖励</Text>
-            <Text style={styles.statusMoneyLine}>¥ {formatAmountLine(currentTeamPerf.cny)}</Text>
-            <Text style={styles.statusMoneyLine}>USDT {formatAmountLine(currentTeamPerf.usdt)}</Text>
+            <Text style={styles.statusMoneyLine}>¥ {formatAmountLine(currentTeamReward.cny)}</Text>
+            <Text style={styles.statusMoneyLine}>USDT {formatAmountLine(currentTeamReward.usdt)}</Text>
           </View>
         </View>
 

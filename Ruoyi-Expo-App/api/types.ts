@@ -239,6 +239,8 @@ export type AppCheckinInfo = {
   streakDays: number;
   checkedToday: boolean;
   rule: AppCheckinRule;
+  /** 后台/接口下发的规则全文；有则优先展示 */
+  ruleText?: string;
   prizeDrawn?: boolean;
   prizeWon?: boolean;
   prizeName?: string;
@@ -281,10 +283,38 @@ export type AppKycBody = {
   idCard: string;
 };
 
+/** 实名奖励币种 */
+export type KycRewardCurrency = 'CNY' | 'USDT';
+
+/** GET /app/kyc/reward（别名 /app/promo） */
+export type AppKycRewardInfo = {
+  kycRewardCny: number;
+  kycRewardUsdt: number;
+  kycRewardClaimable: boolean;
+  kycRewardClaimed: boolean;
+  claimedCurrency?: KycRewardCurrency;
+  claimedAmount?: number;
+};
+
+/** POST /app/kyc/reward 领取结果 */
+export type AppKycRewardClaimResult = {
+  currency: KycRewardCurrency;
+  amount: number;
+  message: string;
+};
+
 export type AppPasswordBody = {
   oldPassword: string;
   newPassword: string;
   confirmPassword: string;
+};
+
+/** POST /app/payPassword — 设置或修改支付密码 */
+export type AppPayPasswordBody = {
+  /** 已设置过则必填 */
+  oldPassword?: string;
+  newPassword: string;
+  confirmPassword?: string;
 };
 
 export type AppLevel = {

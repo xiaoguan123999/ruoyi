@@ -89,7 +89,7 @@ export default function RechargeScreen() {
         <GlassCard>
           <View style={styles.row}>
             <Text style={styles.label}>账户可用余额</Text>
-            <Pressable onPress={() => router.push('/fund-details?tab=recharge')}>
+            <Pressable onPress={() => router.push('/recharge-records')}>
               <Text style={styles.link}>充值记录 ›</Text>
             </Pressable>
           </View>

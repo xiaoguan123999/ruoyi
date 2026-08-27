@@ -3,10 +3,14 @@ import { request } from '@/api/request';
 import type {
   AppInviteInfo,
   AppKycBody,
+  AppKycRewardClaimResult,
+  AppKycRewardInfo,
   AppLevel,
   AppLevelCurrent,
   AppLevelsView,
   AppPasswordBody,
+  AppPayPasswordBody,
+  KycRewardCurrency,
 } from '@/api/types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -140,6 +144,91 @@ export async function submitAppKyc(body: AppKycBody): Promise<string> {
   return res.msg || '实名认证提交成功';
 }
 
+function pickBoolean(source: Record<string, unknown>, keys: string[]): boolean | undefined {
+  for (const key of keys) {
+    const value = source[key];
+    if (value === undefined || value === null) {
+      continue;
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    const text = String(value).trim().toLowerCase();
+    if (text === 'true' || text === '1' || text === 'yes' || text === 'y') {
+      return true;
+    }
+    if (text === 'false' || text === '0' || text === 'no' || text === 'n') {
+      return false;
+    }
+  }
+  return undefined;
+}
+
+function normalizeCurrency(value: unknown): KycRewardCurrency | undefined {
+  const text = String(value ?? '')
+    .trim()
+    .toUpperCase();
+  if (text === 'CNY' || text === 'USDT') {
+    return text;
+  }
+  return undefined;
+}
+
+function mapKycRewardInfo(raw: unknown): AppKycRewardInfo {
+  if (!isRecord(raw)) {
+    return {
+      kycRewardCny: 0,
+      kycRewardUsdt: 0,
+      kycRewardClaimable: false,
+      kycRewardClaimed: false,
+    };
+  }
+  const claimed = pickBoolean(raw, ['kycRewardClaimed', 'claimed']) === true;
+  const claimable = pickBoolean(raw, ['kycRewardClaimable', 'claimable']);
+  return {
+    kycRewardCny: pickNumber(raw, ['kycRewardCny', 'rewardCny', 'cny']),
+    kycRewardUsdt: pickNumber(raw, ['kycRewardUsdt', 'rewardUsdt', 'usdt']),
+    kycRewardClaimed: claimed,
+    kycRewardClaimable: claimable === true,
+    claimedCurrency: normalizeCurrency(raw.claimedCurrency ?? raw.currency),
+    claimedAmount: pickNumber(raw, ['claimedAmount', 'amount']) || undefined,
+  };
+}
+
+/**
+ * GET /app/kyc/reward — 实名奖励配置与是否可领
+ */
+export async function fetchAppKycReward(): Promise<AppKycRewardInfo> {
+  const res = await request<unknown>('/app/kyc/reward');
+  const root = extractDataRoot(res as Record<string, unknown>);
+  return mapKycRewardInfo(root ?? res);
+}
+
+/**
+ * POST /app/kyc/reward — 领取实名奖励（CNY / USDT 任选其一，每人一次）
+ */
+export async function claimAppKycReward(
+  currency: KycRewardCurrency,
+): Promise<AppKycRewardClaimResult> {
+  const res = await request<unknown>('/app/kyc/reward', {
+    method: 'POST',
+    body: { currency },
+  });
+  const root = extractDataRoot(res as Record<string, unknown>);
+  const data = isRecord(root) ? root : {};
+  const claimedCurrency = normalizeCurrency(data.currency) ?? currency;
+  const amount = pickNumber(data, ['amount', 'claimedAmount']);
+  return {
+    currency: claimedCurrency,
+    amount,
+    message: '领取成功，已到账',
+  };
+}
+
+export function formatKycRewardLabel(currency: KycRewardCurrency, amount: number): string {
+  return currency === 'CNY' ? `${amount}元` : `${amount}U`;
+}
+
 export async function updateAppPassword(body: AppPasswordBody): Promise<string> {
   const res = await request('/app/password', {
     method: 'PUT',
@@ -152,13 +241,28 @@ export async function updateAppPassword(body: AppPasswordBody): Promise<string> 
   return res.msg || '密码修改成功';
 }
 
-/** POST /app/payPassword — 老账号首次设置支付密码 */
-export async function setAppPayPassword(payPassword: string): Promise<string> {
+/**
+ * POST /app/payPassword（别名 /app/tradePassword）
+ * 未设置：只需 newPassword / payPassword；已设置：需 oldPassword + newPassword + confirmPassword
+ */
+export async function saveAppPayPassword(body: AppPayPasswordBody): Promise<string> {
+  const newPassword = body.newPassword.trim();
   const res = await request('/app/payPassword', {
     method: 'POST',
-    body: { payPassword: payPassword.trim() },
+    body: {
+      oldPassword: body.oldPassword?.trim() || undefined,
+      newPassword,
+      confirmPassword: body.confirmPassword?.trim() || undefined,
+      payPassword: newPassword,
+    },
   });
-  return res.msg || '支付密码设置成功';
+  await fetchAppProfile().catch(() => {});
+  return res.msg || (body.oldPassword ? '支付密码修改成功' : '支付密码设置成功');
+}
+
+/** 老账号首次设置支付密码（认购等场景） */
+export async function setAppPayPassword(payPassword: string): Promise<string> {
+  return saveAppPayPassword({ newPassword: payPassword });
 }
 
 function mapLevelCurrent(raw: unknown): AppLevelCurrent {

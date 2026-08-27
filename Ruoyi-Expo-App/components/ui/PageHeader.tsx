@@ -8,9 +8,11 @@ type Props = {
   title: string;
   right?: React.ReactNode;
   showBack?: boolean;
+  /** 自定义返回；不传则 router.back() */
+  onBack?: () => void;
 };
 
-export function PageHeader({ title, right, showBack = true }: Props) {
+export function PageHeader({ title, right, showBack = true, onBack }: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -18,7 +20,17 @@ export function PageHeader({ title, right, showBack = true }: Props) {
     <View style={[styles.wrap, { paddingTop: insets.top + 6 }]}>
       <View style={styles.side}>
         {showBack ? (
-          <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
+          <Pressable
+            onPress={() => {
+              if (onBack) {
+                onBack();
+                return;
+              }
+              router.back();
+            }}
+            hitSlop={12}
+            style={styles.backBtn}
+          >
             <Text style={styles.back}>‹</Text>
           </Pressable>
         ) : null}

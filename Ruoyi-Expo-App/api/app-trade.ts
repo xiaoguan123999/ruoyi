@@ -337,34 +337,55 @@ function mapFundStatusLabel(kind: 'recharge' | 'withdraw', status: string): stri
     return `${prefix}失败`;
   }
   if (
-    ['0', 'pending', 'processing', 'audit', 'waiting', '申请中', '审核中', '处理中'].includes(lower) ||
+    ['0', 'pending', 'processing', 'audit', 'waiting', '申请中', '审核中', '处理中', '待审', '待审核'].includes(
+      lower,
+    ) ||
     raw === '申请中' ||
-    raw === '审核中'
+    raw === '审核中' ||
+    raw === '待审' ||
+    raw === '待审核'
   ) {
-    return '申请中';
+    return '审核中';
   }
   if (!raw) {
     return `${prefix}记录`;
   }
-  // 已是中文文案则直接用，避免再拼出「充值0」这类状态码
+  // 已是中文文案则规范化常见别名
   if (/[\u4e00-\u9fff]/.test(raw)) {
+    return normalizeFundStatusTitle(raw);
+  }
+  return '审核中';
+}
+
+/** 接口可能直接下发「待审」「申请中」等文案，统一成展示用状态 */
+function normalizeFundStatusTitle(title: string): string {
+  const raw = title.trim();
+  if (!raw) {
     return raw;
   }
-  return '申请中';
+  if (/待审|待审核|申请中|处理中|审核中/.test(raw) && !/成功|拒绝|失败|通过/.test(raw)) {
+    return '审核中';
+  }
+  return raw;
 }
 
 function mapFundRecord(
   raw: unknown,
-  kind: 'recharge' | 'withdraw',
+  kindHint?: 'recharge' | 'withdraw',
 ): AppFundRecord | null {
   if (!isRecord(raw)) {
     return null;
   }
-  const id = pickNumber(raw, ['rechargeId', 'withdrawId', 'id']);
+  const typeRaw = pickString(raw, ['bizType', 'type', 'recordType'], '').toUpperCase();
+  const kind: 'recharge' | 'withdraw' =
+    kindHint ||
+    (typeRaw.includes('WITHDRAW') ? 'withdraw' : typeRaw.includes('RECHARGE') ? 'recharge' : 'recharge');
+  const id = pickNumber(raw, ['rechargeId', 'withdrawId', 'recordId', 'id']);
   const amount = pickNumber(raw, ['amount']);
   const currency = normalizeCurrency(raw.currency);
-  const status = pickString(raw, ['status', 'auditStatus'], '');
-  const title = mapFundStatusLabel(kind, status);
+  const status = pickString(raw, ['status', 'auditStatus', 'statusCode'], '');
+  const titleFromApi = pickString(raw, ['statusLabel', 'title', 'statusName']);
+  const title = normalizeFundStatusTitle(titleFromApi || mapFundStatusLabel(kind, status));
 
   return {
     id: String(id || `${kind}-${pickString(raw, ['createTime'])}-${amount}`),
@@ -372,33 +393,64 @@ function mapFundRecord(
     amount,
     currency,
     status,
-    createTime: formatDateTime(raw.createTime ?? raw.auditTime),
+    createTime: formatDateTime(raw.createTime ?? raw.auditTime ?? raw.updateTime),
   };
 }
 
-export async function fetchAppRechargeRecords(): Promise<AppFundRecord[]> {
-  const res = await request('/app/recharge');
+/** GET /app/fundRecords — 充值/提现申请单（含申请中/成功/拒绝） */
+export async function fetchAppFundRecords(options?: {
+  pageNum?: number;
+  pageSize?: number;
+  bizType?: 'RECHARGE' | 'WITHDRAW';
+  status?: string | number;
+  currency?: 'CNY' | 'USDT';
+}): Promise<AppFundRecord[]> {
+  const pageNum = options?.pageNum ?? 1;
+  const pageSize = options?.pageSize ?? 50;
+  const query = new URLSearchParams({
+    pageNum: String(pageNum),
+    pageSize: String(pageSize),
+  });
+  if (options?.bizType) {
+    query.set('bizType', options.bizType);
+    query.set('type', options.bizType);
+  }
+  if (options?.status !== undefined && options?.status !== null && `${options.status}` !== '') {
+    query.set('status', String(options.status));
+  }
+  if (options?.currency) {
+    query.set('currency', options.currency);
+  }
+  const qs = query.toString();
+  const kindHint = options?.bizType === 'WITHDRAW' ? 'withdraw' : options?.bizType === 'RECHARGE' ? 'recharge' : undefined;
+
+  const res = await request(`/app/fundRecords?${qs}`);
   return extractRows(res)
-    .map((row) => mapFundRecord(row, 'recharge'))
+    .map((row) => mapFundRecord(row, kindHint))
     .filter((item): item is AppFundRecord => item !== null);
+}
+
+export async function fetchAppRechargeRecords(): Promise<AppFundRecord[]> {
+  return fetchAppFundRecords({ bizType: 'RECHARGE', pageNum: 1, pageSize: 50 });
 }
 
 export async function fetchAppWithdrawRecords(): Promise<AppFundRecord[]> {
-  const res = await request('/app/withdraw');
-  return extractRows(res)
-    .map((row) => mapFundRecord(row, 'withdraw'))
-    .filter((item): item is AppFundRecord => item !== null);
+  return fetchAppFundRecords({ bizType: 'WITHDRAW', pageNum: 1, pageSize: 50 });
 }
 
 const WALLET_BIZ_LABEL: Record<string, string> = {
-  CHECKIN: '系统',
+  CHECKIN: '签到',
   SUBSCRIBE: '认购',
-  REBATE: '日返',
-  RECHARGE: '充值',
+  REBATE: '产品收益',
+  RECHARGE: '充值成功',
+  WITHDRAW: '提现',
   WITHDRAW_FREEZE: '提现冻结',
-  WITHDRAW_SUCCESS: '提现',
+  WITHDRAW_SUCCESS: '提现成功',
   WITHDRAW_REJECT: '提现退回',
   COMMISSION: '推广奖金',
+  INVITE: '推广奖励',
+  LEVEL_REWARD: '等级奖励',
+  KYC_REWARD: '实名奖励',
 };
 
 function mapWalletLogTitle(raw: Record<string, unknown>, bizType: string): string {
@@ -563,6 +615,10 @@ function mapCheckinInfo(raw: unknown): AppCheckinInfo {
     streakDays: pickNumber(raw, ['streakDays', 'streak', 'continuousDays']),
     checkedToday,
     rule: mapCheckinRule(raw.rule),
+    ruleText:
+      pickString(raw, ['ruleText', 'rules', 'ruleDesc']) ||
+      (isRecord(raw.rule) ? pickString(raw.rule, ['ruleText', 'rules', 'ruleDesc']) : '') ||
+      undefined,
     prizeDrawn: typeof raw.prizeDrawn === 'boolean' ? raw.prizeDrawn : undefined,
     prizeWon: typeof raw.prizeWon === 'boolean' ? raw.prizeWon : undefined,
     prizeName: pickString(raw, ['prizeName']) || undefined,
