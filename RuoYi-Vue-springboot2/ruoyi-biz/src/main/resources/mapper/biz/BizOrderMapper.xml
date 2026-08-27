@@ -14,6 +14,7 @@
         <result property="seriesCoverUrl"    column="series_cover_url"/>
         <result property="currency"          column="currency"/>
         <result property="price"             column="price"/>
+        <result property="quantity"          column="quantity"/>
         <result property="dailyRebate"       column="daily_rebate"/>
         <result property="durationDays"      column="duration_days"/>
         <result property="remainingDays"     column="remaining_days"/>
@@ -28,7 +29,7 @@
     <sql id="selectOrderVo">
         select o.order_id, o.order_no, o.member_id, m.phone, o.product_id, o.product_name,
                p.category_id, c.category_name, c.cover_url as series_cover_url,
-               o.currency, o.price,
+               o.currency, o.price, ifnull(o.quantity, 1) as quantity,
                o.daily_rebate, o.duration_days, o.remaining_days, o.last_rebate_date,
                o.withdraw_required, o.status, o.create_time, o.update_time, o.remark
         from biz_order o
@@ -69,7 +70,7 @@
     </select>
 
     <select id="countMemberProductOrders" resultType="int">
-        select count(1) from biz_order where member_id = #{memberId} and product_id = #{productId}
+        select ifnull(sum(ifnull(quantity, 1)), 0) from biz_order where member_id = #{memberId} and product_id = #{productId}
     </select>
 
     <select id="countWithdrawRequiredOrders" resultType="int">
@@ -90,10 +91,10 @@
 
     <insert id="insertOrder" parameterType="BizOrder" useGeneratedKeys="true" keyProperty="orderId">
         insert into biz_order (
-            order_no, member_id, product_id, product_name, currency, price, daily_rebate,
+            order_no, member_id, product_id, product_name, currency, price, quantity, daily_rebate,
             duration_days, remaining_days, last_rebate_date, withdraw_required, status, create_time
         ) values (
-            #{orderNo}, #{memberId}, #{productId}, #{productName}, #{currency}, #{price}, #{dailyRebate},
+            #{orderNo}, #{memberId}, #{productId}, #{productName}, #{currency}, #{price}, #{quantity}, #{dailyRebate},
             #{durationDays}, #{remainingDays}, #{lastRebateDate}, #{withdrawRequired}, #{status}, sysdate()
         )
     </insert>

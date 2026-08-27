@@ -12,6 +12,7 @@ import com.ruoyi.biz.api.AppOrderResult;
 import com.ruoyi.biz.api.AppRechargeResult;
 import com.ruoyi.biz.api.AppWalletResult;
 import com.ruoyi.biz.api.AppWithdrawResult;
+import com.ruoyi.biz.api.AppWithdrawRuleResult;
 import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.AppAmountBody;
 import com.ruoyi.biz.domain.BizCheckin;
@@ -60,14 +61,14 @@ public class AppBizController extends BaseController
     @Autowired
     private ServerConfig serverConfig;
 
-    @ApiOperation(value = "每日签到", notes = "成功入账 CNY。data �? amount、streakDays、是否抽奖中奖�?")
+    @ApiOperation(value = "每日签到", notes = "成功入账 CNY。data amount、streakDays、是否抽奖中奖�?")
     @PostMapping("/checkin")
     public AppCheckinResult checkin()
     {
         return AppCheckinResult.ok(checkinService.checkin(AppSecurityUtils.getMemberId()));
     }
 
-    @ApiOperation(value = "签到记录", notes = "分页。rows 元素字�?�：checkinId、checkinDate、amount、currency�?")
+    @ApiOperation(value = "签到记录", notes = "分页。rows 元素字：checkinId、checkinDate、amount、currency�?")
     @GetMapping("/checkin/list")
     public TableDataInfo checkinList()
     {
@@ -77,14 +78,14 @@ public class AppBizController extends BaseController
         return getDataTable(checkinService.selectCheckinList(query));
     }
 
-    @ApiOperation(value = "签到状态与规则", notes = "checkedToday 表示今天�?否已签。rule �?后台配置的金额和抽�?�条件�?")
+    @ApiOperation(value = "签到状态与规则", notes = "checkedToday 表示今天�?否已签。rule �?后台配置的金额和抽�?�条件�?")
     @GetMapping("/checkin/info")
     public AppCheckinResult checkinInfo()
     {
         return AppCheckinResult.ok(checkinService.getCheckinInfo(AppSecurityUtils.getMemberId()));
     }
 
-    @ApiOperation(value = "认购产品", notes = "body 必填 productId，currency �? CNY �? USDT。金额以产品配置为准�?")
+    @ApiOperation(value = "认购产品", notes = "body 必填 productId，currency �? CNY �? USDT。金额以产品配置为准�?")
     @PostMapping("/orders")
     public AppOrderResult subscribe(@RequestBody AppAmountBody body)
     {
@@ -93,10 +94,10 @@ public class AppBizController extends BaseController
             return AppOrderResult.fail("请选择产品");
         }
         return AppOrderResult.ok(fillSeriesCover(orderService.subscribe(AppSecurityUtils.getMemberId(),
-                body.getProductId(), body.getCurrency(), body.getPayPassword())));
+                body.getProductId(), body.getCurrency(), body.getPayPassword(), body.getQuantity())));
     }
 
-    @ApiOperation(value = "我的认购订单", notes = "分页。status�?0持仓�? 1已完成。每条带所属产品系列�?")
+    @ApiOperation(value = "我的认购订单", notes = "分页。status�?0持仓�? 1已完成。每条带所属产品系列�?")
     @GetMapping("/orders")
     public TableDataInfo orders()
     {
@@ -119,14 +120,14 @@ public class AppBizController extends BaseController
         return table;
     }
 
-    @ApiOperation(value = "我的钱包/资产�?", notes = "data �? CNY/USDT 余�?�、冻结、产品收益。助力值固�? 0�?")
+    @ApiOperation(value = "我的钱包/资产�?", notes = "data �? CNY/USDT 余�?�、冻结、产品收益。助力值固�? 0�?")
     @GetMapping("/wallet")
     public AppWalletResult wallet()
     {
         return AppWalletResult.ok(walletService.selectAppWalletCard(AppSecurityUtils.getMemberId()));
     }
 
-    @ApiOperation(value = "申�?�充�?", notes = "�?提交申�?�，后台审核通过才入账�?")
+    @ApiOperation(value = "申�?�充�?", notes = "�?提交申�?�，后台审核通过才入账�?")
     @PostMapping("/recharge")
     public AppRechargeResult recharge(@RequestBody AppAmountBody body)
     {
@@ -134,7 +135,7 @@ public class AppBizController extends BaseController
         return AppRechargeResult.ok(rechargeService.apply(AppSecurityUtils.getMemberId(), currency, body.getAmount(), body.getRemark()));
     }
 
-    @ApiOperation(value = "充值�?�录", notes = "分页。status�?0待�?? 1通过 2拒绝�?")
+    @ApiOperation(value = "充值�?�录", notes = "分页。status�?0待�?? 1通过 2拒绝�?")
     @GetMapping("/recharge")
     public TableDataInfo rechargeList()
     {
@@ -144,7 +145,14 @@ public class AppBizController extends BaseController
         return getDataTable(rechargeService.selectRechargeList(query));
     }
 
-    @ApiOperation(value = "申�?�提�?", notes = "提交后冻结余额，后台�?认打款才扣掉。可传已保存�? accountId，或直接�? accountInfo�?")
+    @ApiOperation(value = "withdraw rule", notes = "min/max amount and feeRate percent for App withdraw page")
+    @GetMapping("/withdraw/config")
+    public AppWithdrawRuleResult withdrawConfig()
+    {
+        return AppWithdrawRuleResult.ok(withdrawService.getRule());
+    }
+
+    @ApiOperation(value = "申�?�提�?", notes = "提交后冻结余额，后台�?认打款才扣掉。可传已保存�? accountId，或直接�? accountInfo�?")
     @PostMapping("/withdraw")
     public AppWithdrawResult withdraw(@RequestBody AppAmountBody body)
     {
@@ -164,7 +172,7 @@ public class AppBizController extends BaseController
                 accountInfo, body.getRemark(), body.getGoogleCode()));
     }
 
-    @ApiOperation(value = "提现记录", notes = "分页。rows 元素�? amount、accountInfo、status、statusLabel、payMethodLabel�?")
+    @ApiOperation(value = "提现记录", notes = "分页。rows 元素�? amount、accountInfo、status、statusLabel、payMethodLabel�?")
     @GetMapping("/withdraw")
     public TableDataInfo withdrawList()
     {

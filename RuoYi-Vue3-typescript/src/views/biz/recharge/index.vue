@@ -1,5 +1,19 @@
 <template>
   <div class="app-container ops-page">
+    <div class="ops-section-card">
+      <div class="ops-section-card__hd">充值入账</div>
+      <div class="ops-section-card__bd">
+        <el-form :inline="true" v-loading="creditLoading">
+          <el-form-item label="到账钱包">
+            <WalletTypeSelect v-model="rechargeWalletType" />
+            <span class="tip">审核通过后的充值进这个钱包，默认余额且不能提现</span>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="saveCredit" v-hasPermi="['biz:recharge:audit']">保存</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+    </div>
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
       <el-form-item label="会员" prop="memberId">
         <MemberSelect v-model="queryParams.memberId" />
@@ -104,7 +118,8 @@
 </template>
 
 <script setup lang="ts" name="BizRecharge">
-import { listRecharge, addRecharge, auditRecharge } from "@/api/biz"
+import { listRecharge, addRecharge, auditRecharge, getWalletCreditByBiz, saveWalletCreditByBiz } from "@/api/biz"
+import WalletTypeSelect from "@/views/biz/components/WalletTypeSelect.vue"
 
 const { proxy } = getCurrentInstance() as any
 const dataList = ref<any[]>([])
@@ -122,6 +137,21 @@ const data = reactive({
   }
 })
 const { queryParams, form, rules } = toRefs(data)
+const creditLoading = ref(false)
+const rechargeWalletType = ref("BALANCE")
+
+function loadCredit() {
+  creditLoading.value = true
+  getWalletCreditByBiz("RECHARGE").then((res: any) => {
+    rechargeWalletType.value = res.data?.typeCode || "BALANCE"
+  }).finally(() => { creditLoading.value = false })
+}
+function saveCredit() {
+  saveWalletCreditByBiz("RECHARGE", rechargeWalletType.value).then(() => {
+    proxy.$modal.msgSuccess("保存成功")
+    loadCredit()
+  })
+}
 
 function getList() {
   loading.value = true
@@ -155,4 +185,9 @@ function handleAudit(row: any, status: string) {
   }).catch(() => {})
 }
 getList()
+loadCredit()
 </script>
+
+<style scoped>
+.tip { margin-left: 12px; color: #909399; font-size: 13px; }
+</style>

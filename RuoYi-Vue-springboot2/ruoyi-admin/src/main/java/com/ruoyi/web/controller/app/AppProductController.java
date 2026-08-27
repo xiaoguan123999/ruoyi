@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.biz.api.AppProductListResult;
+import com.ruoyi.biz.api.AppProductResult;
 import com.ruoyi.biz.api.AppProductSeries;
 import com.ruoyi.biz.api.AppProductSeriesListResult;
 import com.ruoyi.biz.api.AppProductSeriesResult;
@@ -80,6 +81,23 @@ public class AppProductController extends BaseController
             item.setCoverUrl(toPublicUrl(item.getCoverUrl()));
         }
         return AppProductListResult.ok(list);
+    }
+
+    @ApiOperation(value = "产品详情", notes = "认购页按产品ID查询。下架或不存在返回失败。")
+    @GetMapping({"/products/{productId}", "/product/{productId}"})
+    public AppProductResult productDetail(@ApiParam("产品ID") @PathVariable Long productId)
+    {
+        if (productId == null || productId.longValue() <= 0)
+        {
+            return AppProductResult.fail("请选择产品");
+        }
+        BizProduct product = productService.selectProductById(productId);
+        if (product == null || !BizConstants.STATUS_OK.equals(product.getStatus()))
+        {
+            return AppProductResult.fail("产品不存在或已下架");
+        }
+        product.setCoverUrl(toPublicUrl(product.getCoverUrl()));
+        return AppProductResult.ok(product);
     }
 
     private AppProductSeries toSeries(BizProductCategory category)

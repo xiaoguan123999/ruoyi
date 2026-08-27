@@ -1,5 +1,6 @@
 package com.ruoyi.web.controller.system;
 
+import java.util.HashMap;
 import java.util.List;
 import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,7 @@ public class SysConfigController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(SysConfig config)
     {
+        excludeBizConfig(config);
         startPage();
         List<SysConfig> list = configService.selectConfigList(config);
         return getDataTable(list);
@@ -51,6 +53,7 @@ public class SysConfigController extends BaseController
     @PostMapping("/export")
     public void export(HttpServletResponse response, SysConfig config)
     {
+        excludeBizConfig(config);
         List<SysConfig> list = configService.selectConfigList(config);
         ExcelUtil<SysConfig> util = new ExcelUtil<SysConfig>(SysConfig.class);
         util.exportExcel(response, list, "参数数据");
@@ -147,5 +150,14 @@ public class SysConfigController extends BaseController
     private boolean isBizConfigKey(String configKey)
     {
         return configKey != null && configKey.startsWith("biz.");
+    }
+
+    private void excludeBizConfig(SysConfig config)
+    {
+        if (config.getParams() == null)
+        {
+            config.setParams(new HashMap<String, Object>());
+        }
+        config.getParams().put("excludeBizPrefix", Boolean.TRUE);
     }
 }

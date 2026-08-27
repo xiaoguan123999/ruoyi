@@ -123,6 +123,7 @@ create table biz_order (
   product_name      varchar(100)    default ''                 comment '产品名称快照',
   currency          varchar(16)     not null default 'CNY'     comment 'CNY/USDT',
   price             decimal(18,4)   not null                   comment '认购价格',
+  quantity          int(11)         not null default 1         comment '认购份数',
   daily_rebate      decimal(18,4)   not null                   comment '每日返利',
   duration_days     int(11)         not null                   comment '总天数',
   remaining_days    int(11)         not null                   comment '剩余天数',
@@ -175,6 +176,8 @@ create table biz_withdraw (
   member_id         bigint(20)      not null                   comment '会员ID',
   currency          varchar(16)     not null                   comment '币种',
   amount            decimal(18,4)   not null                   comment '金额',
+  fee_amount        decimal(18,4)   default 0                  comment '手续费',
+  arrival_amount    decimal(18,4)   default 0                  comment '到账金额',
   account_info      varchar(255)    default ''                 comment '收款信息（占位）',
   pay_method        varchar(32)     default ''                 comment 'pay method ALIPAY/USDT',
   status            char(1)         default '0'                comment '状态（0待审 1通过 2拒绝）',
@@ -256,6 +259,9 @@ insert into sys_config values(35, '签到第二档开关', 'biz.checkin.prize2.e
 insert into sys_config values(36, '谷歌验证开关', 'biz.google.enabled', 'true', 'N', 'admin', sysdate(), '', null, 'false表示关闭谷歌验证');
 insert into sys_config values(37, '提现必须谷歌验证', 'biz.google.requireWithdraw', 'false', 'N', 'admin', sysdate(), '', null, 'App提现不校验谷歌验证');
 insert into sys_config values(38, '谷歌验证器名称', 'biz.google.issuer', 'App', 'N', 'admin', sysdate(), '', null, '显示在谷歌验证器中的名称');
+
+delete from sys_config where config_id = 81 or config_key = 'biz.withdraw.feeRate';
+insert into sys_config values(81, '提现手续费比例', 'biz.withdraw.feeRate', '3', 'N', 'admin', sysdate(), '', null, '百分数，3表示3%，0表示免手续费');
 
 -- 每日返利任务（默认开启）
 delete from sys_job where job_id = 100;

@@ -16,6 +16,12 @@ public class BizWalletLog extends BaseEntity
     /** 会员ID */
     private Long memberId;
 
+    /** 钱包类型编码 */
+    private String typeCode;
+
+    /** 钱包类型名称 */
+    private String typeName;
+
     /** 手机号 */
     private String phone;
 
@@ -61,6 +67,26 @@ public class BizWalletLog extends BaseEntity
     public void setMemberId(Long memberId)
     {
         this.memberId = memberId;
+    }
+
+    public String getTypeCode()
+    {
+        return typeCode;
+    }
+
+    public void setTypeCode(String typeCode)
+    {
+        this.typeCode = typeCode;
+    }
+
+    public String getTypeName()
+    {
+        return typeName;
+    }
+
+    public void setTypeName(String typeName)
+    {
+        this.typeName = typeName;
     }
 
     public String getPhone()

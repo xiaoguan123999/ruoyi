@@ -8,7 +8,11 @@
         <result property="phone"        column="phone"/>
         <result property="realName"     column="real_name"/>
         <result property="currency"     column="currency"/>
+        <result property="walletTypeCode" column="wallet_type_code"/>
+        <result property="walletTypeName" column="wallet_type_name"/>
         <result property="amount"       column="amount"/>
+        <result property="feeAmount"    column="fee_amount"/>
+        <result property="arrivalAmount" column="arrival_amount"/>
         <result property="accountInfo"  column="account_info"/>
         <result property="payMethod"    column="pay_method"/>
         <result property="status"       column="status"/>
@@ -21,23 +25,28 @@
     </resultMap>
 
     <select id="selectWithdrawById" parameterType="Long" resultMap="BizWithdrawResult">
-        select w.withdraw_id, w.member_id, m.phone, m.real_name, w.currency, w.amount, w.account_info, w.pay_method, w.status,
+        select w.withdraw_id, w.member_id, m.phone, m.real_name, w.currency, w.wallet_type_code, t.type_name as wallet_type_name,
+               w.amount, w.fee_amount, w.arrival_amount, w.account_info, w.pay_method, w.status,
                w.audit_by, w.audit_time, w.audit_remark, w.pay_proof_url, w.create_time, w.remark
         from biz_withdraw w
         left join biz_member m on m.member_id = w.member_id
+        left join biz_wallet_type t on t.type_code = w.wallet_type_code
         where w.withdraw_id = #{withdrawId}
     </select>
 
     <select id="selectWithdrawList" parameterType="BizWithdraw" resultMap="BizWithdrawResult">
-        select w.withdraw_id, w.member_id, m.phone, m.real_name, w.currency, w.amount, w.account_info, w.pay_method, w.status,
+        select w.withdraw_id, w.member_id, m.phone, m.real_name, w.currency, w.wallet_type_code, t.type_name as wallet_type_name,
+               w.amount, w.fee_amount, w.arrival_amount, w.account_info, w.pay_method, w.status,
                w.audit_by, w.audit_time, w.audit_remark, w.pay_proof_url, w.create_time, w.remark
         from biz_withdraw w
         left join biz_member m on m.member_id = w.member_id
+        left join biz_wallet_type t on t.type_code = w.wallet_type_code
         <where>
             <if test="withdrawId != null">and w.withdraw_id = #{withdrawId}</if>
             <if test="memberId != null">and w.member_id = #{memberId}</if>
             <if test="currency != null and currency != ''">and w.currency = #{currency}</if>
             <if test="status != null and status != ''">and w.status = #{status}</if>
+            <if test="walletTypeCode != null and walletTypeCode != ''">and w.wallet_type_code = #{walletTypeCode}</if>
             <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
             <if test="params.beginTime != null and params.beginTime != ''">and w.create_time &gt;= #{params.beginTime}</if>
             <if test="params.endTime != null and params.endTime != ''">and w.create_time &lt; date_add(#{params.endTime}, interval 1 day)</if>
@@ -46,8 +55,8 @@
     </select>
 
     <insert id="insertWithdraw" parameterType="BizWithdraw" useGeneratedKeys="true" keyProperty="withdrawId">
-        insert into biz_withdraw (member_id, currency, amount, account_info, pay_method, status, create_time, remark)
-        values (#{memberId}, #{currency}, #{amount}, #{accountInfo}, #{payMethod}, #{status}, sysdate(), #{remark})
+        insert into biz_withdraw (member_id, currency, wallet_type_code, amount, fee_amount, arrival_amount, account_info, pay_method, status, create_time, remark)
+        values (#{memberId}, #{currency}, #{walletTypeCode}, #{amount}, #{feeAmount}, #{arrivalAmount}, #{accountInfo}, #{payMethod}, #{status}, sysdate(), #{remark})
     </insert>
 
     <update id="updateWithdraw" parameterType="BizWithdraw">

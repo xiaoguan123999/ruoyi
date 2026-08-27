@@ -55,6 +55,12 @@ public class BizProduct extends BaseEntity
     @ApiModelProperty("每人限购份数，0表示不限制")
     private Integer buyLimit;
 
+    @ApiModelProperty("收益发放方式，App 展示")
+    private String payoutMethod;
+
+    @ApiModelProperty("风险等级，App 展示")
+    private String riskLevel;
+
     @ApiModelProperty("上架状态：0上架 1下架")
     private String status;
 
@@ -264,6 +270,26 @@ public class BizProduct extends BaseEntity
     public void setBuyLimit(Integer buyLimit)
     {
         this.buyLimit = buyLimit;
+    }
+
+    public String getPayoutMethod()
+    {
+        return payoutMethod;
+    }
+
+    public void setPayoutMethod(String payoutMethod)
+    {
+        this.payoutMethod = payoutMethod;
+    }
+
+    public String getRiskLevel()
+    {
+        return riskLevel;
+    }
+
+    public void setRiskLevel(String riskLevel)
+    {
+        this.riskLevel = riskLevel;
     }
 
     public String getStatus()

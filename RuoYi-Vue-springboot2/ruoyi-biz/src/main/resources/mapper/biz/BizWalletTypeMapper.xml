@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizWalletTypeMapper">
+
+    <resultMap type="BizWalletType" id="BizWalletTypeResult">
+        <id     property="typeId"        column="type_id"/>
+        <result property="typeCode"      column="type_code"/>
+        <result property="typeName"      column="type_name"/>
+        <result property="withdrawMode"  column="withdraw_mode"/>
+        <result property="status"        column="status"/>
+        <result property="sort"          column="sort"/>
+        <result property="builtin"       column="builtin"/>
+        <result property="createBy"      column="create_by"/>
+        <result property="createTime"    column="create_time"/>
+        <result property="updateBy"      column="update_by"/>
+        <result property="updateTime"    column="update_time"/>
+        <result property="remark"        column="remark"/>
+    </resultMap>
+
+    <sql id="selectWalletTypeVo">
+        select type_id, type_code, type_name, withdraw_mode, status, sort, builtin,
+               create_by, create_time, update_by, update_time, remark
+        from biz_wallet_type
+    </sql>
+
+    <select id="selectWalletTypeById" parameterType="Long" resultMap="BizWalletTypeResult">
+        <include refid="selectWalletTypeVo"/>
+        where type_id = #{typeId}
+    </select>
+
+    <select id="selectWalletTypeByCode" parameterType="String" resultMap="BizWalletTypeResult">
+        <include refid="selectWalletTypeVo"/>
+        where type_code = #{typeCode}
+    </select>
+
+    <select id="selectWalletTypeList" parameterType="BizWalletType" resultMap="BizWalletTypeResult">
+        <include refid="selectWalletTypeVo"/>
+        <where>
+            <if test="typeCode != null and typeCode != ''">and type_code = #{typeCode}</if>
+            <if test="typeName != null and typeName != ''">and type_name like concat('%', #{typeName}, '%')</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+        </where>
+        order by sort asc, type_id asc
+    </select>
+
+    <insert id="insertWalletType" parameterType="BizWalletType" useGeneratedKeys="true" keyProperty="typeId">
+        insert into biz_wallet_type (
+            type_code, type_name, withdraw_mode, status, sort, builtin, create_by, create_time, remark
+        ) values (
+            #{typeCode}, #{typeName}, #{withdrawMode}, #{status}, #{sort}, #{builtin}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateWalletType" parameterType="BizWalletType">
+        update biz_wallet_type
+        <set>
+            <if test="typeName != null and typeName != ''">type_name = #{typeName},</if>
+            <if test="withdrawMode != null and withdrawMode != ''">withdraw_mode = #{withdrawMode},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where type_id = #{typeId}
+    </update>
+
+    <delete id="deleteWalletTypeByIds" parameterType="Long">
+        delete from biz_wallet_type where type_id in
+        <foreach collection="array" item="typeId" open="(" separator="," close=")">
+            #{typeId}
+        </foreach>
+    </delete>
+</mapper>

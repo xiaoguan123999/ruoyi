@@ -32,6 +32,10 @@
           </el-form-item>
         </el-col>
       </el-row>
+      <el-form-item label="到账钱包">
+        <WalletTypeSelect v-model="rule.kycWalletTypeCode" />
+        <div class="field-tip">实名自领入这个钱包</div>
+      </el-form-item>
 
       <el-divider content-position="left">二、实名推广奖励（发给邀请人）</el-divider>
       <el-form-item label="是否开启" class="with-tip">
@@ -53,6 +57,10 @@
           </el-form-item>
         </el-col>
       </el-row>
+      <el-form-item label="到账钱包">
+        <WalletTypeSelect v-model="rule.inviteWalletTypeCode" />
+        <div class="field-tip">邀请奖励入这个钱包</div>
+      </el-form-item>
       <el-form-item label="锁定上下级" class="with-tip">
         <el-switch v-model="rule.lockParent" />
         <div class="field-tip">注册绑定邀请码后不可改上级，请提醒用户核对邀请码</div>
@@ -93,6 +101,10 @@
         />
         <div class="field-tip">改完金额或比例后，可先点「按当前数值生成说明」，再保存</div>
       </el-form-item>
+      <el-form-item label="到账钱包">
+        <WalletTypeSelect v-model="rule.teamWalletTypeCode" />
+        <span class="tip">下单返佣入这个钱包</span>
+      </el-form-item>
 
       <el-form-item label-width="0" class="form-actions">
         <el-button type="primary" @click="saveRule" v-hasPermi="['biz:promo:edit']">保存规则</el-button>
@@ -104,7 +116,8 @@
 </template>
 
 <script setup lang="ts" name="BizPromoRule">
-import { getPromoRule, savePromoRule } from "@/api/biz"
+import { getPromoRule, savePromoRule, getWalletCreditByBiz, saveWalletCreditByBiz } from "@/api/biz"
+import WalletTypeSelect from "@/views/biz/components/WalletTypeSelect.vue"
 
 const { proxy } = getCurrentInstance() as any
 const ruleLoading = ref(false)
@@ -121,6 +134,9 @@ const rule = ref({
   teamRateL1: 9,
   teamRateL2: 3,
   teamRateL3: 1,
+  kycWalletTypeCode: "PROMO",
+  inviteWalletTypeCode: "PROMO",
+  teamWalletTypeCode: "PROMO",
   ruleText: ""
 })
 const rules = {
@@ -161,7 +177,12 @@ function fillRuleText() {
 
 function loadRule() {
   ruleLoading.value = true
-  getPromoRule().then((res: any) => {
+  Promise.all([
+    getPromoRule(),
+    getWalletCreditByBiz("KYC_REWARD"),
+    getWalletCreditByBiz("INVITE"),
+    getWalletCreditByBiz("COMMISSION")
+  ]).then(([res, kyc, invite, team]: any[]) => {
     const data = res.data || {}
     rule.value = {
       enabled: data.enabled !== false,
@@ -176,6 +197,9 @@ function loadRule() {
       teamRateL1: Number(data.teamRateL1 ?? 9),
       teamRateL2: Number(data.teamRateL2 ?? 3),
       teamRateL3: Number(data.teamRateL3 ?? 1),
+      kycWalletTypeCode: kyc.data?.typeCode || "PROMO",
+      inviteWalletTypeCode: invite.data?.typeCode || "PROMO",
+      teamWalletTypeCode: team.data?.typeCode || "PROMO",
       ruleText: data.ruleText || ""
     }
   }).finally(() => { ruleLoading.value = false })
@@ -184,7 +208,11 @@ function loadRule() {
 function saveRule() {
   proxy.$refs["ruleRef"].validate((valid: boolean) => {
     if (!valid) return
-    savePromoRule(rule.value).then(() => {
+    savePromoRule(rule.value).then(() => Promise.all([
+      saveWalletCreditByBiz("KYC_REWARD", rule.value.kycWalletTypeCode),
+      saveWalletCreditByBiz("INVITE", rule.value.inviteWalletTypeCode),
+      saveWalletCreditByBiz("COMMISSION", rule.value.teamWalletTypeCode)
+    ])).then(() => {
       proxy.$modal.msgSuccess("规则已保存")
       loadRule()
     })

@@ -5,6 +5,8 @@
     <resultMap type="BizWalletLog" id="BizWalletLogResult">
         <id     property="logId"            column="log_id"/>
         <result property="memberId"         column="member_id"/>
+        <result property="typeCode"         column="type_code"/>
+        <result property="typeName"         column="type_name"/>
         <result property="phone"            column="phone"/>
         <result property="currency"         column="currency"/>
         <result property="bizType"          column="biz_type"/>
@@ -19,13 +21,15 @@
     </resultMap>
 
     <select id="selectWalletLogList" parameterType="BizWalletLog" resultMap="BizWalletLogResult">
-        select l.log_id, l.member_id, m.phone, l.currency, l.biz_type, l.biz_id, l.amount,
+        select l.log_id, l.member_id, l.type_code, t.type_name, m.phone, l.currency, l.biz_type, l.biz_id, l.amount,
                l.available_before, l.available_after, l.frozen_before, l.frozen_after,
                l.remark, l.create_time
         from biz_wallet_log l
         left join biz_member m on m.member_id = l.member_id
+        left join biz_wallet_type t on t.type_code = l.type_code
         <where>
             <if test="memberId != null">and l.member_id = #{memberId}</if>
+            <if test="typeCode != null and typeCode != ''">and l.type_code = #{typeCode}</if>
             <if test="currency != null and currency != ''">and l.currency = #{currency}</if>
             <if test="bizType != null and bizType != ''">and l.biz_type = #{bizType}</if>
             <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
@@ -37,11 +41,12 @@
     </select>
 
     <select id="selectAppWalletLogList" resultMap="BizWalletLogResult">
-        select l.log_id, l.member_id, m.phone, l.currency, l.biz_type, l.biz_id, l.amount,
+        select l.log_id, l.member_id, l.type_code, t.type_name, m.phone, l.currency, l.biz_type, l.biz_id, l.amount,
                l.available_before, l.available_after, l.frozen_before, l.frozen_after,
                l.remark, l.create_time
         from biz_wallet_log l
         left join biz_member m on m.member_id = l.member_id
+        left join biz_wallet_type t on t.type_code = l.type_code
         where l.member_id = #{memberId}
           and l.available_before &lt;&gt; l.available_after
         <if test="currency != null and currency != ''">and l.currency = #{currency}</if>
@@ -64,10 +69,10 @@
 
     <insert id="insertWalletLog" parameterType="BizWalletLog" useGeneratedKeys="true" keyProperty="logId">
         insert into biz_wallet_log (
-            member_id, currency, biz_type, biz_id, amount,
+            member_id, type_code, currency, biz_type, biz_id, amount,
             available_before, available_after, frozen_before, frozen_after, remark, create_time
         ) values (
-            #{memberId}, #{currency}, #{bizType}, #{bizId}, #{amount},
+            #{memberId}, #{typeCode}, #{currency}, #{bizType}, #{bizId}, #{amount},
             #{availableBefore}, #{availableAfter}, #{frozenBefore}, #{frozenAfter}, #{remark}, sysdate()
         )
     </insert>

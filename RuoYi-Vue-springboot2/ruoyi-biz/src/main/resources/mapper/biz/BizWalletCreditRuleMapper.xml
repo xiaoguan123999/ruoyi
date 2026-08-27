@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizWalletCreditRuleMapper">
+
+    <resultMap type="BizWalletCreditRule" id="BizWalletCreditRuleResult">
+        <id     property="ruleId"     column="rule_id"/>
+        <result property="bizType"    column="biz_type"/>
+        <result property="bizName"    column="biz_name"/>
+        <result property="typeCode"   column="type_code"/>
+        <result property="typeName"   column="type_name"/>
+        <result property="builtin"    column="builtin"/>
+        <result property="sort"       column="sort"/>
+        <result property="createBy"   column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy"   column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark"     column="remark"/>
+    </resultMap>
+
+    <sql id="selectCreditRuleVo">
+        select r.rule_id, r.biz_type, r.biz_name, r.type_code, t.type_name, r.builtin, r.sort,
+               r.create_by, r.create_time, r.update_by, r.update_time, r.remark
+        from biz_wallet_credit_rule r
+        left join biz_wallet_type t on t.type_code = r.type_code
+    </sql>
+
+    <select id="selectCreditRuleById" parameterType="Long" resultMap="BizWalletCreditRuleResult">
+        <include refid="selectCreditRuleVo"/>
+        where r.rule_id = #{ruleId}
+    </select>
+
+    <select id="selectCreditRuleByBizType" parameterType="String" resultMap="BizWalletCreditRuleResult">
+        <include refid="selectCreditRuleVo"/>
+        where r.biz_type = #{bizType}
+    </select>
+
+    <select id="selectCreditRuleList" parameterType="BizWalletCreditRule" resultMap="BizWalletCreditRuleResult">
+        <include refid="selectCreditRuleVo"/>
+        <where>
+            <if test="bizType != null and bizType != ''">and r.biz_type = #{bizType}</if>
+            <if test="bizName != null and bizName != ''">and r.biz_name like concat('%', #{bizName}, '%')</if>
+            <if test="typeCode != null and typeCode != ''">and r.type_code = #{typeCode}</if>
+        </where>
+        order by r.sort asc, r.rule_id asc
+    </select>
+
+    <insert id="insertCreditRule" parameterType="BizWalletCreditRule" useGeneratedKeys="true" keyProperty="ruleId">
+        insert into biz_wallet_credit_rule (
+            biz_type, biz_name, type_code, builtin, sort, create_by, create_time, remark
+        ) values (
+            #{bizType}, #{bizName}, #{typeCode}, #{builtin}, #{sort}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateCreditRule" parameterType="BizWalletCreditRule">
+        update biz_wallet_credit_rule
+        <set>
+            <if test="bizName != null and bizName != ''">biz_name = #{bizName},</if>
+            <if test="typeCode != null and typeCode != ''">type_code = #{typeCode},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where rule_id = #{ruleId}
+    </update>
+
+    <delete id="deleteCreditRuleByIds" parameterType="Long">
+        delete from biz_wallet_credit_rule where rule_id in
+        <foreach collection="array" item="ruleId" open="(" separator="," close=")">
+            #{ruleId}
+        </foreach>
+    </delete>
+
+    <select id="countByTypeCode" parameterType="String" resultType="int">
+        select count(1) from biz_wallet_credit_rule where type_code = #{typeCode}
+    </select>
+</mapper>

@@ -10,6 +10,9 @@ public class BizWalletAdjustBody
     @ApiModelProperty(value = "会员ID", required = true, example = "10003")
     private Long memberId;
 
+    @ApiModelProperty(value = "钱包类型 BALANCE/PRODUCT/PROMO/ASSIST", required = true, example = "BALANCE")
+    private String typeCode;
+
     @ApiModelProperty(value = "币种 CNY/USDT", required = true, example = "CNY")
     private String currency;
 
@@ -30,6 +33,16 @@ public class BizWalletAdjustBody
     public void setMemberId(Long memberId)
     {
         this.memberId = memberId;
+    }
+
+    public String getTypeCode()
+    {
+        return typeCode;
+    }
+
+    public void setTypeCode(String typeCode)
+    {
+        this.typeCode = typeCode;
     }
 
     public String getCurrency()

@@ -9,6 +9,11 @@
           :disabled="locked"
         />
       </el-form-item>
+      <el-form-item label="钱包" prop="typeCode">
+        <el-select v-model="form.typeCode" style="width: 100%">
+          <el-option v-for="item in typeOptions" :key="item.typeCode" :label="item.typeName" :value="item.typeCode" />
+        </el-select>
+      </el-form-item>
       <el-form-item label="币种" prop="currency">
         <el-select v-model="form.currency" style="width: 100%">
           <el-option label="CNY" value="CNY" />
@@ -36,7 +41,7 @@
 </template>
 
 <script setup lang="ts" name="WalletAdjustDialog">
-import { adjustWallet } from "@/api/biz"
+import { adjustWallet, listWalletTypeOptions } from "@/api/biz"
 
 const props = defineProps<{
   modelValue: boolean
@@ -54,13 +59,16 @@ const submitting = ref(false)
 const locked = computed(() => props.memberId != null && props.memberId !== undefined)
 const form = reactive({
   memberId: undefined as number | undefined,
+  typeCode: "BALANCE",
   currency: "CNY",
   direction: "PLUS",
   amount: undefined as number | undefined,
   remark: ""
 })
+const typeOptions = ref<any[]>([])
 const rules = {
   memberId: [{ required: true, message: "请选择会员", trigger: "change" }],
+  typeCode: [{ required: true, message: "请选择钱包", trigger: "change" }],
   currency: [{ required: true, message: "请选择币种", trigger: "change" }],
   direction: [{ required: true, message: "请选择增加或减少", trigger: "change" }],
   amount: [{ required: true, message: "请填写金额", trigger: "blur" }],
@@ -72,6 +80,7 @@ watch(
   (open) => {
     if (!open) return
     form.memberId = props.memberId
+    form.typeCode = "BALANCE"
     form.currency = "CNY"
     form.direction = "PLUS"
     form.amount = undefined
@@ -84,6 +93,8 @@ function onClose() {
   emit("update:modelValue", false)
 }
 
+listWalletTypeOptions().then((res: any) => { typeOptions.value = res.data || [] })
+
 function submit() {
   formRef.value?.validate((valid: boolean) => {
     if (!valid) return
@@ -94,10 +105,12 @@ function submit() {
     }
     const dirLabel = form.direction === "MINUS" ? "减少" : "增加"
     const who = props.phone ? props.phone : ("会员 " + form.memberId)
-    proxy.$modal.confirm("确认对 " + who + " " + dirLabel + " " + amount + " " + form.currency + "？将立即入账并记流水。").then(() => {
+    const typeName = typeOptions.value.find((item: any) => item.typeCode === form.typeCode)?.typeName || form.typeCode
+    proxy.$modal.confirm("确认对 " + who + " 的" + typeName + " " + dirLabel + " " + amount + " " + form.currency + "？将立即入账并记流水。").then(() => {
       submitting.value = true
       return adjustWallet({
         memberId: form.memberId as number,
+        typeCode: form.typeCode,
         currency: form.currency,
         direction: form.direction,
         amount,

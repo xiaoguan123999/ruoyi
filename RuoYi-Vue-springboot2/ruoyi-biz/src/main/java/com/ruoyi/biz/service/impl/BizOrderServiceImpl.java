@@ -67,7 +67,7 @@ public class BizOrderServiceImpl implements IBizOrderService
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public BizOrder subscribe(Long memberId, Long productId, String payCurrency, String payPassword)
+    public BizOrder subscribe(Long memberId, Long productId, String payCurrency, String payPassword, Integer quantity)
     {
         memberService.assertPayPassword(memberId, payPassword);
         BizMember member = memberService.selectMemberById(memberId);
@@ -84,30 +84,44 @@ public class BizOrderServiceImpl implements IBizOrderService
         {
             throw new ServiceException("产品不存在或已下架");
         }
+        int qty = resolveQuantity(quantity);
         Integer buyLimit = product.getBuyLimit();
         if (buyLimit != null && buyLimit.intValue() > 0)
         {
             int bought = orderMapper.countMemberProductOrders(memberId, productId);
-            if (bought >= buyLimit.intValue())
+            int remain = buyLimit.intValue() - bought;
+            if (remain <= 0)
             {
                 throw new ServiceException("该产品每人限购" + buyLimit + "份");
+            }
+            if (qty > remain)
+            {
+                throw new ServiceException("该产品每人限购" + buyLimit + "份，还可认购" + remain + "份");
             }
         }
         String currency = resolvePayCurrency(product, payCurrency);
         configService.assertCurrencyEnabled(currency);
-        BigDecimal price = product.priceOf(currency);
-        if (!BizProduct.hasPrice(price))
+        BigDecimal unitPrice = product.priceOf(currency);
+        if (!BizProduct.hasPrice(unitPrice))
         {
             throw new ServiceException("USDT".equals(currency) ? "该产品不支持USDT认购" : "该产品不支持人民币认购");
         }
-        BigDecimal rebate = product.rebateOf(currency);
-        if (rebate == null)
+        BigDecimal unitRebate = product.rebateOf(currency);
+        if (unitRebate == null)
         {
-            rebate = BigDecimal.ZERO;
+            unitRebate = BigDecimal.ZERO;
+        }
+        BigDecimal qtyDec = new BigDecimal(qty);
+        BigDecimal price = unitPrice.multiply(qtyDec);
+        BigDecimal rebate = unitRebate.multiply(qtyDec);
+        String remark = "认购产品:" + product.getProductName();
+        if (qty > 1)
+        {
+            remark = remark + " x" + qty;
         }
 
         walletService.debit(memberId, currency, price, BizConstants.BIZ_SUBSCRIBE,
-                productId, "认购产品:" + product.getProductName());
+                productId, remark);
 
         BizOrder order = new BizOrder();
         order.setOrderNo(DateUtils.dateTimeNow() + IdUtils.fastSimpleUUID().substring(0, 8));
@@ -116,6 +130,7 @@ public class BizOrderServiceImpl implements IBizOrderService
         order.setProductName(product.getProductName());
         order.setCurrency(currency);
         order.setPrice(price);
+        order.setQuantity(Integer.valueOf(qty));
         order.setDailyRebate(rebate);
         order.setDurationDays(product.getDurationDays());
         order.setRemainingDays(product.getDurationDays());
@@ -131,6 +146,19 @@ public class BizOrderServiceImpl implements IBizOrderService
         }
         BizOrder created = orderMapper.selectOrderById(order.getOrderId());
         return created != null ? created : order;
+    }
+
+    private int resolveQuantity(Integer quantity)
+    {
+        if (quantity == null)
+        {
+            return 1;
+        }
+        if (quantity.intValue() < 1)
+        {
+            throw new ServiceException("认购数量必须大于0");
+        }
+        return quantity.intValue();
     }
 
 

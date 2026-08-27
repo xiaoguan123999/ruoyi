@@ -57,6 +57,29 @@ public class BizConfigServiceImpl implements IBizConfigService
     }
 
     @Override
+    public BigDecimal getWithdrawFeeRate()
+    {
+        BigDecimal rate;
+        try
+        {
+            rate = decimal(BizConstants.CONFIG_WITHDRAW_FEE_RATE, "3");
+        }
+        catch (Exception e)
+        {
+            rate = new BigDecimal("3");
+        }
+        if (rate.compareTo(BigDecimal.ZERO) < 0)
+        {
+            return BigDecimal.ZERO;
+        }
+        if (rate.compareTo(new BigDecimal("100")) > 0)
+        {
+            return new BigDecimal("100");
+        }
+        return rate;
+    }
+
+    @Override
     public BigDecimal getTeamRate(int level)
     {
         if (level == 1)
@@ -143,6 +166,12 @@ public class BizConfigServiceImpl implements IBizConfigService
         }
     }
 
+    @Override
+    public void refreshCache()
+    {
+        configService.resetConfigCache();
+    }
+
     private boolean bool(String key, boolean defaultValue)
     {
         String value = configService.selectConfigByKey(key);
@@ -155,21 +184,31 @@ public class BizConfigServiceImpl implements IBizConfigService
 
     private BigDecimal decimal(String key, String defaultValue)
     {
-        String value = configService.selectConfigByKey(key);
-        if (StringUtils.isEmpty(value))
-        {
-            value = defaultValue;
-        }
-        return new BigDecimal(value);
+        return new BigDecimal(configValue(key, defaultValue));
     }
 
     private BigDecimal optionalDecimal(String key)
     {
-        String value = configService.selectConfigByKey(key);
+        String value = configValue(key, null);
         if (StringUtils.isEmpty(value))
         {
             return null;
         }
         return new BigDecimal(value);
+    }
+
+    private String configValue(String key, String defaultValue)
+    {
+        SysConfig row = sysConfigMapper.checkConfigKeyUnique(key);
+        if (row != null && StringUtils.isNotEmpty(row.getConfigValue()))
+        {
+            return row.getConfigValue();
+        }
+        String cached = configService.selectConfigByKey(key);
+        if (StringUtils.isNotEmpty(cached))
+        {
+            return cached;
+        }
+        return defaultValue;
     }
 }

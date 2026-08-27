@@ -20,9 +20,11 @@
         <result property="gaStatus"     column="ga_status"/>
         <result property="cnyAvailable" column="cny_available"/>
         <result property="cnyFrozen"    column="cny_frozen"/>
+        <result property="cnyProductIncome" column="cny_product_income"/>
+        <result property="cnyAssistValue" column="cny_assist_value"/>
         <result property="usdtAvailable" column="usdt_available"/>
         <result property="usdtFrozen"   column="usdt_frozen"/>
-        <result property="cnyAssistValue" column="cny_assist_value"/>
+        <result property="usdtProductIncome" column="usdt_product_income"/>
         <result property="usdtAssistValue" column="usdt_assist_value"/>
         <result property="teamCount"    column="team_count"/>
         <result property="createBy"     column="create_by"/>
@@ -36,12 +38,14 @@
         select m.member_id, m.phone, m.password, m.pay_password, m.invite_code, m.parent_id, m.ancestors,
                m.real_name, m.id_card, m.kyc_status, m.level_id, l.level_name, m.status, m.ga_secret, m.ga_status,
                m.create_by, m.create_time, m.update_by, m.update_time, m.remark,
-               (select w.available from biz_wallet w where w.member_id = m.member_id and w.currency = 'CNY') as cny_available,
-               (select w.frozen from biz_wallet w where w.member_id = m.member_id and w.currency = 'CNY') as cny_frozen,
-               (select w.available from biz_wallet w where w.member_id = m.member_id and w.currency = 'USDT') as usdt_available,
-               (select w.frozen from biz_wallet w where w.member_id = m.member_id and w.currency = 'USDT') as usdt_frozen,
-               (select ifnull(sum(l.amount), 0) from biz_wallet_log l where l.member_id = m.member_id and l.currency = 'CNY' and l.biz_type in ('CHECKIN', 'KYC_REWARD', 'INVITE', 'COMMISSION', 'LEVEL_REWARD')) as cny_assist_value,
-               (select ifnull(sum(l.amount), 0) from biz_wallet_log l where l.member_id = m.member_id and l.currency = 'USDT' and l.biz_type in ('CHECKIN', 'KYC_REWARD', 'INVITE', 'COMMISSION', 'LEVEL_REWARD')) as usdt_assist_value,
+               (select ifnull(w.available, 0) from biz_wallet w where w.member_id = m.member_id and w.type_code = 'BALANCE' and w.currency = 'CNY') as cny_available,
+               (select ifnull(sum(w.frozen), 0) from biz_wallet w where w.member_id = m.member_id and w.currency = 'CNY') as cny_frozen,
+               (select ifnull(w.available, 0) from biz_wallet w where w.member_id = m.member_id and w.type_code = 'PRODUCT' and w.currency = 'CNY') as cny_product_income,
+               (select ifnull(w.available, 0) from biz_wallet w where w.member_id = m.member_id and w.type_code = 'PROMO' and w.currency = 'CNY') as cny_assist_value,
+               (select ifnull(w.available, 0) from biz_wallet w where w.member_id = m.member_id and w.type_code = 'BALANCE' and w.currency = 'USDT') as usdt_available,
+               (select ifnull(sum(w.frozen), 0) from biz_wallet w where w.member_id = m.member_id and w.currency = 'USDT') as usdt_frozen,
+               (select ifnull(w.available, 0) from biz_wallet w where w.member_id = m.member_id and w.type_code = 'PRODUCT' and w.currency = 'USDT') as usdt_product_income,
+               (select ifnull(w.available, 0) from biz_wallet w where w.member_id = m.member_id and w.type_code = 'PROMO' and w.currency = 'USDT') as usdt_assist_value,
                (select count(1) from biz_member t where find_in_set(m.member_id, t.ancestors)) as team_count
         from biz_member m
         left join biz_level l on l.level_id = m.level_id

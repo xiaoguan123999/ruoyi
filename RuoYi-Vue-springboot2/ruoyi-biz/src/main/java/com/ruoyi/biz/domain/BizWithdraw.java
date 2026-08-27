@@ -35,9 +35,22 @@ public class BizWithdraw extends BaseEntity
     @ApiModelProperty("币种")
     private String currency;
 
+    /** 提现钱包类型 */
+    @ApiModelProperty("提现钱包类型编码")
+    private String walletTypeCode;
+
+    @ApiModelProperty("提现钱包类型名称")
+    private String walletTypeName;
+
     /** 金额 */
     @ApiModelProperty("金额")
     private BigDecimal amount;
+
+    @ApiModelProperty("fee amount")
+    private BigDecimal feeAmount;
+
+    @ApiModelProperty("arrival amount")
+    private BigDecimal arrivalAmount;
 
     /** 收款信息 */
     @ApiModelProperty("收款信息")
@@ -117,6 +130,26 @@ public class BizWithdraw extends BaseEntity
         this.currency = currency;
     }
 
+    public String getWalletTypeCode()
+    {
+        return walletTypeCode;
+    }
+
+    public void setWalletTypeCode(String walletTypeCode)
+    {
+        this.walletTypeCode = walletTypeCode;
+    }
+
+    public String getWalletTypeName()
+    {
+        return walletTypeName;
+    }
+
+    public void setWalletTypeName(String walletTypeName)
+    {
+        this.walletTypeName = walletTypeName;
+    }
+
     public BigDecimal getAmount()
     {
         return amount;
@@ -125,6 +158,26 @@ public class BizWithdraw extends BaseEntity
     public void setAmount(BigDecimal amount)
     {
         this.amount = amount;
+    }
+
+    public BigDecimal getFeeAmount()
+    {
+        return feeAmount;
+    }
+
+    public void setFeeAmount(BigDecimal feeAmount)
+    {
+        this.feeAmount = feeAmount;
+    }
+
+    public BigDecimal getArrivalAmount()
+    {
+        return arrivalAmount;
+    }
+
+    public void setArrivalAmount(BigDecimal arrivalAmount)
+    {
+        this.arrivalAmount = arrivalAmount;
     }
 
     public String getAccountInfo()

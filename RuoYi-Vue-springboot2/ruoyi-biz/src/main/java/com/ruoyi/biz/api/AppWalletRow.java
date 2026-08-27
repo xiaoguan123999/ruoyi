@@ -13,16 +13,16 @@ public class AppWalletRow
     @ApiModelProperty(value = "币种：CNY / USDT", example = "CNY")
     private String currency;
 
-    @ApiModelProperty(value = "可用余额", example = "202.00")
+    @ApiModelProperty(value = "可用余额（充值余额）", example = "202.00")
     private BigDecimal available;
 
     @ApiModelProperty(value = "冻结金额，提现审核中会冻在这里", example = "0")
     private BigDecimal frozen;
 
-    @ApiModelProperty(value = "累计产品收益（该币种日返合计）", example = "12.50")
+    @ApiModelProperty(value = "产品收益剩余", example = "12.50")
     private BigDecimal productIncome;
 
-    @ApiModelProperty(value = "推广收益累计（签到、实名奖励、邀请、分佣、等级奖励），字段名仍为 assistValue", example = "0")
+    @ApiModelProperty(value = "推广收益剩余，字段名仍为 assistValue", example = "0")
     private BigDecimal assistValue;
 
     public String getCurrency() { return currency; }

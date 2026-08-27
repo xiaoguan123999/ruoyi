@@ -59,6 +59,10 @@ public class BizOrder extends BaseEntity
     @ApiModelProperty("认购价格")
     private BigDecimal price;
 
+    /** 认购份数 */
+    @ApiModelProperty("认购份数")
+    private Integer quantity;
+
     /** 每日返利 */
     @ApiModelProperty("每日返利")
     private BigDecimal dailyRebate;
@@ -213,6 +217,25 @@ public class BizOrder extends BaseEntity
     public void setPrice(BigDecimal price)
     {
         this.price = price;
+    }
+
+    public Integer getQuantity()
+    {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity)
+    {
+        this.quantity = quantity;
+    }
+
+    public int quantityOrOne()
+    {
+        if (quantity == null || quantity.intValue() < 1)
+        {
+            return 1;
+        }
+        return quantity.intValue();
     }
 
     public BigDecimal getDailyRebate()

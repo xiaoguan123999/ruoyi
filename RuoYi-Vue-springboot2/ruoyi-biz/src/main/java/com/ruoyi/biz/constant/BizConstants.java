@@ -58,6 +58,10 @@ public class BizConstants
 
     public static final String BIZ_WITHDRAW_REJECT = "WITHDRAW_REJECT";
 
+    public static final String BIZ_WITHDRAW_PRODUCT = "WITHDRAW_PRODUCT";
+
+    public static final String BIZ_WITHDRAW_PROMO = "WITHDRAW_PROMO";
+
     public static final String PAY_ALIPAY = "ALIPAY";
 
     public static final String PAY_USDT = "USDT";
@@ -71,6 +75,22 @@ public class BizConstants
     public static final String BIZ_INVITE = "INVITE";
 
     public static final String BIZ_ADJUST = "ADJUST";
+
+    public static final String WALLET_BALANCE = "BALANCE";
+
+    public static final String WALLET_PRODUCT = "PRODUCT";
+
+    public static final String WALLET_PROMO = "PROMO";
+
+    public static final String WALLET_ASSIST = "ASSIST";
+
+    public static final String WALLET_WITHDRAW_NONE = "NONE";
+
+    public static final String WALLET_WITHDRAW_OPEN = "OPEN";
+
+    public static final String WALLET_WITHDRAW_ANY_ORDER = "ANY_ORDER";
+
+    public static final String WALLET_WITHDRAW_PRODUCT_REQUIRED = "PRODUCT_REQUIRED";
 
     /** 推广收益：签到、实名奖励、邀请、分佣、等级奖励 */
     public static boolean isPromoIncome(String bizType)
@@ -104,6 +124,8 @@ public class BizConstants
     public static final String CONFIG_WITHDRAW_MAX = "biz.withdraw.maxAmount";
 
     public static final String CONFIG_WITHDRAW_MAX_USDT = "biz.withdraw.maxAmount.usdt";
+
+    public static final String CONFIG_WITHDRAW_FEE_RATE = "biz.withdraw.feeRate";
 
     public static final String CONFIG_RATE_L1 = "biz.team.rate.l1";
 

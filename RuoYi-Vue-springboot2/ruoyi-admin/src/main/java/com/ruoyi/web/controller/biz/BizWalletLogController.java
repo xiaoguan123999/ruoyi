@@ -57,7 +57,7 @@ public class BizWalletLogController extends BaseController
         {
             return error("会员不存在");
         }
-        walletService.adjust(body.getMemberId(), body.getCurrency(), body.getDirection(),
+        walletService.adjust(body.getMemberId(), body.getTypeCode(), body.getCurrency(), body.getDirection(),
                 body.getAmount(), body.getRemark(), getUsername());
         return success();
     }

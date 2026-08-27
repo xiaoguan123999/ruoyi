@@ -1,5 +1,19 @@
 <template>
   <div class="app-container ops-page">
+    <div class="ops-section-card">
+      <div class="ops-section-card__hd">下单返佣入账</div>
+      <div class="ops-section-card__bd">
+        <el-form :inline="true" v-loading="creditLoading">
+          <el-form-item label="到账钱包">
+            <WalletTypeSelect v-model="commissionWalletType" />
+            <span class="tip">认购成功后的三级返佣进这个钱包，默认推广收益</span>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="saveCredit" v-hasPermi="['biz:commission:list', 'biz:promo:edit']">保存</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+    </div>
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
       <el-form-item label="会员" prop="memberId">
         <MemberSelect v-model="queryParams.memberId" />
@@ -54,7 +68,8 @@
 </template>
 
 <script setup lang="ts" name="BizCommission">
-import { listCommission } from "@/api/biz"
+import { listCommission, getWalletCreditByBiz, saveWalletCreditByBiz } from "@/api/biz"
+import WalletTypeSelect from "@/views/biz/components/WalletTypeSelect.vue"
 
 const { proxy } = getCurrentInstance() as any
 const dataList = ref<any[]>([])
@@ -63,6 +78,21 @@ const showSearch = ref(true)
 const total = ref(0)
 const dateRange = ref<string[]>([])
 const queryParams = ref({ pageNum: 1, pageSize: 100, memberId: undefined, phone: undefined, currency: undefined, teamLevel: undefined })
+const creditLoading = ref(false)
+const commissionWalletType = ref("PROMO")
+
+function loadCredit() {
+  creditLoading.value = true
+  getWalletCreditByBiz("COMMISSION").then((res: any) => {
+    commissionWalletType.value = res.data?.typeCode || "PROMO"
+  }).finally(() => { creditLoading.value = false })
+}
+function saveCredit() {
+  saveWalletCreditByBiz("COMMISSION", commissionWalletType.value).then(() => {
+    proxy.$modal.msgSuccess("保存成功")
+    loadCredit()
+  })
+}
 
 function commissionRemark(row: any) {
   const phone = row.fromPhone || row.fromMemberId || "来源会员"
@@ -82,4 +112,9 @@ function getList() {
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { dateRange.value = []; proxy.resetForm("queryRef"); handleQuery() }
 getList()
+loadCredit()
 </script>
+
+<style scoped>
+.tip { margin-left: 12px; color: #909399; font-size: 13px; }
+</style>

@@ -56,7 +56,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 			<if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
 				and date_format(create_time,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
 			</if>
-			AND (config_key IS NULL OR config_key NOT LIKE 'biz.%')
+			<if test="params != null and params.excludeBizPrefix != null">
+				AND (config_key IS NULL OR config_key NOT LIKE 'biz.%')
+			</if>
 		</where>
     </select>
     

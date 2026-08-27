@@ -11,6 +11,7 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.ruoyi.biz.api.AppTypedWallet;
 import com.ruoyi.biz.api.AppWalletCard;
 import com.ruoyi.biz.api.AppWalletLogItem;
 import com.ruoyi.biz.api.AppWalletRow;
@@ -18,10 +19,13 @@ import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizWallet;
 import com.ruoyi.biz.domain.BizWalletLog;
-import com.ruoyi.biz.mapper.BizRebateLogMapper;
+import com.ruoyi.biz.domain.BizWalletType;
 import com.ruoyi.biz.mapper.BizWalletLogMapper;
 import com.ruoyi.biz.mapper.BizWalletMapper;
+import com.ruoyi.biz.mapper.BizWalletTypeMapper;
+import com.ruoyi.biz.service.IBizWalletCreditRuleService;
 import com.ruoyi.biz.service.IBizWalletService;
+import com.ruoyi.biz.service.IBizWalletTypeService;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 
@@ -35,7 +39,13 @@ public class BizWalletServiceImpl implements IBizWalletService
     private BizWalletLogMapper walletLogMapper;
 
     @Autowired
-    private BizRebateLogMapper rebateLogMapper;
+    private BizWalletTypeMapper walletTypeMapper;
+
+    @Autowired
+    private IBizWalletTypeService walletTypeService;
+
+    @Autowired
+    private IBizWalletCreditRuleService creditRuleService;
 
     @Override
     public List<BizWallet> selectWalletsByMemberId(Long memberId)
@@ -46,22 +56,46 @@ public class BizWalletServiceImpl implements IBizWalletService
     @Override
     public BizWallet getWallet(Long memberId, String currency)
     {
-        return walletMapper.selectWallet(memberId, currency);
+        return getWallet(memberId, BizConstants.WALLET_BALANCE, currency);
+    }
+
+    @Override
+    public BizWallet getWallet(Long memberId, String typeCode, String currency)
+    {
+        return walletMapper.selectWallet(memberId, typeCode, currency);
     }
 
     @Override
     public void initWallets(Long memberId)
     {
-        insertIfAbsent(memberId, BizConstants.CURRENCY_CNY);
-        insertIfAbsent(memberId, BizConstants.CURRENCY_USDT);
+        List<BizWalletType> types = walletTypeMapper.selectWalletTypeList(new BizWalletType());
+        if (types == null || types.isEmpty())
+        {
+            insertIfAbsent(memberId, BizConstants.WALLET_BALANCE, BizConstants.CURRENCY_CNY);
+            insertIfAbsent(memberId, BizConstants.WALLET_BALANCE, BizConstants.CURRENCY_USDT);
+            insertIfAbsent(memberId, BizConstants.WALLET_PRODUCT, BizConstants.CURRENCY_CNY);
+            insertIfAbsent(memberId, BizConstants.WALLET_PRODUCT, BizConstants.CURRENCY_USDT);
+            insertIfAbsent(memberId, BizConstants.WALLET_PROMO, BizConstants.CURRENCY_CNY);
+            insertIfAbsent(memberId, BizConstants.WALLET_PROMO, BizConstants.CURRENCY_USDT);
+            insertIfAbsent(memberId, BizConstants.WALLET_ASSIST, BizConstants.CURRENCY_CNY);
+            insertIfAbsent(memberId, BizConstants.WALLET_ASSIST, BizConstants.CURRENCY_USDT);
+            return;
+        }
+        for (int i = 0; i < types.size(); i++)
+        {
+            String code = types.get(i).getTypeCode();
+            insertIfAbsent(memberId, code, BizConstants.CURRENCY_CNY);
+            insertIfAbsent(memberId, code, BizConstants.CURRENCY_USDT);
+        }
     }
 
-    private void insertIfAbsent(Long memberId, String currency)
+    private void insertIfAbsent(Long memberId, String typeCode, String currency)
     {
-        if (walletMapper.selectWallet(memberId, currency) == null)
+        if (walletMapper.selectWallet(memberId, typeCode, currency) == null)
         {
             BizWallet wallet = new BizWallet();
             wallet.setMemberId(memberId);
+            wallet.setTypeCode(typeCode);
             wallet.setCurrency(currency);
             wallet.setAvailable(BigDecimal.ZERO);
             wallet.setFrozen(BigDecimal.ZERO);
@@ -73,24 +107,28 @@ public class BizWalletServiceImpl implements IBizWalletService
     @Transactional(rollbackFor = Exception.class)
     public void credit(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark)
     {
-        change(memberId, currency, amount, BigDecimal.ZERO, bizType, bizId, remark);
+        change(memberId, creditRuleService.resolveTypeCode(bizType), currency, amount, BigDecimal.ZERO, bizType, bizId, remark);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void debit(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark)
     {
-        change(memberId, currency, amount.negate(), BigDecimal.ZERO, bizType, bizId, remark);
+        String typeCode = BizConstants.BIZ_SUBSCRIBE.equals(bizType)
+                ? BizConstants.WALLET_BALANCE
+                : creditRuleService.resolveTypeCode(bizType);
+        change(memberId, typeCode, currency, amount.negate(), BigDecimal.ZERO, bizType, bizId, remark);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void adjust(Long memberId, String currency, String direction, BigDecimal amount, String remark, String operator)
+    public void adjust(Long memberId, String typeCode, String currency, String direction, BigDecimal amount, String remark, String operator)
     {
         if (memberId == null)
         {
             throw new ServiceException("请选择会员");
         }
+        String code = StringUtils.isEmpty(typeCode) ? BizConstants.WALLET_BALANCE : typeCode.trim().toUpperCase();
         String unit = currency == null ? "" : currency.trim().toUpperCase();
         if (!BizConstants.CURRENCY_CNY.equals(unit) && !BizConstants.CURRENCY_USDT.equals(unit))
         {
@@ -128,36 +166,40 @@ public class BizWalletServiceImpl implements IBizWalletService
         }
         String op = operator == null || operator.trim().length() == 0 ? "admin" : operator.trim();
         String stored = "调账 " + op + ": " + note;
+        if (walletTypeService.selectWalletTypeByCode(code) == null)
+        {
+            throw new ServiceException("钱包类型不存在");
+        }
         initWallets(memberId);
         if ("PLUS".equals(dir))
         {
-            credit(memberId, unit, amount, BizConstants.BIZ_ADJUST, null, stored);
+            change(memberId, code, unit, amount, BigDecimal.ZERO, BizConstants.BIZ_ADJUST, null, stored);
         }
         else
         {
-            debit(memberId, unit, amount, BizConstants.BIZ_ADJUST, null, stored);
+            change(memberId, code, unit, amount.negate(), BigDecimal.ZERO, BizConstants.BIZ_ADJUST, null, stored);
         }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void freeze(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark)
+    public void freeze(Long memberId, String typeCode, String currency, BigDecimal amount, String bizType, Long bizId, String remark)
     {
-        change(memberId, currency, amount.negate(), amount, bizType, bizId, remark);
+        change(memberId, typeCode, currency, amount.negate(), amount, bizType, bizId, remark);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void unfreezeSuccess(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark)
+    public void unfreezeSuccess(Long memberId, String typeCode, String currency, BigDecimal amount, String bizType, Long bizId, String remark)
     {
-        change(memberId, currency, BigDecimal.ZERO, amount.negate(), bizType, bizId, remark);
+        change(memberId, typeCode, currency, BigDecimal.ZERO, amount.negate(), bizType, bizId, remark);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void unfreezeReject(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark)
+    public void unfreezeReject(Long memberId, String typeCode, String currency, BigDecimal amount, String bizType, Long bizId, String remark)
     {
-        change(memberId, currency, amount, amount.negate(), bizType, bizId, remark);
+        change(memberId, typeCode, currency, amount, amount.negate(), bizType, bizId, remark);
     }
 
     @Override
@@ -200,6 +242,7 @@ public class BizWalletServiceImpl implements IBizWalletService
         data.setCny(cny);
         data.setUsdt(usdt);
         data.setWallets(wallets);
+        data.setTypedWallets(typedWallets(memberId));
         return data;
     }
 
@@ -212,25 +255,68 @@ public class BizWalletServiceImpl implements IBizWalletService
         }
         AppWalletCard card = selectAppWalletCard(member.getMemberId());
         member.setCnyAvailable(card.getCnyAvailable());
-        member.setCnyFrozen(card.getCnyFrozen());
+        member.setCnyFrozen(sumFrozen(member.getMemberId(), BizConstants.CURRENCY_CNY));
         member.setCnyProductIncome(card.getCnyProductIncome());
         member.setCnyAssistValue(card.getCnyAssistValue());
         member.setUsdtAvailable(card.getUsdtAvailable());
-        member.setUsdtFrozen(card.getUsdtFrozen());
+        member.setUsdtFrozen(sumFrozen(member.getMemberId(), BizConstants.CURRENCY_USDT));
         member.setUsdtProductIncome(card.getUsdtProductIncome());
         member.setUsdtAssistValue(card.getUsdtAssistValue());
     }
 
+    private List<AppTypedWallet> typedWallets(Long memberId)
+    {
+        List<BizWallet> rows = walletMapper.selectWalletsByMemberId(memberId);
+        List<AppTypedWallet> list = new ArrayList<AppTypedWallet>();
+        if (rows == null)
+        {
+            return list;
+        }
+        for (int i = 0; i < rows.size(); i++)
+        {
+            BizWallet wallet = rows.get(i);
+            AppTypedWallet item = new AppTypedWallet();
+            item.setTypeCode(wallet.getTypeCode());
+            item.setTypeName(wallet.getTypeName());
+            item.setCurrency(wallet.getCurrency());
+            item.setAvailable(nvl(wallet.getAvailable()));
+            item.setFrozen(nvl(wallet.getFrozen()));
+            list.add(item);
+        }
+        return list;
+    }
+
     private AppWalletRow currencyRow(Long memberId, String currency)
     {
-        BizWallet wallet = walletMapper.selectWallet(memberId, currency);
+        BizWallet balance = walletMapper.selectWallet(memberId, BizConstants.WALLET_BALANCE, currency);
+        BizWallet product = walletMapper.selectWallet(memberId, BizConstants.WALLET_PRODUCT, currency);
+        BizWallet promo = walletMapper.selectWallet(memberId, BizConstants.WALLET_PROMO, currency);
         AppWalletRow row = new AppWalletRow();
         row.setCurrency(currency);
-        row.setAvailable(nvl(wallet == null ? null : wallet.getAvailable()));
-        row.setFrozen(nvl(wallet == null ? null : wallet.getFrozen()));
-        row.setProductIncome(nvl(rebateLogMapper.sumAmountByMemberAndCurrency(memberId, currency)));
-        row.setAssistValue(nvl(walletLogMapper.sumPromoIncome(memberId, currency)));
+        row.setAvailable(nvl(balance == null ? null : balance.getAvailable()));
+        row.setFrozen(sumFrozen(memberId, currency));
+        row.setProductIncome(nvl(product == null ? null : product.getAvailable()));
+        row.setAssistValue(nvl(promo == null ? null : promo.getAvailable()));
         return row;
+    }
+
+    private BigDecimal sumFrozen(Long memberId, String currency)
+    {
+        List<BizWallet> rows = walletMapper.selectWalletsByMemberId(memberId);
+        BigDecimal total = BigDecimal.ZERO;
+        if (rows == null)
+        {
+            return total;
+        }
+        for (int i = 0; i < rows.size(); i++)
+        {
+            BizWallet wallet = rows.get(i);
+            if (currency.equals(wallet.getCurrency()))
+            {
+                total = total.add(nvl(wallet.getFrozen()));
+            }
+        }
+        return total;
     }
 
     private BigDecimal nvl(BigDecimal value)
@@ -238,14 +324,17 @@ public class BizWalletServiceImpl implements IBizWalletService
         return value == null ? BigDecimal.ZERO : value;
     }
 
-    private void change(Long memberId, String currency, BigDecimal availableDelta, BigDecimal frozenDelta,
+    private void change(Long memberId, String typeCode, String currency, BigDecimal availableDelta, BigDecimal frozenDelta,
             String bizType, Long bizId, String remark)
     {
         if (availableDelta.compareTo(BigDecimal.ZERO) == 0 && frozenDelta.compareTo(BigDecimal.ZERO) == 0)
         {
             return;
         }
-        BizWallet wallet = walletMapper.selectWalletForUpdate(memberId, currency);
+        String code = StringUtils.isEmpty(typeCode) ? BizConstants.WALLET_BALANCE : typeCode.trim().toUpperCase();
+        String unit = currency == null ? "" : currency.trim().toUpperCase();
+        initWallets(memberId);
+        BizWallet wallet = walletMapper.selectWalletForUpdate(memberId, code, unit);
         if (wallet == null)
         {
             throw new ServiceException("钱包不存在");
@@ -256,6 +345,10 @@ public class BizWalletServiceImpl implements IBizWalletService
         BigDecimal frozenAfter = frozenBefore.add(frozenDelta);
         if (availableAfter.compareTo(BigDecimal.ZERO) < 0)
         {
+            if (BizConstants.WALLET_BALANCE.equals(code))
+            {
+                throw new ServiceException("充值余额不足，请先充值");
+            }
             throw new ServiceException("余额不足");
         }
         if (frozenAfter.compareTo(BigDecimal.ZERO) < 0)
@@ -268,7 +361,8 @@ public class BizWalletServiceImpl implements IBizWalletService
 
         BizWalletLog log = new BizWalletLog();
         log.setMemberId(memberId);
-        log.setCurrency(currency);
+        log.setTypeCode(code);
+        log.setCurrency(unit);
         log.setBizType(bizType);
         log.setBizId(bizId);
         log.setAmount(availableDelta.compareTo(BigDecimal.ZERO) != 0 ? availableDelta : frozenDelta);

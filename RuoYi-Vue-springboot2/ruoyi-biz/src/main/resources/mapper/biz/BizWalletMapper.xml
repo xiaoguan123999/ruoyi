@@ -5,6 +5,8 @@
     <resultMap type="BizWallet" id="BizWalletResult">
         <id     property="walletId"   column="wallet_id"/>
         <result property="memberId"   column="member_id"/>
+        <result property="typeCode"   column="type_code"/>
+        <result property="typeName"   column="type_name"/>
         <result property="currency"   column="currency"/>
         <result property="available"  column="available"/>
         <result property="frozen"     column="frozen"/>
@@ -13,29 +15,48 @@
     </resultMap>
 
     <sql id="selectWalletVo">
-        select wallet_id, member_id, currency, available, frozen, create_time, update_time
-        from biz_wallet
+        select w.wallet_id, w.member_id, w.type_code, t.type_name, w.currency, w.available, w.frozen,
+               w.create_time, w.update_time
+        from biz_wallet w
+        left join biz_wallet_type t on t.type_code = w.type_code
     </sql>
 
     <select id="selectWallet" resultMap="BizWalletResult">
         <include refid="selectWalletVo"/>
-        where member_id = #{memberId} and currency = #{currency}
+        where w.member_id = #{memberId} and w.type_code = #{typeCode} and w.currency = #{currency}
     </select>
 
     <select id="selectWalletForUpdate" resultMap="BizWalletResult">
-        <include refid="selectWalletVo"/>
-        where member_id = #{memberId} and currency = #{currency}
+        select wallet_id, member_id, type_code, null as type_name, currency, available, frozen,
+               create_time, update_time
+        from biz_wallet
+        where member_id = #{memberId} and type_code = #{typeCode} and currency = #{currency}
         for update
     </select>
 
     <select id="selectWalletsByMemberId" parameterType="Long" resultMap="BizWalletResult">
         <include refid="selectWalletVo"/>
-        where member_id = #{memberId}
+        where w.member_id = #{memberId}
+        order by ifnull(t.sort, 99) asc, w.currency asc
     </select>
 
+    <select id="countByTypeCode" parameterType="String" resultType="int">
+        select count(1) from biz_wallet where type_code = #{typeCode}
+    </select>
+
+    <select id="countNonZeroByTypeCode" parameterType="String" resultType="int">
+        select count(1) from biz_wallet
+        where type_code = #{typeCode}
+          and (ifnull(available, 0) &lt;&gt; 0 or ifnull(frozen, 0) &lt;&gt; 0)
+    </select>
+
+    <delete id="deleteWalletsByTypeCode" parameterType="String">
+        delete from biz_wallet where type_code = #{typeCode}
+    </delete>
+
     <insert id="insertWallet" parameterType="BizWallet" useGeneratedKeys="true" keyProperty="walletId">
-        insert into biz_wallet (member_id, currency, available, frozen, create_time, update_time)
-        values (#{memberId}, #{currency}, #{available}, #{frozen}, sysdate(), sysdate())
+        insert into biz_wallet (member_id, type_code, currency, available, frozen, create_time, update_time)
+        values (#{memberId}, #{typeCode}, #{currency}, #{available}, #{frozen}, sysdate(), sysdate())
     </insert>
 
     <update id="updateWallet" parameterType="BizWallet">

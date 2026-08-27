@@ -53,7 +53,16 @@
         <template #default="scope">{{ scope.row.realName || "—" }}</template>
       </el-table-column>
       <el-table-column label="币种" align="center" prop="currency" width="80" />
+      <el-table-column label="钱包" align="center" width="110">
+        <template #default="scope">{{ scope.row.walletTypeName || scope.row.walletTypeCode || "—" }}</template>
+      </el-table-column>
       <el-table-column label="金额" align="center" prop="amount" width="110" />
+      <el-table-column label="手续费" align="center" prop="feeAmount" width="100">
+        <template #default="scope">{{ scope.row.feeAmount ?? "0" }}</template>
+      </el-table-column>
+      <el-table-column label="到账" align="center" prop="arrivalAmount" width="110">
+        <template #default="scope">{{ scope.row.arrivalAmount ?? scope.row.amount }}</template>
+      </el-table-column>
       <el-table-column label="收款方式" align="center" width="100">
         <template #default="scope">{{ scope.row.payMethodLabel || scope.row.payMethod || "—" }}</template>
       </el-table-column>
@@ -109,7 +118,7 @@
     <el-dialog
       title="提现规则"
       v-model="ruleOpen"
-      width="480px"
+      width="520px"
       append-to-body
       destroy-on-close
     >
@@ -119,6 +128,7 @@
         </el-form-item>
         <el-form-item label="人民币最高" prop="maxCny">
           <el-input-number v-model="rule.maxCny" :min="0" :precision="2" :step="1" style="width: 100%" />
+          <div class="tip tip-block">最高填 0 表示不限</div>
         </el-form-item>
         <el-form-item label="USDT最低" prop="minUsdt">
           <el-input-number v-model="rule.minUsdt" :min="0.01" :precision="2" :step="1" style="width: 100%" />
@@ -127,11 +137,23 @@
           <el-input-number v-model="rule.maxUsdt" :min="0" :precision="2" :step="1" style="width: 100%" />
           <div class="tip tip-block">最高填 0 表示不限</div>
         </el-form-item>
+        <el-form-item label="手续费(%)" prop="feeRate">
+          <el-input-number v-model="rule.feeRate" :min="0" :max="100" :precision="2" :step="0.1" style="width: 100%" />
+          <div class="tip tip-block">从申请金额扣，0 表示免手续费；确认打款时按「到账」金额转账</div>
+        </el-form-item>
         <el-form-item label="开放USDT充提">
           <div class="switch-with-tip">
             <el-switch v-model="rule.usdtEnabled" />
             <div class="tip tip-block">关闭后 App 不能充值/提现 USDT</div>
           </div>
+        </el-form-item>
+        <el-form-item label="产品收益钱包">
+          <WalletTypeSelect v-model="rule.productWalletType" placeholder="提现钱包" />
+          <div class="tip tip-block">App「产品收益」从这里扣</div>
+        </el-form-item>
+        <el-form-item label="推广收益钱包">
+          <WalletTypeSelect v-model="rule.promoWalletType" placeholder="提现钱包" />
+          <div class="tip tip-block">App「推广收益」从这里扣</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -143,7 +165,10 @@
     <el-dialog :title="auditTitle" v-model="open" width="520px" append-to-body>
       <el-descriptions :column="1" border class="mb8">
         <el-descriptions-item label="会员">{{ current.realName || current.phone }}（ID {{ current.memberId }}）</el-descriptions-item>
-        <el-descriptions-item label="金额">{{ current.amount }} {{ current.currency }}</el-descriptions-item>
+        <el-descriptions-item label="申请金额">{{ current.amount }} {{ current.currency }}</el-descriptions-item>
+        <el-descriptions-item label="手续费">{{ current.feeAmount ?? 0 }} {{ current.currency }}</el-descriptions-item>
+        <el-descriptions-item label="到账金额">{{ current.arrivalAmount ?? current.amount }} {{ current.currency }}</el-descriptions-item>
+        <el-descriptions-item label="钱包">{{ current.walletTypeName || current.walletTypeCode || "—" }}</el-descriptions-item>
         <el-descriptions-item label="收款方式">{{ current.payMethodLabel || current.payMethod }}</el-descriptions-item>
         <el-descriptions-item label="收款信息">{{ current.accountInfo }}</el-descriptions-item>
       </el-descriptions>
@@ -166,12 +191,13 @@
 
 <script setup lang="ts" name="BizWithdraw">
 import { listWithdraw, auditWithdraw, getWithdrawConfig, saveWithdrawConfig } from "@/api/biz"
+import WalletTypeSelect from "@/views/biz/components/WalletTypeSelect.vue"
 import { isExternal } from "@/utils/validate"
 
 const { proxy } = getCurrentInstance() as any
 const ruleOpen = ref(false)
 const ruleLoading = ref(false)
-const rule = ref({ minCny: 105, maxCny: 0, minUsdt: 105, maxUsdt: 0, usdtEnabled: true })
+const rule = ref({ minCny: 105, maxCny: 0, minUsdt: 105, maxUsdt: 0, feeRate: 3, usdtEnabled: true, productWalletType: "PRODUCT", promoWalletType: "PROMO" })
 const ruleRules = {
   minCny: [{ required: true, message: "请填写人民币最低提现", trigger: "blur" }],
   minUsdt: [{ required: true, message: "请填写USDT最低提现", trigger: "blur" }]
@@ -221,7 +247,10 @@ function loadRule() {
       maxCny: Number(data.maxCny ?? 0),
       minUsdt: Number(data.minUsdt ?? 105),
       maxUsdt: Number(data.maxUsdt ?? 0),
-      usdtEnabled: data.usdtEnabled !== false
+      feeRate: Number(data.feeRate ?? 3),
+      usdtEnabled: data.usdtEnabled !== false,
+      productWalletType: data.productWalletType || "PRODUCT",
+      promoWalletType: data.promoWalletType || "PROMO"
     }
   }).finally(() => { ruleLoading.value = false })
 }

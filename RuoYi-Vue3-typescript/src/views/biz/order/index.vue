@@ -44,6 +44,7 @@
       <el-table-column label="手机号" align="center" prop="phone" width="120" />
       <el-table-column label="系列" align="center" prop="categoryName" min-width="120" show-overflow-tooltip />
       <el-table-column label="产品" align="center" prop="productName" min-width="120" show-overflow-tooltip />
+      <el-table-column label="数量" align="center" prop="quantity" width="70" />
       <el-table-column label="币种" align="center" prop="currency" width="80" />
       <el-table-column label="本金" align="center" prop="price" width="90" />
       <el-table-column label="日返" align="center" prop="dailyRebate" width="80" />

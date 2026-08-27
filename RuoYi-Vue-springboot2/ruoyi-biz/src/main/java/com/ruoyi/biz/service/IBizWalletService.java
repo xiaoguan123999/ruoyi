@@ -14,19 +14,21 @@ public interface IBizWalletService
 
     BizWallet getWallet(Long memberId, String currency);
 
+    BizWallet getWallet(Long memberId, String typeCode, String currency);
+
     void initWallets(Long memberId);
 
     void credit(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark);
 
     void debit(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark);
 
-    void adjust(Long memberId, String currency, String direction, BigDecimal amount, String remark, String operator);
+    void adjust(Long memberId, String typeCode, String currency, String direction, BigDecimal amount, String remark, String operator);
 
-    void freeze(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark);
+    void freeze(Long memberId, String typeCode, String currency, BigDecimal amount, String bizType, Long bizId, String remark);
 
-    void unfreezeSuccess(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark);
+    void unfreezeSuccess(Long memberId, String typeCode, String currency, BigDecimal amount, String bizType, Long bizId, String remark);
 
-    void unfreezeReject(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark);
+    void unfreezeReject(Long memberId, String typeCode, String currency, BigDecimal amount, String bizType, Long bizId, String remark);
 
     List<BizWalletLog> selectWalletLogList(BizWalletLog log);
 

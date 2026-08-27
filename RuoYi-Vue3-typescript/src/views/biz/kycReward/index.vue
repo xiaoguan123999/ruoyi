@@ -61,6 +61,10 @@
           <el-input-number v-model="rule.kycRewardUsdt" :min="0" :precision="2" :step="1" style="width: 100%" />
           <div class="tip tip-block">对应弹窗「2U / USDT 到账」</div>
         </el-form-item>
+        <el-form-item label="到账钱包">
+          <WalletTypeSelect v-model="rule.walletTypeCode" />
+          <div class="tip tip-block">实名奖励入这个钱包</div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button type="primary" @click="saveRule" v-hasPermi="['biz:kycReward:edit']">保存配置</el-button>
@@ -71,7 +75,8 @@
 </template>
 
 <script setup lang="ts" name="BizKycReward">
-import { getKycRewardConfig, saveKycRewardConfig, listKycRewardGrant } from "@/api/biz"
+import { getKycRewardConfig, saveKycRewardConfig, listKycRewardGrant, getWalletCreditByBiz, saveWalletCreditByBiz } from "@/api/biz"
+import WalletTypeSelect from "@/views/biz/components/WalletTypeSelect.vue"
 
 const { proxy } = getCurrentInstance() as any
 const ruleOpen = ref(false)
@@ -83,7 +88,8 @@ const total = ref(0)
 const rule = ref({
   kycSelfEnabled: true,
   kycRewardCny: 14,
-  kycRewardUsdt: 2
+  kycRewardUsdt: 2,
+  walletTypeCode: "PROMO"
 })
 const queryParams = ref({
   pageNum: 1,
@@ -98,12 +104,13 @@ const ruleRules = {
 
 function loadRule() {
   ruleLoading.value = true
-  return getKycRewardConfig().then((res: any) => {
+  return Promise.all([getKycRewardConfig(), getWalletCreditByBiz("KYC_REWARD")]).then(([res, credit]: any[]) => {
     const data = res.data || {}
     rule.value = {
       kycSelfEnabled: data.kycSelfEnabled !== false,
       kycRewardCny: Number(data.kycRewardCny ?? 14),
-      kycRewardUsdt: Number(data.kycRewardUsdt ?? 2)
+      kycRewardUsdt: Number(data.kycRewardUsdt ?? 2),
+      walletTypeCode: credit.data?.typeCode || "PROMO"
     }
   }).finally(() => { ruleLoading.value = false })
 }
@@ -116,7 +123,7 @@ function openRuleDialog() {
 function saveRule() {
   proxy.$refs["ruleRef"].validate((valid: boolean) => {
     if (!valid) return
-    saveKycRewardConfig(rule.value).then(() => {
+    saveKycRewardConfig(rule.value).then(() => saveWalletCreditByBiz("KYC_REWARD", rule.value.walletTypeCode)).then(() => {
       proxy.$modal.msgSuccess("奖励配置已保存")
       ruleOpen.value = false
       loadRule()

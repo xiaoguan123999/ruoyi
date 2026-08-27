@@ -11,6 +11,10 @@ public class AppAmountBody
     @ApiModelProperty(value = "产品ID，认购时必填", example = "1")
     private Long productId;
 
+    @ApiModelProperty(value = "认购份数，默认 1", example = "1")
+    @JsonAlias({"qty", "count", "num"})
+    private Integer quantity;
+
     @ApiModelProperty(value = "币种 CNY/USDT。认购时按此扣对应钱包；不传则有人民币价走人民币，否则走USDT", example = "CNY")
     private String currency;
 
@@ -41,6 +45,16 @@ public class AppAmountBody
     public void setProductId(Long productId)
     {
         this.productId = productId;
+    }
+
+    public Integer getQuantity()
+    {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity)
+    {
+        this.quantity = quantity;
     }
 
     public String getCurrency()

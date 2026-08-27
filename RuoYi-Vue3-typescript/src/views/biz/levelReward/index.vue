@@ -53,6 +53,11 @@
                 <el-switch v-model="rule.validNeedOrder" />
               </el-form-item>
             </el-col>
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="到账钱包">
+                <WalletTypeSelect v-model="rule.walletTypeCode" width="100%" />
+              </el-form-item>
+            </el-col>
           </el-row>
           <el-row :gutter="16">
             <el-col :xs="24" :md="12">
@@ -181,7 +186,8 @@
 </template>
 
 <script setup lang="ts" name="BizLevelReward">
-import { getLevelRewardRule, saveLevelRewardRule, listLevelRewardLevel, updateLevelRewardLevel, evaluateLevelReward, getLevel } from "@/api/biz"
+import { getLevelRewardRule, saveLevelRewardRule, listLevelRewardLevel, updateLevelRewardLevel, evaluateLevelReward, getLevel, getWalletCreditByBiz, saveWalletCreditByBiz } from "@/api/biz"
+import WalletTypeSelect from "@/views/biz/components/WalletTypeSelect.vue"
 
 const { proxy } = getCurrentInstance() as any
 const ruleLoading = ref(false)
@@ -198,7 +204,8 @@ const rule = ref({
   validNeedKyc: true,
   validNeedOrder: true,
   ruleText: "",
-  hint: ""
+  hint: "",
+  walletTypeCode: "PROMO"
 })
 const queryParams = ref({ pageNum: 1, pageSize: 100, levelName: undefined as string | undefined })
 const form = ref<any>({})
@@ -213,13 +220,13 @@ function cycleLabel(v: string) {
 
 function loadRule() {
   ruleLoading.value = true
-  getLevelRewardRule().then((res: any) => {
-    rule.value = Object.assign(rule.value, res.data || {})
+  Promise.all([getLevelRewardRule(), getWalletCreditByBiz("LEVEL_REWARD")]).then(([res, credit]: any[]) => {
+    rule.value = Object.assign(rule.value, res.data || {}, { walletTypeCode: credit.data?.typeCode || "PROMO" })
   }).finally(() => { ruleLoading.value = false })
 }
 
 function saveRule() {
-  saveLevelRewardRule(rule.value).then(() => {
+  saveLevelRewardRule(rule.value).then(() => saveWalletCreditByBiz("LEVEL_REWARD", rule.value.walletTypeCode)).then(() => {
     proxy.$modal.msgSuccess("保存成功")
     loadRule()
   })

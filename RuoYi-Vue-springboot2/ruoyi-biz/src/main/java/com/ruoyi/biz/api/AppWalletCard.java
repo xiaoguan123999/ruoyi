@@ -11,21 +11,21 @@ import io.swagger.annotations.ApiModelProperty;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AppWalletCard
 {
-    @ApiModelProperty("人民币可用余额")
+    @ApiModelProperty("人民币可用余额（充值余额）")
     private BigDecimal cnyAvailable;
     @ApiModelProperty("人民币冻结")
     private BigDecimal cnyFrozen;
-    @ApiModelProperty("人民币累计产品收益")
+    @ApiModelProperty("人民币产品收益剩余")
     private BigDecimal cnyProductIncome;
-    @ApiModelProperty("人民币推广收益累计（签到、实名奖励、邀请、分佣、等级奖励），字段名仍为 cnyAssistValue")
+    @ApiModelProperty("人民币推广收益剩余，字段名仍为 cnyAssistValue")
     private BigDecimal cnyAssistValue;
-    @ApiModelProperty("USDT 可用余额")
+    @ApiModelProperty("USDT 可用余额（充值余额）")
     private BigDecimal usdtAvailable;
     @ApiModelProperty("USDT 冻结")
     private BigDecimal usdtFrozen;
-    @ApiModelProperty("USDT 累计产品收益")
+    @ApiModelProperty("USDT 产品收益剩余")
     private BigDecimal usdtProductIncome;
-    @ApiModelProperty("USDT 推广收益累计（签到、实名奖励、邀请、分佣、等级奖励），字段名仍为 usdtAssistValue")
+    @ApiModelProperty("USDT 推广收益剩余，字段名仍为 usdtAssistValue")
     private BigDecimal usdtAssistValue;
     @ApiModelProperty("人民币一行，给资产卡用")
     private AppWalletRow cny;
@@ -33,6 +33,8 @@ public class AppWalletCard
     private AppWalletRow usdt;
     @ApiModelProperty("两个币种数组，顺序 CNY、USDT")
     private List<AppWalletRow> wallets;
+    @ApiModelProperty("按钱包类型拆开的资产，App 可忽略")
+    private List<AppTypedWallet> typedWallets;
 
     public BigDecimal getCnyAvailable() { return cnyAvailable; }
     public void setCnyAvailable(BigDecimal cnyAvailable) { this.cnyAvailable = cnyAvailable; }
@@ -56,4 +58,6 @@ public class AppWalletCard
     public void setUsdt(AppWalletRow usdt) { this.usdt = usdt; }
     public List<AppWalletRow> getWallets() { return wallets; }
     public void setWallets(List<AppWalletRow> wallets) { this.wallets = wallets; }
+    public List<AppTypedWallet> getTypedWallets() { return typedWallets; }
+    public void setTypedWallets(List<AppTypedWallet> typedWallets) { this.typedWallets = typedWallets; }
 }

@@ -127,12 +127,65 @@ export function listWalletLog(query: any): Promise<TableDataInfo<any[]>> {
 
 export function adjustWallet(data: {
   memberId: number
+  typeCode?: string
   currency: string
   direction: string
   amount: number | string
   remark: string
 }): Promise<AjaxResult> {
   return request({ url: '/biz/walletLog/adjust', method: 'put', data })
+}
+
+export function listWalletType(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/walletType/list', method: 'get', params: query })
+}
+
+export function listWalletTypeOptions(): Promise<AjaxResult<any[]>> {
+  return request({ url: '/biz/walletType/options', method: 'get' })
+}
+
+export function getWalletType(typeId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/walletType/' + typeId, method: 'get' })
+}
+
+export function addWalletType(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/walletType', method: 'post', data })
+}
+
+export function updateWalletType(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/walletType', method: 'put', data })
+}
+
+export function delWalletType(typeId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/walletType/' + typeId, method: 'delete' })
+}
+
+export function listWalletCredit(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/walletCredit/list', method: 'get', params: query })
+}
+
+export function getWalletCredit(ruleId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/walletCredit/' + ruleId, method: 'get' })
+}
+
+export function addWalletCredit(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/walletCredit', method: 'post', data })
+}
+
+export function updateWalletCredit(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/walletCredit', method: 'put', data })
+}
+
+export function delWalletCredit(ruleId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/walletCredit/' + ruleId, method: 'delete' })
+}
+
+export function getWalletCreditByBiz(bizType: string): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/walletCredit/byBiz/' + bizType, method: 'get' })
+}
+
+export function saveWalletCreditByBiz(bizType: string, typeCode: string): Promise<AjaxResult> {
+  return request({ url: '/biz/walletCredit/byBiz/' + bizType, method: 'put', data: { typeCode } })
 }
 
 export function listTeam(query: any): Promise<TableDataInfo<any[]>> {

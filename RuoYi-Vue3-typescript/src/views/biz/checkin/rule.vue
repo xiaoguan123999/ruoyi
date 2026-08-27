@@ -12,6 +12,10 @@
       <el-form-item label="奖励金额(CNY)" prop="amount">
         <el-input-number v-model="form.amount" :min="0" :precision="2" :step="1" style="width: 240px" />
       </el-form-item>
+      <el-form-item label="到账钱包" prop="walletTypeCode">
+        <WalletTypeSelect v-model="form.walletTypeCode" />
+        <span class="tip">签到奖励入这个钱包，和币种无关</span>
+      </el-form-item>
       <el-form-item label="每日仅一次">
         <el-switch v-model="form.oncePerDay" disabled />
         <span class="el-form-item__label" style="margin-left: 12px; float: none">每个账户每天只能签到一次</span>
@@ -54,12 +58,14 @@
 </template>
 
 <script setup lang="ts" name="BizCheckinRule">
-import { getCheckinRule, saveCheckinRule } from "@/api/biz"
+import { getCheckinRule, saveCheckinRule, getWalletCreditByBiz, saveWalletCreditByBiz } from "@/api/biz"
+import WalletTypeSelect from "@/views/biz/components/WalletTypeSelect.vue"
 
 const { proxy } = getCurrentInstance() as any
 const loading = ref(false)
 const form = ref({
   amount: 2,
+  walletTypeCode: "PROMO",
   oncePerDay: true,
   prize1Days: 180,
   prize1Name: "华为手机",
@@ -82,12 +88,13 @@ const rules = {
 
 function load() {
   loading.value = true
-  getCheckinRule().then((res: any) => {
+  Promise.all([getCheckinRule(), getWalletCreditByBiz("CHECKIN")]).then(([res, credit]: any[]) => {
     const data = res.data || {}
     const p1 = (data.prizes && data.prizes[0]) || {}
     const p2 = (data.prizes && data.prizes[1]) || {}
     form.value = {
       amount: Number(data.amount ?? 2),
+      walletTypeCode: credit.data?.typeCode || "PROMO",
       oncePerDay: true,
       prize1Days: Number(p1.days ?? 180),
       prize1Name: p1.name || "华为手机",
@@ -112,7 +119,7 @@ function submitForm() {
         { days: form.value.prize2Days, name: form.value.prize2Name, rate: form.value.prize2Rate, enabled: form.value.prize2Enabled }
       ]
     }
-    saveCheckinRule(payload).then(() => {
+    saveCheckinRule(payload).then(() => saveWalletCreditByBiz("CHECKIN", form.value.walletTypeCode)).then(() => {
       proxy.$modal.msgSuccess("保存成功")
       load()
     })
@@ -121,3 +128,7 @@ function submitForm() {
 
 load()
 </script>
+
+<style scoped>
+.tip { margin-left: 12px; color: #909399; font-size: 13px; }
+</style>

@@ -1,12 +1,26 @@
 <template>
   <div class="app-container ops-page">
     <el-alert
-      title="同一产品可同时配人民币和 USDT 价格。限购填每人可买份数，0 表示不限制。App 认购时按该会员已购订单数校验。"
+      title="同一产品可同时配人民币和 USDT 价格。每人限购填累计可买份数，0 或不填表示不限制。"
       type="info"
       :closable="false"
       show-icon
       class="mb8"
     />
+    <div class="ops-section-card">
+      <div class="ops-section-card__hd">产品日返入账</div>
+      <div class="ops-section-card__bd">
+        <el-form :inline="true" v-loading="creditLoading">
+          <el-form-item label="到账钱包">
+            <WalletTypeSelect v-model="rebateWalletType" />
+            <span class="tip">产品每日返利进这个钱包，默认产品收益</span>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="saveCredit" v-hasPermi="['biz:product:edit']">保存</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+    </div>
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
       <el-form-item label="产品名称" prop="productName">
         <el-input v-model="queryParams.productName" placeholder="请输入产品名称" clearable style="width: 200px" @keyup.enter="handleQuery" />
@@ -102,7 +116,13 @@
         </el-form-item>
         <el-form-item label="每人限购" prop="buyLimit">
           <el-input-number v-model="form.buyLimit" :min="0" :step="1" style="width: 100%" />
-          <div class="el-form-item-msg" style="color:#909399;font-size:12px;line-height:1.4">0 或不填表示不限制。按该会员已购该产品的订单数计算。</div>
+          <div class="el-form-item-msg" style="color:#909399;font-size:12px;line-height:1.4">0 或不填表示不限制。按该会员已购该产品的累计份数计算。</div>
+        </el-form-item>
+        <el-form-item label="收益发放方式" prop="payoutMethod">
+          <el-input v-model="form.payoutMethod" maxlength="100" placeholder="仅 App 展示，例如：每日发放" />
+        </el-form-item>
+        <el-form-item label="风险等级" prop="riskLevel">
+          <el-input v-model="form.riskLevel" maxlength="64" placeholder="仅 App 展示，例如：中" />
         </el-form-item>
         <el-form-item label="提现指定产品" prop="withdrawRequired">
           <el-radio-group v-model="form.withdrawRequired">
@@ -137,7 +157,8 @@
 </template>
 
 <script setup lang="ts" name="BizProduct">
-import { listProduct, getProduct, addProduct, updateProduct, delProduct, listProductCategoryOptions } from "@/api/biz"
+import { listProduct, getProduct, addProduct, updateProduct, delProduct, listProductCategoryOptions, getWalletCreditByBiz, saveWalletCreditByBiz } from "@/api/biz"
+import WalletTypeSelect from "@/views/biz/components/WalletTypeSelect.vue"
 
 const { proxy } = getCurrentInstance() as any
 const productList = ref<any[]>([])
@@ -157,6 +178,21 @@ const data = reactive({
   }
 })
 const { queryParams, form, rules } = toRefs(data)
+const creditLoading = ref(false)
+const rebateWalletType = ref("PRODUCT")
+
+function loadCredit() {
+  creditLoading.value = true
+  getWalletCreditByBiz("REBATE").then((res: any) => {
+    rebateWalletType.value = res.data?.typeCode || "PRODUCT"
+  }).finally(() => { creditLoading.value = false })
+}
+function saveCredit() {
+  saveWalletCreditByBiz("REBATE", rebateWalletType.value).then(() => {
+    proxy.$modal.msgSuccess("保存成功")
+    loadCredit()
+  })
+}
 
 function loadCategories() {
   listProductCategoryOptions().then((res: any) => {
@@ -178,6 +214,8 @@ function reset() {
     status: "0",
     withdrawRequired: "0",
     buyLimit: 0,
+    payoutMethod: "",
+    riskLevel: "",
     sort: 0,
     categoryId: undefined,
     nameEn: "",
@@ -224,4 +262,9 @@ function handleDelete(row: any) {
 }
 loadCategories()
 getList()
+loadCredit()
 </script>
+
+<style scoped>
+.tip { margin-left: 12px; color: #909399; font-size: 13px; }
+</style>
