@@ -20,6 +20,7 @@ import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizWallet;
 import com.ruoyi.biz.domain.BizWalletLog;
 import com.ruoyi.biz.domain.BizWalletType;
+import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.mapper.BizWalletLogMapper;
 import com.ruoyi.biz.mapper.BizWalletMapper;
 import com.ruoyi.biz.mapper.BizWalletTypeMapper;
@@ -37,6 +38,9 @@ public class BizWalletServiceImpl implements IBizWalletService
 
     @Autowired
     private BizWalletLogMapper walletLogMapper;
+
+    @Autowired
+    private BizMemberMapper memberMapper;
 
     @Autowired
     private BizWalletTypeMapper walletTypeMapper;
@@ -172,8 +176,6 @@ public class BizWalletServiceImpl implements IBizWalletService
         {
             throw new ServiceException("备注不能超过200字");
         }
-        String op = operator == null || operator.trim().length() == 0 ? "admin" : operator.trim();
-        String stored = "调账 " + op + ": " + note;
         if (walletTypeService.selectWalletTypeByCode(code) == null)
         {
             throw new ServiceException("钱包类型不存在");
@@ -181,11 +183,11 @@ public class BizWalletServiceImpl implements IBizWalletService
         initWallets(memberId);
         if ("PLUS".equals(dir))
         {
-            change(memberId, code, unit, amount, BigDecimal.ZERO, BizConstants.BIZ_ADJUST, null, stored);
+            change(memberId, code, unit, amount, BigDecimal.ZERO, BizConstants.BIZ_ADJUST, null, note, operator);
         }
         else
         {
-            change(memberId, code, unit, amount.negate(), BigDecimal.ZERO, BizConstants.BIZ_ADJUST, null, stored);
+            change(memberId, code, unit, amount.negate(), BigDecimal.ZERO, BizConstants.BIZ_ADJUST, null, note, operator);
         }
     }
 
@@ -219,7 +221,15 @@ public class BizWalletServiceImpl implements IBizWalletService
     @Override
     public List<AppWalletLogItem> selectAppWalletLogList(Long memberId, String currency, String bizType)
     {
-        List<BizWalletLog> logs = walletLogMapper.selectAppWalletLogList(memberId, currency, resolveAppBizTypes(bizType));
+        List<String> types = resolveAppBizTypes(bizType);
+        String walletTypeCode = resolveWalletTypeCode(types);
+        boolean includeAdjust = StringUtils.isNotEmpty(walletTypeCode);
+        if (includeAdjust && types != null)
+        {
+            types.remove(BizConstants.BIZ_ADJUST);
+        }
+        List<BizWalletLog> logs = walletLogMapper.selectAppWalletLogList(memberId, currency, types, walletTypeCode,
+                Boolean.valueOf(includeAdjust));
         List<AppWalletLogItem> rows = new ArrayList<AppWalletLogItem>();
         for (int i = 0; i < logs.size(); i++)
         {
@@ -335,6 +345,12 @@ public class BizWalletServiceImpl implements IBizWalletService
     private void change(Long memberId, String typeCode, String currency, BigDecimal availableDelta, BigDecimal frozenDelta,
             String bizType, Long bizId, String remark)
     {
+        change(memberId, typeCode, currency, availableDelta, frozenDelta, bizType, bizId, remark, null);
+    }
+
+    private void change(Long memberId, String typeCode, String currency, BigDecimal availableDelta, BigDecimal frozenDelta,
+            String bizType, Long bizId, String remark, String operator)
+    {
         if (availableDelta.compareTo(BigDecimal.ZERO) == 0 && frozenDelta.compareTo(BigDecimal.ZERO) == 0)
         {
             return;
@@ -379,14 +395,46 @@ public class BizWalletServiceImpl implements IBizWalletService
         log.setFrozenBefore(frozenBefore);
         log.setFrozenAfter(frozenAfter);
         log.setRemark(remark);
+        log.setOperator(resolveOperator(memberId, bizType, operator));
         walletLogMapper.insertWalletLog(log);
+    }
+
+    private String resolveOperator(Long memberId, String bizType, String operator)
+    {
+        if (StringUtils.isNotEmpty(operator))
+        {
+            return operator.trim();
+        }
+        if (BizConstants.BIZ_RECHARGE.equals(bizType)
+                || BizConstants.BIZ_SUBSCRIBE.equals(bizType)
+                || BizConstants.BIZ_WITHDRAW_FREEZE.equals(bizType)
+                || BizConstants.BIZ_WITHDRAW_SUCCESS.equals(bizType)
+                || BizConstants.BIZ_WITHDRAW_REJECT.equals(bizType))
+        {
+            BizMember member = memberMapper.selectMemberById(memberId);
+            return member == null || StringUtils.isEmpty(member.getPhone()) ? "" : member.getPhone();
+        }
+        if (BizConstants.BIZ_ADJUST.equals(bizType))
+        {
+            return "admin";
+        }
+        return "system";
     }
 
     private AppWalletLogItem toAppItem(BizWalletLog log)
     {
         String bizType = log.getBizType() == null ? "" : log.getBizType();
+        String remark = log.getRemark() == null ? "" : log.getRemark();
+        if (BizConstants.BIZ_ADJUST.equals(bizType))
+        {
+            remark = stripAdjustPrefix(remark);
+        }
         String label = bizTypeLabel(bizType);
-        String title = displayTitle(bizType, log.getRemark(), label);
+        if (BizConstants.BIZ_ADJUST.equals(bizType) && StringUtils.isNotEmpty(remark))
+        {
+            label = remark;
+        }
+        String title = displayTitle(bizType, remark, label);
         BigDecimal amount = log.getAmount() == null ? BigDecimal.ZERO : log.getAmount();
         AppWalletLogItem item = new AppWalletLogItem();
         item.setLogId(log.getLogId());
@@ -401,7 +449,7 @@ public class BizWalletServiceImpl implements IBizWalletService
         item.setDirection(amount.compareTo(BigDecimal.ZERO) < 0 ? "OUT" : "IN");
         item.setDate(formatDate(log.getCreateTime()));
         item.setCreateTime(log.getCreateTime());
-        item.setRemark(log.getRemark() == null ? "" : log.getRemark());
+        item.setRemark(remark);
         return item;
     }
 
@@ -417,7 +465,7 @@ public class BizWalletServiceImpl implements IBizWalletService
         }
         if (BizConstants.BIZ_COMMISSION.equals(bizType))
         {
-            return "推广奖金";
+            return "返佣奖金";
         }
         if (BizConstants.BIZ_CHECKIN.equals(bizType))
         {
@@ -444,6 +492,26 @@ public class BizWalletServiceImpl implements IBizWalletService
             return remark;
         }
         return label;
+    }
+
+    private String stripAdjustPrefix(String remark)
+    {
+        if (StringUtils.isEmpty(remark))
+        {
+            return "";
+        }
+        String text = remark.trim();
+        if (!text.startsWith("调账"))
+        {
+            return text;
+        }
+        int colon = text.indexOf(':');
+        if (colon < 0 || colon + 1 >= text.length())
+        {
+            return text;
+        }
+        String note = text.substring(colon + 1).trim();
+        return StringUtils.isEmpty(note) ? text : note;
     }
 
     private String stripPrefix(String remark, String prefix, String fallback)
@@ -500,6 +568,40 @@ public class BizWalletServiceImpl implements IBizWalletService
             }
         }
         return types.isEmpty() ? null : new ArrayList<String>(types);
+    }
+
+    private String resolveWalletTypeCode(List<String> types)
+    {
+        if (types == null || types.isEmpty())
+        {
+            return null;
+        }
+        if (isPromoIncomeQuery(types))
+        {
+            return BizConstants.WALLET_PROMO;
+        }
+        if (types.contains(BizConstants.BIZ_RECHARGE))
+        {
+            return BizConstants.WALLET_BALANCE;
+        }
+        if (types.contains(BizConstants.BIZ_REBATE))
+        {
+            return BizConstants.WALLET_PRODUCT;
+        }
+        return null;
+    }
+
+    private boolean isPromoIncomeQuery(List<String> types)
+    {
+        if (types == null || types.isEmpty())
+        {
+            return false;
+        }
+        return types.contains(BizConstants.BIZ_CHECKIN)
+                && types.contains(BizConstants.BIZ_KYC_REWARD)
+                && types.contains(BizConstants.BIZ_INVITE)
+                && types.contains(BizConstants.BIZ_COMMISSION)
+                && types.contains(BizConstants.BIZ_LEVEL_REWARD);
     }
 
     private String bizTypeLabel(String bizType)

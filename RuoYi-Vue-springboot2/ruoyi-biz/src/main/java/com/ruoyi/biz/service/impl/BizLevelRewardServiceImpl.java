@@ -23,17 +23,23 @@ import com.ruoyi.biz.mapper.BizRechargeMapper;
 import com.ruoyi.biz.service.IBizLevelRewardService;
 import com.ruoyi.biz.service.IBizWalletService;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.core.domain.entity.SysDictData;
 import com.ruoyi.common.utils.DateUtils;
+import com.ruoyi.common.utils.DictUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.domain.SysConfig;
 import com.ruoyi.system.mapper.SysConfigMapper;
 import com.ruoyi.system.service.ISysConfigService;
+import com.ruoyi.system.service.ISysDictTypeService;
 
 @Service
 public class BizLevelRewardServiceImpl implements IBizLevelRewardService
 {
     @Autowired
     private ISysConfigService sysConfigService;
+
+    @Autowired
+    private ISysDictTypeService dictTypeService;
 
     @Autowired
     private SysConfigMapper sysConfigMapper;
@@ -167,6 +173,7 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
         {
             level.setValidNeedOrder("1");
         }
+        normalizeTeamDepth(level);
         return levelMapper.updateLevel(level);
     }
 
@@ -633,6 +640,31 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
             return null;
         }
         String text = teamDepth.trim();
+        List<SysDictData> dicts = teamDepthDict();
+        if (dicts != null)
+        {
+            for (int i = 0; i < dicts.size(); i++)
+            {
+                SysDictData row = dicts.get(i);
+                if (row == null || StringUtils.isEmpty(row.getDictValue()))
+                {
+                    continue;
+                }
+                if ("1".equals(row.getStatus()))
+                {
+                    continue;
+                }
+                if (text.equals(row.getDictValue()) || text.equals(row.getDictLabel()))
+                {
+                    return parsePositiveInt(row.getDictValue());
+                }
+            }
+        }
+        Integer n = parsePositiveInt(text);
+        if (n != null)
+        {
+            return n;
+        }
         String[] labels = new String[] {"一级内", "二级内", "三级内", "四级内", "五级内", "六级内", "七级内"};
         for (int i = 0; i < labels.length; i++)
         {
@@ -642,6 +674,147 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
             }
         }
         return null;
+    }
+
+    @Override
+    public void fillTeamDepthLabels(List<BizLevel> levels)
+    {
+        if (levels == null || levels.isEmpty())
+        {
+            return;
+        }
+        for (int i = 0; i < levels.size(); i++)
+        {
+            BizLevel level = levels.get(i);
+            if (level == null || StringUtils.isEmpty(level.getTeamDepth()))
+            {
+                continue;
+            }
+            String raw = level.getTeamDepth().trim();
+            String label = DictUtils.getDictLabel(BizConstants.DICT_TEAM_DEPTH, raw);
+            if (StringUtils.isEmpty(label))
+            {
+                List<SysDictData> dicts = teamDepthDict();
+                if (dicts != null)
+                {
+                    for (int j = 0; j < dicts.size(); j++)
+                    {
+                        SysDictData row = dicts.get(j);
+                        if (row != null && raw.equals(row.getDictValue()))
+                        {
+                            label = row.getDictLabel();
+                            break;
+                        }
+                    }
+                }
+            }
+            if (StringUtils.isNotEmpty(label))
+            {
+                level.setTeamDepth(label);
+            }
+        }
+    }
+
+    @Override
+    public void fillTeamDepthLabel(BizLevel level)
+    {
+        if (level == null)
+        {
+            return;
+        }
+        List<BizLevel> one = new ArrayList<BizLevel>(1);
+        one.add(level);
+        fillTeamDepthLabels(one);
+    }
+
+    @Override
+    public void normalizeTeamDepth(BizLevel level)
+    {
+        if (level == null)
+        {
+            return;
+        }
+        if (StringUtils.isEmpty(level.getTeamDepth()))
+        {
+            level.setTeamDepth("");
+            return;
+        }
+        String text = level.getTeamDepth().trim();
+        List<SysDictData> dicts = teamDepthDict();
+        if (dicts != null)
+        {
+            for (int i = 0; i < dicts.size(); i++)
+            {
+                SysDictData row = dicts.get(i);
+                if (row == null || StringUtils.isEmpty(row.getDictValue()))
+                {
+                    continue;
+                }
+                if ("1".equals(row.getStatus()))
+                {
+                    continue;
+                }
+                if (text.equals(row.getDictValue()) || text.equals(row.getDictLabel()))
+                {
+                    level.setTeamDepth(row.getDictValue().trim());
+                    return;
+                }
+            }
+        }
+        Integer n = parsePositiveInt(text);
+        if (n != null)
+        {
+            level.setTeamDepth(String.valueOf(n));
+            return;
+        }
+        String[] labels = new String[] {"一级内", "二级内", "三级内", "四级内", "五级内", "六级内", "七级内"};
+        for (int i = 0; i < labels.length; i++)
+        {
+            if (labels[i].equals(text))
+            {
+                level.setTeamDepth(String.valueOf(i + 1));
+                return;
+            }
+        }
+        level.setTeamDepth(text);
+    }
+
+    private List<SysDictData> teamDepthDict()
+    {
+        List<SysDictData> cached = DictUtils.getDictCache(BizConstants.DICT_TEAM_DEPTH);
+        if (cached != null && !cached.isEmpty())
+        {
+            return cached;
+        }
+        if (dictTypeService == null)
+        {
+            return cached;
+        }
+        return dictTypeService.selectDictDataByType(BizConstants.DICT_TEAM_DEPTH);
+    }
+
+    private Integer parsePositiveInt(String text)
+    {
+        if (StringUtils.isEmpty(text))
+        {
+            return null;
+        }
+        for (int i = 0; i < text.length(); i++)
+        {
+            if (!Character.isDigit(text.charAt(i)))
+            {
+                return null;
+            }
+        }
+        try
+        {
+            int n = Integer.parseInt(text);
+            return n > 0 ? Integer.valueOf(n) : null;
+        }
+        catch (NumberFormatException e)
+        {
+            return null;
+        }
     }
 
     private int viewerDepth(Long memberId)

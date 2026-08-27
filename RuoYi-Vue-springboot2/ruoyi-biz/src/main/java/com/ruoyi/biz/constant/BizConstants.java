@@ -178,6 +178,7 @@ public class BizConstants
     public static final String CONFIG_LEVEL_REWARD_NEED_ORDER = "biz.levelReward.validNeedOrder";
     public static final String CONFIG_LEVEL_REWARD_TEXT = "biz.levelReward.ruleText";
     public static final String CONFIG_LEVEL_REWARD_HINT = "biz.levelReward.hint";
+    public static final String DICT_TEAM_DEPTH = "biz_team_depth";
     public static final int TEAM_MAX_LEVEL = 7;
 
     public static final String PAY_BANK = "BANK";

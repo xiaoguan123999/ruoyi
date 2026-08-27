@@ -27,4 +27,10 @@ public interface IBizLevelRewardService
     void rejectGrant(Long grantId, String operator, String remark);
 
     void extraPay(BizLevelRewardPayBody body, String operator);
+
+    void fillTeamDepthLabels(List<BizLevel> levels);
+
+    void fillTeamDepthLabel(BizLevel level);
+
+    void normalizeTeamDepth(BizLevel level);
 }

@@ -49,6 +49,9 @@ public class BizWalletLog extends BaseEntity
     /** 变动后冻结 */
     private BigDecimal frozenAfter;
 
+    /** 操作人：后台调账为后台账号，App充值为会员手机号 */
+    private String operator;
+
     public Long getLogId()
     {
         return logId;
@@ -177,6 +180,16 @@ public class BizWalletLog extends BaseEntity
     public void setFrozenAfter(BigDecimal frozenAfter)
     {
         this.frozenAfter = frozenAfter;
+    }
+
+    public String getOperator()
+    {
+        return operator;
+    }
+
+    public void setOperator(String operator)
+    {
+        this.operator = operator;
     }
 
 }

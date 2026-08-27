@@ -17,13 +17,14 @@
         <result property="frozenBefore"     column="frozen_before"/>
         <result property="frozenAfter"      column="frozen_after"/>
         <result property="remark"           column="remark"/>
+        <result property="operator"         column="operator"/>
         <result property="createTime"       column="create_time"/>
     </resultMap>
 
     <select id="selectWalletLogList" parameterType="BizWalletLog" resultMap="BizWalletLogResult">
         select l.log_id, l.member_id, l.type_code, t.type_name, m.phone, l.currency, l.biz_type, l.biz_id, l.amount,
                l.available_before, l.available_after, l.frozen_before, l.frozen_after,
-               l.remark, l.create_time
+               l.remark, l.operator, l.create_time
         from biz_wallet_log l
         left join biz_member m on m.member_id = l.member_id
         left join biz_wallet_type t on t.type_code = l.type_code
@@ -43,18 +44,24 @@
     <select id="selectAppWalletLogList" resultMap="BizWalletLogResult">
         select l.log_id, l.member_id, l.type_code, t.type_name, m.phone, l.currency, l.biz_type, l.biz_id, l.amount,
                l.available_before, l.available_after, l.frozen_before, l.frozen_after,
-               l.remark, l.create_time
+               l.remark, l.operator, l.create_time
         from biz_wallet_log l
         left join biz_member m on m.member_id = l.member_id
         left join biz_wallet_type t on t.type_code = l.type_code
         where l.member_id = #{memberId}
           and l.available_before &lt;&gt; l.available_after
         <if test="currency != null and currency != ''">and l.currency = #{currency}</if>
+        <if test="walletTypeCode != null and walletTypeCode != ''">and l.type_code = #{walletTypeCode}</if>
         <if test="bizTypes != null and bizTypes.size() &gt; 0">
-          and l.biz_type in
-          <foreach collection="bizTypes" item="item" open="(" separator="," close=")">
-            #{item}
-          </foreach>
+          and (
+            l.biz_type in
+            <foreach collection="bizTypes" item="item" open="(" separator="," close=")">
+              #{item}
+            </foreach>
+            <if test="includeAdjust">
+              or l.biz_type = 'ADJUST'
+            </if>
+          )
         </if>
         order by l.log_id desc
     </select>
@@ -64,16 +71,19 @@
         from biz_wallet_log
         where member_id = #{memberId}
           and currency = #{currency}
-          and biz_type in ('CHECKIN', 'KYC_REWARD', 'INVITE', 'COMMISSION', 'LEVEL_REWARD')
+          and (
+            biz_type in ('CHECKIN', 'KYC_REWARD', 'INVITE', 'COMMISSION', 'LEVEL_REWARD')
+            or (biz_type = 'ADJUST' and type_code = 'PROMO')
+          )
     </select>
 
     <insert id="insertWalletLog" parameterType="BizWalletLog" useGeneratedKeys="true" keyProperty="logId">
         insert into biz_wallet_log (
             member_id, type_code, currency, biz_type, biz_id, amount,
-            available_before, available_after, frozen_before, frozen_after, remark, create_time
+            available_before, available_after, frozen_before, frozen_after, remark, operator, create_time
         ) values (
             #{memberId}, #{typeCode}, #{currency}, #{bizType}, #{bizId}, #{amount},
-            #{availableBefore}, #{availableAfter}, #{frozenBefore}, #{frozenAfter}, #{remark}, sysdate()
+            #{availableBefore}, #{availableAfter}, #{frozenBefore}, #{frozenAfter}, #{remark}, #{operator}, sysdate()
         )
     </insert>
 </mapper>

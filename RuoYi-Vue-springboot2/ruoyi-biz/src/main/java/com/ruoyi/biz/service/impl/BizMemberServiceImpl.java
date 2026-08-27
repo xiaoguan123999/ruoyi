@@ -249,11 +249,7 @@ public class BizMemberServiceImpl implements IBizMemberService
         update.setIdCard(idCard);
         update.setKycStatus(BizConstants.KYC_DONE);
         memberMapper.updateMember(update);
-        refreshLevel(memberId);
-        if (exist.getParentId() != null)
-        {
-            refreshLevel(exist.getParentId());
-        }
+        refreshLevelAndUplines(memberId);
         promoService.grantInviteOnKyc(memberId);
     }
 
@@ -565,6 +561,19 @@ public class BizMemberServiceImpl implements IBizMemberService
             memberMapper.updateMember(update);
         }
         levelRewardService.evaluate(memberId);
+    }
+
+    @Override
+    public void refreshLevelAndUplines(Long memberId)
+    {
+        Long id = memberId;
+        int guard = 0;
+        while (id != null && guard++ < 32)
+        {
+            refreshLevel(id);
+            BizMember row = memberMapper.selectMemberById(id);
+            id = row == null ? null : row.getParentId();
+        }
     }
 
     @Override
