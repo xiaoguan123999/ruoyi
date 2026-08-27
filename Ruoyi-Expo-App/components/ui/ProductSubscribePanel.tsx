@@ -1,14 +1,17 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { SubscribeButton } from '@/components/ui/SubscribeButton';
 import type { ProductItem } from '@/types/product';
 import { colors } from '@/theme/colors';
 
+const MIN_QUANTITY = 1;
+
 type Props = {
   item: ProductItem;
   submitting?: boolean;
-  onSubscribeCny?: () => void;
-  onSubscribeUsdt?: () => void;
+  onSubscribeCny?: (quantity: number) => void;
+  onSubscribeUsdt?: (quantity: number) => void;
 };
 
 type RowProps = {
@@ -27,12 +30,22 @@ function InfoRow({ label, value, highlight, last }: RowProps) {
   );
 }
 
+function formatMoney(amount: number, unit: string): string {
+  if (!(amount > 0)) {
+    return '--';
+  }
+  const text = Number.isInteger(amount) ? String(amount) : amount.toFixed(2).replace(/\.?0+$/, '');
+  return `${text} ${unit}`;
+}
+
 export function ProductSubscribePanel({
   item,
   submitting,
   onSubscribeCny,
   onSubscribeUsdt,
 }: Props) {
+  const [quantity, setQuantity] = useState(MIN_QUANTITY);
+  const [quantityText, setQuantityText] = useState(String(MIN_QUANTITY));
   const productName = [item.name, item.enName].filter((v) => v && v !== '--').join(' ') || '--';
   const supportCny = item.amountCny > 0;
   const supportUsdt = item.amount > 0;
@@ -41,16 +54,35 @@ export function ProductSubscribePanel({
   const dailyUsdt = item.daily > 0 ? `${item.daily} USDT` : '--';
   const dailyCny = item.dailyCny > 0 ? `${item.dailyCny} RMB` : '--';
   const term = item.termDays > 0 ? `${item.termDays} 天` : '--';
+
+  const applyQuantity = (next: number) => {
+    const safe = Number.isFinite(next) ? Math.max(MIN_QUANTITY, Math.floor(next)) : MIN_QUANTITY;
+    setQuantity(safe);
+    setQuantityText(String(safe));
+    return safe;
+  };
+
+  const payable = useMemo(() => {
+    const parts: string[] = [];
+    if (supportUsdt) {
+      parts.push(formatMoney(item.amount * quantity, 'USDT'));
+    }
+    if (supportCny) {
+      parts.push(formatMoney(item.amountCny * quantity, 'RMB'));
+    }
+    return parts.length ? parts.join(' / ') : '--';
+  }, [item.amount, item.amountCny, quantity, supportCny, supportUsdt]);
+
   const rows = [
     { label: '产品名称', value: productName },
     { label: '产品类型', value: item.tag || '--' },
     {
-      label: '参与金额',
+      label: '单份金额',
       value: `${amountUsdt} / ${amountCny}`,
       highlight: true,
     },
     {
-      label: '日收益',
+      label: '单份日收益',
       value: `${dailyUsdt} / ${dailyCny}`,
       highlight: true,
     },
@@ -59,6 +91,28 @@ export function ProductSubscribePanel({
     { label: '支持货币', value: item.currencies || '--' },
     { label: '风险等级', value: item.riskLevel || '--' },
   ] as const;
+
+  const changeQuantity = (delta: number) => {
+    applyQuantity(quantity + delta);
+  };
+
+  const onQuantityChange = (text: string) => {
+    const digits = text.replace(/[^\d]/g, '');
+    setQuantityText(digits);
+    if (!digits) {
+      return;
+    }
+    const next = Number(digits);
+    if (Number.isFinite(next) && next >= MIN_QUANTITY) {
+      setQuantity(Math.floor(next));
+    }
+  };
+
+  const onQuantityBlur = () => {
+    applyQuantity(Number(quantityText));
+  };
+
+  const resolvedQuantity = () => applyQuantity(Number(quantityText) || quantity);
 
   return (
     <View style={styles.panel}>
@@ -76,13 +130,52 @@ export function ProductSubscribePanel({
         ))}
       </View>
 
+      <View style={styles.quantityCard}>
+        <Text style={styles.quantityLabel}>认购份数</Text>
+        <View style={styles.stepper}>
+          <Pressable
+            style={[styles.stepBtn, quantity <= MIN_QUANTITY && styles.stepBtnDisabled]}
+            disabled={quantity <= MIN_QUANTITY || submitting}
+            onPress={() => changeQuantity(-1)}
+          >
+            <Text style={styles.stepBtnText}>−</Text>
+          </Pressable>
+          <TextInput
+            value={quantityText}
+            onChangeText={onQuantityChange}
+            onBlur={onQuantityBlur}
+            editable={!submitting}
+            keyboardType="number-pad"
+            inputMode="numeric"
+            selectTextOnFocus
+            style={styles.quantityInput}
+            placeholder="1"
+            placeholderTextColor="rgba(180, 200, 230, 0.45)"
+          />
+          <Pressable
+            style={styles.stepBtn}
+            disabled={submitting}
+            onPress={() => changeQuantity(1)}
+          >
+            <Text style={styles.stepBtnText}>+</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.payableCard}>
+        <View style={styles.payableRow}>
+          <Text style={styles.payableLabel}>应付金额</Text>
+          <Text style={styles.payableValue}>{payable}</Text>
+        </View>
+      </View>
+
       <View style={styles.actions}>
         {supportCny ? (
           <SubscribeButton
             title="使用RMB认购"
             variant="cny"
             disabled={submitting}
-            onPress={onSubscribeCny}
+            onPress={() => onSubscribeCny?.(resolvedQuantity())}
           />
         ) : null}
         {supportUsdt ? (
@@ -90,7 +183,7 @@ export function ProductSubscribePanel({
             title="使用USDT认购"
             variant="usdt"
             disabled={submitting}
-            onPress={onSubscribeUsdt}
+            onPress={() => onSubscribeUsdt?.(resolvedQuantity())}
           />
         ) : null}
         {!supportCny && !supportUsdt ? (
@@ -153,6 +246,96 @@ const styles = StyleSheet.create({
   valueHighlight: {
     color: '#F0B45A',
     fontWeight: '700',
+  },
+  quantityCard: {
+    marginTop: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(110, 185, 255, 0.22)',
+    backgroundColor: 'rgba(6, 18, 42, 0.55)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  quantityLabel: {
+    color: 'rgba(200, 218, 240, 0.78)',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  stepBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(47, 123, 255, 0.28)',
+    borderWidth: 1,
+    borderColor: 'rgba(120, 180, 255, 0.35)',
+  },
+  stepBtnDisabled: {
+    opacity: 0.35,
+  },
+  stepBtnText: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '500',
+    lineHeight: 24,
+    marginTop: -1,
+  },
+  quantityValue: {
+    minWidth: 28,
+    textAlign: 'center',
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  quantityInput: {
+    minWidth: 56,
+    maxWidth: 88,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(120, 180, 255, 0.28)',
+    backgroundColor: 'rgba(8, 20, 44, 0.75)',
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  payableCard: {
+    marginTop: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(240, 180, 90, 0.28)',
+    backgroundColor: 'rgba(40, 28, 12, 0.45)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  payableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  payableLabel: {
+    color: 'rgba(220, 200, 160, 0.85)',
+    fontSize: 13,
+  },
+  payableValue: {
+    color: '#F0B45A',
+    fontSize: 15,
+    fontWeight: '800',
+    textAlign: 'right',
+    flex: 1,
   },
   actions: {
     marginTop: 18,

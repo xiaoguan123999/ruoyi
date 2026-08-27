@@ -10,8 +10,13 @@ import {
   payAccountCurrency,
 } from '@/api/app-pay-account';
 import { ApiError } from '@/api/request';
-import { applyAppWithdraw, fetchAppWallet, parseAmountInput } from '@/api/app-trade';
-import type { AppPayAccount, AppWallet } from '@/api/types';
+import {
+  applyAppWithdraw,
+  fetchAppWallet,
+  fetchAppWithdrawConfig,
+  parseAmountInput,
+} from '@/api/app-trade';
+import type { AppPayAccount, AppWallet, AppWithdrawConfig } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { DualBalance } from '@/components/ui/DualBalance';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -42,6 +47,15 @@ function accountTypeLabel(account: AppPayAccount): string {
   return '支付宝';
 }
 
+function calcFee(amount: number, feeRate: number) {
+  if (amount <= 0 || feeRate <= 0) {
+    return { fee: 0, arrival: Math.max(0, amount) };
+  }
+  const fee = Math.round(amount * feeRate) / 100;
+  const arrival = Math.max(0, Math.round((amount - fee) * 100) / 100);
+  return { fee: Math.round(fee * 100) / 100, arrival };
+}
+
 export default function WithdrawScreen() {
   const router = useRouter();
   const amountRef = useRef<TextInput>(null);
@@ -51,21 +65,27 @@ export default function WithdrawScreen() {
   const [accountId, setAccountId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [wallet, setWallet] = useState<AppWallet | null>(null);
+  const [config, setConfig] = useState<AppWithdrawConfig | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [nextWallet, nextAccounts] = await Promise.all([
+      const [nextWallet, nextAccounts, nextConfig] = await Promise.all([
         fetchAppWallet(),
         fetchAppPayAccounts(),
+        fetchAppWithdrawConfig(),
       ]);
+      const visibleAccounts = nextConfig.usdtEnabled
+        ? nextAccounts
+        : nextAccounts.filter((item) => item.accountType !== 'USDT');
       setWallet(nextWallet);
-      setAccounts(nextAccounts);
+      setConfig(nextConfig);
+      setAccounts(visibleAccounts);
       setAccountId((prev) => {
-        if (prev && nextAccounts.some((item) => item.accountId === prev)) {
+        if (prev && visibleAccounts.some((item) => item.accountId === prev)) {
           return prev;
         }
         const preferred =
-          nextAccounts.find((item) => item.isDefault === '1') ?? nextAccounts[0];
+          visibleAccounts.find((item) => item.isDefault === '1') ?? visibleAccounts[0];
         return preferred?.accountId ?? null;
       });
     } catch (error) {
@@ -100,6 +120,15 @@ export default function WithdrawScreen() {
       : selectedCurrency === 'CNY'
         ? availableCny
         : 0;
+  const minAmount =
+    selectedCurrency === 'USDT' ? (config?.minUsdt ?? 0) : (config?.minCny ?? 0);
+  const maxAmount =
+    selectedCurrency === 'USDT' ? (config?.maxUsdt ?? 0) : (config?.maxCny ?? 0);
+  const feeRate = config?.feeRate ?? 0;
+  const amountValue = parseAmountInput(amount);
+  const { fee: feePreview, arrival: arrivalPreview } = calcFee(amountValue, feeRate);
+  const noticeMinCny = config?.minCny && config.minCny > 0 ? config.minCny : 100;
+  const noticeFeeRate = feeRate > 0 ? feeRate : 3;
 
   const goAddPayMethod = () => {
     router.push('/wallet');
@@ -110,9 +139,29 @@ export default function WithdrawScreen() {
       modalWarning('请先添加收款方式');
       return;
     }
+    if (selectedCurrency === 'USDT' && config && !config.usdtEnabled) {
+      modalWarning('暂未开放 USDT 提现');
+      return;
+    }
     const value = parseAmountInput(amount);
     if (value <= 0) {
       modalWarning('请输入有效提现金额');
+      return;
+    }
+    if (minAmount > 0 && value < minAmount) {
+      modalWarning(
+        selectedCurrency === 'USDT'
+          ? `最低提现金额 ${formatBalance(minAmount)} USDT`
+          : `最低提现金额 ¥ ${formatBalance(minAmount)}`,
+      );
+      return;
+    }
+    if (maxAmount > 0 && value > maxAmount) {
+      modalWarning(
+        selectedCurrency === 'USDT'
+          ? `最高提现金额 ${formatBalance(maxAmount)} USDT`
+          : `最高提现金额 ¥ ${formatBalance(maxAmount)}`,
+      );
       return;
     }
     if (value > availableAmount) {
@@ -187,6 +236,19 @@ export default function WithdrawScreen() {
             placeholderTextColor={colors.placeholder}
             autoFocus
           />
+          {amountValue > 0 && feeRate > 0 ? (
+            <Text style={styles.feeHint}>
+              手续费{' '}
+              {selectedCurrency === 'CNY'
+                ? `¥ ${formatBalance(feePreview)}`
+                : `USDT ${formatBalance(feePreview)}`}
+              {' · '}
+              预计到账{' '}
+              {selectedCurrency === 'CNY'
+                ? `¥ ${formatBalance(arrivalPreview)}`
+                : `USDT ${formatBalance(arrivalPreview)}`}
+            </Text>
+          ) : null}
         </GlassCard>
 
         <GlassCard>
@@ -235,7 +297,9 @@ export default function WithdrawScreen() {
             2. 提现通常在24小时内到账，如有疑问请及时联系客服；
           </Text>
           <Text style={styles.noticeLine}>
-            3. 最低提现到账金额100元，提现手续费为3%，提现时间8:30—21:00，请合理安排提现时间。
+            3. 最低提现金额{formatBalance(noticeMinCny)}
+            元，提现手续费为{formatBalance(noticeFeeRate)}
+            %，提现时间8:30—21:00，请合理安排提现时间。
           </Text>
         </View>
       </RefreshableScrollView>
@@ -299,6 +363,11 @@ const styles = StyleSheet.create({
     borderBottomColor: '#fff',
     marginTop: 12,
     paddingVertical: 8,
+  },
+  feeHint: {
+    marginTop: 10,
+    color: colors.muted,
+    fontSize: 13,
   },
   emptyWrap: {
     marginTop: 16,

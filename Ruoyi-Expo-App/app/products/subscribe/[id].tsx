@@ -24,6 +24,7 @@ export default function ProductSubscribeScreen() {
   const [payMode, setPayMode] = useState<PayPasswordMode>('verify');
   const [hasPayPassword, setHasPayPassword] = useState(true);
   const [pendingCurrency, setPendingCurrency] = useState<'CNY' | 'USDT' | null>(null);
+  const [pendingQuantity, setPendingQuantity] = useState(1);
 
   const load = useCallback(async () => {
     try {
@@ -42,7 +43,7 @@ export default function ProductSubscribeScreen() {
     void load();
   }, [load]);
 
-  const requestSubscribe = (currency: 'CNY' | 'USDT') => {
+  const requestSubscribe = (currency: 'CNY' | 'USDT', quantity: number) => {
     if (!item || submitting) {
       return;
     }
@@ -56,7 +57,9 @@ export default function ProductSubscribeScreen() {
       modalWarning(currency === 'USDT' ? '该产品暂不支持 USDT 认购' : '该产品暂不支持 RMB 认购');
       return;
     }
+    const nextQuantity = Math.max(1, Math.floor(quantity || 1));
     setPendingCurrency(currency);
+    setPendingQuantity(nextQuantity);
     setPayMode(hasPayPassword ? 'verify' : 'set');
     setPayVisible(true);
   };
@@ -64,6 +67,7 @@ export default function ProductSubscribeScreen() {
   const closePaySheet = () => {
     setPayVisible(false);
     setPendingCurrency(null);
+    setPendingQuantity(1);
     setPayMode('verify');
   };
 
@@ -76,6 +80,7 @@ export default function ProductSubscribeScreen() {
       productId,
       currency: pendingCurrency,
       payPassword,
+      quantity: pendingQuantity,
     });
     closePaySheet();
     requestAnimationFrame(() => modalSuccess(message));
@@ -138,8 +143,8 @@ export default function ProductSubscribeScreen() {
         <ProductSubscribePanel
           item={item}
           submitting={submitting}
-          onSubscribeCny={() => requestSubscribe('CNY')}
-          onSubscribeUsdt={() => requestSubscribe('USDT')}
+          onSubscribeCny={(quantity) => requestSubscribe('CNY', quantity)}
+          onSubscribeUsdt={(quantity) => requestSubscribe('USDT', quantity)}
         />
       </RefreshableScrollView>
 

@@ -5,21 +5,22 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { fetchAppAbout } from '@/api/app-about';
 import { ApiError } from '@/api/request';
-import type { AppAboutItem } from '@/api/types';
+import type { AppAbout } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { PdfPagesViewer } from '@/components/ui/PdfPagesViewer';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { colors } from '@/theme/colors';
 import { modalError } from '@/utils/toast';
 
 export default function AboutScreen() {
   const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState<AppAboutItem[]>([]);
+  const [about, setAbout] = useState<AppAbout | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setItems(await fetchAppAbout());
+      setAbout(await fetchAppAbout());
     } catch (error) {
       if (!(error instanceof ApiError) || error.code !== 401) {
         modalError(error instanceof ApiError ? error.message : '获取关于我们失败');
@@ -35,6 +36,8 @@ export default function AboutScreen() {
     }, [load]),
   );
 
+  const isPdf = about?.mode === 'PDF' && !!about.pdfUrl;
+
   return (
     <AppBackground>
       <PageHeader title="关于我们" />
@@ -42,6 +45,8 @@ export default function AboutScreen() {
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={colors.accent} />
         </View>
+      ) : isPdf ? (
+        <PdfPagesViewer uri={about.pdfUrl!} />
       ) : (
         <RefreshableScrollView
           style={{ flex: 1 }}
@@ -49,19 +54,17 @@ export default function AboutScreen() {
           showsVerticalScrollIndicator={false}
           onRefresh={load}
         >
-          {items.length === 0 ? (
+          {!about || (!about.title && !about.subtitle && !about.content && !about.imageUrl) ? (
             <Text style={styles.empty}>暂无内容</Text>
           ) : (
-            items.map((item) => (
-              <GlassCard key={item.id} style={styles.card}>
-                {item.imageUrl ? (
-                  <Image source={{ uri: item.imageUrl }} style={styles.cover} contentFit="cover" />
-                ) : null}
-                <Text style={styles.title}>{item.title || '--'}</Text>
-                {item.subtitle ? <Text style={styles.subtitle}>{item.subtitle}</Text> : null}
-                {item.content ? <Text style={styles.body}>{item.content}</Text> : null}
-              </GlassCard>
-            ))
+            <GlassCard style={styles.card}>
+              {about.imageUrl ? (
+                <Image source={{ uri: about.imageUrl }} style={styles.cover} contentFit="cover" />
+              ) : null}
+              {about.title ? <Text style={styles.title}>{about.title}</Text> : null}
+              {about.subtitle ? <Text style={styles.subtitle}>{about.subtitle}</Text> : null}
+              {about.content ? <Text style={styles.body}>{about.content}</Text> : null}
+            </GlassCard>
           )}
         </RefreshableScrollView>
       )}

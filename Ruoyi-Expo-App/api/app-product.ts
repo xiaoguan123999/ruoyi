@@ -157,6 +157,8 @@ function mapProduct(raw: unknown): AppProduct | null {
     categoryId: pickNumber(raw, ['categoryId']) || seriesId || undefined,
     categoryName: pickString(raw, ['categoryName', 'seriesName']) || undefined,
     coverUrl: coverUrl || undefined,
+    riskLevel: pickString(raw, ['riskLevel']) || undefined,
+    payoutMethod: pickString(raw, ['payoutMethod']) || undefined,
   };
 }
 
@@ -193,9 +195,9 @@ export function mapAppProductToItem(product: AppProduct, index = 0): ProductItem
     desc: product.remark || '--',
     cover,
     titleTone: index % 2 === 1 ? 'purple' : 'blue',
-    payoutMethod: undefined,
+    payoutMethod: product.payoutMethod || undefined,
     currencies: support.length ? support.join(' / ') : '--',
-    riskLevel: undefined,
+    riskLevel: product.riskLevel || undefined,
   };
 }
 
@@ -270,20 +272,20 @@ export async function fetchAppProductSeriesWithItems(
   };
 }
 
-/** 认购页：按产品 ID 拉取（在列表中查找） */
+/** GET /app/products/{productId} — 产品详情（认购页） */
 export async function fetchAppProductById(productId?: string | number): Promise<ProductItem | undefined> {
   if (productId === undefined || productId === null || String(productId).length === 0) {
     return undefined;
   }
-  const id = String(productId);
-  const products = await fetchAppProducts();
-  const found = products.find((item) => String(item.productId) === id);
-  if (!found) {
+  const id = Number(productId);
+  if (!Number.isFinite(id) || id <= 0) {
     return undefined;
   }
-  const index = Math.max(
-    0,
-    products.findIndex((item) => item.productId === found.productId),
-  );
-  return mapAppProductToItem(found, index);
+  const res = await request<unknown>(`/app/products/${id}`);
+  const root = (res as { data?: unknown }).data ?? res;
+  const mapped = mapProduct(root);
+  if (!mapped) {
+    return undefined;
+  }
+  return mapAppProductToItem(mapped, 0);
 }

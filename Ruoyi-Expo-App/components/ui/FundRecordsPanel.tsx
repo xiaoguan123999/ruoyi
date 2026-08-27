@@ -21,9 +21,9 @@ type FundListItem = Pick<AppWalletLogItem, 'id' | 'title' | 'amount' | 'currency
 function sumByCurrency(records: FundListItem[], mode: FundSummaryMode) {
   return records.reduce(
     (acc, item) => {
-      // 申请单：只累计「成功」；流水：成功文案或正负金额
-      const successByTitle = /成功|到账/.test(item.title);
-      const pendingOrFail = /申请|审核|处理|失败|拒绝|退回|冻结/.test(item.title);
+      // 申请单：只累计「成功 / 已打款」；流水：成功文案或正负金额
+      const successByTitle = /成功|到账|已打款/.test(item.title);
+      const pendingOrFail = /申请|审核|处理|失败|拒绝|退回|冻结|待打款/.test(item.title);
       let value = 0;
       if (successByTitle) {
         value = Math.abs(item.amount);
@@ -58,16 +58,22 @@ function formatRecordDate(value: string): string {
 }
 
 function resolveTone(title: string, amount: number) {
-  if (/失败|拒绝|退回/.test(title)) {
+  if (/失败|拒绝|退回|已拒绝/.test(title)) {
     return styles.fail;
   }
-  if (/待审|审核|申请|处理|冻结/.test(title)) {
+  if (/待审|审核|申请|处理|冻结|待打款/.test(title)) {
     return styles.pending;
   }
-  if (/成功|到账|入账|已通过/.test(title)) {
+  if (/成功|到账|入账|已通过|已打款/.test(title)) {
     return styles.success;
   }
   return amount < 0 ? styles.pending : styles.success;
+}
+
+function hasFeeFields(
+  item: FundListItem,
+): item is AppFundRecord & { feeAmount?: number; arrivalAmount?: number } {
+  return 'feeAmount' in item || 'arrivalAmount' in item;
 }
 
 type Props = {
@@ -92,13 +98,25 @@ export function FundRecordsPanel({
   const totals = useMemo(() => sumByCurrency(records, summaryMode), [records, summaryMode]);
   const rows = useMemo(
     () =>
-      records.map((item) => ({
-        id: item.id,
-        title: item.title,
-        date: formatRecordDate(item.createTime),
-        amount: formatMoneyLabel(item.amount, item.currency),
-        tone: resolveTone(item.title, item.amount),
-      })),
+      records.map((item) => {
+        const feeAmount = hasFeeFields(item) ? item.feeAmount : undefined;
+        const arrivalAmount = hasFeeFields(item) ? item.arrivalAmount : undefined;
+        return {
+          id: item.id,
+          title: item.title,
+          date: formatRecordDate(item.createTime),
+          amount: formatMoneyLabel(item.amount, item.currency),
+          fee:
+            feeAmount != null && feeAmount > 0
+              ? `手续费 ${formatMoneyLabel(feeAmount, item.currency)}`
+              : undefined,
+          arrival:
+            arrivalAmount != null && arrivalAmount > 0
+              ? `到账 ${formatMoneyLabel(arrivalAmount, item.currency)}`
+              : undefined,
+          tone: resolveTone(item.title, item.amount),
+        };
+      }),
     [records],
   );
 
@@ -140,6 +158,11 @@ export function FundRecordsPanel({
               <View style={styles.detailLeft}>
                 <Text style={[styles.title, item.tone]}>{item.title}</Text>
                 <Text style={styles.time}>{item.date}</Text>
+                {item.fee || item.arrival ? (
+                  <Text style={styles.meta}>
+                    {[item.fee, item.arrival].filter(Boolean).join(' · ')}
+                  </Text>
+                ) : null}
               </View>
               <Text style={styles.amount}>{item.amount}</Text>
             </View>
@@ -230,6 +253,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: colors.text,
     fontSize: 13,
+  },
+  meta: {
+    marginTop: 6,
+    color: colors.muted,
+    fontSize: 12,
   },
   amount: {
     color: colors.text,

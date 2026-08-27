@@ -132,6 +132,19 @@ export type AppAmountBody = {
   googleCode?: string;
 };
 
+/** GET /app/withdraw/config */
+export type AppWithdrawConfig = {
+  minCny: number;
+  maxCny: number;
+  minUsdt: number;
+  maxUsdt: number;
+  usdtEnabled: boolean;
+  /** 手续费百分比，3 表示 3% */
+  feeRate: number;
+  productWalletType?: string;
+  promoWalletType?: string;
+};
+
 /** 收款账户类型 */
 export type AppPayAccountType = 'USDT' | 'BANK' | 'ALIPAY';
 
@@ -168,6 +181,8 @@ export type AppSubscribeBody = {
   currency: 'CNY' | 'USDT';
   /** 交易密码 */
   payPassword: string;
+  /** 认购份数，默认 1；上限由后端校验 */
+  quantity?: number;
 };
 
 export type AppProduct = {
@@ -191,6 +206,10 @@ export type AppProduct = {
   categoryId?: number;
   categoryName?: string;
   coverUrl?: string;
+  /** 风险等级 */
+  riskLevel?: string;
+  /** 收益发放方式 */
+  payoutMethod?: string;
 };
 
 /** GET /app/product/series */
@@ -263,7 +282,12 @@ export type AppOrderRecord = {
 export type AppFundRecord = {
   id: string;
   title: string;
+  /** 申请金额 */
   amount: number;
+  /** 手续费（提现记录） */
+  feeAmount?: number;
+  /** 到账金额（提现记录） */
+  arrivalAmount?: number;
   currency: string;
   status: string;
   createTime: string;
@@ -328,8 +352,11 @@ export type AppLevel = {
   /** 最低团队业绩 */
   minTeamPerfCny?: number;
   minTeamPerfUsdt?: number;
-  teamRewardCny?: number;
-  teamRewardUsdt?: number;
+  /** 团队累计充值金额（等级表「充值金额」列） */
+  minTeamRechargeCny?: number;
+  minTeamRechargeUsdt?: number;
+  rewardCny?: number;
+  rewardUsdt?: number;
   sort?: number;
   status?: string;
   remark?: string;
@@ -393,13 +420,13 @@ export type AppOverviewItem = {
   sort: number;
 };
 
-export type AppAboutItem = {
-  id: string;
+export type AppAbout = {
+  mode: 'TEXT' | 'PDF';
   title: string;
   subtitle: string;
   content: string;
   imageUrl?: string;
-  sort: number;
+  pdfUrl?: string;
 };
 
 export type AppGroupChatItem = {

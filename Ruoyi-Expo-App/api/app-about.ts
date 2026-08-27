@@ -1,43 +1,20 @@
-import { stripNoticeHtml } from '@/api/app-notice';
 import { request } from '@/api/request';
-import type { AppAboutItem } from '@/api/types';
+import type { AppAbout } from '@/api/types';
 import { config } from '@/config';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function toNumber(value: unknown, fallback = 0): number {
-  const next = Number(value);
-  return Number.isFinite(next) ? next : fallback;
-}
-
-function pickString(source: Record<string, unknown>, keys: string[], fallback = ''): string {
-  for (const key of keys) {
-    if (source[key] !== undefined && source[key] !== null && String(source[key]).length > 0) {
-      return String(source[key]);
-    }
+function pickString(source: Record<string, unknown>, key: string, fallback = ''): string {
+  const value = source[key];
+  if (value !== undefined && value !== null && String(value).length > 0) {
+    return String(value);
   }
   return fallback;
 }
 
-function extractList(res: Record<string, unknown>): unknown[] {
-  if (Array.isArray(res.data)) {
-    return res.data;
-  }
-  if (Array.isArray(res.rows)) {
-    return res.rows;
-  }
-  if (isRecord(res.data)) {
-    const nested = res.data.list ?? res.data.rows ?? res.data.records;
-    if (Array.isArray(nested)) {
-      return nested;
-    }
-  }
-  return [];
-}
-
-function resolveImageUrl(raw: string): string {
+function resolveMediaUrl(raw: string): string {
   const url = raw.trim();
   if (!url) {
     return '';
@@ -54,29 +31,31 @@ function resolveImageUrl(raw: string): string {
   return `${config.API_URL}/${url}`;
 }
 
-function mapAboutItem(raw: unknown, index: number): AppAboutItem | null {
+function mapAbout(raw: unknown): AppAbout | null {
   if (!isRecord(raw)) {
     return null;
   }
-  const id = pickString(raw, ['aboutId', 'id'], String(index + 1));
-  if (!id) {
-    return null;
-  }
-  const imageUrl = resolveImageUrl(pickString(raw, ['imageUrl', 'image', 'cover']));
+  const modeRaw = pickString(raw, 'mode', 'TEXT').toUpperCase();
+  const mode: AppAbout['mode'] = modeRaw === 'PDF' ? 'PDF' : 'TEXT';
+  const imageUrl = resolveMediaUrl(pickString(raw, 'imageUrl'));
+  const pdfUrl = resolveMediaUrl(pickString(raw, 'pdfUrl'));
   return {
-    id,
-    title: pickString(raw, ['title', 'name'], '--'),
-    subtitle: pickString(raw, ['subtitle', 'subTitle', 'slogan']),
-    content: stripNoticeHtml(pickString(raw, ['content', 'remark', 'desc', 'description'])),
+    mode,
+    title: pickString(raw, 'title'),
+    subtitle: pickString(raw, 'subtitle'),
+    content: pickString(raw, 'content'),
     imageUrl: imageUrl || undefined,
-    sort: toNumber(raw.sort, index + 1),
+    pdfUrl: pdfUrl || undefined,
   };
 }
 
-export async function fetchAppAbout(): Promise<AppAboutItem[]> {
+/** GET /app/about — 全局单条，免登录 */
+export async function fetchAppAbout(): Promise<AppAbout | null> {
   const res = await request<unknown>('/app/about', { withToken: false });
-  return extractList(res as Record<string, unknown>)
-    .map(mapAboutItem)
-    .filter((item): item is AppAboutItem => item !== null)
-    .sort((a, b) => a.sort - b.sort);
+  const root = isRecord(res) ? (res.data ?? res) : null;
+  // 兼容旧数组：取首条
+  if (Array.isArray(root)) {
+    return mapAbout(root[0] ?? null);
+  }
+  return mapAbout(root);
 }

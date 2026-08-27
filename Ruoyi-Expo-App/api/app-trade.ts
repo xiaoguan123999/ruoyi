@@ -1,16 +1,17 @@
 import { displayText, formatBalance } from '@/api/app-auth';
-import { ApiError, request } from '@/api/request';
+import { request } from '@/api/request';
 import type {
-  AppAmountBody,
-  AppCheckinInfo,
-  AppCheckinPrizeRule,
-  AppCheckinRecord,
-  AppCheckinRule,
-  AppFundRecord,
-  AppOrderRecord,
-  AppSubscribeBody,
-  AppWallet,
-  AppWalletLogItem,
+    AppAmountBody,
+    AppCheckinInfo,
+    AppCheckinPrizeRule,
+    AppCheckinRecord,
+    AppCheckinRule,
+    AppFundRecord,
+    AppOrderRecord,
+    AppSubscribeBody,
+    AppWallet,
+    AppWalletLogItem,
+    AppWithdrawConfig,
 } from '@/api/types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -96,14 +97,16 @@ function normalizeCurrency(value: unknown): string {
   return 'CNY';
 }
 
-/** 认购：productId + currency + 交易密码 */
+/** 认购：productId + currency + 交易密码 + 可选份数（上限由后端校验） */
 export async function subscribeAppProduct(body: AppSubscribeBody): Promise<string> {
+  const quantity = Math.max(1, Math.floor(body.quantity ?? 1));
   const res = await request('/app/orders', {
     method: 'POST',
     body: {
       productId: body.productId,
       currency: body.currency,
       payPassword: body.payPassword,
+      quantity,
     },
   });
   return res.msg || '认购成功';
@@ -311,6 +314,39 @@ export async function fetchAppWallet(): Promise<AppWallet> {
   return mapped ?? emptyWallet();
 }
 
+function mapWithdrawConfig(raw: unknown): AppWithdrawConfig | null {
+  if (!isRecord(raw)) {
+    return null;
+  }
+  return {
+    minCny: pickNumber(raw, ['minCny']),
+    maxCny: pickNumber(raw, ['maxCny']),
+    minUsdt: pickNumber(raw, ['minUsdt']),
+    maxUsdt: pickNumber(raw, ['maxUsdt']),
+    usdtEnabled: raw.usdtEnabled === true || raw.usdtEnabled === 'true' || raw.usdtEnabled === 1,
+    feeRate: pickNumber(raw, ['feeRate']),
+    productWalletType: pickString(raw, ['productWalletType']) || undefined,
+    promoWalletType: pickString(raw, ['promoWalletType']) || undefined,
+  };
+}
+
+/** GET /app/withdraw/config — 进入提现页先拉规则 */
+export async function fetchAppWithdrawConfig(): Promise<AppWithdrawConfig> {
+  const res = await request<unknown>('/app/withdraw/config');
+  const root = extractDataRoot(res as Record<string, unknown>);
+  return (
+    mapWithdrawConfig(root) ??
+    mapWithdrawConfig(res) ?? {
+      minCny: 0,
+      maxCny: 0,
+      minUsdt: 0,
+      maxUsdt: 0,
+      usdtEnabled: true,
+      feeRate: 0,
+    }
+  );
+}
+
 export async function applyAppRecharge(body: AppAmountBody): Promise<string> {
   const res = await request('/app/recharge', { method: 'POST', body });
   return res.msg || '充值申请已提交';
@@ -434,8 +470,64 @@ export async function fetchAppRechargeRecords(): Promise<AppFundRecord[]> {
   return fetchAppFundRecords({ bizType: 'RECHARGE', pageNum: 1, pageSize: 50 });
 }
 
-export async function fetchAppWithdrawRecords(): Promise<AppFundRecord[]> {
-  return fetchAppFundRecords({ bizType: 'WITHDRAW', pageNum: 1, pageSize: 50 });
+/** 提现申请单状态：0 待打款 / 1 已打款 / 2 已拒绝 */
+function mapWithdrawStatusLabel(status: string, statusLabel?: string): string {
+  const fromApi = statusLabel?.trim();
+  if (fromApi) {
+    return fromApi;
+  }
+  const code = status.trim();
+  if (code === '0') {
+    return '待打款';
+  }
+  if (code === '1') {
+    return '已打款';
+  }
+  if (code === '2') {
+    return '已拒绝';
+  }
+  return '待打款';
+}
+
+function mapWithdrawRecord(raw: unknown): AppFundRecord | null {
+  if (!isRecord(raw)) {
+    return null;
+  }
+  const id = pickNumber(raw, ['withdrawId', 'id']);
+  const amount = pickNumber(raw, ['amount']);
+  const feeAmount = pickNumber(raw, ['feeAmount']);
+  const arrivalAmount = pickNumber(raw, ['arrivalAmount']);
+  const status = pickString(raw, ['status'], '');
+  const statusLabel = pickString(raw, ['statusLabel']);
+  const title = mapWithdrawStatusLabel(status, statusLabel || undefined);
+
+  return {
+    id: String(id || `withdraw-${pickString(raw, ['createTime'])}-${amount}`),
+    title,
+    amount,
+    feeAmount: feeAmount > 0 ? feeAmount : undefined,
+    arrivalAmount: arrivalAmount > 0 ? arrivalAmount : undefined,
+    currency: normalizeCurrency(raw.currency),
+    status,
+    createTime: formatDateTime(raw.createTime ?? raw.auditTime ?? raw.updateTime),
+  };
+}
+
+/** GET /app/withdraw — 提现记录（含手续费 / 到账金额） */
+export async function fetchAppWithdrawRecords(options?: {
+  pageNum?: number;
+  pageSize?: number;
+}): Promise<AppFundRecord[]> {
+  const pageNum = options?.pageNum ?? 1;
+  const pageSize = options?.pageSize ?? 10;
+  const qs = new URLSearchParams({
+    pageNum: String(pageNum),
+    pageSize: String(pageSize),
+  }).toString();
+  const res = await request(`/app/withdraw?${qs}`);
+  return extractRows(res)
+    .map((row) => mapWithdrawRecord(row))
+    .filter((item): item is AppFundRecord => item !== null);
 }
 
 const WALLET_BIZ_LABEL: Record<string, string> = {

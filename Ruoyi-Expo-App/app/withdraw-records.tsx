@@ -2,7 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 
 import { ApiError } from '@/api/request';
-import { fetchAppFundRecords } from '@/api/app-trade';
+import { fetchAppWithdrawRecords } from '@/api/app-trade';
 import type { AppFundRecord } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { FundRecordsPanel } from '@/components/ui/FundRecordsPanel';
@@ -10,17 +10,16 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { images } from '@/constants/images';
 import { modalError } from '@/utils/toast';
 
-/** GET /app/fundRecords?bizType=WITHDRAW */
+/** GET /app/withdraw */
 export default function WithdrawRecordsScreen() {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<AppFundRecord[]>([]);
 
   const load = useCallback(async () => {
     try {
-      const next = await fetchAppFundRecords({
+      const next = await fetchAppWithdrawRecords({
         pageNum: 1,
         pageSize: 50,
-        bizType: 'WITHDRAW',
       });
       setRecords(next);
     } catch (error) {

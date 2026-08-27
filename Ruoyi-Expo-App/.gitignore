@@ -34,6 +34,9 @@ yarn-error.*
 .env
 .env*.local
 
+# local mock assets (large PDF samples)
+public/mock/*.pdf
+
 # Tamagui
 .tamagui/
 

@@ -1,5 +1,5 @@
-import { useFocusEffect, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -27,12 +27,10 @@ type DisplayLevelRow = {
   levelId: number;
   levelName: string;
   teamDepth: string;
-  minRechargeCny: number;
-  minRechargeUsdt: number;
-  minTeamPerfCny: number;
-  minTeamPerfUsdt: number;
-  teamRewardCny: number;
-  teamRewardUsdt: number;
+  minTeamRechargeCny: number;
+  minTeamRechargeUsdt: number;
+  rewardCny: number;
+  rewardUsdt: number;
 };
 
 function toNumberOrZero(value?: number | null): number {
@@ -44,12 +42,10 @@ function mapLevelRows(apiLevels: AppLevel[]): DisplayLevelRow[] {
     levelId: apiLevel.levelId,
     levelName: apiLevel.levelName?.trim() || `等级${apiLevel.levelId}`,
     teamDepth: apiLevel.teamDepth?.trim() || '',
-    minRechargeCny: toNumberOrZero(apiLevel.minRechargeCny),
-    minRechargeUsdt: toNumberOrZero(apiLevel.minRechargeUsdt),
-    minTeamPerfCny: toNumberOrZero(apiLevel.minTeamPerfCny),
-    minTeamPerfUsdt: toNumberOrZero(apiLevel.minTeamPerfUsdt),
-    teamRewardCny: toNumberOrZero(apiLevel.teamRewardCny),
-    teamRewardUsdt: toNumberOrZero(apiLevel.teamRewardUsdt),
+    minTeamRechargeCny: toNumberOrZero(apiLevel.minTeamRechargeCny),
+    minTeamRechargeUsdt: toNumberOrZero(apiLevel.minTeamRechargeUsdt),
+    rewardCny: toNumberOrZero(apiLevel.rewardCny),
+    rewardUsdt: toNumberOrZero(apiLevel.rewardUsdt),
   }));
 }
 
@@ -128,10 +124,10 @@ function LevelTableRow({
         <TableCurrencyUnit />
       </View>
       <View style={styles.colRecharge}>
-        <TableDualAmount cny={row.minRechargeCny} usdt={row.minRechargeUsdt} />
+        <TableDualAmount cny={row.minTeamRechargeCny} usdt={row.minTeamRechargeUsdt} />
       </View>
       <View style={styles.colReward}>
-        <TableDualAmount cny={row.teamRewardCny} usdt={row.teamRewardUsdt} />
+        <TableDualAmount cny={row.rewardCny} usdt={row.rewardUsdt} />
       </View>
     </View>
   );
@@ -194,8 +190,8 @@ export default function LevelsScreen() {
         ? displayRows.find((row) => row.levelId === currentLevelId)
         : displayRows.find((row) => row.levelName === currentLevelName);
     return {
-      cny: matched?.teamRewardCny ?? 0,
-      usdt: matched?.teamRewardUsdt ?? 0,
+      cny: matched?.rewardCny ?? 0,
+      usdt: matched?.rewardUsdt ?? 0,
     };
   }, [currentLevelId, currentLevelName, displayRows]);
 

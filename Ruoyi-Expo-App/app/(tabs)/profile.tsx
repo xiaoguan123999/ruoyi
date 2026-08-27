@@ -17,7 +17,6 @@ import {
   fetchAppProfile,
   formatBalance,
   isKycVerified,
-  maskPhone,
   toNumberOrZero,
 } from '@/api/app-auth';
 import { fetchAppWallet } from '@/api/app-trade';
@@ -76,7 +75,7 @@ function GradientPill({
     </Pressable>
   );
 }
-function BoostValueBox() {
+function BoostValueBox({ value }: { value: number }) {
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   return (
@@ -109,7 +108,7 @@ function BoostValueBox() {
         <View style={[StyleSheet.absoluteFill, styles.boostFallback]} />
       )}
       <Text style={styles.boostLabel}>助力值</Text>
-      <Text style={styles.boostValue}>0</Text>
+      <Text style={styles.boostValue}>{formatBalance(value)}</Text>
     </View>
   );
 }
@@ -117,7 +116,7 @@ function BoostValueBox() {
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, hydrated } = useAuth();
+  const { user, hydrated, isLoggedIn } = useAuth();
   const [wallet, setWallet] = useState<AppWallet | null>(null);
 
   const load = useCallback(async () => {
@@ -141,16 +140,20 @@ export default function ProfileScreen() {
     toastThenNavigate('已退出登录', () => router.replace('/sign-in'), { type: 'success' });
   };
 
-  const displayName = displayText(user?.nickName || user?.userName);
-  const displayPhone = displayText(maskPhone(user?.phone || user?.userName));
-  const inviteCode = displayText(user?.inviteCode).trim();
+  const displayName = displayText(user?.nickName || user?.userName || user?.phone);
+  const inviteCode = user?.inviteCode?.trim() || '';
   const verified = isKycVerified(user?.kycStatus);
   const cnyAvailable = toNumberOrZero(wallet?.cnyAvailable);
   const usdtAvailable = toNumberOrZero(wallet?.usdtAvailable);
   const cnyProductIncome = toNumberOrZero(wallet?.cnyProductIncome);
   const usdtProductIncome = toNumberOrZero(wallet?.usdtProductIncome);
-  const cnyAssistValue = toNumberOrZero(wallet?.cnyAssistValue);
+  const cnyAssistValue = toNumberOrZero(wallet?.cnyAssistValue ?? user?.assistValue);
   const usdtAssistValue = toNumberOrZero(wallet?.usdtAssistValue);
+  // 助力值展示：优先人民币助力，否则 USDT
+  const boostValue = cnyAssistValue > 0 ? cnyAssistValue : usdtAssistValue;
+
+  // 有 token 就展示资产/菜单；不要等 user 对象，否则会出现整页空白
+  const showBody = hydrated && isLoggedIn;
 
   return (
     <View style={styles.page}>
@@ -172,28 +175,31 @@ export default function ProfileScreen() {
         <View style={styles.user}>
           <Image source={images.avatar} style={styles.avatar} contentFit="cover" />
           <View style={styles.userMeta}>
-            <View style={styles.nameRow}>
-              <Text style={styles.name}>{displayName}</Text>
-              {verified ? (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>已认证</Text>
-                </View>
-              ) : null}
-            </View>
-              <View style={styles.userSubRow}>
+            <View style={styles.userMainRow}>
               <View style={styles.userSubText}>
-                <Text style={styles.phone}>
-                  {displayPhone}
-                  {inviteCode ? `  邀请码${inviteCode}` : ''}
+                <View style={styles.nameRow}>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {displayName}
+                  </Text>
+                  {verified ? (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>已认证</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={styles.inviteLine} numberOfLines={1}>
+                  {inviteCode ? `邀请码 ${inviteCode}` : '邀请码 --'}
                 </Text>
-                <Text style={styles.slogan}>连接星空 · 智联未来</Text>
+                <Text style={styles.slogan} numberOfLines={1}>
+                  连接星空 · 智联未来
+                </Text>
               </View>
-              <BoostValueBox />
+              <BoostValueBox value={boostValue} />
             </View>
           </View>
         </View>
 
-        {!hydrated || !user ? (
+        {!showBody ? (
           <View style={styles.loading}>
             <ActivityIndicator color={colors.accent} />
           </View>
@@ -345,16 +351,16 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  userSubRow: {
-    marginTop: 5,
+  userMainRow: {
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'center',
     gap: 10,
   },
   userSubText: {
     flex: 1,
     minWidth: 0,
     justifyContent: 'center',
+    gap: 4,
   },
   boostBox: {
     width: 58,
@@ -392,6 +398,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 22,
     fontWeight: '800',
+    lineHeight: 28,
   },
   badge: {
     backgroundColor: 'rgba(90, 170, 255, 0.55)',
@@ -404,14 +411,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  phone: {
+  inviteLine: {
     color: 'rgba(210, 225, 245, 0.78)',
     fontSize: 14,
     lineHeight: 20,
   },
   slogan: {
     color: 'rgba(170, 195, 225, 0.72)',
-    marginTop: 4,
     fontSize: 12,
     lineHeight: 16,
   },
