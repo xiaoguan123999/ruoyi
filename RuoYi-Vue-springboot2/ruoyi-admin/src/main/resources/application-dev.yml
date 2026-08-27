@@ -1,0 +1,46 @@
+# 本地开发环境
+# 启动：保持 application.yml 中 spring.profiles.active: druid,dev
+# 或：--spring.profiles.active=druid,dev
+
+ruoyi:
+  profile: /Users/xiaoguan/go/project/ruoyi/uploadPath
+  r2:
+    access-key: 61ea1fdc599abccb3927a7b91566c95f
+    secret-key: a359bbf563bd6c6a8a3a1aa8e1fa88ada48c787609c7fee50d43fd77228c0415
+    public-url: https://pub-563d7104cbd24561a3b416a6c8f1caa7.r2.dev
+
+logging:
+  level:
+    com.ruoyi: debug
+    org.springframework: warn
+
+spring:
+  devtools:
+    restart:
+      enabled: true
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    password: 123456
+    timeout: 10s
+    lettuce:
+      pool:
+        min-idle: 0
+        max-idle: 8
+        max-active: 8
+        max-wait: -1ms
+  datasource:
+    druid:
+      master:
+        url: jdbc:mysql://localhost:3306/ry-vue?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+        username: root
+        password: password
+      statViewServlet:
+        enabled: true
+
+token:
+  secret: abcdefghijklmnopqrstuvwxyz
+
+swagger:
+  enabled: true

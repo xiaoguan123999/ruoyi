@@ -1,0 +1,55 @@
+# 生产环境
+# 启动：--spring.profiles.active=druid,prod
+# 敏感项必须用环境变量注入，不要把生产密码写进仓库
+
+ruoyi:
+  profile: ${RUOYI_PROFILE:/home/ruoyi/uploadPath}
+  r2:
+    access-key: ${R2_ACCESS_KEY:}
+    secret-key: ${R2_SECRET_KEY:}
+    public-url: ${R2_PUBLIC_URL:}
+
+logging:
+  level:
+    com.ruoyi: warn
+    org.springframework: warn
+
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  devtools:
+    restart:
+      enabled: false
+  redis:
+    host: ${REDIS_HOST:}
+    port: ${REDIS_PORT:6379}
+    database: ${REDIS_DATABASE:0}
+    password: ${REDIS_PASSWORD:}
+    timeout: 10s
+    lettuce:
+      pool:
+        min-idle: 2
+        max-idle: 16
+        max-active: 32
+        max-wait: 3000ms
+  datasource:
+    druid:
+      master:
+        url: jdbc:mysql://${DB_HOST:}:${DB_PORT:3306}/${DB_NAME:ry-vue}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+        username: ${DB_USERNAME:}
+        password: ${DB_PASSWORD:}
+      maxActive: 50
+      statViewServlet:
+        enabled: false
+        allow: 127.0.0.1
+
+token:
+  secret: ${TOKEN_SECRET:}
+
+swagger:
+  enabled: false
+
+referer:
+  enabled: true
+  allowed-domains: ${REFERER_DOMAINS:your-domain.com,www.your-domain.com}

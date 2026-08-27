@@ -1,0 +1,50 @@
+# 测试环境
+# 启动：--spring.profiles.active=druid,test
+# 也可改 application.yml 里的 spring.profiles.active
+# 库地址、Redis、密钥部署前改成测试机实际值，或用环境变量覆盖
+
+ruoyi:
+  profile: ${RUOYI_PROFILE:/home/ruoyi/uploadPath}
+  r2:
+    access-key: ${R2_ACCESS_KEY:61ea1fdc599abccb3927a7b91566c95f}
+    secret-key: ${R2_SECRET_KEY:a359bbf563bd6c6a8a3a1aa8e1fa88ada48c787609c7fee50d43fd77228c0415}
+    public-url: ${R2_PUBLIC_URL:https://pub-563d7104cbd24561a3b416a6c8f1caa7.r2.dev}
+
+logging:
+  level:
+    com.ruoyi: info
+    org.springframework: warn
+
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  devtools:
+    restart:
+      enabled: false
+  redis:
+    host: ${REDIS_HOST:127.0.0.1}
+    port: ${REDIS_PORT:6379}
+    database: ${REDIS_DATABASE:1}
+    password: ${REDIS_PASSWORD:123456}
+    timeout: 10s
+    lettuce:
+      pool:
+        min-idle: 0
+        max-idle: 8
+        max-active: 8
+        max-wait: -1ms
+  datasource:
+    druid:
+      master:
+        url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:ry-vue-test}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+        username: ${DB_USERNAME:root}
+        password: ${DB_PASSWORD:password}
+      statViewServlet:
+        enabled: true
+
+token:
+  secret: ${TOKEN_SECRET:ruoyi-test-token-secret}
+
+swagger:
+  enabled: true
