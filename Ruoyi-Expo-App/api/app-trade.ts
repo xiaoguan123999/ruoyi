@@ -477,7 +477,6 @@ export async function fetchAppFundRecords(options?: {
   });
   if (options?.bizType) {
     query.set('bizType', options.bizType);
-    query.set('type', options.bizType);
   }
   if (options?.status !== undefined && options?.status !== null && `${options.status}` !== '') {
     query.set('status', String(options.status));
@@ -551,6 +550,7 @@ export async function fetchAppWithdrawRecords(options?: {
   const qs = new URLSearchParams({
     pageNum: String(pageNum),
     pageSize: String(pageSize),
+    bizType: 'WITHDRAW',
   }).toString();
   const res = await request(`/app/withdraw?${qs}`);
   return extractRows(res)
@@ -601,6 +601,7 @@ function mapWalletLogItem(raw: unknown): AppWalletLogItem | null {
   const currency = normalizeCurrency(raw.currency);
   const bizType = pickString(raw, ['bizType', 'type'], '').toUpperCase();
   const title = mapWalletLogTitle(raw, bizType);
+  const remark = pickString(raw, ['remark']);
   const createTime = formatDateTime(raw.createTime ?? raw.updateTime);
   if (!id && !createTime && !amount) {
     return null;
@@ -608,18 +609,19 @@ function mapWalletLogItem(raw: unknown): AppWalletLogItem | null {
   return {
     id: String(id || `${bizType}-${createTime}-${amount}`),
     title,
+    remark: remark && remark !== title ? remark : undefined,
     amount,
     currency,
     createTime,
   };
 }
 
-/** GET /app/walletLog — 资金明细「充值余额」流水；兼容别名 */
+/** GET /app/walletLog — 资金明细按钱包 typeCode 筛选 */
 export async function fetchAppWalletLogs(options?: {
   pageNum?: number;
   pageSize?: number;
   currency?: 'CNY' | 'USDT';
-  bizType?: string;
+  typeCode?: string;
 }): Promise<AppWalletLogItem[]> {
   const pageNum = options?.pageNum ?? 1;
   const pageSize = options?.pageSize ?? 50;
@@ -630,8 +632,8 @@ export async function fetchAppWalletLogs(options?: {
   if (options?.currency) {
     query.set('currency', options.currency);
   }
-  if (options?.bizType) {
-    query.set('bizType', options.bizType);
+  if (options?.typeCode) {
+    query.set('typeCode', options.typeCode);
   }
   const qs = query.toString();
 

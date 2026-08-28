@@ -120,8 +120,6 @@ export default function WithdrawScreen() {
       : selectedCurrency === 'CNY'
         ? availableCny
         : 0;
-  const minAmount =
-    selectedCurrency === 'USDT' ? (config?.minUsdt ?? 0) : (config?.minCny ?? 0);
   const maxAmount =
     selectedCurrency === 'USDT' ? (config?.maxUsdt ?? 0) : (config?.maxCny ?? 0);
   const feeRate = config?.feeRate ?? 0;
@@ -146,14 +144,6 @@ export default function WithdrawScreen() {
     const value = parseAmountInput(amount);
     if (value <= 0) {
       modalWarning('请输入有效提现金额');
-      return;
-    }
-    if (minAmount > 0 && value < minAmount) {
-      modalWarning(
-        selectedCurrency === 'USDT'
-          ? `最低提现金额 ${formatBalance(minAmount)} USDT`
-          : `最低提现金额 ¥ ${formatBalance(minAmount)}`,
-      );
       return;
     }
     if (maxAmount > 0 && value > maxAmount) {

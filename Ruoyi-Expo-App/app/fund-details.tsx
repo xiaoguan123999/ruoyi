@@ -14,15 +14,10 @@ import { modalError } from '@/utils/toast';
 
 type FundTab = 'recharge' | 'product' | 'promo';
 
-const tabs: { key: FundTab; label: string; bizType: string; emptyText: string }[] = [
-  { key: 'recharge', label: '充值', bizType: 'RECHARGE', emptyText: '暂无充值记录' },
-  { key: 'product', label: '产品收益', bizType: 'REBATE', emptyText: '暂无产品收益记录' },
-  {
-    key: 'promo',
-    label: '推广收益',
-    bizType: 'INVITE,COMMISSION,CHECKIN,KYC_REWARD,LEVEL_REWARD',
-    emptyText: '暂无推广收益记录',
-  },
+const tabs: { key: FundTab; label: string; typeCode: string; emptyText: string }[] = [
+  { key: 'recharge', label: '充值', typeCode: 'BALANCE', emptyText: '暂无充值记录' },
+  { key: 'product', label: '产品收益', typeCode: 'PRODUCT', emptyText: '暂无产品收益记录' },
+  { key: 'promo', label: '推广收益', typeCode: 'PROMO', emptyText: '暂无推广收益记录' },
 ];
 
 function resolveTab(value: string | string[] | undefined): FundTab {
@@ -60,7 +55,7 @@ export default function FundDetailsScreen() {
       const next = await fetchAppWalletLogs({
         pageNum: 1,
         pageSize: 50,
-        bizType: current.bizType,
+        typeCode: current.typeCode,
       });
       setRecords(next);
     } catch (error) {
@@ -70,7 +65,7 @@ export default function FundDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [current.bizType]);
+  }, [current.typeCode]);
 
   useFocusEffect(
     useCallback(() => {

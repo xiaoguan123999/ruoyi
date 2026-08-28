@@ -301,6 +301,7 @@ export type AppFundRecord = {
 export type AppWalletLogItem = {
   id: string;
   title: string;
+  remark?: string;
   amount: number;
   currency: string;
   createTime: string;

@@ -16,7 +16,9 @@ import { colors } from '@/theme/colors';
 /** credit：累计入账（充值）；debit：累计出账（提现） */
 export type FundSummaryMode = 'credit' | 'debit';
 
-type FundListItem = Pick<AppWalletLogItem, 'id' | 'title' | 'amount' | 'currency' | 'createTime'> | AppFundRecord;
+type FundListItem =
+  | Pick<AppWalletLogItem, 'id' | 'title' | 'remark' | 'amount' | 'currency' | 'createTime'>
+  | AppFundRecord;
 
 function sumByCurrency(records: FundListItem[], mode: FundSummaryMode) {
   return records.reduce(
@@ -104,6 +106,7 @@ export function FundRecordsPanel({
         return {
           id: item.id,
           title: item.title,
+          remark: 'remark' in item ? item.remark : undefined,
           date: formatRecordDate(item.createTime),
           amount: formatMoneyLabel(item.amount, item.currency),
           fee:
@@ -157,6 +160,7 @@ export function FundRecordsPanel({
             <View style={styles.detailRow}>
               <View style={styles.detailLeft}>
                 <Text style={[styles.title, item.tone]}>{item.title}</Text>
+                {item.remark ? <Text style={styles.remark}>{item.remark}</Text> : null}
                 <Text style={styles.time}>{item.date}</Text>
                 {item.fee || item.arrival ? (
                   <Text style={styles.meta}>
@@ -229,7 +233,7 @@ const styles = StyleSheet.create({
   },
   detailRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
   detailLeft: {
@@ -239,6 +243,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  remark: {
+    marginTop: 4,
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
   },
   success: {
     color: '#6FCF97',
@@ -263,5 +273,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
     fontWeight: '600',
+    paddingTop: 1,
   },
 });
