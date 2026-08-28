@@ -287,8 +287,6 @@ function applyThresholdDefaults(target: any) {
 function buildLevelPayload(data: any) {
   const payload = { ...data }
   applyThresholdDefaults(payload)
-  if (payload.personalThresholdMode === "EQUIV") payload.minRechargeUsdt = 0
-  if (payload.teamThresholdMode === "EQUIV") payload.minTeamRechargeUsdt = 0
   return payload
 }
 const copyLoading = ref(false)

@@ -141,6 +141,12 @@
           <el-input-number v-model="rule.feeRate" :min="0" :max="100" :precision="2" :step="0.1" style="width: 100%" />
           <div class="tip tip-block">从申请金额扣，0 表示免手续费；确认打款时按「到账」金额转账</div>
         </el-form-item>
+        <el-form-item label="提现需实名">
+          <div class="switch-with-tip">
+            <el-switch v-model="rule.needKyc" />
+            <div class="tip tip-block">开启后，未通过实名认证的会员不能提交提现</div>
+          </div>
+        </el-form-item>
         <el-form-item label="开放USDT充提">
           <div class="switch-with-tip">
             <el-switch v-model="rule.usdtEnabled" />
@@ -197,7 +203,7 @@ import { isExternal } from "@/utils/validate"
 const { proxy } = getCurrentInstance() as any
 const ruleOpen = ref(false)
 const ruleLoading = ref(false)
-const rule = ref({ minCny: 105, maxCny: 0, minUsdt: 105, maxUsdt: 0, feeRate: 3, usdtEnabled: true, productWalletType: "PRODUCT", promoWalletType: "PROMO" })
+const rule = ref({ minCny: 105, maxCny: 0, minUsdt: 105, maxUsdt: 0, feeRate: 3, needKyc: false, usdtEnabled: true, productWalletType: "PRODUCT", promoWalletType: "PROMO" })
 const ruleRules = {
   minCny: [{ required: true, message: "请填写人民币最低提现", trigger: "blur" }],
   minUsdt: [{ required: true, message: "请填写USDT最低提现", trigger: "blur" }]
@@ -248,6 +254,7 @@ function loadRule() {
       minUsdt: Number(data.minUsdt ?? 105),
       maxUsdt: Number(data.maxUsdt ?? 0),
       feeRate: Number(data.feeRate ?? 3),
+      needKyc: data.needKyc === true,
       usdtEnabled: data.usdtEnabled !== false,
       productWalletType: data.productWalletType || "PRODUCT",
       promoWalletType: data.promoWalletType || "PROMO"
