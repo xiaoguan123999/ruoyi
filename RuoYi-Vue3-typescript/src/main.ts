@@ -16,6 +16,7 @@ import directive from './directive' // directive
 
 // 注册指令
 import plugins from './plugins' // plugins
+import { patchOpsElTable } from './plugins/opsTableScroll'
 import { download } from '@/utils/request'
 
 // svg图标
@@ -83,5 +84,8 @@ app.use(ElementPlus, {
   // 支持 large、default、small
   size: Cookies.get('size') || 'default'
 })
+
+// 列表表格按视口高度滚动（需在 ElementPlus 注册之后覆盖 ElTable）
+patchOpsElTable(app)
 
 app.mount('#app')

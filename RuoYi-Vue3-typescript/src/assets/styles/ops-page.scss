@@ -69,6 +69,11 @@
     overflow: hidden;
     margin-bottom: var(--ops-gap);
 
+    .el-table__body-wrapper {
+      scrollbar-width: thin;
+      scrollbar-color: var(--el-border-color-darker) transparent;
+    }
+
     &::before {
       display: none;
     }
@@ -227,6 +232,11 @@
         margin-bottom: 0;
         overflow: hidden;
 
+        .el-table__body-wrapper {
+          scrollbar-width: thin;
+          scrollbar-color: var(--el-border-color-darker) transparent;
+        }
+
         &::before {
           display: none;
         }
@@ -339,4 +349,11 @@ html.dark .ops-page {
   > .el-alert.el-alert--warning {
     background: rgba(230, 162, 60, 0.12);
   }
+}
+
+/* 系统管理等非 ops-page 列表：统一表体滚动条样式 */
+.app-container .el-table .el-table__body-wrapper,
+.tree-sidebar-content .el-table .el-table__body-wrapper {
+  scrollbar-width: thin;
+  scrollbar-color: var(--el-border-color-darker) transparent;
 }
