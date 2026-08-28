@@ -149,7 +149,7 @@ export default function TeamScreen() {
       >
         <View style={styles.topCard}>
           <SummaryMetric label="注册人数" value={formatTeamAmount(totals.register)} />
-          <SummaryMetric label="实名人数" value={formatTeamAmount(totals.active)} />
+          <SummaryMetric label="激活人数" value={formatTeamAmount(totals.active)} />
           <SummaryMetric label="充值金额" value={formatTeamAmount(totals.recharge)} />
           <SummaryMetric label="认购金额" value={formatTeamAmount(totals.subscribe)} />
         </View>
@@ -158,7 +158,7 @@ export default function TeamScreen() {
           <View style={styles.levelHeadRow}>
             <Text style={[styles.th, styles.colLevelNo]}>级别</Text>
             <Text style={[styles.th, styles.colCount]}>注册人数</Text>
-            <Text style={[styles.th, styles.colCount]}>实名人数</Text>
+            <Text style={[styles.th, styles.colCount]}>激活人数</Text>
             <Text style={[styles.th, styles.colDualHead]}>{'充值金额\n¥/USDT'}</Text>
             <Text style={[styles.th, styles.colDualHead]}>{'认购金额\n¥/USDT'}</Text>
           </View>

@@ -123,37 +123,29 @@ function toApiR2ProxyUrl(uri: string): string | null {
     if (proxyIdx >= 0) {
       return `${api}${target.pathname.slice(proxyIdx)}${target.search}`;
     }
+    const isR2Host = /\.r2\.dev$/i.test(target.hostname);
     const key = target.pathname.replace(/^\//, '');
-    if (!key || !/\.pdf($|\?)/i.test(target.pathname)) {
+    if (!key || (!isR2Host && !/\.pdf$/i.test(target.pathname))) {
       return null;
     }
-    return `${api}/common/r2/${key}`;
+    return `${api}/common/r2/${key}${target.search}`;
   } catch {
     return null;
   }
 }
 
 async function loadPdfData(uri: string): Promise<ArrayBuffer> {
-  const candidates = [uri, toApiR2ProxyUrl(uri)].filter((item, index, list): item is string =>
-    Boolean(item) && list.indexOf(item) === index,
-  );
-  let lastError: unknown;
-  for (const url of candidates) {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        lastError = new Error(`PDF 下载失败 ${response.status}`);
-        continue;
-      }
-      const data = await response.arrayBuffer();
-      if (data.byteLength > 0) {
-        return data;
-      }
-    } catch (error) {
-      lastError = error;
-    }
+  // 跨域 R2 没有 CORS 头，先直连再回退仍会在控制台打红字，因此只走 API 代理
+  const url = toApiR2ProxyUrl(uri) ?? uri;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`PDF 下载失败 ${response.status}`);
   }
-  throw lastError instanceof Error ? lastError : new Error('PDF 加载失败');
+  const data = await response.arrayBuffer();
+  if (data.byteLength === 0) {
+    throw new Error('PDF 加载失败');
+  }
+  return data;
 }
 
 /**
