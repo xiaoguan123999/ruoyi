@@ -13,6 +13,7 @@ import * as WebBrowser from 'expo-web-browser';
 
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
+import { config } from '@/config';
 
 type Props = {
   /** PDF 绝对或相对地址 */
@@ -28,7 +29,7 @@ type PageImage = {
 
 type PdfJsModule = {
   GlobalWorkerOptions: { workerSrc: string };
-  getDocument: (src: { url: string }) => { promise: Promise<PdfDocument> };
+  getDocument: (src: { url?: string; data?: ArrayBuffer }) => { promise: Promise<PdfDocument> };
 };
 
 type PdfDocument = {
@@ -57,10 +58,14 @@ function cacheKey(uri: string, contentWidth: number) {
   return `${uri}|${contentWidth}`;
 }
 
-const PDFJS_LOCAL_MAIN = '/mock/pdf.min.mjs';
-const PDFJS_LOCAL_WORKER = '/mock/pdf.worker.min.mjs';
-const PDFJS_CDN_MAIN = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
-const PDFJS_CDN_WORKER = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+const PDFJS_SOURCES: [string, string][] = [
+  ['/mock/pdf.min.js', '/mock/pdf.worker.min.js'],
+  ['/mock/pdf.min.mjs', '/mock/pdf.worker.min.mjs'],
+  [
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs',
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs',
+  ],
+];
 
 async function fetchAsJsBlobUrl(url: string): Promise<string> {
   const response = await fetch(url);
@@ -71,56 +76,84 @@ async function fetchAsJsBlobUrl(url: string): Promise<string> {
   return URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));
 }
 
-function injectPdfModule(mainUrl: string, workerUrl: string): Promise<PdfJsModule> {
-  if (typeof window === 'undefined') {
-    return Promise.reject(new Error('仅支持 Web'));
-  }
-  return new Promise((resolve, reject) => {
-    const onReady = () => {
-      if (window.__pdfjsLib) {
-        resolve(window.__pdfjsLib);
-        return;
-      }
-      reject(new Error('pdf.js 加载失败'));
-    };
-    window.addEventListener('pdfjs-ready', onReady, { once: true });
-
-    const script = document.createElement('script');
-    script.type = 'module';
-    script.textContent = `
-      import * as pdfjs from ${JSON.stringify(mainUrl)};
-      pdfjs.GlobalWorkerOptions.workerSrc = ${JSON.stringify(workerUrl)};
-      window.__pdfjsLib = pdfjs;
-      window.dispatchEvent(new Event('pdfjs-ready'));
-    `;
-    script.onerror = () => {
-      window.removeEventListener('pdfjs-ready', onReady);
-      reject(new Error('pdf.js 脚本加载失败'));
-    };
-    document.head.appendChild(script);
-  });
+function importBlobModule(blobUrl: string): Promise<PdfJsModule> {
+  const dynamicImport = new Function('u', 'return import(u)') as (u: string) => Promise<PdfJsModule>;
+  return dynamicImport(blobUrl);
 }
 
-/** 不经 Metro 打包。本地 .mjs 若被服务器标成 octet-stream，先转成 JS Blob 再 import */
-function loadPdfJs(): Promise<PdfJsModule> {
+/** 永远不直接 import .mjs 地址，避免服务器按 octet-stream 返回时被浏览器拦截 */
+async function loadPdfJs(): Promise<PdfJsModule> {
   if (typeof window === 'undefined') {
-    return Promise.reject(new Error('仅支持 Web'));
+    throw new Error('仅支持 Web');
   }
   if (window.__pdfjsLib) {
-    return Promise.resolve(window.__pdfjsLib);
+    return window.__pdfjsLib;
   }
 
-  return (async () => {
+  let lastError: unknown;
+  for (const [mainSrc, workerSrc] of PDFJS_SOURCES) {
     try {
       const [mainUrl, workerUrl] = await Promise.all([
-        fetchAsJsBlobUrl(PDFJS_LOCAL_MAIN),
-        fetchAsJsBlobUrl(PDFJS_LOCAL_WORKER),
+        fetchAsJsBlobUrl(mainSrc),
+        fetchAsJsBlobUrl(workerSrc),
       ]);
-      return await injectPdfModule(mainUrl, workerUrl);
-    } catch {
-      return injectPdfModule(PDFJS_CDN_MAIN, PDFJS_CDN_WORKER);
+      const pdfjs = await importBlobModule(mainUrl);
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+      window.__pdfjsLib = pdfjs;
+      return pdfjs;
+    } catch (error) {
+      lastError = error;
     }
-  })();
+  }
+  throw lastError instanceof Error ? lastError : new Error('pdf.js 脚本加载失败');
+}
+
+function toApiR2ProxyUrl(uri: string): string | null {
+  const api = config.API_URL;
+  if (!api || typeof uri !== 'string' || !uri.trim()) {
+    return null;
+  }
+  try {
+    const target = new URL(uri, typeof window !== 'undefined' ? window.location.href : api);
+    const apiOrigin = new URL(api).origin;
+    if (target.origin === apiOrigin) {
+      return null;
+    }
+    const proxyIdx = target.pathname.indexOf('/common/r2/');
+    if (proxyIdx >= 0) {
+      return `${api}${target.pathname.slice(proxyIdx)}${target.search}`;
+    }
+    const key = target.pathname.replace(/^\//, '');
+    if (!key || !/\.pdf($|\?)/i.test(target.pathname)) {
+      return null;
+    }
+    return `${api}/common/r2/${key}`;
+  } catch {
+    return null;
+  }
+}
+
+async function loadPdfData(uri: string): Promise<ArrayBuffer> {
+  const candidates = [uri, toApiR2ProxyUrl(uri)].filter((item, index, list): item is string =>
+    Boolean(item) && list.indexOf(item) === index,
+  );
+  let lastError: unknown;
+  for (const url of candidates) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        lastError = new Error(`PDF 下载失败 ${response.status}`);
+        continue;
+      }
+      const data = await response.arrayBuffer();
+      if (data.byteLength > 0) {
+        return data;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('PDF 加载失败');
 }
 
 /**
@@ -160,8 +193,8 @@ export function PdfPagesViewer({ uri }: Props) {
         }
 
         const pdfjs = await loadPdfJs();
-
-        const pdf = await pdfjs.getDocument({ url: uri }).promise;
+        const data = await loadPdfData(uri);
+        const pdf = await pdfjs.getDocument({ data }).promise;
         if (cancelledRef.current) {
           return;
         }
