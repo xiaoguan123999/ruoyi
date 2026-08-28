@@ -6,21 +6,18 @@ ruoyi:
   version: 3.9.2
   # 版权年份
   copyrightYear: 2026
-  # 文件路径 示例（ Windows配置D:/ruoyi/uploadPath，Linux配置 /home/ruoyi/uploadPath）
-  profile: /Users/xiaoguan/go/project/ruoyi/uploadPath
   # 获取ip地址开关
   addressEnabled: false
+  # 文件路径 示例（ Windows配置D:/ruoyi/uploadPath，Linux配置 /home/ruoyi/uploadPath）
+  profile: /Users/xiaoguan/go/project/ruoyi/uploadPath
   # 验证码类型 math 数字计算 char 字符验证
   captchaType: math
-  # Cloudflare R2 对象存储
+  # Cloudflare R2 对象存储（密钥、公开域名在各环境 yml 中覆盖）
   r2:
     enabled: true
     endpoint: https://fab2563769f5e069a1bc345664a969e5.r2.cloudflarestorage.com
     bucket: xfzl
     region: auto
-    access-key: 61ea1fdc599abccb3927a7b91566c95f
-    secret-key: a359bbf563bd6c6a8a3a1aa8e1fa88ada48c787609c7fee50d43fd77228c0415
-    public-url: https://pub-563d7104cbd24561a3b416a6c8f1caa7.r2.dev
     prefix: upload
 
 # 开发环境配置
@@ -41,12 +38,6 @@ server:
       # Tomcat启动初始化的线程数，默认值10
       min-spare: 100
 
-# 日志配置
-logging:
-  level:
-    com.ruoyi: debug
-    org.springframework: warn
-
 # 用户配置
 user:
   password:
@@ -61,8 +52,14 @@ spring:
   messages:
     # 国际化资源文件路径
     basename: i18n/messages
+  # 切换环境（同时加载 application-druid.yml 连接池）：
+  #   本地开发  druid,dev
+  #   测试环境  druid,test
+  #   生产环境  druid,prod
+  # IDEA: Active profiles 填 druid,dev
+  # 启动参数: java -jar ruoyi-admin.jar --spring.profiles.active=druid,prod
   profiles:
-    active: druid
+    active: druid,dev
   # 文件上传
   servlet:
     multipart:
@@ -73,36 +70,32 @@ spring:
   # 服务模块
   devtools:
     restart:
-      # 热部署开关
-      enabled: true
-  # redis 配置
+      # 热部署开关（各环境可覆盖）
+      enabled: false
+  # redis 配置（各环境可覆盖）
   redis:
-    # 地址
     host: localhost
-    # 端口，默认为6379
     port: 6379
-    # 数据库索引
     database: 0
-    # 密码
     password: 123456
-    # 连接超时时间
     timeout: 10s
     lettuce:
       pool:
-        # 连接池中的最小空闲连接
         min-idle: 0
-        # 连接池中的最大空闲连接
         max-idle: 8
-        # 连接池的最大数据库连接数
         max-active: 8
-        # #连接池最大阻塞等待时间（使用负值表示没有限制）
         max-wait: -1ms
+
+# 日志配置
+logging:
+  level:
+    com.ruoyi: debug
+    org.springframework: warn
 
 # token配置
 token:
   # 令牌自定义标识
   header: Authorization
-  # 令牌密钥
   secret: abcdefghijklmnopqrstuvwxyz
   # 令牌有效期（默认30分钟）
   expireTime: 30

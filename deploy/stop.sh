@@ -1,5 +1,5 @@
 #!/bin/bash
-# 停止若依后端: sh stop.sh
+# 停止若依后端: sh stop.sh（与 profiles 无关，dev/test/prod 都用这一份）
 
 APP_DIR=/www/wwwroot/43.160.234.29
 PID_FILE="$APP_DIR/app.pid"
