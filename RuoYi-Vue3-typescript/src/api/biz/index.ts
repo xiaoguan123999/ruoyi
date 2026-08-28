@@ -236,6 +236,10 @@ export function saveLevelRewardRule(data: any): Promise<AjaxResult> {
   return request({ url: '/biz/levelReward/rule', method: 'put', data })
 }
 
+export function listLevelRewardFxLog(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/levelReward/fxLog/list', method: 'get', params: query })
+}
+
 export function listLevelRewardLevel(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/levelReward/level/list', method: 'get', params: query })
 }

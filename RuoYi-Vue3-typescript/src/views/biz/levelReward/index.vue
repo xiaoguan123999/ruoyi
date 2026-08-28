@@ -27,6 +27,9 @@
           <el-table-column label="团队口径" align="center" min-width="110">
             <template #default="scope">{{ sourceLabel(scope.row.performanceSource) }}</template>
           </el-table-column>
+          <el-table-column label="门槛方式" align="center" min-width="160">
+            <template #default="scope">{{ thresholdModeSummary(scope.row) }}</template>
+          </el-table-column>
           <el-table-column label="奖励开关" align="center" width="90">
             <template #default="scope">
               <el-tag :type="scope.row.rewardEnabled === '1' ? 'success' : 'info'">{{ scope.row.rewardEnabled === '1' ? '开' : '关' }}</el-tag>
@@ -74,16 +77,28 @@
           </el-select>
           <div class="tip">只改这个等级的团队累计怎么算。本人累计充值始终看充值，不受此项影响。</div>
         </el-form-item>
-        <el-form-item label="本人累计充值CNY">
-          <el-input-number v-model="form.minRechargeCny" :min="0" :precision="2" style="width: 100%" />
-          <div class="tip">只看这个会员自己、审核通过的充值，不是团队。两边都填则两种币都要达标；填 0 不限制。</div>
+        <el-form-item label="本人累计充值">
+          <el-radio-group v-model="form.personalThresholdMode" class="mode-radio">
+            <el-radio value="SPLIT">独立计算</el-radio>
+            <el-radio value="EQUIV">合并计算</el-radio>
+          </el-radio-group>
         </el-form-item>
-        <el-form-item label="本人累计充值USDT">
+        <el-form-item label="本人CNY">
+          <el-input-number v-model="form.minRechargeCny" :min="0" :precision="2" style="width: 100%" />
+          <div class="tip">{{ thresholdModeTip(form.personalThresholdMode) }}</div>
+        </el-form-item>
+        <el-form-item label="本人USDT">
           <el-input-number v-model="form.minRechargeUsdt" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="团队累计计算">
+          <el-radio-group v-model="form.teamThresholdMode" class="mode-radio">
+            <el-radio value="SPLIT">独立计算</el-radio>
+            <el-radio value="EQUIV">合并计算</el-radio>
+          </el-radio-group>
         </el-form-item>
         <el-form-item :label="'团队累计' + sourceLabel(form.performanceSource) + 'CNY'">
           <el-input-number v-model="form.minTeamRechargeCny" :min="0" :precision="2" style="width: 100%" />
-          <div class="tip">按上面口径和「团队要求」范围合计，不含本人。填 0 不限制。</div>
+          <div class="tip">{{ thresholdModeTip(form.teamThresholdMode) }}</div>
         </el-form-item>
         <el-form-item :label="'团队累计' + sourceLabel(form.performanceSource) + 'USDT'">
           <el-input-number v-model="form.minTeamRechargeUsdt" :min="0" :precision="2" style="width: 100%" />
@@ -187,6 +202,35 @@ function sourceLabel(v: string) {
   return "充值"
 }
 
+function thresholdModeLabel(v: string) {
+  return v === "EQUIV" ? "合并" : "独立"
+}
+
+function thresholdModeSummary(row: any) {
+  const personal = row.personalThresholdMode || row.thresholdMode || "SPLIT"
+  const team = row.teamThresholdMode || personal
+  return `本人${thresholdModeLabel(personal)} / 团队${thresholdModeLabel(team)}`
+}
+
+function thresholdModeTip(mode: string) {
+  if (mode === "EQUIV") return "合并计算：USDT 按「汇率配置」换算后与 CNY 合并比较，填 0 不限制。"
+  return "独立计算：人民币、USDT 分别达标；两项都填则两种币都要满足，填 0 不限制。"
+}
+
+function applyThresholdDefaults(target: any) {
+  const legacy = target.thresholdMode || "SPLIT"
+  if (!target.personalThresholdMode) target.personalThresholdMode = legacy
+  if (!target.teamThresholdMode) target.teamThresholdMode = target.personalThresholdMode || legacy
+}
+
+function buildLevelPayload(data: any) {
+  const payload = { ...data }
+  applyThresholdDefaults(payload)
+  if (payload.personalThresholdMode === "EQUIV") payload.minRechargeUsdt = 0
+  if (payload.teamThresholdMode === "EQUIV") payload.minTeamRechargeUsdt = 0
+  return payload
+}
+
 function runEvaluate() {
   proxy.$modal.confirm("将按当前规则核算全部会员等级和奖励，是否继续？").then(() => {
     return evaluateLevelReward()
@@ -207,8 +251,9 @@ function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
 function handleUpdate(row: any) {
   getLevel(row.levelId).then((res: any) => {
-    form.value = Object.assign({ performanceSource: "RECHARGE", mixedPayCurrency: "USDT", walletTypeCode: "PROMO" }, res.data || {})
+    form.value = Object.assign({ personalThresholdMode: "SPLIT", teamThresholdMode: "SPLIT", performanceSource: "RECHARGE", mixedPayCurrency: "USDT", walletTypeCode: "PROMO" }, res.data || {})
     if (!form.value.performanceSource) form.value.performanceSource = "RECHARGE"
+    applyThresholdDefaults(form.value)
     if (!form.value.mixedPayCurrency) form.value.mixedPayCurrency = "USDT"
     if (!form.value.walletTypeCode) form.value.walletTypeCode = "PROMO"
     open.value = true
@@ -218,7 +263,7 @@ function handleUpdate(row: any) {
 function submitForm() {
   proxy.$refs["formRef"].validate((valid: boolean) => {
     if (!valid) return
-    updateLevelRewardLevel(form.value).then(() => {
+    updateLevelRewardLevel(buildLevelPayload(form.value)).then(() => {
       proxy.$modal.msgSuccess("保存成功")
       open.value = false
       getList()
@@ -235,6 +280,13 @@ getList()
   color: #909399;
   font-size: 12px;
   line-height: 1.4;
+}
+.mode-radio {
+  margin-bottom: 4px;
+}
+.mode-radio :deep(.el-radio) {
+  margin-right: 16px;
+  height: auto;
 }
 .drawer-footer {
   display: flex;
