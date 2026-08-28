@@ -108,7 +108,7 @@ export default function SignInScreen() {
               <Text style={styles.link}>立即注册</Text>
             </Pressable>
           </Link>
-          <Pressable onPress={() => modalWarning('客服功能开发中')}>
+          <Pressable onPress={() => router.push('/service')}>
             <Text style={styles.link}>联系客服</Text>
           </Pressable>
         </View>

@@ -226,8 +226,12 @@ export type AppWallet = {
   cnyFrozen: number;
   cnyProductIncome: number;
   usdtProductIncome: number;
+  /** 推广收益（接口字段名仍为 *AssistValue，实际是 PROMO） */
   cnyAssistValue: number;
   usdtAssistValue: number;
+  /** 助力钱包 ASSIST */
+  cnyAssistWallet: number;
+  usdtAssistWallet: number;
 };
 
 export type AppCheckinRecord = {
@@ -427,6 +431,27 @@ export type AppAbout = {
   content: string;
   imageUrl?: string;
   pdfUrl?: string;
+};
+
+/** GET /app/service — 客服中心 */
+export type AppServiceChannelType = 'PHONE' | 'WECHAT' | 'TELEGRAM' | 'QQ' | 'LINK' | 'QR';
+
+export type AppServiceChannel = {
+  channelId: number;
+  channelType: AppServiceChannelType | string;
+  name: string;
+  value?: string;
+  linkUrl?: string;
+  qrUrl?: string;
+  remark?: string;
+  sort: number;
+};
+
+export type AppServiceCenter = {
+  title: string;
+  workTime: string;
+  hint: string;
+  channels: AppServiceChannel[];
 };
 
 export type AppGroupChatItem = {

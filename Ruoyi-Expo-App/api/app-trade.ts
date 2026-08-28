@@ -178,6 +178,8 @@ function emptyWallet(): AppWallet {
     usdtProductIncome: 0,
     cnyAssistValue: 0,
     usdtAssistValue: 0,
+    cnyAssistWallet: 0,
+    usdtAssistWallet: 0,
   };
 }
 
@@ -246,9 +248,34 @@ function mapWallet(raw: unknown): AppWallet | null {
   };
 }
 
+function pickTypedAssist(source: Record<string, unknown>): Pick<AppWallet, 'cnyAssistWallet' | 'usdtAssistWallet'> {
+  const list = source.typedWallets;
+  const result = { cnyAssistWallet: 0, usdtAssistWallet: 0 };
+  if (!Array.isArray(list)) {
+    return result;
+  }
+  for (const item of list) {
+    if (!isRecord(item)) {
+      continue;
+    }
+    const typeCode = pickString(item, ['typeCode', 'walletTypeCode']).toUpperCase();
+    if (typeCode !== 'ASSIST') {
+      continue;
+    }
+    const currency = normalizeCurrency(item.currency);
+    const available = pickNumber(item, ['available', 'balance', 'amount']);
+    if (currency === 'USDT') {
+      result.usdtAssistWallet = available;
+    } else {
+      result.cnyAssistWallet = available;
+    }
+  }
+  return result;
+}
+
 function pickIncomeFields(source: Record<string, unknown>): Pick<
   AppWallet,
-  'cnyProductIncome' | 'usdtProductIncome' | 'cnyAssistValue' | 'usdtAssistValue'
+  'cnyProductIncome' | 'usdtProductIncome' | 'cnyAssistValue' | 'usdtAssistValue' | 'cnyAssistWallet' | 'usdtAssistWallet'
 > {
   return {
     cnyProductIncome: pickNumber(source, [
@@ -273,6 +300,7 @@ function pickIncomeFields(source: Record<string, unknown>): Pick<
       'assistValueUsdt',
       'usdtAssist',
     ]),
+    ...pickTypedAssist(source),
   };
 }
 

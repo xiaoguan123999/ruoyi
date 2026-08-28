@@ -57,15 +57,24 @@ function cacheKey(uri: string, contentWidth: number) {
   return `${uri}|${contentWidth}`;
 }
 
-/** 不经 Metro 打包，用浏览器原生 ESM 加载 public 下的 pdf.js，避免 import.meta 报错 */
-function loadPdfJs(): Promise<PdfJsModule> {
+const PDFJS_LOCAL_MAIN = '/mock/pdf.min.mjs';
+const PDFJS_LOCAL_WORKER = '/mock/pdf.worker.min.mjs';
+const PDFJS_CDN_MAIN = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
+const PDFJS_CDN_WORKER = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+
+async function fetchAsJsBlobUrl(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`加载失败 ${url}`);
+  }
+  const text = await response.text();
+  return URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));
+}
+
+function injectPdfModule(mainUrl: string, workerUrl: string): Promise<PdfJsModule> {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('仅支持 Web'));
   }
-  if (window.__pdfjsLib) {
-    return Promise.resolve(window.__pdfjsLib);
-  }
-
   return new Promise((resolve, reject) => {
     const onReady = () => {
       if (window.__pdfjsLib) {
@@ -74,13 +83,13 @@ function loadPdfJs(): Promise<PdfJsModule> {
       }
       reject(new Error('pdf.js 加载失败'));
     };
-
     window.addEventListener('pdfjs-ready', onReady, { once: true });
 
     const script = document.createElement('script');
     script.type = 'module';
     script.textContent = `
-      import * as pdfjs from '/mock/pdf.min.mjs';
+      import * as pdfjs from ${JSON.stringify(mainUrl)};
+      pdfjs.GlobalWorkerOptions.workerSrc = ${JSON.stringify(workerUrl)};
       window.__pdfjsLib = pdfjs;
       window.dispatchEvent(new Event('pdfjs-ready'));
     `;
@@ -90,6 +99,28 @@ function loadPdfJs(): Promise<PdfJsModule> {
     };
     document.head.appendChild(script);
   });
+}
+
+/** 不经 Metro 打包。本地 .mjs 若被服务器标成 octet-stream，先转成 JS Blob 再 import */
+function loadPdfJs(): Promise<PdfJsModule> {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('仅支持 Web'));
+  }
+  if (window.__pdfjsLib) {
+    return Promise.resolve(window.__pdfjsLib);
+  }
+
+  return (async () => {
+    try {
+      const [mainUrl, workerUrl] = await Promise.all([
+        fetchAsJsBlobUrl(PDFJS_LOCAL_MAIN),
+        fetchAsJsBlobUrl(PDFJS_LOCAL_WORKER),
+      ]);
+      return await injectPdfModule(mainUrl, workerUrl);
+    } catch {
+      return injectPdfModule(PDFJS_CDN_MAIN, PDFJS_CDN_WORKER);
+    }
+  })();
 }
 
 /**
@@ -129,7 +160,6 @@ export function PdfPagesViewer({ uri }: Props) {
         }
 
         const pdfjs = await loadPdfJs();
-        pdfjs.GlobalWorkerOptions.workerSrc = '/mock/pdf.worker.min.mjs';
 
         const pdf = await pdfjs.getDocument({ url: uri }).promise;
         if (cancelledRef.current) {

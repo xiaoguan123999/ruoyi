@@ -13,10 +13,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   appLogout,
-  displayText,
   fetchAppProfile,
   formatBalance,
   isKycVerified,
+  maskPhone,
   toNumberOrZero,
 } from '@/api/app-auth';
 import { fetchAppWallet } from '@/api/app-trade';
@@ -140,17 +140,19 @@ export default function ProfileScreen() {
     toastThenNavigate('已退出登录', () => router.replace('/sign-in'), { type: 'success' });
   };
 
-  const displayName = displayText(user?.nickName || user?.userName || user?.phone);
+  const displayName = user?.realName?.trim() || '';
+  const account = maskPhone(user?.phone || user?.userName);
   const inviteCode = user?.inviteCode?.trim() || '';
   const verified = isKycVerified(user?.kycStatus);
   const cnyAvailable = toNumberOrZero(wallet?.cnyAvailable);
   const usdtAvailable = toNumberOrZero(wallet?.usdtAvailable);
   const cnyProductIncome = toNumberOrZero(wallet?.cnyProductIncome);
   const usdtProductIncome = toNumberOrZero(wallet?.usdtProductIncome);
-  const cnyAssistValue = toNumberOrZero(wallet?.cnyAssistValue ?? user?.assistValue);
+  const cnyAssistValue = toNumberOrZero(wallet?.cnyAssistValue);
   const usdtAssistValue = toNumberOrZero(wallet?.usdtAssistValue);
-  // 助力值展示：优先人民币助力，否则 USDT
-  const boostValue = cnyAssistValue > 0 ? cnyAssistValue : usdtAssistValue;
+  const boostCny = toNumberOrZero(wallet?.cnyAssistWallet);
+  const boostUsdt = toNumberOrZero(wallet?.usdtAssistWallet);
+  const boostValue = boostCny > 0 ? boostCny : boostUsdt;
 
   // 有 token 就展示资产/菜单；不要等 user 对象，否则会出现整页空白
   const showBody = hydrated && isLoggedIn;
@@ -178,16 +180,19 @@ export default function ProfileScreen() {
             <View style={styles.userMainRow}>
               <View style={styles.userSubText}>
                 <View style={styles.nameRow}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {displayName}
-                  </Text>
-                  {verified ? (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>已认证</Text>
-                    </View>
+                  {displayName ? (
+                    <Text style={styles.name} numberOfLines={1}>
+                      {displayName}
+                    </Text>
                   ) : null}
+                  <View style={[styles.badge, !verified && styles.badgeUnverified]}>
+                    <Text style={styles.badgeText}>{verified ? '已认证' : '未认证'}</Text>
+                  </View>
                 </View>
-                <Text style={styles.inviteLine} numberOfLines={1}>
+                <Text style={styles.metaLine} numberOfLines={1}>
+                  账号 {account || '--'}
+                </Text>
+                <Text style={styles.metaLine} numberOfLines={1}>
                   {inviteCode ? `邀请码 ${inviteCode}` : '邀请码 --'}
                 </Text>
                 <Text style={styles.slogan} numberOfLines={1}>
@@ -411,7 +416,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  inviteLine: {
+  badgeUnverified: {
+    backgroundColor: 'rgba(140, 160, 185, 0.4)',
+  },
+  metaLine: {
     color: 'rgba(210, 225, 245, 0.78)',
     fontSize: 14,
     lineHeight: 20,
