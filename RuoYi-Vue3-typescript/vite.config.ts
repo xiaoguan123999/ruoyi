@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv, type ProxyOptions } from 'vite'
 import path from 'path'
-import createVitePlugins from './vite/plugins'
+import createVitePlugins, { formatBuildTime } from './vite/plugins'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode, command }) => {
@@ -10,6 +10,7 @@ export default defineConfig(({ mode, command }) => {
   const VITE_APP_ENV = normalize(env.VITE_APP_ENV)
   const VITE_APP_BASE_API = normalize(env.VITE_APP_BASE_API)
   const VITE_APP_BASE_URL = normalize(env.VITE_APP_BASE_URL)
+  const BUILD_TIME = formatBuildTime()
 
   // 仅开发环境：相对路径走 Vite 代理；测试/生产打包后直接请求后端完整地址
   const proxy: Record<string, string | ProxyOptions> = {}
@@ -31,7 +32,10 @@ export default defineConfig(({ mode, command }) => {
     // 默认情况下，vite 会假设你的应用是被部署在一个域名的根路径上
     // 例如 https://www.ruoyi.vip/。如果应用被部署在一个子路径上，你就需要用这个选项指定这个子路径。例如，如果你的应用被部署在 https://www.ruoyi.vip/admin/，则设置 baseUrl 为 /admin/。
     base: VITE_APP_ENV === 'production' ? '/' : '/',
-    plugins: createVitePlugins(env, command === 'build'),
+    plugins: createVitePlugins(env, command === 'build', BUILD_TIME),
+    define: {
+      __APP_BUILD_TIME__: JSON.stringify(BUILD_TIME)
+    },
     resolve: {
       // https://cn.vitejs.dev/config/#resolve-alias
       alias: {
@@ -83,4 +87,3 @@ export default defineConfig(({ mode, command }) => {
     }
   }
 })
-

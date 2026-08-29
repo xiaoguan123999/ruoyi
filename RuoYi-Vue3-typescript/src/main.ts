@@ -17,6 +17,7 @@ import directive from './directive' // directive
 // 注册指令
 import plugins from './plugins' // plugins
 import { patchOpsElTable } from './plugins/opsTableScroll'
+import { setupAppVersionNotification } from './plugins/appVersion'
 import { download } from '@/utils/request'
 
 // svg图标
@@ -89,3 +90,6 @@ app.use(ElementPlus, {
 patchOpsElTable(app)
 
 app.mount('#app')
+
+// 生产环境检测前端新版本并提示刷新
+setupAppVersionNotification()

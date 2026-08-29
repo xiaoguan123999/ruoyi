@@ -1,7 +1,10 @@
+/** 使本文件成为 module，下面的 declare module 才是「扩充」而不是「覆盖」 */
+export {}
+
 /** 模块类型声明 */
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
-  const component: DefineComponent<{}, {}, any>
+  const component: DefineComponent<object, object, any>
   export default component
 }
 
@@ -12,18 +15,25 @@ interface ImportMetaEnv {
   /** 仅开发环境：Vite 代理目标后端地址 */
   readonly VITE_APP_BASE_URL?: string
   readonly VITE_APP_ENV: string
+  /** 生产环境是否自动检测前端新版本：Y/N */
+  readonly VITE_AUTOMATICALLY_DETECT_UPDATE?: string
 }
 
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 
+/** 构建时间，由 vite define 注入 */
+declare const __APP_BUILD_TIME__: string
+
 // element-plus
 declare module 'element-plus'
 
-// vue
+// vue：扩充实例类型，勿整模块覆盖
 declare module 'vue' {
-  interface ComponentInternalInstance { proxy: any }
+  interface ComponentInternalInstance {
+    proxy: any
+  }
 }
 
 // nprogress
