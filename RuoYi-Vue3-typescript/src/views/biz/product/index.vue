@@ -42,6 +42,12 @@
           <el-option label="下架" value="1" />
         </el-select>
       </el-form-item>
+      <el-form-item label="在售" prop="onSale">
+        <el-select v-model="queryParams.onSale" placeholder="在售" clearable style="width: 140px">
+          <el-option label="在售" value="1" />
+          <el-option label="不在售" value="0" />
+        </el-select>
+      </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
         <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -77,95 +83,165 @@
           <el-tag :type="scope.row.withdrawRequired === '1' ? 'warning' : 'info'">{{ scope.row.withdrawRequired === '1' ? '是' : '否' }}</el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="在售" align="center" width="80">
+        <template #default="scope">
+          <el-tag :type="isOnSale(scope.row) ? 'success' : 'info'">{{ isOnSale(scope.row) ? '在售' : '不在售' }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" align="center" prop="status" width="80">
         <template #default="scope">
           <el-tag :type="scope.row.status === '0' ? 'success' : 'info'">{{ scope.row.status === '0' ? '上架' : '下架' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="160" fixed="right">
+      <el-table-column label="操作" align="center" width="280" fixed="right" class-name="product-ops-col">
         <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:product:edit']">修改</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['biz:product:remove']">删除</el-button>
+          <div class="product-ops">
+            <el-button
+              link
+              type="primary"
+              :icon="isOnSale(scope.row) ? 'CircleClose' : 'CircleCheck'"
+              @click="toggleOnSale(scope.row)"
+              v-hasPermi="['biz:product:edit']"
+            >{{ isOnSale(scope.row) ? '停售' : '开售' }}</el-button>
+            <el-button
+              link
+              type="primary"
+              :icon="scope.row.status === '0' ? 'Bottom' : 'Top'"
+              @click="toggleStatus(scope.row)"
+              v-hasPermi="['biz:product:edit']"
+            >{{ scope.row.status === '0' ? '下架' : '上架' }}</el-button>
+            <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:product:edit']">修改</el-button>
+            <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['biz:product:remove']">删除</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
-    <el-dialog :title="title" v-model="open" width="640px" append-to-body>
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+    <el-drawer :title="title" v-model="open" size="620px" append-to-body destroy-on-close class="product-drawer">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="108px" class="product-drawer-form">
+        <div class="form-section-title">基本信息</div>
         <el-form-item label="所属系列" prop="categoryId">
           <el-select v-model="form.categoryId" placeholder="请选择系列" style="width: 100%">
             <el-option v-for="item in categoryOptions" :key="item.categoryId" :label="item.categoryName" :value="item.categoryId" />
           </el-select>
         </el-form-item>
         <el-form-item label="产品名称" prop="productName">
-          <el-input v-model="form.productName" />
+          <el-input v-model="form.productName" placeholder="App 卡片主标题" />
         </el-form-item>
         <el-form-item label="英文名" prop="nameEn">
           <el-input v-model="form.nameEn" placeholder="App 卡片副标题，可空" />
         </el-form-item>
-        <el-form-item label="人民币价格" prop="priceCny">
-          <el-input-number v-model="form.priceCny" :min="0" :precision="2" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="人民币日返" prop="dailyRebateCny">
-          <el-input-number v-model="form.dailyRebateCny" :min="0" :precision="2" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="USDT价格" prop="priceUsdt">
-          <el-input-number v-model="form.priceUsdt" :min="0" :precision="2" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="USDT日返" prop="dailyRebateUsdt">
-          <el-input-number v-model="form.dailyRebateUsdt" :min="0" :precision="2" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="返利天数" prop="durationDays">
-          <el-input-number v-model="form.durationDays" :min="1" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="每人限购" prop="buyLimit">
-          <el-input-number v-model="form.buyLimit" :min="0" :step="1" style="width: 100%" />
-          <div class="el-form-item-msg" style="color:#909399;font-size:12px;line-height:1.4">0 或不填表示不限制。按该会员已购该产品的累计份数计算。</div>
-        </el-form-item>
-        <el-form-item label="一拖二份数" prop="unlockDirectQty">
-          <el-input-number v-model="form.unlockDirectQty" :min="0" :step="1" style="width: 100%" />
-          <div class="el-form-item-msg" style="color:#909399;font-size:12px;line-height:1.4">直属下级认购本产品的累计份数。填 2 即一拖二；填 0 关闭，自己认购即可出收益。先后顺序不限。</div>
-        </el-form-item>
-        <el-form-item label="激活等待小时" prop="unlockDelayHours">
-          <el-input-number v-model="form.unlockDelayHours" :min="0" :step="1" style="width: 100%" />
-          <div class="el-form-item-msg" style="color:#909399;font-size:12px;line-height:1.4">条件达成后再等多少小时开始日返。一拖二通常填 24；填 0 表示达标后立即进入收益（仍按每日 00:05 任务发放）。</div>
-        </el-form-item>
-        <el-form-item label="收益发放方式" prop="payoutMethod">
-          <el-input v-model="form.payoutMethod" maxlength="100" placeholder="仅 App 展示，例如：每日发放" />
-        </el-form-item>
-        <el-form-item label="风险等级" prop="riskLevel">
-          <el-input v-model="form.riskLevel" maxlength="64" placeholder="仅 App 展示，例如：中" />
-        </el-form-item>
-        <el-form-item label="提现指定产品" prop="withdrawRequired">
-          <el-radio-group v-model="form.withdrawRequired">
-            <el-radio value="1">是</el-radio>
-            <el-radio value="0">否</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="form.status">
-            <el-radio value="0">上架</el-radio>
-            <el-radio value="1">下架</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="排序" prop="sort">
-          <el-input-number v-model="form.sort" :min="0" style="width: 100%" />
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="排序" prop="sort">
+              <el-input-number v-model="form.sort" :min="0" controls-position="right" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="上架状态" prop="status">
+              <el-radio-group v-model="form.status">
+                <el-radio value="0">上架</el-radio>
+                <el-radio value="1">下架</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="开放认购" prop="onSale">
+          <div class="switch-line">
+            <el-switch v-model="form.onSale" active-value="1" inactive-value="0" />
+            <span class="field-tip inline">关闭后点「立即参与」提示暂未开放，与上架/下架独立</span>
+          </div>
         </el-form-item>
         <el-form-item label="封面">
           <image-upload v-model="form.coverUrl" :limit="1" />
         </el-form-item>
+
+        <div class="form-section-title is-follow">价格与收益</div>
+        <p class="section-tip">同一产品可同时配人民币和 USDT；至少填一种价格。返利天数必填。</p>
+        <el-form-item label="认购价格">
+          <div class="dual-input">
+            <div class="dual-input__item">
+              <span class="dual-input__tag">CNY</span>
+              <el-input-number v-model="form.priceCny" :min="0" :precision="2" controls-position="right" />
+            </div>
+            <div class="dual-input__item">
+              <span class="dual-input__tag">USDT</span>
+              <el-input-number v-model="form.priceUsdt" :min="0" :precision="2" controls-position="right" />
+            </div>
+          </div>
+        </el-form-item>
+        <el-form-item label="每日返利">
+          <div class="dual-input">
+            <div class="dual-input__item">
+              <span class="dual-input__tag">CNY</span>
+              <el-input-number v-model="form.dailyRebateCny" :min="0" :precision="2" controls-position="right" />
+            </div>
+            <div class="dual-input__item">
+              <span class="dual-input__tag">USDT</span>
+              <el-input-number v-model="form.dailyRebateUsdt" :min="0" :precision="2" controls-position="right" />
+            </div>
+          </div>
+        </el-form-item>
+        <el-form-item label="返利天数" prop="durationDays">
+          <el-input-number v-model="form.durationDays" :min="1" controls-position="right" style="width: 180px" />
+        </el-form-item>
+
+        <div class="form-section-title is-follow">认购规则</div>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="每人限购" prop="buyLimit">
+              <el-input-number v-model="form.buyLimit" :min="0" :step="1" controls-position="right" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="提现指定">
+              <el-radio-group v-model="form.withdrawRequired">
+                <el-radio value="1">是</el-radio>
+                <el-radio value="0">否</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <p class="section-tip">限购填 0 不限制，按会员已购该产品累计份数计；提现指定=是时，认购后才可提现。</p>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="一拖二份数" prop="unlockDirectQty">
+              <el-input-number v-model="form.unlockDirectQty" :min="0" :step="1" controls-position="right" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="等待小时" prop="unlockDelayHours">
+              <el-input-number v-model="form.unlockDelayHours" :min="0" :step="1" controls-position="right" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <p class="section-tip">直属下级认购本产品累计份数达标后，再等设定小时开始日返。两处填 0 表示关闭，自己认购即可出收益。</p>
+
+        <div class="form-section-title is-follow">App 展示</div>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="发放方式">
+              <el-input v-model="form.payoutMethod" maxlength="100" placeholder="例如：每日发放" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="风险等级">
+              <el-input v-model="form.riskLevel" maxlength="64" placeholder="例如：中" />
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="备注">
-          <el-input v-model="form.remark" type="textarea" />
+          <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="卡片说明文案，选填" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <div class="dialog-footer">
+        <div class="drawer-footer">
           <el-button type="primary" @click="submitForm">确 定</el-button>
           <el-button @click="open = false">取 消</el-button>
         </div>
       </template>
-    </el-dialog>
+    </el-drawer>
   </div>
 </template>
 
@@ -183,7 +259,7 @@ const total = ref(0)
 const title = ref("")
 const data = reactive({
   form: {} as any,
-  queryParams: { pageNum: 1, pageSize: 100, productName: undefined, currency: undefined, status: undefined, categoryId: undefined },
+  queryParams: { pageNum: 1, pageSize: 100, productName: undefined, currency: undefined, status: undefined, onSale: undefined, categoryId: undefined },
   rules: {
     categoryId: [{ required: true, message: "请选择所属系列", trigger: "change" }],
     productName: [{ required: true, message: "产品名称不能为空", trigger: "blur" }],
@@ -229,11 +305,54 @@ function unlockText(row: any) {
   if (hours > 0) parts.push(hours + "小时")
   return parts.join(" / ")
 }
+function isOnSale(row: any) {
+  if (typeof row.onSaleFlag === "boolean") return row.onSaleFlag
+  return row.onSale === "1" || row.onSale === 1 || row.onSale === true
+}
+function normalizeOnSale(data: any) {
+  if (data.onSale == null || data.onSale === "") {
+    return data.onSaleFlag === false ? "0" : "1"
+  }
+  return data.onSale === "1" || data.onSale === 1 || data.onSale === true ? "1" : "0"
+}
+/** 快捷调整：先取详情再整单提交，避免 PUT 缺参 */
+function patchProduct(row: any, patch: Record<string, any>) {
+  return getProduct(row.productId).then((res: any) => {
+    const data = { ...(res.data || {}), ...patch }
+    data.onSale = normalizeOnSale(data)
+    data.buyLimit = Number(data.buyLimit || 0)
+    data.unlockDirectQty = Number(data.unlockDirectQty || 0)
+    data.unlockDelayHours = Number(data.unlockDelayHours || 0)
+    return updateProduct(data)
+  })
+}
+function toggleOnSale(row: any) {
+  const next = isOnSale(row) ? "0" : "1"
+  const text = next === "1" ? "开售" : "停售"
+  proxy.$modal.confirm(`确认要「${text}」产品「${row.productName}」吗？`).then(() => {
+    return patchProduct(row, { onSale: next })
+  }).then(() => {
+    row.onSale = next
+    row.onSaleFlag = next === "1"
+    proxy.$modal.msgSuccess(text + "成功")
+  }).catch(() => {})
+}
+function toggleStatus(row: any) {
+  const next = row.status === "0" ? "1" : "0"
+  const text = next === "0" ? "上架" : "下架"
+  proxy.$modal.confirm(`确认要「${text}」产品「${row.productName}」吗？`).then(() => {
+    return patchProduct(row, { status: next })
+  }).then(() => {
+    row.status = next
+    proxy.$modal.msgSuccess(text + "成功")
+  }).catch(() => {})
+}
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
 function reset() {
   form.value = {
     status: "0",
+    onSale: "1",
     withdrawRequired: "0",
     buyLimit: 0,
     unlockDirectQty: 0,
@@ -255,7 +374,12 @@ function handleAdd() { reset(); open.value = true; title.value = "新增产品" 
 function handleUpdate(row: any) {
   reset()
   getProduct(row.productId).then((res: any) => {
-    form.value = res.data
+    form.value = res.data || {}
+    if (form.value.onSale == null || form.value.onSale === "") {
+      form.value.onSale = form.value.onSaleFlag === false ? "0" : "1"
+    } else {
+      form.value.onSale = form.value.onSale === "1" || form.value.onSale === 1 || form.value.onSale === true ? "1" : "0"
+    }
     open.value = true
     title.value = "修改产品"
   })
@@ -272,6 +396,7 @@ function submitForm() {
     form.value.buyLimit = Number(form.value.buyLimit || 0)
     form.value.unlockDirectQty = Number(form.value.unlockDirectQty || 0)
     form.value.unlockDelayHours = Number(form.value.unlockDelayHours || 0)
+    form.value.onSale = form.value.onSale === "1" || form.value.onSale === true ? "1" : "0"
     const req = form.value.productId ? updateProduct(form.value) : addProduct(form.value)
     req.then(() => {
       proxy.$modal.msgSuccess("保存成功")
@@ -292,5 +417,91 @@ loadCredit()
 </script>
 
 <style scoped>
-.tip { margin-left: 12px; color: #909399; font-size: 13px; }
+.tip {
+  margin-left: 12px;
+  color: #909399;
+  font-size: 13px;
+}
+.product-drawer-form {
+  padding: 0 2px 8px;
+}
+.form-section-title {
+  display: flex;
+  align-items: center;
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+.form-section-title.is-follow {
+  margin-top: 18px;
+}
+.form-section-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  margin-left: 12px;
+  background: var(--el-border-color-lighter);
+}
+.product-drawer-form :deep(.el-form-item) {
+  margin-bottom: 14px;
+}
+.field-tip,
+.section-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--el-text-color-secondary);
+}
+.section-tip {
+  margin: -6px 0 14px;
+}
+.field-tip.inline {
+  margin: 0 0 0 10px;
+}
+.switch-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.dual-input {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+.dual-input__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.dual-input__tag {
+  flex: 0 0 40px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+  text-align: right;
+}
+.dual-input__item :deep(.el-input-number) {
+  flex: 1;
+  width: 100%;
+}
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.product-ops {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: 0;
+}
+.product-ops :deep(.el-button) {
+  margin-left: 0;
+  padding: 4px 6px;
+}
 </style>
