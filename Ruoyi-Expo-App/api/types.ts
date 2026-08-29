@@ -281,6 +281,9 @@ export type AppOrderRecord = {
   currency: string;
   status: string;
   statusLabel: '进行中' | '已到期' | string;
+  activateStatus: string;
+  incomeReady: boolean;
+  incomeStartTime?: string;
   activateLabel: string;
   createTime: string;
 };

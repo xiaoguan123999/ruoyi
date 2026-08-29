@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   deleteAppPayAccount,
@@ -120,6 +120,8 @@ export default function WalletManageScreen() {
   const [activeTab, setActiveTab] = useState<WalletTab>(() => parseTab(tab));
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<AppPayAccount[]>([]);
+  const [pendingDelete, setPendingDelete] = useState<AppPayAccount | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const meta = TAB_META[activeTab];
 
   const load = useCallback(async () => {
@@ -152,26 +154,35 @@ export default function WalletManageScreen() {
   };
 
   const onDelete = (account: AppPayAccount) => {
-    Alert.alert('删除账户', `确认删除「${formatPayAccountLabel(account)}」？`, [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            try {
-              const msg = await deleteAppPayAccount(account.accountId);
-              modalSuccess(msg);
-              await load();
-            } catch (error) {
-              if (!(error instanceof ApiError) || error.code !== 401) {
-                modalError(error instanceof ApiError ? error.message : '删除失败');
-              }
-            }
-          })();
-        },
-      },
-    ]);
+    if (deleting) {
+      return;
+    }
+    setPendingDelete(account);
+  };
+
+  const closeDeleteModal = () => {
+    if (!deleting) {
+      setPendingDelete(null);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete || deleting) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      const msg = await deleteAppPayAccount(pendingDelete.accountId);
+      setPendingDelete(null);
+      modalSuccess(msg);
+      await load();
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 401) {
+        modalError(error instanceof ApiError ? error.message : '删除失败');
+      }
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -215,7 +226,7 @@ export default function WalletManageScreen() {
                   <Text style={styles.cardTitle} numberOfLines={1}>
                     {skin.title(item)}
                   </Text>
-                  <Pressable onPress={() => onDelete(item)} hitSlop={10}>
+                  <Pressable disabled={deleting} onPress={() => onDelete(item)} hitSlop={10}>
                     <Text style={styles.deleteText}>删除</Text>
                   </Pressable>
                 </View>
@@ -231,6 +242,42 @@ export default function WalletManageScreen() {
         </Pressable>
         {meta.hint ? <Text style={styles.hint}>{meta.hint}</Text> : null}
       </RefreshableScrollView>
+
+      <Modal
+        visible={pendingDelete != null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeDeleteModal}
+      >
+        <Pressable style={styles.modalMask} onPress={closeDeleteModal}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>删除账户</Text>
+            <Text style={styles.modalText}>
+              {pendingDelete
+                ? `确认删除「${formatPayAccountLabel(pendingDelete)}」？`
+                : ''}
+            </Text>
+            <View style={styles.modalActions}>
+              <Pressable
+                disabled={deleting}
+                onPress={closeDeleteModal}
+                style={[styles.modalBtn, styles.modalBtnGhost]}
+              >
+                <Text style={styles.modalBtnGhostText}>取消</Text>
+              </Pressable>
+              <Pressable
+                disabled={deleting}
+                onPress={() => {
+                  void confirmDelete();
+                }}
+                style={[styles.modalBtn, styles.modalBtnDanger]}
+              >
+                <Text style={styles.modalBtnDangerText}>{deleting ? '删除中…' : '删除'}</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </AppBackground>
   );
 }
@@ -337,5 +384,62 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: 'rgba(175, 195, 225, 0.72)',
     fontSize: 12,
+  },
+  modalMask: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  modalCard: {
+    borderRadius: 14,
+    backgroundColor: '#0E172A',
+    borderWidth: 1,
+    borderColor: 'rgba(98, 150, 220, 0.28)',
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 16,
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  modalText: {
+    marginTop: 12,
+    color: 'rgba(220, 232, 255, 0.88)',
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  modalActions: {
+    marginTop: 20,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modalBtn: {
+    flex: 1,
+    height: 42,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBtnGhost: {
+    borderWidth: 1,
+    borderColor: 'rgba(180, 205, 235, 0.35)',
+  },
+  modalBtnGhostText: {
+    color: 'rgba(230, 238, 250, 0.92)',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modalBtnDanger: {
+    backgroundColor: '#E85A5A',
+  },
+  modalBtnDangerText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

@@ -99,12 +99,18 @@ export default function SubscribeRecordsScreen() {
 
 function RecordCard({ item }: { item: AppOrderRecord }) {
   const running = item.statusLabel === '进行中';
+  const activateTone =
+    item.activateStatus !== '1'
+      ? styles.activateIdle
+      : item.incomeReady
+        ? styles.activateReady
+        : styles.activateOn;
 
   return (
     <GlassCard style={styles.card}>
       <View style={styles.row}>
         <Text style={styles.plan}>{item.planName || '认购订单'}</Text>
-        <Text style={styles.activate}>{item.activateLabel}</Text>
+        <Text style={[styles.activate, activateTone]}>{item.activateLabel}</Text>
       </View>
 
       <View style={[styles.row, styles.midRow]}>
@@ -179,8 +185,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   activate: {
-    color: 'rgba(255, 255, 255, 0.85)',
     fontSize: 13,
+  },
+  activateIdle: {
+    color: 'rgba(180, 200, 230, 0.72)',
+  },
+  activateOn: {
+    color: '#F0C36A',
+  },
+  activateReady: {
+    color: '#6FCF97',
   },
   midRow: {
     marginTop: 14,

@@ -67,10 +67,10 @@ function formatAmountLine(value?: number | null): string {
 function TableCurrencyUnit() {
   return (
     <View style={styles.tableCurrencyUnit}>
-      <Text style={styles.tableUnitLine} numberOfLines={1}>
+      <Text style={[styles.tableAmountLine, styles.tableUnitText]} numberOfLines={1}>
         ¥
       </Text>
-      <Text style={styles.tableUnitLine} numberOfLines={1}>
+      <Text style={[styles.tableAmountLine, styles.tableUnitText]} numberOfLines={1}>
         USDT
       </Text>
     </View>
@@ -131,14 +131,14 @@ function LevelTableRow({
       <Text style={[styles.cellText, styles.colDepth]} numberOfLines={1}>
         {row.teamDepth || '—'}
       </Text>
-      <View style={styles.colUnit}>
+      <View style={styles.colMoneyGroup}>
         <TableCurrencyUnit />
-      </View>
-      <View style={styles.colRecharge}>
-        <TableDualAmount cny={row.minTeamRechargeCny} usdt={row.minTeamRechargeUsdt} />
-      </View>
-      <View style={styles.colReward}>
-        <TableDualAmount cny={row.rewardCny} usdt={row.rewardUsdt} />
+        <View style={styles.colMoney}>
+          <TableDualAmount cny={row.minTeamRechargeCny} usdt={row.minTeamRechargeUsdt} />
+        </View>
+        <View style={styles.colMoney}>
+          <TableDualAmount cny={row.rewardCny} usdt={row.rewardUsdt} />
+        </View>
       </View>
     </View>
   );
@@ -293,8 +293,12 @@ export default function LevelsScreen() {
             </View>
             <View style={styles.statusCol}>
               <Text style={styles.statusLabel}>团队充值金额</Text>
-              <Text style={styles.statusMoneyLine}>¥ {formatAmountLine(teamRecharge.cny)}</Text>
-              <Text style={styles.statusMoneyLine}>USDT {formatAmountLine(teamRecharge.usdt)}</Text>
+              <View style={styles.statusMoneyPair}>
+                <View style={styles.statusUnitHang}>
+                  <TableCurrencyUnit />
+                </View>
+                <TableDualAmount cny={teamRecharge.cny} usdt={teamRecharge.usdt} />
+              </View>
             </View>
           </View>
           {claimable.map((item) => (
@@ -319,9 +323,11 @@ export default function LevelsScreen() {
           <View style={styles.tableHead}>
             <Text style={[styles.headText, styles.colLevel]}>会员等级</Text>
             <Text style={[styles.headText, styles.colDepth]}>团队要求</Text>
-            <View style={styles.colUnit} />
-            <Text style={[styles.headText, styles.colRechargeHead]}>充值金额</Text>
-            <Text style={[styles.headText, styles.colRewardHead]}>团队奖励</Text>
+            <View style={styles.colMoneyGroup}>
+              <View style={styles.tableCurrencyUnit} />
+              <Text style={[styles.headText, styles.colMoneyHead]}>充值金额</Text>
+              <Text style={[styles.headText, styles.colMoneyHead]}>团队奖励</Text>
+            </View>
           </View>
 
           {displayRows.length === 0 ? (
@@ -490,6 +496,7 @@ const styles = StyleSheet.create({
   statusCol: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   statusLabel: {
     color: 'rgba(180, 198, 228, 0.85)',
@@ -502,11 +509,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
   },
-  statusMoneyLine: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
+  statusMoneyPair: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  statusUnitHang: {
+    marginLeft: -48,
   },
   claimEntry: {
     marginTop: 14,
@@ -567,49 +576,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   colLevel: {
-    width: '20%',
+    width: '22%',
   },
   colDepth: {
-    width: '16%',
+    width: '18%',
   },
-  colUnit: {
-    width: '14%',
-    alignItems: 'flex-end',
-    paddingRight: 6,
+  colMoneyGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
     paddingTop: 1,
   },
-  colRecharge: {
-    width: '25%',
-    alignItems: 'flex-end',
-    paddingRight: 8,
-    paddingTop: 1,
+  colMoney: {
+    flex: 1,
+    alignItems: 'flex-start',
   },
-  colReward: {
-    width: '25%',
-    alignItems: 'flex-end',
-    paddingTop: 1,
-  },
-  colRechargeHead: {
-    width: '25%',
-    textAlign: 'right',
-    paddingRight: 8,
-  },
-  colRewardHead: {
-    width: '25%',
-    textAlign: 'right',
+  colMoneyHead: {
+    flex: 1,
+    textAlign: 'left',
   },
   tableCurrencyUnit: {
+    width: 40,
     alignItems: 'flex-end',
     gap: 2,
   },
-  tableUnitLine: {
-    color: 'rgba(200, 215, 245, 0.75)',
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
   tableDualAmount: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     gap: 2,
   },
   tableAmountLine: {
@@ -617,6 +610,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 18,
+    textAlign: 'left',
+  },
+  tableUnitText: {
+    width: '100%',
+    textAlign: 'right',
   },
   refreshHint: {
     alignItems: 'center',

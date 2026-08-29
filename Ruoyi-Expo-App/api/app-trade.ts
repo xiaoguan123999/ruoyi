@@ -115,9 +115,12 @@ export async function subscribeAppProduct(body: AppSubscribeBody): Promise<strin
 function mapOrderStatus(raw: Record<string, unknown>): {
   status: string;
   statusLabel: '进行中' | '已到期' | string;
+  activateStatus: string;
+  incomeReady: boolean;
+  incomeStartTime?: string;
   activateLabel: string;
 } {
-  const status = pickString(raw, ['status', 'orderStatus'], '');
+  const status = pickString(raw, ['status'], '');
   const lower = status.toLowerCase();
   const expired =
     ['2', '3', 'expired', 'finished', 'closed', 'end', '已到期', '已结束', '已完成'].includes(lower) ||
@@ -128,14 +131,22 @@ function mapOrderStatus(raw: Record<string, unknown>): {
       status === '' ||
       status === '进行中');
 
-  const activated =
-    ['1', 'active', 'activated', '已激活'].includes(lower) ||
-    pickString(raw, ['activateStatus', 'activeStatus']) === '1';
+  const activateStatus = pickString(raw, ['activateStatus'], '');
+  const incomeReady = raw.incomeReady === true;
+  const incomeStartTime = pickString(raw, ['incomeStartTime']) || undefined;
+
+  let activateLabel = '未激活';
+  if (activateStatus === '1') {
+    activateLabel = incomeReady ? '已开始返利' : '已激活';
+  }
 
   return {
     status,
     statusLabel: expired ? '已到期' : running ? '进行中' : status || '进行中',
-    activateLabel: activated ? '已激活' : '暂未激活',
+    activateStatus,
+    incomeReady,
+    incomeStartTime,
+    activateLabel,
   };
 }
 
@@ -157,6 +168,11 @@ function mapOrder(raw: unknown): AppOrderRecord | null {
     currency: normalizeCurrency(raw.currency),
     status: mapped.status,
     statusLabel: mapped.statusLabel,
+    activateStatus: mapped.activateStatus,
+    incomeReady: mapped.incomeReady,
+    incomeStartTime: mapped.incomeStartTime
+      ? formatDateTime(mapped.incomeStartTime)
+      : undefined,
     activateLabel: mapped.activateLabel,
     createTime: formatDateTime(raw.createTime ?? raw.orderTime ?? raw.payTime),
   };
