@@ -564,7 +564,7 @@ const WALLET_BIZ_LABEL: Record<string, string> = {
   REBATE: '产品收益',
   RECHARGE: '充值成功',
   WITHDRAW: '提现',
-  WITHDRAW_FREEZE: '提现审核中',
+  WITHDRAW_FREEZE: '提现冻结',
   WITHDRAW_SUCCESS: '提现成功',
   WITHDRAW_REJECT: '提现退回',
   COMMISSION: '推广奖金',
@@ -573,22 +573,11 @@ const WALLET_BIZ_LABEL: Record<string, string> = {
   KYC_REWARD: '实名奖励',
 };
 
-/** 后台流水备注是账务用语，给用户改成可读文案 */
-const WALLET_COPY_REWRITE: Record<string, string> = {
-  提现冻结: '审核中',
-  提现拒绝解冻: '未通过，已退回',
-};
-
-function toUserFacingWalletText(text: string): string {
-  const trimmed = text.trim();
-  return WALLET_COPY_REWRITE[trimmed] || trimmed;
-}
-
 function mapWalletLogTitle(raw: Record<string, unknown>, bizType: string): string {
   // 优先用接口下发的业务类型文案
   const bizTypeLabel = pickString(raw, ['bizTypeLabel', 'bizTypeName', 'typeLabel']);
   if (bizTypeLabel) {
-    return toUserFacingWalletText(bizTypeLabel);
+    return bizTypeLabel;
   }
 
   const remark = pickString(raw, ['title', 'bizName', 'productName', 'remark', 'remarkInfo']);
@@ -600,7 +589,7 @@ function mapWalletLogTitle(raw: Record<string, unknown>, bizType: string): strin
     }
     return remark;
   }
-  return toUserFacingWalletText(remark || WALLET_BIZ_LABEL[bizType] || bizType || '交易');
+  return remark || WALLET_BIZ_LABEL[bizType] || bizType || '交易';
 }
 
 function mapWalletLogItem(raw: unknown): AppWalletLogItem | null {
@@ -612,8 +601,7 @@ function mapWalletLogItem(raw: unknown): AppWalletLogItem | null {
   const currency = normalizeCurrency(raw.currency);
   const bizType = pickString(raw, ['bizType', 'type'], '').toUpperCase();
   const title = mapWalletLogTitle(raw, bizType);
-  const remarkRaw = pickString(raw, ['remark']);
-  const remark = remarkRaw ? toUserFacingWalletText(remarkRaw) : '';
+  const remark = pickString(raw, ['remark']);
   const createTime = formatDateTime(raw.createTime ?? raw.updateTime);
   if (!id && !createTime && !amount) {
     return null;
