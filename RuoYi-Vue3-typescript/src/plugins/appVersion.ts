@@ -15,17 +15,44 @@ function extractBuildTime(html: string): string {
   return match?.[1]?.trim() || ''
 }
 
-async function fetchRemoteBuildTime(): Promise<string> {
-  const base = import.meta.env.BASE_URL || '/'
-  const url = `${base}index.html?time=${Date.now()}`
+function joinUrl(base: string, path: string) {
+  const normalizedBase = base.endsWith('/') ? base : `${base}/`
+  const normalizedPath = path.replace(/^\//, '')
+  return `${normalizedBase}${normalizedPath}`
+}
+
+async function fetchHtml(url: string): Promise<string> {
   const res = await fetch(url, {
     method: 'GET',
     cache: 'no-store',
-    headers: { 'Cache-Control': 'no-cache' }
+    headers: {
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache'
+    }
   })
   if (!res.ok) return ''
-  const html = await res.text()
-  return extractBuildTime(html)
+  return res.text()
+}
+
+async function fetchRemoteBuildTime(): Promise<string> {
+  const base = import.meta.env.BASE_URL || '/'
+  const stamp = Date.now()
+  // 部分网关只配了 /，没有单独的 index.html 路由；两个都试
+  const candidates = [
+    `${joinUrl(base, 'index.html')}?t=${stamp}`,
+    `${base}?t=${stamp}`
+  ]
+
+  for (const url of candidates) {
+    try {
+      const html = await fetchHtml(url)
+      const buildTime = extractBuildTime(html)
+      if (buildTime) return buildTime
+    } catch {
+      // try next
+    }
+  }
+  return ''
 }
 
 function showUpdateNotification() {
@@ -66,41 +93,71 @@ function showUpdateNotification() {
 }
 
 /**
- * 生产环境轮询 index.html 的 buildTime，发现新版本后提示刷新。
+ * 生产环境检测前端新版本并提示刷新。
  * 开关：VITE_AUTOMATICALLY_DETECT_UPDATE=Y
+ *
+ * - 切回页签：visibilitychange 且 visible 时立刻检测（部署后一回到页面就会弹）
+ * - 3 分钟定时器兜底：一直停在前台不切走时也会定期检
+ *
+ * 正确测法：保留旧标签页不刷新 → 部署新包 → 切到别的标签再切回来。
+ * 控制台可执行：window.__checkAppVersion()
  */
 export function setupAppVersionNotification() {
   const enabled = normalizeFlag(import.meta.env.VITE_AUTOMATICALLY_DETECT_UPDATE) === 'Y'
-  if (!import.meta.env.PROD || !enabled) return
+  if (!import.meta.env.PROD || !enabled) {
+    console.info('[appVersion] skipped', {
+      prod: import.meta.env.PROD,
+      flag: import.meta.env.VITE_AUTOMATICALLY_DETECT_UPDATE
+    })
+    return
+  }
 
   const localBuildTime = typeof __APP_BUILD_TIME__ === 'string' ? __APP_BUILD_TIME__ : ''
-  if (!localBuildTime) return
+  if (!localBuildTime) {
+    console.warn('[appVersion] local buildTime missing')
+    return
+  }
 
   let checking = false
   let notified = false
 
-  const check = async () => {
-    if (checking || notified || document.hidden) return
+  const checkForUpdates = async (reason = 'poll') => {
+    if (checking || notified || document.visibilityState !== 'visible') return
     checking = true
     try {
       const remoteBuildTime = await fetchRemoteBuildTime()
-      if (remoteBuildTime && remoteBuildTime !== localBuildTime) {
+      console.info('[appVersion] check', { reason, localBuildTime, remoteBuildTime })
+      if (!remoteBuildTime) {
+        console.warn('[appVersion] remote buildTime missing，请确认已部署带 meta 的 index.html，且未被强缓存')
+        return
+      }
+      if (remoteBuildTime !== localBuildTime) {
         notified = true
         showUpdateNotification()
       }
-    } catch {
-      // 忽略网络抖动
+    } catch (error) {
+      console.warn('[appVersion] check failed', error)
     } finally {
       checking = false
     }
   }
 
-  void check()
+  ;(window as any).__checkAppVersion = () => {
+    notified = false
+    return checkForUpdates('manual')
+  }
+
+  void checkForUpdates('startup')
+
+  // 兜底：一直停在前台时每 3 分钟检一次
   window.setInterval(() => {
-    void check()
+    void checkForUpdates('interval')
   }, CHECK_INTERVAL_MS)
 
+  // 切回页签立刻检，不等定时器
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) void check()
+    if (document.visibilityState === 'visible') {
+      void checkForUpdates('visible')
+    }
   })
 }

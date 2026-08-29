@@ -1,9 +1,9 @@
 import type { Plugin } from 'vite'
 
-/** 格式化为 YYYY-MM-DD HH:mm */
+/** 格式化为 YYYY-MM-DD HH:mm:ss.SSS，保证同分钟多次打包也能区分 */
 export function formatBuildTime(date = new Date()): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+  const pad = (n: number, len = 2) => String(n).padStart(len, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}`
 }
 
 /**
