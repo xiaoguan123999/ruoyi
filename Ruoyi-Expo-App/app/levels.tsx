@@ -18,7 +18,12 @@ import {
   fetchAppLevelRewardClaimable,
   fetchAppLevelsView,
 } from '@/api/app-member';
-import { formatTeamAmount } from '@/api/app-team';
+import {
+  emptyTeamView,
+  fetchAppTeam,
+  formatTeamAmount,
+  sumTeamRecharge,
+} from '@/api/app-team';
 import { ApiError } from '@/api/request';
 import type { AppLevel, AppLevelRewardClaimableItem, KycRewardCurrency } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
@@ -146,6 +151,7 @@ export default function LevelsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [rulesVisible, setRulesVisible] = useState(false);
   const [levelsView, setLevelsView] = useState(emptyLevelsView());
+  const [teamRecharge, setTeamRecharge] = useState({ cny: 0, usdt: 0 });
   const [claimItem, setClaimItem] = useState<AppLevelRewardClaimableItem | null>(null);
   const [claimSubmitting, setClaimSubmitting] = useState(false);
 
@@ -163,11 +169,15 @@ export default function LevelsScreen() {
       }
     }
     try {
-      const levelsData = await fetchAppLevelsView();
+      const [levelsData, team] = await Promise.all([
+        fetchAppLevelsView(),
+        fetchAppTeam().catch(() => emptyTeamView()),
+      ]);
       setLevelsView({
         ...levelsData,
         claimable: claimableItems,
       });
+      setTeamRecharge(sumTeamRecharge(team.summary));
     } catch (error) {
       if (!(error instanceof ApiError) || error.code !== 401) {
         modalError(error instanceof ApiError ? error.message : '获取会员等级失败');
@@ -203,17 +213,6 @@ export default function LevelsScreen() {
     }
     return '';
   }, [levelsView.current.levelName, user?.levelName, currentLevelId, displayRows]);
-
-  const currentTeamReward = useMemo(() => {
-    const matched =
-      currentLevelId !== undefined
-        ? displayRows.find((row) => row.levelId === currentLevelId)
-        : displayRows.find((row) => row.levelName === currentLevelName);
-    return {
-      cny: matched?.rewardCny ?? 0,
-      usdt: matched?.rewardUsdt ?? 0,
-    };
-  }, [currentLevelId, currentLevelName, displayRows]);
 
   const claimable = levelsView.claimable;
 
@@ -293,9 +292,9 @@ export default function LevelsScreen() {
               <Text style={styles.statusLevelValue}>{displayText(currentLevelName)}</Text>
             </View>
             <View style={styles.statusCol}>
-              <Text style={styles.statusLabel}>团队奖励</Text>
-              <Text style={styles.statusMoneyLine}>¥ {formatAmountLine(currentTeamReward.cny)}</Text>
-              <Text style={styles.statusMoneyLine}>USDT {formatAmountLine(currentTeamReward.usdt)}</Text>
+              <Text style={styles.statusLabel}>团队充值金额</Text>
+              <Text style={styles.statusMoneyLine}>¥ {formatAmountLine(teamRecharge.cny)}</Text>
+              <Text style={styles.statusMoneyLine}>USDT {formatAmountLine(teamRecharge.usdt)}</Text>
             </View>
           </View>
           {claimable.map((item) => (
