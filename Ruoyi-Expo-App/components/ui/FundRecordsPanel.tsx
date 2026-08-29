@@ -24,8 +24,9 @@ function sumByCurrency(records: FundListItem[], mode: FundSummaryMode) {
   return records.reduce(
     (acc, item) => {
       // 申请单：只累计「成功 / 已打款」；流水：成功文案或正负金额
+      const text = `${item.title} ${'remark' in item ? item.remark ?? '' : ''}`;
       const successByTitle = /成功|到账|已打款/.test(item.title);
-      const pendingOrFail = /申请|审核|处理|失败|拒绝|退回|冻结|待打款/.test(item.title);
+      const pendingOrFail = /申请|审核|处理|失败|拒绝|退回|冻结|待打款|未通过/.test(text);
       let value = 0;
       if (successByTitle) {
         value = Math.abs(item.amount);
@@ -59,14 +60,15 @@ function formatRecordDate(value: string): string {
   return raw.slice(0, 10);
 }
 
-function resolveTone(title: string, amount: number) {
-  if (/失败|拒绝|退回|已拒绝/.test(title)) {
+function resolveTone(title: string, amount: number, remark?: string) {
+  const text = `${title} ${remark ?? ''}`;
+  if (/失败|拒绝|退回|已拒绝|未通过/.test(text)) {
     return styles.fail;
   }
-  if (/待审|审核|申请|处理|冻结|待打款/.test(title)) {
+  if (/待审|审核|申请|处理|冻结|待打款/.test(text)) {
     return styles.pending;
   }
-  if (/成功|到账|入账|已通过|已打款/.test(title)) {
+  if (/成功|到账|入账|已通过|已打款/.test(text)) {
     return styles.success;
   }
   return amount < 0 ? styles.pending : styles.success;
@@ -117,7 +119,7 @@ export function FundRecordsPanel({
             arrivalAmount != null && arrivalAmount > 0
               ? `到账 ${formatMoneyLabel(arrivalAmount, item.currency)}`
               : undefined,
-          tone: resolveTone(item.title, item.amount),
+          tone: resolveTone(item.title, item.amount, 'remark' in item ? item.remark : undefined),
         };
       }),
     [records],
