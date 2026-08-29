@@ -54,6 +54,9 @@
       <el-table-column label="团队累计USDT" align="center" prop="minTeamRechargeUsdt" min-width="150" />
       <el-table-column label="团队奖励CNY" align="center" prop="rewardCny" />
       <el-table-column label="团队奖励USDT" align="center" prop="rewardUsdt" />
+      <el-table-column label="发放方式" align="center" width="90">
+        <template #default="scope">{{ rewardModeLabel(scope.row.rewardMode) }}</template>
+      </el-table-column>
       <el-table-column label="排序" align="center" prop="sort" />
       <el-table-column label="状态" align="center" prop="status" width="80">
         <template #default="scope">
@@ -88,6 +91,7 @@
         </el-row>
 
         <div class="form-section-title is-follow">达标门槛</div>
+        <p class="section-tip">团队范围决定统计层级，团队累计含本人；以下为累计门槛，填 0 表示不限制。</p>
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="团队范围" prop="teamDepth">
@@ -157,7 +161,6 @@
             </span>
           </div>
         </el-form-item>
-        <p class="section-tip">团队范围决定统计层级；以下为累计门槛，填 0 表示不限制。</p>
 
         <div class="form-section-title is-follow">奖励发放</div>
         <el-form-item label="启用奖励">
@@ -180,6 +183,7 @@
                 <el-select v-model="form.rewardMode" style="width: 100%">
                   <el-option label="自动入账" value="AUTO" />
                   <el-option label="客服发放" value="MANUAL" />
+                  <el-option label="用户领取" value="CLAIM" />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -209,6 +213,13 @@
               <el-radio value="CNY">只发人民币</el-radio>
               <el-radio value="BOTH">都发</el-radio>
             </el-radio-group>
+          </el-form-item>
+          <el-form-item v-if="showClaimPolicy" label="领取范围">
+            <el-radio-group v-model="form.rewardClaimPolicy">
+              <el-radio value="ONE">二选一</el-radio>
+              <el-radio value="ALL">都可领取</el-radio>
+            </el-radio-group>
+            <div class="field-tip">仅用户领取且「都发」、两种金额都大于 0 时生效；默认二选一。</div>
           </el-form-item>
           <el-form-item label="到账钱包">
             <WalletTypeSelect v-model="form.walletTypeCode" width="100%" />
@@ -252,8 +263,21 @@ const teamDepthOptions = computed(() => {
   return TEAM_DEPTH_PRESET
 })
 const thresholdModeTip = (mode: string) => {
-  if (mode === "EQUIV") return "合并计算：USDT 按「汇率配置」换算后与 CNY 合并比较。"
-  return "独立计算：人民币、USDT 分别达标；两项都填则两种币都要满足。"
+  if (mode === "EQUIV") {
+    return "合并计算：充值按「汇率配置」换算成同币种后再比较。两边都填时，以换算后较低的那个作为实际门槛；该项填 0 不限制。"
+  }
+  return "独立计算：人民币、USDT 分别达标；两项都填则两种币都要满足，填 0 不限制。"
+}
+const showClaimPolicy = computed(() => {
+  return form.value?.rewardMode === "CLAIM"
+    && form.value?.mixedPayCurrency === "BOTH"
+    && Number(form.value?.rewardCny) > 0
+    && Number(form.value?.rewardUsdt) > 0
+})
+function rewardModeLabel(v: string) {
+  if (v === "MANUAL") return "客服"
+  if (v === "CLAIM") return "领取"
+  return "自动"
 }
 
 function getList() {
@@ -329,6 +353,7 @@ function reset() {
     rewardEnabled: "1",
     rewardCycle: "ONCE",
     rewardMode: "AUTO",
+    rewardClaimPolicy: "ONE",
     rewardRepeat: "NONE",
     minValidMembers: 0,
     minRechargeCny: 0,
@@ -356,6 +381,7 @@ function handleUpdate(row: any) {
       rewardEnabled: "1",
       rewardCycle: "ONCE",
       rewardMode: "AUTO",
+      rewardClaimPolicy: "ONE",
       rewardRepeat: "NONE"
     }, res.data || {})
     if (!form.value.performanceSource) form.value.performanceSource = "RECHARGE"
@@ -367,6 +393,7 @@ function handleUpdate(row: any) {
     if (!form.value.rewardEnabled) form.value.rewardEnabled = "1"
     if (!form.value.rewardCycle) form.value.rewardCycle = "ONCE"
     if (!form.value.rewardMode) form.value.rewardMode = "AUTO"
+    if (!form.value.rewardClaimPolicy) form.value.rewardClaimPolicy = "ONE"
     if (!form.value.rewardRepeat) form.value.rewardRepeat = "NONE"
     open.value = true
     title.value = "修改等级"
@@ -437,7 +464,7 @@ getList()
   color: var(--el-text-color-secondary);
 }
 .section-tip {
-  margin: -6px 0 4px;
+  margin: -6px 0 14px;
 }
 .dual-input {
   display: grid;

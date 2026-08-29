@@ -39,7 +39,7 @@
             <template #default="scope">{{ cycleLabel(scope.row.rewardCycle) }}</template>
           </el-table-column>
           <el-table-column label="发放" align="center" width="90">
-            <template #default="scope">{{ scope.row.rewardMode === 'MANUAL' ? '客服' : '自动' }}</template>
+            <template #default="scope">{{ rewardModeLabel(scope.row.rewardMode) }}</template>
           </el-table-column>
           <el-table-column label="团队奖励CNY" align="center" prop="rewardCny" min-width="120" />
           <el-table-column label="团队奖励USDT" align="center" prop="rewardUsdt" min-width="130" />
@@ -67,7 +67,7 @@
           <el-select v-model="form.teamDepth" placeholder="请选择" style="width: 100%">
             <el-option v-for="item in teamDepthOptions" :key="item" :label="item" :value="item" />
           </el-select>
-          <div class="tip">一级内=邀请关系第1层，二级内=第1+2层。下面团队累计按这个范围统计。</div>
+          <div class="tip">一级内=邀请关系第1层，二级内=第1+2层。下面团队累计按这个范围统计，含本人。</div>
         </el-form-item>
         <el-form-item label="团队业绩口径">
           <el-select v-model="form.performanceSource" style="width: 100%">
@@ -132,6 +132,7 @@
               <el-select v-model="form.rewardMode" style="width: 100%">
                 <el-option label="自动入账" value="AUTO" />
                 <el-option label="客服发放" value="MANUAL" />
+                <el-option label="用户领取" value="CLAIM" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -148,6 +149,13 @@
         </el-form-item>
         <el-form-item label="团队奖励USDT">
           <el-input-number v-model="form.rewardUsdt" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item v-if="showClaimPolicy" label="领取范围">
+          <el-radio-group v-model="form.rewardClaimPolicy">
+            <el-radio value="ONE">二选一</el-radio>
+            <el-radio value="ALL">都可领取</el-radio>
+          </el-radio-group>
+          <div class="tip">仅用户领取且「都发」、两种金额都大于 0 时生效；默认二选一。</div>
         </el-form-item>
         <el-form-item label="等级状态">
           <el-radio-group v-model="form.status">
@@ -196,6 +204,19 @@ function cycleLabel(v: string) {
   return "无"
 }
 
+function rewardModeLabel(v: string) {
+  if (v === "MANUAL") return "客服"
+  if (v === "CLAIM") return "领取"
+  return "自动"
+}
+
+const showClaimPolicy = computed(() => {
+  return form.value?.rewardMode === "CLAIM"
+    && form.value?.mixedPayCurrency === "BOTH"
+    && Number(form.value?.rewardCny) > 0
+    && Number(form.value?.rewardUsdt) > 0
+})
+
 function sourceLabel(v: string) {
   if (v === "SUBSCRIBE") return "认购"
   if (v === "BOTH") return "认购+充值"
@@ -213,7 +234,9 @@ function thresholdModeSummary(row: any) {
 }
 
 function thresholdModeTip(mode: string) {
-  if (mode === "EQUIV") return "合并计算：USDT 按「汇率配置」换算后与 CNY 合并比较，填 0 不限制。"
+  if (mode === "EQUIV") {
+    return "合并计算：充值按「汇率配置」换算成同币种后再比较。两边都填时，以换算后较低的那个作为实际门槛；该项填 0 不限制。"
+  }
   return "独立计算：人民币、USDT 分别达标；两项都填则两种币都要满足，填 0 不限制。"
 }
 
@@ -249,11 +272,21 @@ function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
 function handleUpdate(row: any) {
   getLevel(row.levelId).then((res: any) => {
-    form.value = Object.assign({ personalThresholdMode: "SPLIT", teamThresholdMode: "SPLIT", performanceSource: "RECHARGE", mixedPayCurrency: "USDT", walletTypeCode: "PROMO" }, res.data || {})
+    form.value = Object.assign({
+      personalThresholdMode: "SPLIT",
+      teamThresholdMode: "SPLIT",
+      performanceSource: "RECHARGE",
+      mixedPayCurrency: "USDT",
+      walletTypeCode: "PROMO",
+      rewardMode: "AUTO",
+      rewardClaimPolicy: "ONE"
+    }, res.data || {})
     if (!form.value.performanceSource) form.value.performanceSource = "RECHARGE"
     applyThresholdDefaults(form.value)
     if (!form.value.mixedPayCurrency) form.value.mixedPayCurrency = "USDT"
     if (!form.value.walletTypeCode) form.value.walletTypeCode = "PROMO"
+    if (!form.value.rewardMode) form.value.rewardMode = "AUTO"
+    if (!form.value.rewardClaimPolicy) form.value.rewardClaimPolicy = "ONE"
     open.value = true
     title.value = "配置 " + row.levelName
   })

@@ -96,8 +96,16 @@ function MemberRow({
         {member.phone}
       </Text>
       <View style={[styles.colMoney, styles.moneyCell]}>
-        <Text style={styles.moneyLine}>$ {formatTeamAmount(member.usd)}</Text>
-        <Text style={styles.moneyLine}>¥ {formatTeamAmount(member.cny)}</Text>
+        <View style={styles.moneyStack}>
+          <View style={styles.moneyLine}>
+            <Text style={styles.moneyLabel}>USDT</Text>
+            <Text style={styles.moneyValue}>{formatTeamAmount(member.usd)}</Text>
+          </View>
+          <View style={styles.moneyLine}>
+            <Text style={styles.moneyLabel}>¥</Text>
+            <Text style={styles.moneyValue}>{formatTeamAmount(member.cny)}</Text>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -357,14 +365,29 @@ const styles = StyleSheet.create({
   },
   moneyCell: {
     alignItems: 'center',
+  },
+  moneyStack: {
     gap: 2,
   },
   moneyLine: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  moneyLabel: {
+    width: 40,
     color: colors.text,
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 18,
-    textAlign: 'center',
+    textAlign: 'right',
+  },
+  moneyValue: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+    textAlign: 'left',
   },
   emptyText: {
     color: 'rgba(180, 200, 230, 0.75)',

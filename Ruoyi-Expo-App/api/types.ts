@@ -372,9 +372,36 @@ export type AppLevelCurrent = {
   levelName?: string;
 };
 
+export type AppLevelRewardClaimPolicy = 'ONE' | 'ALL';
+
+export type AppLevelRewardOption = {
+  currency: KycRewardCurrency;
+  amount: number;
+};
+
+/** GET /app/levelReward/claimable items，与 GET /app/levels 的 claimable 同结构 */
+export type AppLevelRewardClaimableItem = {
+  levelId: number;
+  levelName: string;
+  claimPolicy: AppLevelRewardClaimPolicy;
+  walletTypeCode: string;
+  options: AppLevelRewardOption[];
+  claimedCurrencies: string[];
+};
+
+export type AppLevelRewardClaimResult = {
+  levelId: number;
+  levelName: string;
+  currency: KycRewardCurrency;
+  amount: number;
+  walletTypeCode: string;
+  message: string;
+};
+
 export type AppLevelsView = {
   current: AppLevelCurrent;
   levels: AppLevel[];
+  claimable: AppLevelRewardClaimableItem[];
   /** 表格上方注释；接口 hint / note 同值 */
   hint?: string;
   /** 规则说明弹窗文案 */

@@ -50,8 +50,13 @@ export async function request<T>(
 
   const code = Number(json.code);
   if (response.status === 401 || code === 401) {
-    void handleUnauthorized('登录已过期，请重新登录');
-    throw new ApiError('登录已过期，请重新登录', 401);
+    const message = json.msg || '操作失败，请稍后再试';
+    // 注册/登录/验证码等未带 token 的请求，401 不是会话过期
+    if (withToken) {
+      void handleUnauthorized('登录已过期，请重新登录');
+      throw new ApiError('登录已过期，请重新登录', 401);
+    }
+    throw new ApiError(message, 401);
   }
   if (code !== 200) {
     throw new ApiError(json.msg || '操作失败，请稍后再试', code);

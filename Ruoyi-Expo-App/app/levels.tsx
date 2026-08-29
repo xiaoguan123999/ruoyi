@@ -12,16 +12,22 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { displayText } from '@/api/app-auth';
-import { emptyLevelsView, fetchAppLevelsView } from '@/api/app-member';
+import {
+  claimAppLevelReward,
+  emptyLevelsView,
+  fetchAppLevelRewardClaimable,
+  fetchAppLevelsView,
+} from '@/api/app-member';
 import { formatTeamAmount } from '@/api/app-team';
 import { ApiError } from '@/api/request';
-import type { AppLevel } from '@/api/types';
+import type { AppLevel, AppLevelRewardClaimableItem, KycRewardCurrency } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
+import { LevelRewardModal } from '@/components/ui/LevelRewardModal';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { useAuth } from '@/hooks/useAuth';
 import { colors } from '@/theme/colors';
-import { modalError } from '@/utils/toast';
+import { modalError, modalSuccess } from '@/utils/toast';
 
 type DisplayLevelRow = {
   levelId: number;
@@ -140,14 +146,28 @@ export default function LevelsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [rulesVisible, setRulesVisible] = useState(false);
   const [levelsView, setLevelsView] = useState(emptyLevelsView());
+  const [claimItem, setClaimItem] = useState<AppLevelRewardClaimableItem | null>(null);
+  const [claimSubmitting, setClaimSubmitting] = useState(false);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) {
       setRefreshing(true);
     }
+    let claimableItems: AppLevelRewardClaimableItem[] = [];
+    try {
+      claimableItems = await fetchAppLevelRewardClaimable();
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 401) {
+        setRefreshing(false);
+        return;
+      }
+    }
     try {
       const levelsData = await fetchAppLevelsView();
-      setLevelsView(levelsData);
+      setLevelsView({
+        ...levelsData,
+        claimable: claimableItems,
+      });
     } catch (error) {
       if (!(error instanceof ApiError) || error.code !== 401) {
         modalError(error instanceof ApiError ? error.message : '获取会员等级失败');
@@ -195,6 +215,38 @@ export default function LevelsScreen() {
     };
   }, [currentLevelId, currentLevelName, displayRows]);
 
+  const claimable = levelsView.claimable;
+
+  const submitClaim = useCallback(
+    async (levelId: number, currency: KycRewardCurrency) => {
+      setClaimSubmitting(true);
+      try {
+        const result = await claimAppLevelReward(levelId, currency);
+        setClaimItem(null);
+        modalSuccess(result.message || '领取成功，已到账');
+        await load(true);
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.code !== 401) {
+          modalError(error instanceof ApiError ? error.message : '领取失败');
+        }
+      } finally {
+        setClaimSubmitting(false);
+      }
+    },
+    [load],
+  );
+
+  const onPressClaim = (item: AppLevelRewardClaimableItem) => {
+    if (claimSubmitting) {
+      return;
+    }
+    if (item.options.length === 1) {
+      void submitClaim(item.levelId, item.options[0].currency);
+      return;
+    }
+    setClaimItem(item);
+  };
+
   return (
     <AppBackground source={images.levelBg} dim={false} contentPosition="top">
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
@@ -223,7 +275,8 @@ export default function LevelsScreen() {
       <RefreshableScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        onRefresh={() => load()}
+        refreshing={refreshing}
+        onRefresh={() => load(false)}
       >
         <View style={styles.hero}>
           <Image source={images.levelTrophy} style={styles.trophy} contentFit="contain" />
@@ -234,15 +287,29 @@ export default function LevelsScreen() {
         </View>
 
         <View style={styles.statusCard}>
-          <View style={styles.statusCol}>
-            <Text style={styles.statusLabel}>当前团队等级</Text>
-            <Text style={styles.statusLevelValue}>{displayText(currentLevelName)}</Text>
+          <View style={styles.statusRow}>
+            <View style={styles.statusCol}>
+              <Text style={styles.statusLabel}>当前团队等级</Text>
+              <Text style={styles.statusLevelValue}>{displayText(currentLevelName)}</Text>
+            </View>
+            <View style={styles.statusCol}>
+              <Text style={styles.statusLabel}>团队奖励</Text>
+              <Text style={styles.statusMoneyLine}>¥ {formatAmountLine(currentTeamReward.cny)}</Text>
+              <Text style={styles.statusMoneyLine}>USDT {formatAmountLine(currentTeamReward.usdt)}</Text>
+            </View>
           </View>
-          <View style={styles.statusCol}>
-            <Text style={styles.statusLabel}>团队奖励</Text>
-            <Text style={styles.statusMoneyLine}>¥ {formatAmountLine(currentTeamReward.cny)}</Text>
-            <Text style={styles.statusMoneyLine}>USDT {formatAmountLine(currentTeamReward.usdt)}</Text>
-          </View>
+          {claimable.map((item) => (
+            <Pressable
+              key={item.levelId}
+              style={styles.claimEntry}
+              disabled={claimSubmitting}
+              onPress={() => onPressClaim(item)}
+            >
+              <Text style={styles.claimEntryText}>
+                {claimSubmitting ? '领取中…' : '等级奖励待领取，点击领取'}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
         {levelsView.hint?.trim() ? (
@@ -282,6 +349,21 @@ export default function LevelsScreen() {
         visible={rulesVisible}
         ruleText={levelsView.ruleText || ''}
         onClose={() => setRulesVisible(false)}
+      />
+      <LevelRewardModal
+        visible={claimItem != null}
+        submitting={claimSubmitting}
+        item={claimItem}
+        onClose={() => {
+          if (!claimSubmitting) {
+            setClaimItem(null);
+          }
+        }}
+        onConfirm={(currency) => {
+          if (claimItem) {
+            void submitClaim(claimItem.levelId, currency);
+          }
+        }}
       />
     </AppBackground>
   );
@@ -394,15 +476,17 @@ const styles = StyleSheet.create({
     textShadowRadius: 8,
   },
   statusCard: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(98, 150, 220, 0.35)',
     backgroundColor: 'rgba(12, 24, 52, 0.82)',
     paddingHorizontal: 14,
     paddingVertical: 16,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 16,
   },
   statusCol: {
     flex: 1,
@@ -424,6 +508,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     lineHeight: 22,
+  },
+  claimEntry: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(232, 195, 106, 0.35)',
+  },
+  claimEntryText: {
+    color: colors.gold,
+    fontSize: 13,
+    fontWeight: '600',
   },
   note: {
     color: 'rgba(180, 198, 228, 0.78)',

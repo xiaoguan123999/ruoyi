@@ -22,6 +22,11 @@ let roles: string[] = [];
 let permissions: string[] = [];
 let ignoreUnauthorizedUntil = 0;
 let redirecting = false;
+let currentSegments: string[] = [];
+
+export function setCurrentAuthSegments(segments: string[]): void {
+  currentSegments = segments;
+}
 
 export function subscribeAuth(listener: Listener): () => void {
   listeners.add(listener);
@@ -77,6 +82,9 @@ export async function handleUnauthorized(
   message = '登录已过期，请重新登录',
 ): Promise<void> {
   if (Date.now() < ignoreUnauthorizedUntil) {
+    return;
+  }
+  if (isPublicAuthRoute(currentSegments)) {
     return;
   }
   if (redirecting) {

@@ -7,6 +7,10 @@ import type {
   AppKycRewardInfo,
   AppLevel,
   AppLevelCurrent,
+  AppLevelRewardClaimableItem,
+  AppLevelRewardClaimPolicy,
+  AppLevelRewardClaimResult,
+  AppLevelRewardOption,
   AppLevelsView,
   AppPasswordBody,
   AppPayPasswordBody,
@@ -280,8 +284,90 @@ function mapLevelCurrent(raw: unknown): AppLevelCurrent {
   };
 }
 
+function mapLevelRewardOption(raw: unknown): AppLevelRewardOption | null {
+  if (!isRecord(raw)) {
+    return null;
+  }
+  const currency = normalizeCurrency(raw.currency);
+  if (!currency) {
+    return null;
+  }
+  return {
+    currency,
+    amount: pickNumber(raw, ['amount']),
+  };
+}
+
+function mapLevelRewardClaimableItem(raw: unknown): AppLevelRewardClaimableItem | null {
+  if (!isRecord(raw)) {
+    return null;
+  }
+  const levelId = pickNumber(raw, ['levelId']);
+  if (!levelId) {
+    return null;
+  }
+  const options = (Array.isArray(raw.options) ? raw.options : [])
+    .map(mapLevelRewardOption)
+    .filter((item): item is AppLevelRewardOption => item !== null);
+  if (options.length === 0) {
+    return null;
+  }
+  const claimPolicyRaw = pickString(raw, ['claimPolicy']).toUpperCase();
+  const claimPolicy: AppLevelRewardClaimPolicy = claimPolicyRaw === 'ALL' ? 'ALL' : 'ONE';
+  const claimedCurrencies = (Array.isArray(raw.claimedCurrencies) ? raw.claimedCurrencies : [])
+    .map((item) => String(item).trim().toUpperCase())
+    .filter((item) => item.length > 0);
+  return {
+    levelId,
+    levelName: pickString(raw, ['levelName']),
+    claimPolicy,
+    walletTypeCode: pickString(raw, ['walletTypeCode']),
+    options,
+    claimedCurrencies,
+  };
+}
+
+function mapClaimableList(raw: unknown): AppLevelRewardClaimableItem[] {
+  const rows = Array.isArray(raw)
+    ? raw
+    : isRecord(raw) && Array.isArray(raw.items)
+      ? raw.items
+      : [];
+  return rows
+    .map(mapLevelRewardClaimableItem)
+    .filter((item): item is AppLevelRewardClaimableItem => item !== null);
+}
+
 export function emptyLevelsView(): AppLevelsView {
-  return { current: {}, levels: [], hint: '', ruleText: '' };
+  return { current: {}, levels: [], claimable: [], hint: '', ruleText: '' };
+}
+
+/** GET /app/levelReward/claimable */
+export async function fetchAppLevelRewardClaimable(): Promise<AppLevelRewardClaimableItem[]> {
+  const res = await request<unknown>('/app/levelReward/claimable');
+  const root = extractDataRoot(res as Record<string, unknown>);
+  return mapClaimableList(root);
+}
+
+/** POST /app/levelReward/claim */
+export async function claimAppLevelReward(
+  levelId: number,
+  currency: KycRewardCurrency,
+): Promise<AppLevelRewardClaimResult> {
+  const res = await request<unknown>('/app/levelReward/claim', {
+    method: 'POST',
+    body: { levelId, currency },
+  });
+  const root = extractDataRoot(res as Record<string, unknown>);
+  const data = isRecord(root) ? root : {};
+  return {
+    levelId: pickNumber(data, ['levelId']) || levelId,
+    levelName: pickString(data, ['levelName']),
+    currency: normalizeCurrency(data.currency) ?? currency,
+    amount: pickNumber(data, ['amount']),
+    walletTypeCode: pickString(data, ['walletTypeCode']),
+    message: res.msg || '领取成功，已到账',
+  };
 }
 
 export async function fetchAppLevelsView(): Promise<AppLevelsView> {
@@ -297,6 +383,7 @@ export async function fetchAppLevelsView(): Promise<AppLevelsView> {
     return {
       current: mapLevelCurrent(root.current ?? root.member ?? root.profile),
       levels,
+      claimable: mapClaimableList(root.claimable),
       hint: pickString(root, ['hint', 'note']),
       ruleText: pickString(root, ['ruleText', 'rules', 'rule']),
     };
@@ -308,6 +395,7 @@ export async function fetchAppLevelsView(): Promise<AppLevelsView> {
       .map(mapLevel)
       .filter((item): item is AppLevel => item !== null)
       .sort((a, b) => (a.sort ?? a.levelId) - (b.sort ?? b.levelId)),
+    claimable: [],
     hint: '',
     ruleText: '',
   };

@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
-import { isPublicAuthRoute } from '@/api/auth-state';
+import { isPublicAuthRoute, setCurrentAuthSegments } from '@/api/auth-state';
 import { useAuth } from '@/hooks/useAuth';
 import { AppProviders } from '@/providers/AppProviders';
 
@@ -30,6 +30,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
     void SplashScreen.hideAsync();
   }, [hydrated]);
+
+  useEffect(() => {
+    setCurrentAuthSegments(segments as string[]);
+  }, [segments]);
 
   useEffect(() => {
     if (!hydrated) {
