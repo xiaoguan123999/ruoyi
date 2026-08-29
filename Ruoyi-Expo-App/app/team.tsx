@@ -41,18 +41,36 @@ function sumStats(rows: TeamUiLevelRow[]) {
     (acc, row) => ({
       register: acc.register + row.register,
       active: acc.active + row.active,
-      recharge: acc.recharge + row.rechargeCny,
-      subscribe: acc.subscribe + row.subscribeCny,
+      rechargeCny: acc.rechargeCny + row.rechargeCny,
+      rechargeUsd: acc.rechargeUsd + row.rechargeUsd,
+      subscribeCny: acc.subscribeCny + row.subscribeCny,
+      subscribeUsd: acc.subscribeUsd + row.subscribeUsd,
     }),
-    { register: 0, active: 0, recharge: 0, subscribe: 0 },
+    {
+      register: 0,
+      active: 0,
+      rechargeCny: 0,
+      rechargeUsd: 0,
+      subscribeCny: 0,
+      subscribeUsd: 0,
+    },
   );
 }
 
-function DualValue({ top, bottom }: { top: number; bottom: number }) {
+function UnitStack() {
   return (
-    <View style={styles.dualValue}>
-      <Text style={styles.dualLine}>{formatTeamAmount(top)}</Text>
-      <Text style={styles.dualLine}>{formatTeamAmount(bottom)}</Text>
+    <View style={styles.unitStack}>
+      <Text style={styles.unitText}>¥</Text>
+      <Text style={styles.unitText}>USDT</Text>
+    </View>
+  );
+}
+
+function AmountNumbers({ usdt, cny }: { usdt: number; cny: number }) {
+  return (
+    <View style={styles.moneyStack}>
+      <Text style={styles.moneyValue}>{formatTeamAmount(cny)}</Text>
+      <Text style={styles.moneyValue}>{formatTeamAmount(usdt)}</Text>
     </View>
   );
 }
@@ -60,8 +78,17 @@ function DualValue({ top, bottom }: { top: number; bottom: number }) {
 function SummaryMetric({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.metricCol}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.th}>{label}</Text>
+      <Text style={styles.td}>{value}</Text>
+    </View>
+  );
+}
+
+function AmountMetric({ label, usdt, cny }: { label: string; usdt: number; cny: number }) {
+  return (
+    <View style={styles.amountMetricCol}>
+      <Text style={[styles.th, styles.amountMetricLabel]}>{label}</Text>
+      <AmountNumbers usdt={usdt} cny={cny} />
     </View>
   );
 }
@@ -72,11 +99,14 @@ function LevelTableRow({ label, row }: { label: string; row: TeamUiLevelRow }) {
       <Text style={[styles.td, styles.colLevelNo]}>{label}</Text>
       <Text style={[styles.td, styles.colCount]}>{formatTeamAmount(row.register)}</Text>
       <Text style={[styles.td, styles.colCount]}>{formatTeamAmount(row.active)}</Text>
-      <View style={styles.colDual}>
-        <DualValue top={row.rechargeCny} bottom={row.rechargeUsd} />
+      <View style={styles.colUnit}>
+        <UnitStack />
       </View>
       <View style={styles.colDual}>
-        <DualValue top={row.subscribeCny} bottom={row.subscribeUsd} />
+        <AmountNumbers usdt={row.rechargeUsd} cny={row.rechargeCny} />
+      </View>
+      <View style={styles.colDual}>
+        <AmountNumbers usdt={row.subscribeUsd} cny={row.subscribeCny} />
       </View>
     </View>
   );
@@ -95,17 +125,11 @@ function MemberRow({
       <Text style={[styles.td, styles.colPhone]} numberOfLines={1}>
         {member.phone}
       </Text>
-      <View style={[styles.colMoney, styles.moneyCell]}>
-        <View style={styles.moneyStack}>
-          <View style={styles.moneyLine}>
-            <Text style={styles.moneyLabel}>USDT</Text>
-            <Text style={styles.moneyValue}>{formatTeamAmount(member.usd)}</Text>
-          </View>
-          <View style={styles.moneyLine}>
-            <Text style={styles.moneyLabel}>¥</Text>
-            <Text style={styles.moneyValue}>{formatTeamAmount(member.cny)}</Text>
-          </View>
-        </View>
+      <View style={styles.colUnit}>
+        <UnitStack />
+      </View>
+      <View style={styles.colMoney}>
+        <AmountNumbers usdt={member.usd} cny={member.cny} />
       </View>
     </View>
   );
@@ -158,8 +182,20 @@ export default function TeamScreen() {
         <View style={styles.topCard}>
           <SummaryMetric label="注册人数" value={formatTeamAmount(totals.register)} />
           <SummaryMetric label="激活人数" value={formatTeamAmount(totals.active)} />
-          <SummaryMetric label="充值金额" value={formatTeamAmount(totals.recharge)} />
-          <SummaryMetric label="认购金额" value={formatTeamAmount(totals.subscribe)} />
+          <View style={styles.topUnitCol}>
+            <View style={styles.amountUnitSpacer} />
+            <UnitStack />
+          </View>
+          <AmountMetric
+            label="充值金额"
+            usdt={totals.rechargeUsd}
+            cny={totals.rechargeCny}
+          />
+          <AmountMetric
+            label="认购金额"
+            usdt={totals.subscribeUsd}
+            cny={totals.subscribeCny}
+          />
         </View>
 
         <View style={styles.tableCard}>
@@ -167,8 +203,9 @@ export default function TeamScreen() {
             <Text style={[styles.th, styles.colLevelNo]}>级别</Text>
             <Text style={[styles.th, styles.colCount]}>注册人数</Text>
             <Text style={[styles.th, styles.colCount]}>激活人数</Text>
-            <Text style={[styles.th, styles.colDualHead]}>{'充值金额\n¥/USDT'}</Text>
-            <Text style={[styles.th, styles.colDualHead]}>{'认购金额\n¥/USDT'}</Text>
+            <View style={styles.colUnit} />
+            <Text style={[styles.th, styles.colDualHead]}>充值金额</Text>
+            <Text style={[styles.th, styles.colDualHead]}>认购金额</Text>
           </View>
           {TEAM_LEVEL_LABELS.map((label, index) => (
             <LevelTableRow key={label} label={label} row={levelRows[index]} />
@@ -193,7 +230,8 @@ export default function TeamScreen() {
           <View style={styles.listHead}>
             <Text style={[styles.th, styles.colName]}>姓名</Text>
             <Text style={[styles.th, styles.colPhone]}>电话</Text>
-            <Text style={[styles.th, styles.colMoney]}>累计充值</Text>
+            <View style={styles.colUnit} />
+            <Text style={[styles.th, styles.colMoneyHead]}>累计充值</Text>
           </View>
 
           {members.length === 0 ? (
@@ -227,6 +265,7 @@ const styles = StyleSheet.create({
   },
   topCard: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(98, 150, 220, 0.28)',
@@ -234,22 +273,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 16,
   },
+  topUnitCol: {
+    width: 36,
+    alignItems: 'flex-end',
+    paddingRight: 6,
+    gap: 8,
+  },
+  amountUnitSpacer: {
+    height: 16,
+  },
+  amountMetricCol: {
+    flex: 1,
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  amountMetricLabel: {
+    textAlign: 'left',
+  },
   metricCol: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
-  },
-  metricLabel: {
-    color: 'rgba(180, 200, 230, 0.85)',
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  metricValue: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
   },
   tableCard: {
     borderRadius: 14,
@@ -292,27 +336,22 @@ const styles = StyleSheet.create({
     width: '10%',
   },
   colCount: {
-    width: '16%',
+    width: '15%',
+  },
+  colUnit: {
+    width: 36,
+    alignItems: 'flex-end',
+    paddingRight: 6,
+    paddingTop: 1,
   },
   colDual: {
-    width: '29%',
-    alignItems: 'center',
+    flex: 1,
+    alignItems: 'flex-start',
     paddingTop: 1,
   },
   colDualHead: {
-    width: '29%',
-    textAlign: 'center',
-  },
-  dualValue: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  dualLine: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 18,
-    textAlign: 'center',
+    flex: 1,
+    textAlign: 'left',
   },
   tabs: {
     flexDirection: 'row',
@@ -362,25 +401,25 @@ const styles = StyleSheet.create({
   },
   colMoney: {
     flex: 1.2,
+    alignItems: 'flex-start',
   },
-  moneyCell: {
-    alignItems: 'center',
+  colMoneyHead: {
+    flex: 1.2,
+    textAlign: 'left',
   },
-  moneyStack: {
+  unitStack: {
     gap: 2,
+    alignItems: 'flex-end',
   },
-  moneyLine: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  moneyLabel: {
-    width: 40,
-    color: colors.text,
-    fontSize: 13,
+  unitText: {
+    color: 'rgba(180, 200, 230, 0.9)',
+    fontSize: 11,
     fontWeight: '600',
     lineHeight: 18,
     textAlign: 'right',
+  },
+  moneyStack: {
+    gap: 2,
   },
   moneyValue: {
     color: colors.text,
