@@ -159,6 +159,7 @@ function mapProduct(raw: unknown): AppProduct | null {
     coverUrl: coverUrl || undefined,
     riskLevel: pickString(raw, ['riskLevel']) || undefined,
     payoutMethod: pickString(raw, ['payoutMethod']) || undefined,
+    onSaleFlag: raw.onSaleFlag === true,
   };
 }
 
@@ -198,6 +199,7 @@ export function mapAppProductToItem(product: AppProduct, index = 0): ProductItem
     payoutMethod: product.payoutMethod || undefined,
     currencies: support.length ? support.join(' / ') : '--',
     riskLevel: product.riskLevel || undefined,
+    onSaleFlag: product.onSaleFlag === true,
   };
 }
 

@@ -18,6 +18,7 @@ export type ProductItem = {
   currencies?: string;
   riskLevel?: string;
   apiId?: number;
+  onSaleFlag?: boolean;
 };
 
 export type ProductSeries = {

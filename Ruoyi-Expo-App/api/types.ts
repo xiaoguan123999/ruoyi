@@ -210,6 +210,8 @@ export type AppProduct = {
   riskLevel?: string;
   /** 收益发放方式 */
   payoutMethod?: string;
+  /** 是否已开售，未开售不可进详情 */
+  onSaleFlag?: boolean;
 };
 
 /** GET /app/product/series */

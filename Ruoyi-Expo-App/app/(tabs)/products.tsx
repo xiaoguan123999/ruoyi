@@ -18,6 +18,7 @@ import { ProductCard } from '@/components/ui/ProductCard';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { colors } from '@/theme/colors';
 import type { ProductItem, ProductSeries } from '@/types/product';
+import { modalWarning } from '@/utils/toast';
 
 export default function ProductsScreen() {
   const insets = useSafeAreaInsets();
@@ -161,7 +162,13 @@ export default function ProductsScreen() {
               <ProductCard
                 key={item.id}
                 item={item}
-                onPress={() => router.push(`/products/subscribe/${item.id}`)}
+                onPress={() => {
+                  if (item.onSaleFlag !== true) {
+                    modalWarning('暂未开放');
+                    return;
+                  }
+                  router.push(`/products/subscribe/${item.id}`);
+                }}
               />
             ))
           )}

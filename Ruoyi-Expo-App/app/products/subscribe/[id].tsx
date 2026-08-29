@@ -34,8 +34,11 @@ export default function ProductSubscribeScreen() {
       ]);
       setItem(product);
       setHasPayPassword(profile?.hasPayPassword !== false);
-    } catch {
+    } catch (error) {
       setItem(undefined);
+      if (!(error instanceof ApiError) || error.code !== 401) {
+        modalError(error instanceof ApiError ? error.message : '产品信息加载失败');
+      }
     }
   }, [id]);
 
@@ -45,6 +48,10 @@ export default function ProductSubscribeScreen() {
 
   const requestSubscribe = (currency: 'CNY' | 'USDT', quantity: number) => {
     if (!item || submitting) {
+      return;
+    }
+    if (item.onSaleFlag !== true) {
+      modalWarning('暂未开放');
       return;
     }
     const productId = item.apiId ?? Number(item.id);
