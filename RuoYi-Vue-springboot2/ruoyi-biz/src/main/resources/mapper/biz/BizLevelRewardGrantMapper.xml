@@ -44,6 +44,12 @@
         where member_id = #{memberId} and level_id = #{levelId} and status in ('0', '1')
     </select>
 
+    <select id="selectByMemberAndLevel" resultMap="GrantResult">
+        <include refid="selectGrantVo"/>
+        where g.member_id = #{memberId} and g.level_id = #{levelId} and g.status in ('0', '1')
+        order by g.grant_id desc
+    </select>
+
     <select id="selectGrantList" parameterType="BizLevelRewardGrant" resultMap="GrantResult">
         <include refid="selectGrantVo"/>
         <where>

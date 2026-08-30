@@ -8,6 +8,8 @@
         <result property="minValidMembers"   column="min_valid_members"/>
         <result property="teamDepth"         column="team_depth"/>
         <result property="performanceSource" column="performance_source"/>
+        <result property="thresholdMode"     column="threshold_mode"/>
+        <result property="teamThresholdMode" column="team_threshold_mode"/>
         <result property="minRechargeCny"    column="min_recharge_cny"/>
         <result property="minRechargeUsdt"   column="min_recharge_usdt"/>
         <result property="minTeamRechargeCny" column="min_team_recharge_cny"/>
@@ -19,6 +21,7 @@
         <result property="rewardEnabled"     column="reward_enabled"/>
         <result property="rewardCycle"       column="reward_cycle"/>
         <result property="rewardMode"        column="reward_mode"/>
+        <result property="rewardClaimPolicy" column="reward_claim_policy"/>
         <result property="rewardRepeat"      column="reward_repeat"/>
         <result property="rewardCny"         column="reward_cny"/>
         <result property="rewardUsdt"        column="reward_usdt"/>
@@ -34,9 +37,9 @@
     </resultMap>
 
     <sql id="selectLevelVo">
-        select level_id, level_name, min_valid_members, team_depth, performance_source, min_recharge_cny, min_recharge_usdt,
+        select level_id, level_name, min_valid_members, team_depth, performance_source, threshold_mode, team_threshold_mode, min_recharge_cny, min_recharge_usdt,
                min_team_recharge_cny, min_team_recharge_usdt, min_team_perf_cny, min_team_perf_usdt, sort, status,
-               reward_enabled, reward_cycle, reward_mode, reward_repeat, reward_cny, reward_usdt,
+               reward_enabled, reward_cycle, reward_mode, reward_claim_policy, reward_repeat, reward_cny, reward_usdt,
                wallet_type_code, mixed_pay_currency, valid_need_kyc, valid_need_order,
                create_by, create_time, update_by, update_time, remark
         from biz_level
@@ -58,15 +61,15 @@
 
     <insert id="insertLevel" parameterType="BizLevel" useGeneratedKeys="true" keyProperty="levelId">
         insert into biz_level (
-            level_name, min_valid_members, team_depth, performance_source, min_recharge_cny, min_recharge_usdt,
+            level_name, min_valid_members, team_depth, performance_source, threshold_mode, team_threshold_mode, min_recharge_cny, min_recharge_usdt,
             min_team_recharge_cny, min_team_recharge_usdt, min_team_perf_cny, min_team_perf_usdt, sort, status,
-            reward_enabled, reward_cycle, reward_mode, reward_repeat, reward_cny, reward_usdt,
+            reward_enabled, reward_cycle, reward_mode, reward_claim_policy, reward_repeat, reward_cny, reward_usdt,
             wallet_type_code, mixed_pay_currency, valid_need_kyc, valid_need_order,
             create_by, create_time, remark
         ) values (
-            #{levelName}, #{minValidMembers}, #{teamDepth}, #{performanceSource}, #{minRechargeCny}, #{minRechargeUsdt},
+            #{levelName}, #{minValidMembers}, #{teamDepth}, #{performanceSource}, #{thresholdMode}, #{teamThresholdMode}, #{minRechargeCny}, #{minRechargeUsdt},
             #{minTeamRechargeCny}, #{minTeamRechargeUsdt}, #{minTeamPerfCny}, #{minTeamPerfUsdt}, #{sort}, #{status},
-            #{rewardEnabled}, #{rewardCycle}, #{rewardMode}, #{rewardRepeat}, #{rewardCny}, #{rewardUsdt},
+            #{rewardEnabled}, #{rewardCycle}, #{rewardMode}, #{rewardClaimPolicy}, #{rewardRepeat}, #{rewardCny}, #{rewardUsdt},
             #{walletTypeCode}, #{mixedPayCurrency}, #{validNeedKyc}, #{validNeedOrder},
             #{createBy}, sysdate(), #{remark}
         )
@@ -79,6 +82,8 @@
             <if test="minValidMembers != null">min_valid_members = #{minValidMembers},</if>
             <if test="teamDepth != null">team_depth = #{teamDepth},</if>
             <if test="performanceSource != null and performanceSource != ''">performance_source = #{performanceSource},</if>
+            <if test="thresholdMode != null and thresholdMode != ''">threshold_mode = #{thresholdMode},</if>
+            <if test="teamThresholdMode != null and teamThresholdMode != ''">team_threshold_mode = #{teamThresholdMode},</if>
             <if test="minRechargeCny != null">min_recharge_cny = #{minRechargeCny},</if>
             <if test="minRechargeUsdt != null">min_recharge_usdt = #{minRechargeUsdt},</if>
             <if test="minTeamRechargeCny != null">min_team_recharge_cny = #{minTeamRechargeCny},</if>
@@ -90,6 +95,7 @@
             <if test="rewardEnabled != null">reward_enabled = #{rewardEnabled},</if>
             <if test="rewardCycle != null">reward_cycle = #{rewardCycle},</if>
             <if test="rewardMode != null">reward_mode = #{rewardMode},</if>
+            <if test="rewardClaimPolicy != null">reward_claim_policy = #{rewardClaimPolicy},</if>
             <if test="rewardRepeat != null">reward_repeat = #{rewardRepeat},</if>
             <if test="rewardCny != null">reward_cny = #{rewardCny},</if>
             <if test="rewardUsdt != null">reward_usdt = #{rewardUsdt},</if>

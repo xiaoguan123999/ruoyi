@@ -13,6 +13,8 @@ public interface BizLevelRewardGrantMapper
 
     int countActiveByMemberLevel(@Param("memberId") Long memberId, @Param("levelId") Long levelId);
 
+    List<BizLevelRewardGrant> selectByMemberAndLevel(@Param("memberId") Long memberId, @Param("levelId") Long levelId);
+
     List<BizLevelRewardGrant> selectGrantList(BizLevelRewardGrant grant);
 
     int insertGrant(BizLevelRewardGrant grant);

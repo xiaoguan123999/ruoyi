@@ -22,6 +22,10 @@ public class AppLevelsData
     private String hint;
     @ApiModelProperty("hint 别名")
     private String note;
+    @ApiModelProperty("1 USDT 折合多少人民币")
+    private java.math.BigDecimal usdtToCny;
+    @ApiModelProperty("当前可领取的等级奖励")
+    private List<AppLevelRewardClaimItem> claimable;
 
     public BizMember getCurrent() { return current; }
     public void setCurrent(BizMember current) { this.current = current; }
@@ -33,4 +37,8 @@ public class AppLevelsData
     public void setHint(String hint) { this.hint = hint; }
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
+    public java.math.BigDecimal getUsdtToCny() { return usdtToCny; }
+    public void setUsdtToCny(java.math.BigDecimal usdtToCny) { this.usdtToCny = usdtToCny; }
+    public List<AppLevelRewardClaimItem> getClaimable() { return claimable; }
+    public void setClaimable(List<AppLevelRewardClaimItem> claimable) { this.claimable = claimable; }
 }

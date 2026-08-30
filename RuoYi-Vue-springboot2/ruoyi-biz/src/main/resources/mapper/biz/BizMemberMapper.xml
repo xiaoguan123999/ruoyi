@@ -202,9 +202,9 @@
     <select id="selectAppTeamRegisterStats" resultType="com.ruoyi.biz.api.AppTeamLevelStats">
         select depth as teamLevel,
                count(1) as register,
-               ifnull(sum(case when kyc_status = '1' then 1 else 0 end), 0) as active
+               ifnull(sum(case when exists (select 1 from biz_order o where o.member_id = t.member_id) then 1 else 0 end), 0) as active
         from (
-            select m.kyc_status, <include refid="teamDepthExpr"/> as depth
+            select m.member_id, <include refid="teamDepthExpr"/> as depth
             from biz_member m
             where find_in_set(#{memberId}, m.ancestors)
         ) t

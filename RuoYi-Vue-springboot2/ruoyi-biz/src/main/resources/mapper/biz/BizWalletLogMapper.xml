@@ -53,15 +53,10 @@
         <if test="currency != null and currency != ''">and l.currency = #{currency}</if>
         <if test="walletTypeCode != null and walletTypeCode != ''">and l.type_code = #{walletTypeCode}</if>
         <if test="bizTypes != null and bizTypes.size() &gt; 0">
-          and (
-            l.biz_type in
-            <foreach collection="bizTypes" item="item" open="(" separator="," close=")">
-              #{item}
-            </foreach>
-            <if test="includeAdjust">
-              or l.biz_type = 'ADJUST'
-            </if>
-          )
+          and l.biz_type in
+          <foreach collection="bizTypes" item="item" open="(" separator="," close=")">
+            #{item}
+          </foreach>
         </if>
         order by l.log_id desc
     </select>

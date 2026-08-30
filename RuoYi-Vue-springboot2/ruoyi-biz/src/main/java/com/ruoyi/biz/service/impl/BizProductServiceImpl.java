@@ -59,6 +59,10 @@ public class BizProductServiceImpl implements IBizProductService
         {
             product.setUnlockDelayHours(Integer.valueOf(0));
         }
+        if (!"0".equals(product.getOnSale()))
+        {
+            product.setOnSale("1");
+        }
         fillDualPrices(product);
         return productMapper.insertProduct(product);
     }
@@ -73,6 +77,10 @@ public class BizProductServiceImpl implements IBizProductService
         if (product.getUnlockDelayHours() != null && product.getUnlockDelayHours().intValue() < 0)
         {
             product.setUnlockDelayHours(Integer.valueOf(0));
+        }
+        if (product.getOnSale() != null && !"0".equals(product.getOnSale()) && !"1".equals(product.getOnSale()))
+        {
+            product.setOnSale("1");
         }
         fillDualPrices(product);
         return productMapper.updateProduct(product);

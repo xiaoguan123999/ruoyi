@@ -9,6 +9,7 @@ import com.ruoyi.biz.domain.BizLevel;
 import com.ruoyi.biz.mapper.BizLevelMapper;
 import com.ruoyi.biz.service.IBizLevelRewardService;
 import com.ruoyi.biz.service.IBizLevelService;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 
 @Service
@@ -55,6 +56,7 @@ public class BizLevelServiceImpl implements IBizLevelService
         {
             level.setPerformanceSource(level.getPerformanceSource().toUpperCase());
         }
+        levelRewardService.applyThresholdModes(level);
         if (StringUtils.isEmpty(level.getWalletTypeCode()))
         {
             level.setWalletTypeCode("PROMO");
@@ -113,14 +115,25 @@ public class BizLevelServiceImpl implements IBizLevelService
         }
         enableOnceAutoIfAmount(level);
         levelRewardService.normalizeTeamDepth(level);
+        levelRewardService.applyRewardGrantFields(level);
         return levelMapper.insertLevel(level);
     }
 
     @Override
     public int updateLevel(BizLevel level)
     {
+        if (StringUtils.isNotEmpty(level.getThresholdMode())
+                || StringUtils.isNotEmpty(level.getPersonalThresholdMode())
+                || StringUtils.isNotEmpty(level.getTeamThresholdMode()))
+        {
+            levelRewardService.applyThresholdModes(level);
+        }
         enableOnceAutoIfAmount(level);
         levelRewardService.normalizeTeamDepth(level);
+        if (StringUtils.isNotEmpty(level.getRewardMode()) || StringUtils.isNotEmpty(level.getRewardClaimPolicy()))
+        {
+            levelRewardService.applyRewardGrantFields(level);
+        }
         return levelMapper.updateLevel(level);
     }
 

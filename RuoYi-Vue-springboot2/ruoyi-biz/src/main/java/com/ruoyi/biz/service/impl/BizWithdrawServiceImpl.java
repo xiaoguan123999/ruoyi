@@ -8,8 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.biz.constant.BizConstants;
+import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizWithdraw;
 import com.ruoyi.biz.domain.BizWithdrawRule;
+import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.mapper.BizWithdrawMapper;
 import com.ruoyi.biz.service.IBizConfigService;
 import com.ruoyi.biz.service.IBizGoogleAuthService;
@@ -42,6 +44,9 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
     @Autowired
     private IBizGoogleAuthService googleAuthService;
 
+    @Autowired
+    private BizMemberMapper memberMapper;
+
     @Override
     public BizWithdraw selectWithdrawById(Long withdrawId)
     {
@@ -66,6 +71,7 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
         rule.setFeeRate(configService.getWithdrawFeeRate());
         rule.setProductWalletType(creditRuleService.resolveTypeCode(BizConstants.BIZ_WITHDRAW_PRODUCT));
         rule.setPromoWalletType(creditRuleService.resolveTypeCode(BizConstants.BIZ_WITHDRAW_PROMO));
+        rule.setNeedKyc(Boolean.valueOf(configService.isWithdrawNeedKyc()));
         return rule;
     }
 
@@ -89,6 +95,9 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
         configService.saveConfig(BizConstants.CONFIG_WITHDRAW_MAX_USDT, "USDT最高提现", fmt(maxUsdt), "USDT最高提现，0表示不限");
         configService.saveConfig(BizConstants.CONFIG_USDT_ENABLED, "USDT业务开关", usdtEnabled ? "true" : "false", "false表示USDT充提暂未开放");
         configService.saveConfig(BizConstants.CONFIG_WITHDRAW_FEE_RATE, "提现手续费比例", fmt(normalizeFeeRate(rule.getFeeRate())), "百分数，3表示3%，0表示免手续费");
+        boolean needKyc = rule.getNeedKyc() == null ? configService.isWithdrawNeedKyc() : rule.getNeedKyc().booleanValue();
+        configService.saveConfig(BizConstants.CONFIG_WITHDRAW_NEED_KYC, "提现需实名", needKyc ? "true" : "false",
+                "true表示必须完成实名才能提现");
         String operator = SecurityUtils.getUsername();
         String productWallet = StringUtils.isEmpty(rule.getProductWalletType())
                 ? BizConstants.WALLET_PRODUCT : rule.getProductWalletType();
@@ -104,6 +113,14 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
     public BizWithdraw apply(Long memberId, String currency, BigDecimal amount, String accountInfo, String remark, String googleCode)
     {
         googleAuthService.assertForWithdraw(memberId, googleCode);
+        if (configService.isWithdrawNeedKyc())
+        {
+            BizMember member = memberMapper.selectMemberById(memberId);
+            if (member == null || !BizConstants.KYC_DONE.equals(member.getKycStatus()))
+            {
+                throw new ServiceException("请先完成实名认证");
+            }
+        }
         configService.assertCurrencyEnabled(currency);
         String payCurrency = currency.toUpperCase();
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)

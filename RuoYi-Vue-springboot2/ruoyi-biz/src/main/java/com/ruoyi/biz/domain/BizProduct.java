@@ -55,10 +55,10 @@ public class BizProduct extends BaseEntity
     @ApiModelProperty("每人限购份数，0表示不限制")
     private Integer buyLimit;
 
-    @ApiModelProperty("直属下级需认购同一产品的总份数，0表示关闭一拖二")
+    @ApiModelProperty("直属下级需认购同档产品多少份才能激活上级1份，0表示关闭一拖二")
     private Integer unlockDirectQty;
 
-    @ApiModelProperty("条件达成后再等待多少小时才开始日返，0表示立即")
+    @ApiModelProperty("激活后再等待多少小时才开始日返，0表示激活后即可日返")
     private Integer unlockDelayHours;
 
     @ApiModelProperty("收益发放方式，App 展示")
@@ -66,6 +66,9 @@ public class BizProduct extends BaseEntity
 
     @ApiModelProperty("风险等级，App 展示")
     private String riskLevel;
+
+    @ApiModelProperty("是否开售：1开售 0未开售。未开售时 App 不可进详情、不可认购")
+    private String onSale;
 
     @ApiModelProperty("上架状态：0上架 1下架")
     private String status;
@@ -316,6 +319,27 @@ public class BizProduct extends BaseEntity
     public void setRiskLevel(String riskLevel)
     {
         this.riskLevel = riskLevel;
+    }
+
+    public String getOnSale()
+    {
+        return onSale;
+    }
+
+    public void setOnSale(String onSale)
+    {
+        this.onSale = onSale;
+    }
+
+    @ApiModelProperty("是否开售，true 可进详情")
+    public Boolean getOnSaleFlag()
+    {
+        return Boolean.valueOf(saleOpen());
+    }
+
+    public boolean saleOpen()
+    {
+        return onSale == null || "1".equals(onSale);
     }
 
     public String getStatus()

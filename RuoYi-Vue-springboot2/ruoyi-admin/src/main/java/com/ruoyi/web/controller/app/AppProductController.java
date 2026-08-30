@@ -96,6 +96,10 @@ public class AppProductController extends BaseController
         {
             return AppProductResult.fail("产品不存在或已下架");
         }
+        if (!product.saleOpen())
+        {
+            return AppProductResult.fail("产品暂未开售");
+        }
         product.setCoverUrl(toPublicUrl(product.getCoverUrl()));
         return AppProductResult.ok(product);
     }

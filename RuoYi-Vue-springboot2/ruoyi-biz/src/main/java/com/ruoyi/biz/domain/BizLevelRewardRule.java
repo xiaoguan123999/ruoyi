@@ -22,6 +22,8 @@ public class BizLevelRewardRule
     private String ruleText;
     @ApiModelProperty("App等级页表格上方注释")
     private String hint;
+    @ApiModelProperty("1 USDT 折合多少人民币，默认 6.25")
+    private java.math.BigDecimal usdtToCny;
 
     public Boolean getEnabled() { return enabled; }
     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
@@ -39,4 +41,6 @@ public class BizLevelRewardRule
     public void setRuleText(String ruleText) { this.ruleText = ruleText; }
     public String getHint() { return hint; }
     public void setHint(String hint) { this.hint = hint; }
+    public java.math.BigDecimal getUsdtToCny() { return usdtToCny; }
+    public void setUsdtToCny(java.math.BigDecimal usdtToCny) { this.usdtToCny = usdtToCny; }
 }
