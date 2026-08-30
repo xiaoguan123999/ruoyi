@@ -31,12 +31,21 @@ public class BizLevel extends BaseEntity
     @ApiModelProperty("团队业绩口径：SUBSCRIBE认购 RECHARGE充值 BOTH认购+充值")
     private String performanceSource;
 
+    @ApiModelProperty("本人门槛方式：SPLIT独立计算（分币种都要过） EQUIV合并计算（折合后或过一项）。兼容字段，等同 personalThresholdMode")
+    private String thresholdMode;
+
+    @ApiModelProperty("本人门槛方式：SPLIT独立计算 EQUIV合并计算（折合后或过一项）")
+    private String personalThresholdMode;
+
+    @ApiModelProperty("团队门槛方式：SPLIT独立计算 EQUIV合并计算（折合后或过一项）")
+    private String teamThresholdMode;
+
     /** 最低累计充值CNY */
-    @ApiModelProperty("最低累计充值CNY，只看本人已通过充值")
+    @ApiModelProperty("最低累计充值CNY，只看本人已通过充值；合并计算时为折合人民币门槛，0不限制")
     private BigDecimal minRechargeCny;
 
     /** 最低累计充值USDT */
-    @ApiModelProperty("最低累计充值USDT")
+    @ApiModelProperty("最低累计充值USDT；合并计算时为折合USDT门槛，与CNY门槛或过一项，0不限制")
     private BigDecimal minRechargeUsdt;
 
     /** 排序 */
@@ -47,10 +56,10 @@ public class BizLevel extends BaseEntity
     @ApiModelProperty("状态")
     private String status;
 
-    @ApiModelProperty("团队累计金额CNY，按本等级口径和团队要求层数，不含本人，0不限制")
+    @ApiModelProperty("团队累计金额CNY，按本等级口径和团队要求层数，含本人已通过充值，0不限制")
     private java.math.BigDecimal minTeamRechargeCny;
 
-    @ApiModelProperty("团队累计金额USDT，按本等级口径和团队要求层数，不含本人，0不限制")
+    @ApiModelProperty("团队累计金额USDT，含本人；合并计算时为折合USDT门槛，与CNY门槛或过一项，0不限制")
     private java.math.BigDecimal minTeamRechargeUsdt;
 
     @ApiModelProperty("最低团队业绩CNY，0不限制")
@@ -65,8 +74,11 @@ public class BizLevel extends BaseEntity
     @ApiModelProperty("奖励周期：NONE/ONCE/MONTHLY/PERMANENT")
     private String rewardCycle;
 
-    @ApiModelProperty("发放方式：AUTO自动 MANUAL客服")
+    @ApiModelProperty("发放方式：AUTO自动 MANUAL客服 CLAIM用户领取")
     private String rewardMode;
+
+    @ApiModelProperty("用户领取范围：ONE二选一 ALL都可领取。仅 rewardMode=CLAIM 且都发时生效")
+    private String rewardClaimPolicy;
 
     @ApiModelProperty("永久档重复领取：NONE/MONTHLY/UNLIMITED")
     private String rewardRepeat;
@@ -139,6 +151,36 @@ public class BizLevel extends BaseEntity
         this.performanceSource = performanceSource;
     }
 
+    public String getThresholdMode()
+    {
+        return thresholdMode;
+    }
+
+    public void setThresholdMode(String thresholdMode)
+    {
+        this.thresholdMode = thresholdMode;
+    }
+
+    public String getPersonalThresholdMode()
+    {
+        return personalThresholdMode;
+    }
+
+    public void setPersonalThresholdMode(String personalThresholdMode)
+    {
+        this.personalThresholdMode = personalThresholdMode;
+    }
+
+    public String getTeamThresholdMode()
+    {
+        return teamThresholdMode;
+    }
+
+    public void setTeamThresholdMode(String teamThresholdMode)
+    {
+        this.teamThresholdMode = teamThresholdMode;
+    }
+
     public BigDecimal getMinRechargeCny()
     {
         return minRechargeCny;
@@ -193,6 +235,8 @@ public class BizLevel extends BaseEntity
     public void setRewardCycle(String rewardCycle) { this.rewardCycle = rewardCycle; }
     public String getRewardMode() { return rewardMode; }
     public void setRewardMode(String rewardMode) { this.rewardMode = rewardMode; }
+    public String getRewardClaimPolicy() { return rewardClaimPolicy; }
+    public void setRewardClaimPolicy(String rewardClaimPolicy) { this.rewardClaimPolicy = rewardClaimPolicy; }
     public String getRewardRepeat() { return rewardRepeat; }
     public void setRewardRepeat(String rewardRepeat) { this.rewardRepeat = rewardRepeat; }
     public java.math.BigDecimal getRewardCny() { return rewardCny; }

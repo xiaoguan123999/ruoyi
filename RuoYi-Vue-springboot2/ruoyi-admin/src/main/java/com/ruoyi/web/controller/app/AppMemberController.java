@@ -139,6 +139,8 @@ public class AppMemberController extends BaseController
         data.setRuleText(rule.getRuleText());
         data.setHint(rule.getHint());
         data.setNote(rule.getHint());
+        data.setUsdtToCny(rule.getUsdtToCny());
+        data.setClaimable(levelRewardService.listClaimable(AppSecurityUtils.getMemberId()));
         return AppLevelsResult.ok(data);
     }
 }

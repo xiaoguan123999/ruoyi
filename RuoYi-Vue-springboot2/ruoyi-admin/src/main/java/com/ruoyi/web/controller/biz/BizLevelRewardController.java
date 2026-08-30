@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.ruoyi.biz.domain.BizFxRateLog;
 import com.ruoyi.biz.domain.BizLevel;
 import com.ruoyi.biz.domain.BizLevelRewardGrant;
 import com.ruoyi.biz.domain.BizLevelRewardPayBody;
@@ -55,6 +56,16 @@ public class BizLevelRewardController extends BaseController
     {
         levelRewardService.saveRule(rule);
         return success();
+    }
+
+    @ApiOperation("汇率变更记录")
+    @PreAuthorize("@ss.hasPermi('biz:levelReward:query')")
+    @GetMapping("/fxLog/list")
+    public TableDataInfo fxLogList(BizFxRateLog log)
+    {
+        startPage();
+        List<BizFxRateLog> list = levelRewardService.selectFxRateLogList(log);
+        return getDataTable(list);
     }
 
     @ApiOperation("等级奖励配置列表")

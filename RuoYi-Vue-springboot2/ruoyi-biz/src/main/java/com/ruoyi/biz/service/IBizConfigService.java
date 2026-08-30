@@ -21,6 +21,8 @@ public interface IBizConfigService
 
     boolean isUsdtEnabled();
 
+    boolean isWithdrawNeedKyc();
+
     void assertCurrencyEnabled(String currency);
 
     boolean isGoogleEnabled();
@@ -28,6 +30,8 @@ public interface IBizConfigService
     boolean isGoogleRequiredForWithdraw();
 
     String getGoogleIssuer();
+
+    BigDecimal getUsdtToCnyRate();
 
     void saveConfig(String key, String name, String value, String remark);
 

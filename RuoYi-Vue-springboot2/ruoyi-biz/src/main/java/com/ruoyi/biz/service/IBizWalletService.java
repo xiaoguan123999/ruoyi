@@ -34,7 +34,7 @@ public interface IBizWalletService
 
     List<BizWalletLog> selectWalletLogList(BizWalletLog log);
 
-    List<AppWalletLogItem> selectAppWalletLogList(Long memberId, String currency, String bizType);
+    List<AppWalletLogItem> selectAppWalletLogList(Long memberId, String currency, String bizType, String typeCode);
 
     AppWalletCard selectAppWalletCard(Long memberId);
 

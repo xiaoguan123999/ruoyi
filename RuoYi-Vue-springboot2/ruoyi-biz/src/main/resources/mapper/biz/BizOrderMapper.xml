@@ -66,7 +66,7 @@
 
     <select id="selectHoldingOrders" resultMap="BizOrderResult">
         <include refid="selectOrderVo"/>
-        where o.status = '0' and o.remaining_days &gt; 0
+        where o.status = '0'
     </select>
 
     <select id="countMemberOrders" resultType="int">
@@ -81,6 +81,12 @@
         <include refid="selectOrderVo"/>
         where o.product_id = #{productId}
           and m.parent_id = #{parentId}
+        order by o.create_time asc, o.order_id asc
+    </select>
+
+    <select id="selectDirectDownlineOrders" resultMap="BizOrderResult">
+        <include refid="selectOrderVo"/>
+        where m.parent_id = #{parentId}
         order by o.create_time asc, o.order_id asc
     </select>
 

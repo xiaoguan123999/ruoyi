@@ -83,20 +83,32 @@ public class BizOrder extends BaseEntity
     @ApiModelProperty("是否提现指定产品")
     private String withdrawRequired;
 
-    @ApiModelProperty("一拖二份数快照，0关闭")
+    @ApiModelProperty("一拖二：下级几份同档激活上级1份，0关闭")
     private Integer unlockDirectQty;
 
-    @ApiModelProperty("等待小时快照")
+    @ApiModelProperty("激活后再等待多少小时才开始日返，快照")
     private Integer unlockDelayHours;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @ApiModelProperty("收益开始时间")
+    @ApiModelProperty("开始返利时间。一拖二未达标为 null")
     private Date incomeStartTime;
 
-    @ApiModelProperty("激活状态：0未激活 1已激活")
+    @ApiModelProperty("激活状态：0未激活 1至少有一份已激活")
     private String activateStatus;
 
-    @ApiModelProperty("直属下级已认购该产品份数")
+    @ApiModelProperty("是否至少有一份已到返利时间")
+    private Boolean incomeReady;
+
+    @ApiModelProperty("本单已激活份数")
+    private Integer activatedQty;
+
+    @ApiModelProperty("本单已开始返利份数")
+    private Integer incomeReadyQty;
+
+    @ApiModelProperty("已激活份数每天实际返利，币种同 currency")
+    private BigDecimal incomeDailyRebate;
+
+    @ApiModelProperty("直属下级已认购同档产品份数")
     private Integer unlockDirectHave;
 
     /** 状态 */
@@ -312,6 +324,14 @@ public class BizOrder extends BaseEntity
     public void setIncomeStartTime(Date incomeStartTime) { this.incomeStartTime = incomeStartTime; }
     public String getActivateStatus() { return activateStatus; }
     public void setActivateStatus(String activateStatus) { this.activateStatus = activateStatus; }
+    public Boolean getIncomeReady() { return incomeReady; }
+    public void setIncomeReady(Boolean incomeReady) { this.incomeReady = incomeReady; }
+    public Integer getActivatedQty() { return activatedQty; }
+    public void setActivatedQty(Integer activatedQty) { this.activatedQty = activatedQty; }
+    public Integer getIncomeReadyQty() { return incomeReadyQty; }
+    public void setIncomeReadyQty(Integer incomeReadyQty) { this.incomeReadyQty = incomeReadyQty; }
+    public BigDecimal getIncomeDailyRebate() { return incomeDailyRebate; }
+    public void setIncomeDailyRebate(BigDecimal incomeDailyRebate) { this.incomeDailyRebate = incomeDailyRebate; }
     public Integer getUnlockDirectHave() { return unlockDirectHave; }
     public void setUnlockDirectHave(Integer unlockDirectHave) { this.unlockDirectHave = unlockDirectHave; }
 

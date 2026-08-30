@@ -349,7 +349,7 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 
 `GET /app/team`（需登录）
 
-返回 1～7 级下线名单和汇总。激活人数 = 已实名。成员金额是该人**已通过的充值**；认购金额是订单金额。
+返回 1～7 级下线名单和汇总。激活人数 = 有认购订单。成员金额是该人**已通过的充值**；认购金额是订单金额。
 
 ```json
 {
@@ -445,7 +445,9 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 
 团队奖励只使用 `rewardCny` / `rewardUsdt`（表 `biz_level.reward_cny` / `reward_usdt`），不再提供 `teamRewardCny` 别名。
 
-等级匹配（全部启用中的等级取 sort 最高的一档）：有效成员人数、本人累计充值 CNY/USDT、团队累计充值 CNY/USDT、团队业绩 CNY/USDT。某项阈值填 0 表示不限制。团队累计充值按 `teamDepth`（一级内～七级内）范围内已通过充值加总，不含本人。
+等级匹配（全部启用中的等级取 sort 最高的一档）：有效成员人数、本人累计充值 CNY/USDT、团队累计充值 CNY/USDT、团队业绩 CNY/USDT。某项阈值填 0 表示不限制。团队累计充值按 `teamDepth`（一级内～七级内）范围内已通过充值加总，**含本人**。有效人数仍不含本人。认购团队业绩仍不含本人。
+
+门槛方式：`SPLIT` 独立计算（分币种都要过）；`EQUIV` 合并计算（实际充值按 `biz.fx.usdtToCny` 折合后，CNY、USDT 两项门槛或过一项即可）。
 
 `teamDepth`（一级内～七级内）限制该档统计的下级层数：一级内只算直属，二级内算到第二层。不填则整条线都算。有效成员人数和团队业绩都按这个层数截取；本人充值仍看自己。
 
@@ -455,7 +457,10 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 
 - `ONCE` + `AUTO`：达标自动入账 1 次（启航/探索/开拓/星耀/领航/星域，前6级）
 - `PERMANENT` + `MANUAL` + `UNLIMITED`：仅第7级星链。达标后生成待发放，客服在「等级奖励发放」确认入账；之后可「额外发放」
-- 发放币种：`USDT`/`CNY` 表示团队两种业绩都有时只打这一币种的金额；`BOTH` 表示配置里大于 0 的人民币和 USDT 金额都发
+- `CLAIM`：用户在 App 领取。`rewardClaimPolicy=ONE` 本周期二选一；`ALL` 两种币各领一次。领取时仍须匹配该等级。
+- 发放币种：`USDT`/`CNY` 表示团队两种业绩都有时只打这一币种的金额；`BOTH` 表示配置里大于 0 的人民币和 USDT 金额都发（`CLAIM` 时作为可选项）
+
+`GET /app/levelReward/claimable` 查可领；`POST /app/levelReward/claim` body：`levelId`、`currency`。`GET /app/levels` 的 `claimable` 为同一列表。
 
 预置的启航～星链默认是**停用**，配好人数/业绩/金额后再改成正常，避免未配金额就升级。
 
@@ -560,6 +565,8 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
       "unlockDirectQty": 2,
       "unlockDelayHours": 24,
       "coverUrl": "",
+      "onSale": "1",
+      "onSaleFlag": true,
       "status": "0"
     }
   ]
@@ -572,17 +579,19 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 | priceUsdt / dailyRebateUsdt | USDT 认购价和日返，大于 0 才支持 USDT 下单 |
 | supportsCny / supportsUsdt | 是否支持该币种按钮 |
 | price / dailyRebate / currency | 兼容旧字段，优先等于人民币价 |
-| unlockDirectQty | 直属下级需认购同一产品的总份数。`0` 关闭一拖二，自己认购即可出收益；`2` 即一拖二 |
-| unlockDelayHours | 条件达成后再等待多少小时才开始日返。一拖二通常为 `24`；`0` 表示达标后不再额外等待 |
+| unlockDirectQty | 直属下级需认购同一产品的总份数。`0` 关闭一拖二，自己认购即激活；`2` 即一拖二 |
+| unlockDelayHours | 激活后再等多少小时才开始日返。填 `24` 表示激活后等 24 小时；`0` 表示激活后即可日返 |
+| onSale | `1` 开售，`0` 未开售。未开售仍出现在列表，App 不可进详情 |
+| onSaleFlag | 同 onSale，`true` 可点详情 |
 
 `withdrawRequired = 1` 表示认购该币种指定产品后，才允许提现对应币种（看订单当时选的币）。
 
-一拖二：自己买 1 份，直属下级累计认购同一产品达到 `unlockDirectQty` 份后（先后顺序不限），再等 `unlockDelayHours` 小时，自己的订单才开始日返。未激活期间不扣 `remainingDays`。
+一拖二：自己买 1 份，直属下级累计认购同一产品达到 `unlockDirectQty` 份后（先后顺序不限），订单立刻激活。激活后再等 `unlockDelayHours` 小时才开始日返。未到返利时间不扣 `remainingDays`。两处都填 `0`：自己认购即激活且可日返。
 
 `GET /app/products/{productId}`  
 `GET /app/product/{productId}` 也可以。
 
-认购页按产品 ID 查详情，字段与列表单条相同。下架或不存在返回 500。
+认购页按产品 ID 查详情，字段与列表单条相同。下架或不存在返回 500。未开售返回 500，msg「产品暂未开售」。
 
 ### 12. 认购产品
 
@@ -601,10 +610,10 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 | currency | 建议填 | `CNY` 或 `USDT`。不传：有人民币价走人民币，否则走 USDT |
 | amount | 否 | **忽略**，以产品配置的对应币种价格为准 |
 
-`CNY` 扣人民币钱包、日返人民币；`USDT` 扣 USDT 钱包、日返 USDT。产品没配该币种价格会 500。每天 00:05 按订单币种打 `dailyRebate`，打满 `durationDays` 天结束。订单未激活（一拖二未达标或未到等待小时）当日不发、不扣剩余天数。
+`CNY` 扣人民币钱包、日返人民币；`USDT` 扣 USDT 钱包、日返 USDT。产品没配该币种价格会 500。每天 00:05 按订单币种打 `dailyRebate`，打满 `durationDays` 天结束。未到返利时间（一拖二未达标，或已激活但等待小时未到）当日不发、不扣剩余天数。
 
 `GET /app/orders?pageNum=1&pageSize=10` 我的订单。  
-订单 `status`：`0` 持仓中，`1` 已完成。**是否开始出收益看 `activateStatus`，不要用 `status==='1'` 当已激活**（`status=1` 是已完成）。订单带 `currency` 字段，以及所属产品系列：
+订单 `status`：`0` 持仓中，`1` 已完成。**是否已激活看 `activateStatus`，是否开始返利看 `incomeReady`，不要用 `status==='1'` 当已激活**（`status=1` 是已完成）。订单带 `currency` 字段，以及所属产品系列：
 
 ```json
 {
@@ -627,8 +636,9 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
       "unlockDirectQty": 2,
       "unlockDirectHave": 1,
       "unlockDelayHours": 24,
-      "incomeStartTime": null,
-      "activateStatus": "0",
+      "incomeStartTime": "2026-08-30 10:00:00",
+      "activateStatus": "1",
+      "incomeReady": false,
       "status": "0"
     }
   ]
@@ -640,11 +650,12 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 | seriesId / categoryId | 产品所属系列，和产品列表同一套 |
 | seriesName / categoryName | 系列名称 |
 | seriesCoverUrl | 系列封面，空字符串表示没有图 |
-| activateStatus | `0` 未激活（一拖二未达标或未到等待时间），`1` 已开始收益。App 用这个字段，不要用 `status` |
-| incomeStartTime | 收益开始时间。未达标为 `null` |
+| activateStatus | `0` 未激活（一拖二未达标），`1` 已激活。达标立刻为 `1`，不必等满等待小时。不要用 `status` |
+| incomeReady | `true` 已到返利时间，日返任务才会打款；`false` 未达标或激活后还在等小时 |
+| incomeStartTime | 开始返利时间 = 达标时刻 + 等待小时。一拖二未达标为 `null` |
 | unlockDirectQty | 下单时快照：直属下级需认购同一产品的份数，`0` 表示该单无一带二 |
 | unlockDirectHave | 直属下级已认购该产品的累计份数 |
-| unlockDelayHours | 下单时快照：达标后再等多少小时 |
+| unlockDelayHours | 下单时快照：激活后再等多少小时才日返 |
 
 产品改了所属系列后，历史订单按**当前产品挂的系列**返回。新订单按当时产品配置写入一拖二快照；改产品只影响之后的新单。
 
@@ -688,20 +699,29 @@ CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币
 
 `GET /app/walletLog?pageNum=1&pageSize=10`
 
-给资金明细「充值余额」Tab 用，返回**可用余额变动**流水（认购扣款、充值入账、签到、日返、推广奖金、提现冻结、提现退回等）。只记可用余额变化，提现打款成功只扣冻结的那条不出现。
+返回当前登录会员的**可用余额变动**流水。只记可用余额变化，提现打款成功只扣冻结的那条不出现。
 
-别名：`GET /app/wallet/logs` 、 `GET /app/funds`。可选 `currency=CNY|USDT`、`bizType`（别名 `type`）。
+路径兼容：`/app/wallet/logs`、`/app/funds`。
 
-按类型筛选示例：
+| 参数 | 含义 | 取值 |
+|---|---|---|
+| pageNum / pageSize | 分页 | 若依默认 |
+| currency | 币种 | `CNY` / `USDT`，不传=全部 |
+| typeCode | 钱包类型 | `BALANCE` 余额、`PRODUCT` 产品、`PROMO` 推广、`ASSIST` 助力。不传=全部钱包 |
+| bizType | 业务类型 | 精确值，多个逗号分隔。不传=全部业务 |
 
-- 全部：`GET /app/walletLog?pageNum=1&pageSize=10`
-- 充值记录：`GET /app/walletLog?bizType=RECHARGE`
-- 提现记录：`GET /app/walletLog?bizType=WITHDRAW`（含 `WITHDRAW_FREEZE` / `WITHDRAW_SUCCESS` / `WITHDRAW_REJECT`）
-- 推广收益：`GET /app/walletLog?bizType=PROMO`（签到、实名奖励、邀请、分佣、等级奖励）
-- 产品收益：`GET /app/walletLog?bizType=PRODUCT`（产品日返 `REBATE`）
-- 多个类型：`GET /app/walletLog?bizType=RECHARGE,SUBSCRIBE`
+`bizType` 与 `typeCode` 互不转换，可同时传。
 
-`bizType=WITHDRAW` 是分组查询；`bizType=PROMO` / `ASSIST` / `推广收益` 查推广收益（签到、实名奖励、邀请、分佣、等级奖励）；`bizType=PRODUCT` / `产品收益` 查产品日返。精确值如 `SUBSCRIBE`、`CHECKIN` 仍按原值过滤。
+示例：
+
+- 全部：`GET /app/walletLog`
+- 余额钱包：`GET /app/walletLog?typeCode=BALANCE`
+- 充值：`GET /app/walletLog?bizType=RECHARGE`
+- 余额钱包里的充值：`GET /app/walletLog?typeCode=BALANCE&bizType=RECHARGE`
+- 提现：`GET /app/walletLog?bizType=WITHDRAW_FREEZE,WITHDRAW_SUCCESS,WITHDRAW_REJECT`
+- 产品日返：`GET /app/walletLog?bizType=REBATE`
+- 推广类业务：`GET /app/walletLog?bizType=CHECKIN,KYC_REWARD,INVITE,COMMISSION,LEVEL_REWARD`
+- 后台调账：`GET /app/walletLog?bizType=ADJUST`
 
 ```json
 {
@@ -713,6 +733,7 @@ CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币
       "title": "曙光一号",
       "name": "曙光一号",
       "bizType": "SUBSCRIBE",
+      "typeCode": "BALANCE",
       "bizTypeLabel": "认购",
       "typeLabel": "认购",
       "amount": -350,
@@ -733,7 +754,7 @@ CNY / USDT 独立账户，不能互转。充值、认购、返利、提现按币
 | direction | `IN` / `OUT` |
 | date | `yyyy-MM-dd`，可直接展示 |
 
-`bizType` 筛选：`RECHARGE` 充值记录，`WITHDRAW` 提现记录（分组）。精确值：`SUBSCRIBE` 认购、`RECHARGE` 充值、`COMMISSION` 推广奖金、`INVITE` 推广奖励、`KYC_REWARD` 实名注册奖励、`CHECKIN` 签到、`REBATE` 产品日返、`LEVEL_REWARD` 等级奖励、`ADJUST` 后台调账、`WITHDRAW_FREEZE` 提现、`WITHDRAW_SUCCESS` 提现成功、`WITHDRAW_REJECT` 提现退回。
+`bizType` 取值：`SUBSCRIBE` 认购、`RECHARGE` 充值、`COMMISSION` 推广奖金、`INVITE` 推广奖励、`KYC_REWARD` 实名注册奖励、`CHECKIN` 签到、`REBATE` 产品日返、`LEVEL_REWARD` 等级奖励、`ADJUST` 后台调账、`WITHDRAW_FREEZE` 提现冻结、`WITHDRAW_SUCCESS` 提现成功、`WITHDRAW_REJECT` 提现退回。
 
 ### 13.2 充值/提现申请记录（含全部状态）
 

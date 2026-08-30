@@ -111,6 +111,12 @@ public class BizConfigServiceImpl implements IBizConfigService
     }
 
     @Override
+    public boolean isWithdrawNeedKyc()
+    {
+        return bool(BizConstants.CONFIG_WITHDRAW_NEED_KYC, false);
+    }
+
+    @Override
     public void assertCurrencyEnabled(String currency)
     {
         if (BizConstants.CURRENCY_USDT.equalsIgnoreCase(currency) && !isUsdtEnabled())
@@ -141,6 +147,17 @@ public class BizConfigServiceImpl implements IBizConfigService
     {
         String value = configService.selectConfigByKey(BizConstants.CONFIG_GOOGLE_ISSUER);
         return StringUtils.isEmpty(value) ? "App" : value;
+    }
+
+    @Override
+    public BigDecimal getUsdtToCnyRate()
+    {
+        BigDecimal rate = decimal(BizConstants.CONFIG_FX_USDT_TO_CNY, BizConstants.FX_USDT_TO_CNY_DEFAULT);
+        if (rate.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            return new BigDecimal(BizConstants.FX_USDT_TO_CNY_DEFAULT);
+        }
+        return rate;
     }
 
     @Override

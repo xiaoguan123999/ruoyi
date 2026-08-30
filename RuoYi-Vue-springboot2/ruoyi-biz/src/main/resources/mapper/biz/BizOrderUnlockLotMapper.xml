@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizOrderUnlockLotMapper">
+
+    <resultMap type="BizOrderUnlockLot" id="BizOrderUnlockLotResult">
+        <id     property="lotId"            column="lot_id"/>
+        <result property="orderId"          column="order_id"/>
+        <result property="shareNo"          column="share_no"/>
+        <result property="qty"              column="qty"/>
+        <result property="activateTime"     column="activate_time"/>
+        <result property="incomeStartTime"  column="income_start_time"/>
+        <result property="remainingDays"    column="remaining_days"/>
+        <result property="lastRebateDate"   column="last_rebate_date"/>
+    </resultMap>
+
+    <select id="selectByOrderId" resultMap="BizOrderUnlockLotResult">
+        select lot_id, order_id, share_no, qty, activate_time, income_start_time, remaining_days, last_rebate_date
+        from biz_order_unlock_lot
+        where order_id = #{orderId}
+        order by share_no asc
+    </select>
+
+    <insert id="insertLot" parameterType="BizOrderUnlockLot" useGeneratedKeys="true" keyProperty="lotId">
+        insert into biz_order_unlock_lot (
+            order_id, share_no, qty, activate_time, income_start_time, remaining_days, last_rebate_date, create_time
+        ) values (
+            #{orderId}, #{shareNo}, #{qty}, #{activateTime}, #{incomeStartTime}, #{remainingDays}, #{lastRebateDate}, sysdate()
+        )
+    </insert>
+
+    <update id="updateLot" parameterType="BizOrderUnlockLot">
+        update biz_order_unlock_lot
+        <set>
+            <if test="remainingDays != null">remaining_days = #{remainingDays},</if>
+            <if test="lastRebateDate != null">last_rebate_date = #{lastRebateDate},</if>
+        </set>
+        where lot_id = #{lotId}
+    </update>
+</mapper>

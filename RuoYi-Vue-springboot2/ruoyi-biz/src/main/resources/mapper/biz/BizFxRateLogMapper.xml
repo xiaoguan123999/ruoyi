@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizFxRateLogMapper">
+
+    <resultMap type="BizFxRateLog" id="FxRateLogResult">
+        <id     property="logId"      column="log_id"/>
+        <result property="oldRate"    column="old_rate"/>
+        <result property="newRate"    column="new_rate"/>
+        <result property="operator"   column="operator"/>
+        <result property="createTime" column="create_time"/>
+        <result property="remark"     column="remark"/>
+    </resultMap>
+
+    <select id="selectFxRateLogList" parameterType="BizFxRateLog" resultMap="FxRateLogResult">
+        select log_id, old_rate, new_rate, operator, create_time, remark
+        from biz_fx_rate_log
+        <where>
+            <if test="operator != null and operator != ''">and operator like concat('%', #{operator}, '%')</if>
+            <if test="params.beginTime != null and params.beginTime != ''">and create_time &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''">and create_time &lt;= #{params.endTime}</if>
+        </where>
+        order by log_id desc
+    </select>
+
+    <insert id="insertFxRateLog" parameterType="BizFxRateLog" useGeneratedKeys="true" keyProperty="logId">
+        insert into biz_fx_rate_log (old_rate, new_rate, operator, create_time, remark)
+        values (#{oldRate}, #{newRate}, #{operator}, sysdate(), #{remark})
+    </insert>
+</mapper>

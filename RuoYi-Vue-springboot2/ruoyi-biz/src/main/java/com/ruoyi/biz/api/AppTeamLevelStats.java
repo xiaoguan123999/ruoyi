@@ -11,7 +11,7 @@ public class AppTeamLevelStats
     private Integer teamLevel;
     @ApiModelProperty("注册人数")
     private Integer register;
-    @ApiModelProperty("激活人数（已实名）")
+    @ApiModelProperty("激活人数（有认购订单）")
     private Integer active;
     @ApiModelProperty("认购USDT")
     private BigDecimal subscribeUsd;

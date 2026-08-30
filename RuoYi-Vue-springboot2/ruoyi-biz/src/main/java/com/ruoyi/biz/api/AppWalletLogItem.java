@@ -19,6 +19,8 @@ public class AppWalletLogItem
     private String name;
     @ApiModelProperty("业务类型")
     private String bizType;
+    @ApiModelProperty("钱包类型")
+    private String typeCode;
     @ApiModelProperty("类型中文")
     private String bizTypeLabel;
     @ApiModelProperty("bizTypeLabel 别名")
@@ -46,6 +48,8 @@ public class AppWalletLogItem
     public void setName(String name) { this.name = name; }
     public String getBizType() { return bizType; }
     public void setBizType(String bizType) { this.bizType = bizType; }
+    public String getTypeCode() { return typeCode; }
+    public void setTypeCode(String typeCode) { this.typeCode = typeCode; }
     public String getBizTypeLabel() { return bizTypeLabel; }
     public void setBizTypeLabel(String bizTypeLabel) { this.bizTypeLabel = bizTypeLabel; }
     public String getTypeLabel() { return typeLabel; }

@@ -127,6 +127,9 @@ public class BizConstants
 
     public static final String CONFIG_WITHDRAW_FEE_RATE = "biz.withdraw.feeRate";
 
+    /** 提现是否必须已实名 */
+    public static final String CONFIG_WITHDRAW_NEED_KYC = "biz.withdraw.needKyc";
+
     public static final String CONFIG_RATE_L1 = "biz.team.rate.l1";
 
     public static final String CONFIG_RATE_L2 = "biz.team.rate.l2";
@@ -178,6 +181,21 @@ public class BizConstants
     public static final String CONFIG_LEVEL_REWARD_NEED_ORDER = "biz.levelReward.validNeedOrder";
     public static final String CONFIG_LEVEL_REWARD_TEXT = "biz.levelReward.ruleText";
     public static final String CONFIG_LEVEL_REWARD_HINT = "biz.levelReward.hint";
+    /** 1 USDT 折合多少人民币，等级折合门槛用 */
+    public static final String CONFIG_FX_USDT_TO_CNY = "biz.fx.usdtToCny";
+    public static final String FX_USDT_TO_CNY_DEFAULT = "6.25";
+    /** 分币种同时达标（默认，与现网一致） */
+    public static final String THRESHOLD_SPLIT = "SPLIT";
+    /** 折合后或过一项：CNY门槛、USDT门槛填了的项，满足其中一项即可 */
+    public static final String THRESHOLD_EQUIV = "EQUIV";
+    public static final String REWARD_MODE_AUTO = "AUTO";
+    public static final String REWARD_MODE_MANUAL = "MANUAL";
+    /** 用户在 App 领取 */
+    public static final String REWARD_MODE_CLAIM = "CLAIM";
+    /** 用户领取：本周期二选一 */
+    public static final String CLAIM_POLICY_ONE = "ONE";
+    /** 用户领取：两种币都可各领一次 */
+    public static final String CLAIM_POLICY_ALL = "ALL";
     public static final String DICT_TEAM_DEPTH = "biz_team_depth";
     public static final int TEAM_MAX_LEVEL = 7;
 
