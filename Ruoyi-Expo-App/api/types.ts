@@ -119,6 +119,19 @@ export type AppTeamMembersByLevel = Record<AppTeamLevelNo, AppTeamMemberItem[]>;
 export type AppTeamView = {
   summary: AppTeamSummary;
   members: AppTeamMembersByLevel;
+  /** GET /app/team data 根上的已通过充值汇总 */
+  deposit: AppTeamDepositSummary;
+};
+
+/** GET /app/team data 根字段，仅已通过充值 */
+export type AppTeamDepositSummary = {
+  selfDepositAmountCny: number;
+  selfDepositAmountUsdt: number;
+  downlineDepositAmountCny: number;
+  downlineDepositAmountUsdt: number;
+  /** 本人 + 下级；会员等级页「团队充值金额」用这个 */
+  totalDepositAmountCny: number;
+  totalDepositAmountUsdt: number;
 };
 
 export type AppAmountBody = {
@@ -279,6 +292,10 @@ export type AppOrderRecord = {
   planName?: string;
   amount: number;
   currency: string;
+  /** 这单总份数 */
+  quantity: number;
+  /** 已激活份数 */
+  activatedQty: number;
   status: string;
   statusLabel: '进行中' | '已到期' | string;
   activateStatus: string;

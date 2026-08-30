@@ -159,6 +159,8 @@ function mapOrder(raw: unknown): AppOrderRecord | null {
     return null;
   }
   const mapped = mapOrderStatus(raw);
+  const quantity = Math.max(1, Math.floor(toNumber(raw.quantity, 1)));
+  const activatedQty = Math.max(0, Math.min(quantity, Math.floor(toNumber(raw.activatedQty, 0))));
   return {
     orderId,
     productId: pickNumber(raw, ['productId']) || undefined,
@@ -166,6 +168,8 @@ function mapOrder(raw: unknown): AppOrderRecord | null {
     planName: pickString(raw, ['planName', 'seriesName', 'plan'], '--'),
     amount: pickNumber(raw, ['amount', 'price', 'payAmount']),
     currency: normalizeCurrency(raw.currency),
+    quantity,
+    activatedQty,
     status: mapped.status,
     statusLabel: mapped.statusLabel,
     activateStatus: mapped.activateStatus,

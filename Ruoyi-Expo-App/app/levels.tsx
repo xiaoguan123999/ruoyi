@@ -18,12 +18,7 @@ import {
   fetchAppLevelRewardClaimable,
   fetchAppLevelsView,
 } from '@/api/app-member';
-import {
-  emptyTeamView,
-  fetchAppTeam,
-  formatTeamAmount,
-  sumTeamRecharge,
-} from '@/api/app-team';
+import { emptyTeamView, fetchAppTeam, formatTeamAmount } from '@/api/app-team';
 import { ApiError } from '@/api/request';
 import type { AppLevel, AppLevelRewardClaimableItem, KycRewardCurrency } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
@@ -171,13 +166,21 @@ export default function LevelsScreen() {
     try {
       const [levelsData, team] = await Promise.all([
         fetchAppLevelsView(),
-        fetchAppTeam().catch(() => emptyTeamView()),
+        fetchAppTeam().catch((error) => {
+          if (error instanceof ApiError && error.code === 401) {
+            throw error;
+          }
+          return emptyTeamView();
+        }),
       ]);
       setLevelsView({
         ...levelsData,
         claimable: claimableItems,
       });
-      setTeamRecharge(sumTeamRecharge(team.summary));
+      setTeamRecharge({
+        cny: team.deposit.totalDepositAmountCny,
+        usdt: team.deposit.totalDepositAmountUsdt,
+      });
     } catch (error) {
       if (!(error instanceof ApiError) || error.code !== 401) {
         modalError(error instanceof ApiError ? error.message : '获取会员等级失败');

@@ -1,6 +1,7 @@
 import { displayText, maskPhone } from '@/api/app-auth';
 import { ApiError, request } from '@/api/request';
 import type {
+  AppTeamDepositSummary,
   AppTeamLevelNo,
   AppTeamLevelStats,
   AppTeamMemberItem,
@@ -272,6 +273,7 @@ function mapTeamView(res: Record<string, unknown>): AppTeamView {
   return {
     summary: mapSummary(root),
     members: mapMembers(root),
+    deposit: mapDepositSummary(root),
   };
 }
 
@@ -284,25 +286,37 @@ export async function fetchAppTeam(): Promise<AppTeamView> {
   return mapTeamView(res as Record<string, unknown>);
 }
 
+function emptyDepositSummary(): AppTeamDepositSummary {
+  return {
+    selfDepositAmountCny: 0,
+    selfDepositAmountUsdt: 0,
+    downlineDepositAmountCny: 0,
+    downlineDepositAmountUsdt: 0,
+    totalDepositAmountCny: 0,
+    totalDepositAmountUsdt: 0,
+  };
+}
+
+function mapDepositSummary(raw: unknown): AppTeamDepositSummary {
+  const next = emptyDepositSummary();
+  if (!isRecord(raw)) {
+    return next;
+  }
+  next.selfDepositAmountCny = toNumber(raw.selfDepositAmountCny);
+  next.selfDepositAmountUsdt = toNumber(raw.selfDepositAmountUsdt);
+  next.downlineDepositAmountCny = toNumber(raw.downlineDepositAmountCny);
+  next.downlineDepositAmountUsdt = toNumber(raw.downlineDepositAmountUsdt);
+  next.totalDepositAmountCny = toNumber(raw.totalDepositAmountCny);
+  next.totalDepositAmountUsdt = toNumber(raw.totalDepositAmountUsdt);
+  return next;
+}
+
 export function emptyTeamView(): AppTeamView {
   return {
     summary: emptySummary(),
     members: emptyMembers(),
+    deposit: emptyDepositSummary(),
   };
-}
-
-/** 汇总全部层级充值（会员等级页等复用） */
-export function sumTeamRecharge(summary: AppTeamSummary): { cny: number; usdt: number } {
-  return TEAM_LEVEL_NOS.reduce(
-    (acc, level) => {
-      const row = summary[`level${level}`];
-      return {
-        cny: acc.cny + row.rechargeCny,
-        usdt: acc.usdt + row.rechargeUsd,
-      };
-    },
-    { cny: 0, usdt: 0 },
-  );
 }
 
 export function formatTeamAmount(value: number): string {

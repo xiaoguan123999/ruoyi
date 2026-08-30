@@ -100,9 +100,9 @@ export default function SubscribeRecordsScreen() {
 function RecordCard({ item }: { item: AppOrderRecord }) {
   const running = item.statusLabel === '进行中';
   const activateTone =
-    item.activateStatus !== '1'
+    item.activatedQty <= 0
       ? styles.activateIdle
-      : item.incomeReady
+      : item.activatedQty >= item.quantity
         ? styles.activateReady
         : styles.activateOn;
 
@@ -110,7 +110,9 @@ function RecordCard({ item }: { item: AppOrderRecord }) {
     <GlassCard style={styles.card}>
       <View style={styles.row}>
         <Text style={styles.plan}>{item.planName || '认购订单'}</Text>
-        <Text style={[styles.activate, activateTone]}>{item.activateLabel}</Text>
+        <Text style={[styles.activate, activateTone]}>
+          {item.activatedQty > 0 ? '已激活' : '未激活'} {item.activatedQty}/{item.quantity}
+        </Text>
       </View>
 
       <View style={[styles.row, styles.midRow]}>
