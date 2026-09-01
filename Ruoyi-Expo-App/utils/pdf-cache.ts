@@ -4,6 +4,7 @@ import { getToken } from '@/utils/storage';
 import { resolvePdfFetchUrl } from '@/utils/pdf-url';
 
 const PDF_MAGIC_B64 = 'JVBE';
+const DOWNLOAD_TIMEOUT_MS = 40_000;
 const inflight = new Map<string, Promise<string | null>>();
 
 function hashKey(input: string): string {
@@ -97,11 +98,16 @@ export async function prefetchPdf(remoteUrl: string): Promise<string | null> {
     const headers = await getPdfAuthHeaders();
     try {
       await FileSystem.deleteAsync(tmp, { idempotent: true });
-      const result = await FileSystem.downloadAsync(
-        url,
-        tmp,
-        Object.keys(headers).length ? { headers } : undefined,
-      );
+      const result = await Promise.race([
+        FileSystem.downloadAsync(
+          url,
+          tmp,
+          Object.keys(headers).length ? { headers } : undefined,
+        ),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('PDF 下载超时')), DOWNLOAD_TIMEOUT_MS);
+        }),
+      ]);
       if (result.status !== 200 || !(await isCompletePdf(result.uri))) {
         await FileSystem.deleteAsync(tmp, { idempotent: true });
         return null;
