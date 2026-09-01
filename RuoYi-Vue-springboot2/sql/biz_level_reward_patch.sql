@@ -1,13 +1,37 @@
--- 星链伙伴成长激励金：等级奖励配置与发放（可重复执行时，加列若已存在会报错可忽略）
+SET NAMES utf8mb4;
+-- 星链伙伴成长激励金：等级奖励配置与发放（可重复执行）
 
-alter table biz_level add column reward_enabled char(1) default '0' comment '是否启用该等级奖励（0否 1是）' after remark;
-alter table biz_level add column reward_cycle varchar(20) default 'NONE' comment 'ONCE一次 MONTHLY每月 PERMANENT永久 NONE无' after reward_enabled;
-alter table biz_level add column reward_mode varchar(20) default 'AUTO' comment 'AUTO自动入账 MANUAL客服发放' after reward_cycle;
-alter table biz_level add column reward_repeat varchar(20) default 'NONE' comment '永久档领取：NONE MONTHLY UNLIMITED' after reward_mode;
-alter table biz_level add column reward_cny decimal(18,4) default 0 comment '奖励金额CNY' after reward_repeat;
-alter table biz_level add column reward_usdt decimal(18,4) default 0 comment '奖励金额USDT' after reward_cny;
-alter table biz_level add column min_team_perf_cny decimal(18,4) default 0 comment '最低团队业绩CNY，0表示不限制' after min_recharge_usdt;
-alter table biz_level add column min_team_perf_usdt decimal(18,4) default 0 comment '最低团队业绩USDT，0表示不限制' after min_team_perf_cny;
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_level' and column_name = 'reward_enabled');
+set @sql := if(@exist = 0, 'alter table biz_level add column reward_enabled char(1) default ''0'' comment ''是否启用该等级奖励（0否 1是）'' after remark', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
+
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_level' and column_name = 'reward_cycle');
+set @sql := if(@exist = 0, 'alter table biz_level add column reward_cycle varchar(20) default ''NONE'' comment ''ONCE一次 MONTHLY每月 PERMANENT永久 NONE无'' after reward_enabled', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
+
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_level' and column_name = 'reward_mode');
+set @sql := if(@exist = 0, 'alter table biz_level add column reward_mode varchar(20) default ''AUTO'' comment ''AUTO自动入账 MANUAL客服发放'' after reward_cycle', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
+
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_level' and column_name = 'reward_repeat');
+set @sql := if(@exist = 0, 'alter table biz_level add column reward_repeat varchar(20) default ''NONE'' comment ''永久档领取：NONE MONTHLY UNLIMITED'' after reward_mode', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
+
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_level' and column_name = 'reward_cny');
+set @sql := if(@exist = 0, 'alter table biz_level add column reward_cny decimal(18,4) default 0 comment ''奖励金额CNY'' after reward_repeat', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
+
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_level' and column_name = 'reward_usdt');
+set @sql := if(@exist = 0, 'alter table biz_level add column reward_usdt decimal(18,4) default 0 comment ''奖励金额USDT'' after reward_cny', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
+
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_level' and column_name = 'min_team_perf_cny');
+set @sql := if(@exist = 0, 'alter table biz_level add column min_team_perf_cny decimal(18,4) default 0 comment ''最低团队业绩CNY，0表示不限制'' after min_recharge_usdt', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
+
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_level' and column_name = 'min_team_perf_usdt');
+set @sql := if(@exist = 0, 'alter table biz_level add column min_team_perf_usdt decimal(18,4) default 0 comment ''最低团队业绩USDT，0表示不限制'' after min_team_perf_cny', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
 create table if not exists biz_level_reward_grant (
   grant_id          bigint(20)      not null auto_increment    comment '发放ID',

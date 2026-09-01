@@ -37,9 +37,16 @@ set @sql := if(@exist = 0,
   'select 1');
 prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
-set @wallet := (
-  select type_code from biz_wallet_credit_rule where biz_type = 'LEVEL_REWARD' limit 1
+set @wallet := 'PROMO';
+set @has_credit := (
+  select count(*) from information_schema.tables
+  where table_schema = database() and table_name = 'biz_wallet_credit_rule'
 );
+set @sql := if(@has_credit > 0,
+  'select ifnull((select type_code from biz_wallet_credit_rule where biz_type = ''LEVEL_REWARD'' limit 1), ''PROMO'') into @wallet',
+  'select ''PROMO'' into @wallet');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
+
 update biz_level
 set wallet_type_code = ifnull(@wallet, 'PROMO')
 where wallet_type_code = 'PROMO';
