@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizAppVersionMapper">
+
+    <resultMap type="BizAppVersion" id="BizAppVersionResult">
+        <id     property="versionId"     column="version_id"/>
+        <result property="platform"      column="platform"/>
+        <result property="version"       column="version"/>
+        <result property="downloadUrl"   column="download_url"/>
+        <result property="description"   column="description"/>
+        <result property="forceUpdate"   column="force_update"/>
+        <result property="isLatest"      column="is_latest"/>
+        <result property="isEnabled"     column="is_enabled"/>
+        <result property="sortOrder"     column="sort_order"/>
+        <result property="delFlag"       column="del_flag"/>
+        <result property="createBy"      column="create_by"/>
+        <result property="createTime"    column="create_time"/>
+        <result property="updateBy"      column="update_by"/>
+        <result property="updateTime"    column="update_time"/>
+        <result property="remark"        column="remark"/>
+    </resultMap>
+
+    <sql id="selectVersionVo">
+        select version_id, platform, version, download_url, description, force_update, is_latest, is_enabled,
+               sort_order, del_flag, create_by, create_time, update_by, update_time, remark
+        from biz_app_version
+    </sql>
+
+    <select id="selectVersionById" parameterType="Long" resultMap="BizAppVersionResult">
+        <include refid="selectVersionVo"/>
+        where version_id = #{versionId} and del_flag = '0'
+    </select>
+
+    <select id="selectVersionList" parameterType="BizAppVersion" resultMap="BizAppVersionResult">
+        <include refid="selectVersionVo"/>
+        <where>
+            del_flag = '0'
+            <if test="platform != null and platform != ''">and platform = #{platform}</if>
+            <if test="version != null and version != ''">and version like concat('%', #{version}, '%')</if>
+            <if test="isLatest != null and isLatest != ''">and is_latest = #{isLatest}</if>
+            <if test="isEnabled != null and isEnabled != ''">and is_enabled = #{isEnabled}</if>
+            <if test="forceUpdate != null and forceUpdate != ''">and force_update = #{forceUpdate}</if>
+        </where>
+        order by is_latest desc, sort_order desc, version_id desc
+    </select>
+
+    <select id="selectLatest" resultMap="BizAppVersionResult">
+        <include refid="selectVersionVo"/>
+        where del_flag = '0' and is_enabled = '1' and platform = #{platform}
+        order by is_latest desc, sort_order desc, version_id desc
+        limit 1
+    </select>
+
+    <select id="selectDuplicate" resultMap="BizAppVersionResult">
+        <include refid="selectVersionVo"/>
+        where del_flag = '0' and platform = #{platform} and version = #{version}
+        <if test="versionId != null">and version_id &lt;&gt; #{versionId}</if>
+        limit 1
+    </select>
+
+    <update id="clearLatest">
+        update biz_app_version
+        set is_latest = '0', update_time = sysdate()
+        where del_flag = '0' and platform = #{platform} and is_latest = '1'
+        <if test="excludeId != null">and version_id &lt;&gt; #{excludeId}</if>
+    </update>
+
+    <insert id="insertVersion" parameterType="BizAppVersion" useGeneratedKeys="true" keyProperty="versionId">
+        insert into biz_app_version (
+            platform, version, download_url, description, force_update, is_latest, is_enabled, sort_order,
+            del_flag, create_by, create_time, remark
+        ) values (
+            #{platform}, #{version}, #{downloadUrl}, #{description}, #{forceUpdate}, #{isLatest}, #{isEnabled}, #{sortOrder},
+            '0', #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateVersion" parameterType="BizAppVersion">
+        update biz_app_version
+        <set>
+            <if test="platform != null and platform != ''">platform = #{platform},</if>
+            <if test="version != null and version != ''">version = #{version},</if>
+            <if test="downloadUrl != null">download_url = #{downloadUrl},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="forceUpdate != null">force_update = #{forceUpdate},</if>
+            <if test="isLatest != null">is_latest = #{isLatest},</if>
+            <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where version_id = #{versionId} and del_flag = '0'
+    </update>
+
+    <update id="deleteVersionByIds">
+        update biz_app_version set del_flag = '1', update_time = sysdate()
+        where version_id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+</mapper>
