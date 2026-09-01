@@ -47,9 +47,10 @@ function mapChannel(raw: unknown, index: number): AppServiceChannel | null {
   }
   const qrUrl = resolveMediaUrl(pickString(raw, 'qrUrl'));
   const linkUrl = pickString(raw, 'linkUrl');
+  const channelType = pickString(raw, 'type') || pickString(raw, 'channelType', 'LINK');
   return {
     channelId,
-    channelType: pickString(raw, 'channelType', 'LINK'),
+    channelType,
     name: pickString(raw, 'name', '--'),
     value: pickString(raw, 'value') || undefined,
     linkUrl: linkUrl || undefined,

@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 
 import { isPublicAuthRoute, setCurrentAuthSegments } from '@/api/auth-state';
 import { useAuth } from '@/hooks/useAuth';
+import { AppUpdateGate } from '@/components/ui/AppUpdateGate';
 import { AppProviders } from '@/providers/AppProviders';
 
 export { ErrorBoundary } from 'expo-router';
@@ -62,6 +63,7 @@ export default function RootLayout() {
     <AppProviders>
       <StatusBar style="light" />
       <AuthGate>
+        <AppUpdateGate />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="splash" />

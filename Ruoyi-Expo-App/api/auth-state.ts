@@ -13,7 +13,7 @@ type AuthSnapshot = {
 
 type Listener = () => void;
 
-const PUBLIC_AUTH_SEGMENTS = new Set(['sign-in', 'sign-up', 'splash']);
+const PUBLIC_AUTH_SEGMENTS = new Set(['sign-in', 'sign-up', 'splash', 'service', 'service-chat']);
 
 const listeners = new Set<Listener>();
 

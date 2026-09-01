@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import type { ExpoConfig } from 'expo/config';
 
@@ -61,17 +61,52 @@ function loadAppEnv(): AppEnv {
   return appEnv;
 }
 
+function loadBundledOtaUpdates() {
+  try {
+    const raw = JSON.parse(
+      readFileSync(join(__dirname, 'config/bundled-ota-updates.json'), 'utf8'),
+    ) as { group?: string | null; ids?: unknown };
+    const ids = Array.isArray(raw.ids)
+      ? raw.ids.filter((id): id is string => typeof id === 'string' && id.length > 0)
+      : [];
+    return {
+      group: typeof raw.group === 'string' && raw.group.length > 0 ? raw.group : null,
+      ids,
+    };
+  } catch {
+    return { group: null, ids: [] as string[] };
+  }
+}
+
 const appEnv = loadAppEnv();
 const isProduction = appEnv === 'production';
+const easProjectId = (
+  process.env.EXPO_PUBLIC_EAS_PROJECT_ID ||
+  process.env.EAS_PROJECT_ID ||
+  '53c81e46-f43d-4e64-becf-2e7aae3406fd'
+).trim();
+const expoOwner = (process.env.EXPO_OWNER || '').trim();
+const updatesEnabled = Boolean(easProjectId) && appEnv !== 'development';
+const bundledOta = loadBundledOtaUpdates();
 
 const config: ExpoConfig = {
   name: '星帆智联',
   slug: 'ruoyi-expo-app',
+  ...(expoOwner ? { owner: expoOwner } : {}),
   version: '1.0.0',
+  runtimeVersion: {
+    policy: 'appVersion',
+  },
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'ruoyi',
   userInterfaceStyle: 'automatic',
+  updates: {
+    enabled: updatesEnabled,
+    url: `https://u.expo.dev/${easProjectId || '53c81e46-f43d-4e64-becf-2e7aae3406fd'}`,
+    checkAutomatically: 'ON_ERROR_RECOVERY',
+    fallbackToCacheTimeout: 0,
+  },
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.ruoyi.expoapp',
@@ -103,6 +138,7 @@ const config: ExpoConfig = {
     'expo-localization',
     'expo-web-browser',
     'expo-font',
+    'expo-updates',
     [
       'expo-splash-screen',
       {
@@ -119,6 +155,10 @@ const config: ExpoConfig = {
       {
         android: {
           usesCleartextTraffic: !isProduction,
+          enableMinifyInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+          useLegacyPackaging: true,
+          buildArchs: ['armeabi-v7a', 'arm64-v8a'],
         },
       },
     ],
@@ -127,6 +167,12 @@ const config: ExpoConfig = {
     appEnv,
     apiUrl: process.env.EXPO_PUBLIC_API_URL ?? '',
     h5Url: process.env.EXPO_PUBLIC_H5_URL ?? '',
+    nativeBuildTime: new Date().toISOString(),
+    bundledOtaUpdateGroup: bundledOta.group,
+    bundledOtaUpdateIds: bundledOta.ids,
+    eas: {
+      projectId: easProjectId || undefined,
+    },
   },
   experiments: {
     typedRoutes: true,

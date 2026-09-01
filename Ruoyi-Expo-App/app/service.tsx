@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
 import { useCallback, useState } from 'react';
 import {
@@ -13,13 +13,15 @@ import QRCode from 'react-native-qrcode-svg';
 import { isGroupQrImageUrl } from '@/api/app-group-chat';
 import { fetchAppServiceCenter } from '@/api/app-service';
 import { ApiError } from '@/api/request';
-import type { AppServiceCenter, AppServiceChannel } from '@/api/types';
+import type { AppServiceCenter, AppServiceChannel, RuoyiUser } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
+import { useAuth } from '@/hooks/useAuth';
 import { colors } from '@/theme/colors';
+import { isEmbeddableChatChannel, withChatVisitorParams } from '@/utils/online-chat';
 import { modalError, modalWarning } from '@/utils/toast';
 
 function ChannelQr({ channel }: { channel: AppServiceChannel }) {
@@ -45,7 +47,7 @@ function ChannelQr({ channel }: { channel: AppServiceChannel }) {
   return null;
 }
 
-async function openChannel(channel: AppServiceChannel) {
+async function openChannel(channel: AppServiceChannel, user?: RuoyiUser | null) {
   const type = String(channel.channelType || '').toUpperCase();
   const value = channel.value?.trim() || '';
   const linkUrl = channel.linkUrl?.trim() || '';
@@ -60,8 +62,12 @@ async function openChannel(channel: AppServiceChannel) {
     return;
   }
 
-  const target = linkUrl || value;
+  const target = withChatVisitorParams(linkUrl || value, user);
   if (target && /^https?:\/\//i.test(target)) {
+    if (isEmbeddableChatChannel({ ...channel, linkUrl: target })) {
+      router.push('/service-chat');
+      return;
+    }
     const ok = await Linking.canOpenURL(target);
     if (!ok) {
       modalWarning('无法打开链接');
@@ -79,6 +85,7 @@ async function openChannel(channel: AppServiceChannel) {
 }
 
 export default function ServiceScreen() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [center, setCenter] = useState<AppServiceCenter | null>(null);
 
@@ -132,7 +139,7 @@ export default function ServiceScreen() {
                 {channel.remark ? <Text style={styles.channelRemark}>{channel.remark}</Text> : null}
                 <ChannelQr channel={channel} />
                 <View style={styles.btnWrap}>
-                  <PrimaryButton title="联系客服" onPress={() => void openChannel(channel)} />
+                  <PrimaryButton title="联系客服" onPress={() => void openChannel(channel, user)} />
                 </View>
               </GlassCard>
             ))

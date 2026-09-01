@@ -474,6 +474,18 @@ export type AppOverviewItem = {
   sort: number;
 };
 
+/** GET/POST /app/version/latest — 免登录 */
+export type AppVersion = {
+  id: number;
+  platform: string;
+  version: string;
+  downloadUrl: string;
+  description: string;
+  forceUpdate: boolean;
+  isLatest: boolean;
+  isEnabled: boolean;
+};
+
 export type AppAbout = {
   mode: 'TEXT' | 'PDF';
   title: string;

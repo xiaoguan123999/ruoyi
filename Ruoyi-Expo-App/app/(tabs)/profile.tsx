@@ -22,10 +22,12 @@ import {
 import { fetchAppWallet } from '@/api/app-trade';
 import type { AppWallet } from '@/api/types';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
+import { UpdateConfirmModal } from '@/components/ui/UpdateConfirmModal';
 import { useAuth } from '@/hooks/useAuth';
+import { useVersionUpdatePrompt } from '@/hooks/useVersionUpdatePrompt';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
-import { toastThenNavigate } from '@/utils/toast';
+import { modalError, toastSuccess, toastThenNavigate } from '@/utils/toast';
 
 function GradientPill({
   title,
@@ -118,6 +120,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, hydrated, isLoggedIn } = useAuth();
   const [wallet, setWallet] = useState<AppWallet | null>(null);
+  const { isChecking, runVersionUpdateCheck, prompt, closePrompt } = useVersionUpdatePrompt();
 
   const load = useCallback(async () => {
     const [, nextWallet] = await Promise.all([
@@ -138,6 +141,15 @@ export default function ProfileScreen() {
   const logout = async () => {
     await appLogout();
     toastThenNavigate('已退出登录', () => router.replace('/sign-in'), { type: 'success' });
+  };
+
+  const checkUpdate = async () => {
+    await runVersionUpdateCheck({
+      onLatest: () => toastSuccess('已是最新版本'),
+      onError: () => modalError('检查更新失败'),
+      onOpenUrlFailed: () => modalError('无法打开下载地址'),
+      onUnsupported: () => modalError('网页版请直接刷新页面'),
+    });
   };
 
   const displayName = user?.realName?.trim() || '';
@@ -294,12 +306,22 @@ export default function ProfileScreen() {
               <Menu icon={images.iconWallet} label="钱包管理" onPress={() => router.push('/wallet')} />
               <Menu icon={images.iconTeamSmall} label="我的团队" onPress={() => router.push('/team')} />
               <Menu icon={images.iconInfo} label="关于我们" onPress={() => router.push('/about')} />
+              <Menu
+                icon={images.iconInfo}
+                label={isChecking ? '检查中…' : '检查更新'}
+                onPress={() => void checkUpdate()}
+              />
               <Menu icon={images.iconPassword} label="密码设置" onPress={() => router.push('/password')} />
               <Menu icon={images.iconLogout} label="退出登录" onPress={() => void logout()} last />
             </View>
           </>
         )}
       </RefreshableScrollView>
+      <UpdateConfirmModal
+        options={prompt?.options ?? null}
+        onConfirm={() => closePrompt(true)}
+        onCancel={() => closePrompt(false)}
+      />
     </View>
   );
 }

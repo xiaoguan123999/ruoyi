@@ -19,16 +19,19 @@
         "APP_ENV": "preview"
       },
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "credentialsSource": "remote"
       }
     },
     "production": {
+      "autoIncrement": true,
       "channel": "production",
       "env": {
         "APP_ENV": "production"
       },
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "apk",
+        "credentialsSource": "remote"
       }
     }
   },

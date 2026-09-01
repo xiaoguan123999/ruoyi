@@ -46,3 +46,6 @@ public/mock/*.pdf
 # generated native folders
 /ios
 /android
+
+# local APK artifacts
+*.apk
