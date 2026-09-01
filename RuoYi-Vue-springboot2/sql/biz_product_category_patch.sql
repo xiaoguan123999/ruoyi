@@ -1,5 +1,5 @@
 -- App 产品系列（后台叫产品分类）。Tab 渲染系列，点进去查该系列下产品。
--- 可重复执行：建表/菜单用 not exists；加列若已存在会报错可忽略。
+-- 可重复执行：建表/菜单/加列均可重复。
 
 create table if not exists biz_product_category (
   category_id       bigint(20)      not null auto_increment    comment '分类/系列ID',
@@ -23,9 +23,17 @@ insert into biz_product_category (category_id, category_name, cover_url, status,
 select 2, '「星帆·远征计划」', '', '0', 2, 'admin', sysdate(), 'App产品Tab系列'
 from dual where not exists (select 1 from biz_product_category where category_id = 2);
 
-alter table biz_product add column category_id bigint(20) default null comment '所属分类/系列ID' after product_name;
-alter table biz_product add column name_en varchar(100) default '' comment '英文名' after product_name;
-alter table biz_product add column cover_url varchar(500) default '' comment '产品封面图' after sort;
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'category_id');
+set @sql := if(@exist = 0, 'alter table biz_product add column category_id bigint(20) default null comment ''所属分类/系列ID'' after product_name', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
+
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'name_en');
+set @sql := if(@exist = 0, 'alter table biz_product add column name_en varchar(100) default '''' comment ''英文名'' after product_name', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
+
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'cover_url');
+set @sql := if(@exist = 0, 'alter table biz_product add column cover_url varchar(500) default '''' comment ''产品封面图'' after sort', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
 update biz_product set category_id = 1 where category_id is null;
 

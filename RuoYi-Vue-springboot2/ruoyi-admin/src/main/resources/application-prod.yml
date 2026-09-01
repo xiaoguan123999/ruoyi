@@ -4,9 +4,11 @@
 ruoyi:
   profile: ${RUOYI_PROFILE:/home/ruoyi/uploadPath}
   r2:
-    access-key: ${R2_ACCESS_KEY:}
-    secret-key: ${R2_SECRET_KEY:}
-    public-url: ${R2_PUBLIC_URL:}
+    endpoint: ${R2_ENDPOINT:https://f3b250c05ff64494b781db0c600a3756.r2.cloudflarestorage.com}
+    bucket: ${R2_BUCKET:project-bucket}
+    access-key: ${R2_ACCESS_KEY:f50e0113e01ac57789dc1c07beec6dc4}
+    secret-key: ${R2_SECRET_KEY:e5d5e8961e81c800da557eff2643ed384345e54d39eb87aece9d94683390baaf}
+    public-url: ${R2_PUBLIC_URL:https://pub-83b77826080f40fe9ab80115e92f4e3e.r2.dev}
 
 logging:
   level:
@@ -21,7 +23,7 @@ spring:
     restart:
       enabled: false
   redis:
-    host: ${REDIS_HOST:}
+    host: ${REDIS_HOST:127.0.0.1}
     port: ${REDIS_PORT:6379}
     database: ${REDIS_DATABASE:0}
     password: ${REDIS_PASSWORD:}
@@ -39,8 +41,8 @@ spring:
       # 主库数据源
       master:
         url: jdbc:mysql://localhost:3306/ry-vue?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
-        username: root
-        password: password
+        username: ${MYSQL_USER:ry-vue}
+        password: ${MYSQL_PASSWORD:mbsk45icas7SH4y4}
       # 从库数据源
       slave:
         # 从数据源开关/默认关闭
@@ -53,7 +55,7 @@ spring:
       # 最小连接池数量
       minIdle: 10
       # 最大连接池数量
-      maxActive: 20
+      maxActive: 80
       # 配置获取连接等待超时的时间
       maxWait: 60000
       # 配置连接超时时间

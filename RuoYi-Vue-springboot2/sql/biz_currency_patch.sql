@@ -1,14 +1,17 @@
--- CNY / USDT independent settlement
--- ALTER may error if column already exists; data statements are safe to re-run.
+SET NAMES utf8mb4;
+-- CNY / USDT independent settlement（可重复执行）
 
-ALTER TABLE biz_product
-  ADD COLUMN currency varchar(16) NOT NULL DEFAULT 'CNY' COMMENT 'CNY/USDT' AFTER product_name;
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'currency');
+set @sql := if(@exist = 0, 'alter table biz_product add column currency varchar(16) not null default ''CNY'' comment ''CNY/USDT'' after product_name', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
-ALTER TABLE biz_order
-  ADD COLUMN currency varchar(16) NOT NULL DEFAULT 'CNY' COMMENT 'CNY/USDT' AFTER product_name;
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_order' and column_name = 'currency');
+set @sql := if(@exist = 0, 'alter table biz_order add column currency varchar(16) not null default ''CNY'' comment ''CNY/USDT'' after product_name', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
-ALTER TABLE biz_rebate_log
-  ADD COLUMN currency varchar(16) NOT NULL DEFAULT 'CNY' COMMENT 'CNY/USDT' AFTER member_id;
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_rebate_log' and column_name = 'currency');
+set @sql := if(@exist = 0, 'alter table biz_rebate_log add column currency varchar(16) not null default ''CNY'' comment ''CNY/USDT'' after member_id', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
 UPDATE sys_config
    SET config_value = 'true'
