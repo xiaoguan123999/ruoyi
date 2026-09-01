@@ -162,6 +162,8 @@ const config: ExpoConfig = {
         },
       },
     ],
+    '@config-plugins/react-native-blob-util',
+    '@config-plugins/react-native-pdf',
   ],
   extra: {
     appEnv,

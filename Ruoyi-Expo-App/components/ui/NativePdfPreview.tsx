@@ -1,255 +1,117 @@
-import { Asset } from 'expo-asset';
-import * as FileSystem from 'expo-file-system/legacy';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import Pdf from 'react-native-pdf';
 
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
-import { resolvePdfFetchUrl } from '@/utils/pdf-url';
-
-import pdfMainAsset from '../../assets/pdf/pdf.min.bin';
-import pdfWorkerAsset from '../../assets/pdf/pdf.worker.min.bin';
-
-const RENDER_TIMEOUT_MS = 90_000;
-const INJECT_CHUNK = 80_000;
-
-let pdfJsAssets: { pdfJs: string; workerJs: string } | null = null;
-
-const VIEWER_HTML = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=3"/>
-<style>
-  html,body{margin:0;background:#050B1C}
-  canvas{display:block;width:100%;margin:0 0 8px}
-  .msg{color:#8AA4C6;text-align:center;padding:40px 16px;font-family:sans-serif;font-size:14px}
-</style>
-</head>
-<body>
-<div id="msg" class="msg">加载中…</div>
-<div id="root"></div>
-<script>
-(function () {
-  function post(type) {
-    if (window.ReactNativeWebView) {
-      window.ReactNativeWebView.postMessage(type);
-    }
-  }
-  window.__startPdf = async function (url) {
-    var msg = document.getElementById('msg');
-    var root = document.getElementById('root');
-    try {
-      var mainUrl = URL.createObjectURL(new Blob([window.__PDF_JS], { type: 'text/javascript' }));
-      var workerUrl = URL.createObjectURL(new Blob([window.__PDF_WORKER], { type: 'text/javascript' }));
-      var pdfjs = await import(mainUrl);
-      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-      var pdf = await pdfjs.getDocument({
-        url: url,
-        withCredentials: false,
-        disableStream: false,
-        disableRange: false,
-        isEvalSupported: false
-      }).promise;
-      if (msg) msg.remove();
-      for (var p = 1; p <= pdf.numPages; p++) {
-        var page = await pdf.getPage(p);
-        var unscaled = page.getViewport({ scale: 1 });
-        var scale = Math.max(1, window.innerWidth / unscaled.width);
-        var viewport = page.getViewport({ scale: scale });
-        var canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
-        root.appendChild(canvas);
-        if (p === 1) {
-          post('page');
-        }
-      }
-      post('ok');
-    } catch (e) {
-      if (msg) msg.textContent = '预览失败';
-      post('error');
-    }
-  };
-  post('ready');
-})();
-</script>
-</body>
-</html>`;
-
-function viewerDir() {
-  return `${FileSystem.cacheDirectory ?? ''}pdf-viewer/`;
-}
-
-async function copyAssetTo(mod: number, dest: string) {
-  const asset = Asset.fromModule(mod);
-  await asset.downloadAsync();
-  const from = asset.localUri;
-  if (!from) {
-    throw new Error('PDF 组件加载失败');
-  }
-  const info = await FileSystem.getInfoAsync(dest);
-  if (info.exists && 'size' in info && typeof info.size === 'number' && info.size > 0) {
-    return;
-  }
-  await FileSystem.copyAsync({ from, to: dest });
-}
-
-async function loadPdfJsAssets() {
-  if (pdfJsAssets) {
-    return pdfJsAssets;
-  }
-  const dir = viewerDir();
-  if (!dir) {
-    throw new Error('无法创建预览目录');
-  }
-  await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-  const mainPath = `${dir}pdf.min.js`;
-  const workerPath = `${dir}pdf.worker.min.js`;
-  await Promise.all([copyAssetTo(pdfMainAsset, mainPath), copyAssetTo(pdfWorkerAsset, workerPath)]);
-  const [pdfJs, workerJs] = await Promise.all([
-    FileSystem.readAsStringAsync(mainPath),
-    FileSystem.readAsStringAsync(workerPath),
-  ]);
-  if (!pdfJs || !workerJs) {
-    throw new Error('PDF 组件加载失败');
-  }
-  pdfJsAssets = { pdfJs, workerJs };
-  return pdfJsAssets;
-}
-
-function injectScript(web: WebView, script: string) {
-  web.injectJavaScript(`${script}; true;`);
-}
-
-async function injectString(web: WebView, name: string, value: string) {
-  injectScript(web, `window.${name}=""`);
-  for (let i = 0; i < value.length; i += INJECT_CHUNK) {
-    injectScript(web, `window.${name}+=${JSON.stringify(value.slice(i, i + INJECT_CHUNK))}`);
-    await new Promise((resolve) => setTimeout(resolve, 8));
-  }
-}
+import { getCachedPdfPath, prefetchPdf } from '@/utils/pdf-cache';
 
 type Props = {
   uri: string;
 };
 
+function toFileUri(path: string) {
+  return path.startsWith('file:') ? path : `file://${path}`;
+}
+
 export function NativePdfPreview({ uri }: Props) {
-  const webRef = useRef<WebView>(null);
-  const startedRef = useRef(false);
-  const [ready, setReady] = useState(false);
+  const [sourceUri, setSourceUri] = useState('');
+  const [fromCache, setFromCache] = useState(false);
+  const [caching, setCaching] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  const fetchUrl = resolvePdfFetchUrl(uri);
+  const fallbackTriedRef = useRef(false);
 
   useEffect(() => {
-    startedRef.current = false;
-    setReady(false);
+    let cancelled = false;
     setLoading(true);
     setError('');
-  }, [fetchUrl]);
+    setSourceUri('');
+    setFromCache(false);
+    setCaching(false);
+    fallbackTriedRef.current = false;
 
-  useEffect(() => {
-    if (!ready || startedRef.current) {
-      return;
-    }
-    const web = webRef.current;
-    if (!web) {
-      return;
-    }
-    startedRef.current = true;
-    let cancelled = false;
     const run = async () => {
-      try {
-        const { pdfJs, workerJs } = await loadPdfJsAssets();
-        if (cancelled) {
-          return;
-        }
-        await injectString(web, '__PDF_JS', pdfJs);
-        await injectString(web, '__PDF_WORKER', workerJs);
-        injectScript(web, `window.__startPdf(${JSON.stringify(fetchUrl)})`);
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'PDF 加载失败');
-          setLoading(false);
-        }
+      const cached = await getCachedPdfPath(uri);
+      if (cancelled) {
+        return;
       }
+      if (cached) {
+        setFromCache(true);
+        setSourceUri(toFileUri(cached));
+        return;
+      }
+      setCaching(true);
+      setSourceUri(uri);
+      void prefetchPdf(uri).then((path) => {
+        if (!cancelled && path) {
+          setCaching(false);
+        }
+      });
     };
     void run();
+
     return () => {
       cancelled = true;
     };
-  }, [ready, fetchUrl]);
+  }, [uri]);
 
-  useEffect(() => {
-    if (!loading) {
-      return;
-    }
-    const timer = setTimeout(() => {
-      setError((prev) => prev || '预览超时，请使用系统阅读器打开');
-      setLoading(false);
-    }, RENDER_TIMEOUT_MS);
-    return () => clearTimeout(timer);
-  }, [loading, fetchUrl]);
-
-  const onMessage = (type: string) => {
-    if (type === 'ready') {
-      setReady(true);
-      return;
-    }
-    if (type === 'page' || type === 'ok') {
-      setLoading(false);
-      setError('');
-      return;
-    }
-    if (type === 'error') {
-      setLoading(false);
-      setError('预览失败');
-    }
+  const openExternal = () => {
+    void WebBrowser.openBrowserAsync(uri);
   };
 
-  if (error && !ready) {
+  if (error) {
     return (
       <View style={styles.fallback}>
         <Text style={styles.fallbackText}>{error}</Text>
-        <PrimaryButton title="打开 PDF" onPress={() => void WebBrowser.openBrowserAsync(uri)} />
+        <PrimaryButton title="打开 PDF" onPress={openExternal} />
       </View>
     );
   }
 
   return (
     <View style={styles.fill}>
-      <WebView
-        ref={webRef}
-        source={{ html: VIEWER_HTML, baseUrl: 'https://localhost/' }}
-        style={styles.fill}
-        originWhitelist={['*']}
-        mixedContentMode="always"
-        javaScriptEnabled
-        domStorageEnabled
-        nestedScrollEnabled
-        scalesPageToFit={Platform.OS === 'android'}
-        setSupportMultipleWindows={false}
-        onMessage={(event) => onMessage(event.nativeEvent.data)}
-        onError={() => {
-          setLoading(false);
-          setError('预览失败');
-        }}
-      />
+      {sourceUri ? (
+        <Pdf
+          source={{ uri: sourceUri, cache: false }}
+          style={styles.fill}
+          trustAllCerts={false}
+          fitPolicy={0}
+          spacing={8}
+          onLoadComplete={() => setLoading(false)}
+          onError={() => {
+            void (async () => {
+              if (fallbackTriedRef.current) {
+                setLoading(false);
+                setError('预览失败');
+                return;
+              }
+              fallbackTriedRef.current = true;
+              const cached = await prefetchPdf(uri);
+              if (cached) {
+                setFromCache(true);
+                setCaching(false);
+                setError('');
+                setLoading(true);
+                setSourceUri(toFileUri(cached));
+                return;
+              }
+              setLoading(false);
+              setError('预览失败');
+            })();
+          }}
+        />
+      ) : null}
       {loading ? (
         <View style={styles.loadingOverlay} pointerEvents="none">
           <ActivityIndicator color={colors.accent} />
           <Text style={styles.progress}>加载中…</Text>
         </View>
       ) : null}
-      {error ? (
-        <View style={styles.fallback}>
-          <Text style={styles.fallbackText}>{error}</Text>
-          <PrimaryButton title="打开 PDF" onPress={() => void WebBrowser.openBrowserAsync(uri)} />
+      {fromCache || caching ? (
+        <View style={styles.cacheTag}>
+          <Text style={styles.cacheTagText}>{fromCache ? '已缓存' : '缓存中'}</Text>
         </View>
       ) : null}
     </View>
@@ -272,8 +134,21 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 13,
   },
+  cacheTag: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  cacheTagText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+  },
   fallback: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 28,
     gap: 16,

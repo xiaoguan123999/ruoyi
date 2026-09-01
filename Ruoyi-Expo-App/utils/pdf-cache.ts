@@ -4,7 +4,7 @@ import { getToken } from '@/utils/storage';
 import { resolvePdfFetchUrl } from '@/utils/pdf-url';
 
 const PDF_MAGIC_B64 = 'JVBE';
-const DOWNLOAD_TIMEOUT_MS = 40_000;
+const DOWNLOAD_TIMEOUT_MS = 180_000;
 const inflight = new Map<string, Promise<string | null>>();
 
 function hashKey(input: string): string {
