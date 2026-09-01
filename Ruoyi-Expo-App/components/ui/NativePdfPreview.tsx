@@ -1,25 +1,11 @@
-import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  PixelRatio,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Pdf from 'react-native-pdf';
 
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
 import { getCachedPdfPath, prefetchPdf } from '@/utils/pdf-cache';
-import {
-  getCachedPdfPages,
-  rasterizePdfPages,
-  type CachedPdfPage,
-} from '@/utils/pdf-page-cache';
 
 type Props = {
   uri: string;
@@ -29,80 +15,39 @@ function toFileUri(path: string) {
   return path.startsWith('file:') ? path : `file://${path}`;
 }
 
-function pageRenderScale(viewWidth: number) {
-  return Number(Math.min(2, Math.max(1.25, (viewWidth * PixelRatio.get()) / 595)).toFixed(2));
-}
-
 export function NativePdfPreview({ uri }: Props) {
-  const { width: windowWidth } = useWindowDimensions();
-  const contentWidth = Math.max(280, windowWidth);
-  const [pages, setPages] = useState<CachedPdfPage[]>([]);
   const [sourceUri, setSourceUri] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const fallbackTriedRef = useRef(false);
-  const showedPdfRef = useRef(false);
+  const recoveringRef = useRef(false);
+  const failedLocalUriRef = useRef('');
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError('');
-    setPages([]);
     setSourceUri('');
-    fallbackTriedRef.current = false;
-    showedPdfRef.current = false;
-
-    const scale = pageRenderScale(contentWidth);
+    recoveringRef.current = false;
+    failedLocalUriRef.current = '';
 
     const run = async () => {
-      const cachedPages = await getCachedPdfPages(uri);
+      const cached = await getCachedPdfPath(uri);
       if (cancelled) {
         return;
       }
-      if (cachedPages?.length) {
-        setPages(cachedPages);
-        setLoading(false);
+      if (cached) {
+        setSourceUri(toFileUri(cached));
         return;
       }
-
-      const cachedPdf = await getCachedPdfPath(uri);
-      if (cancelled) {
-        return;
-      }
-      if (cachedPdf) {
-        const rasterized = await rasterizePdfPages(cachedPdf, uri, scale);
-        if (cancelled) {
-          return;
-        }
-        if (rasterized?.length) {
-          setPages(rasterized);
-          setLoading(false);
-          return;
-        }
-        setSourceUri(toFileUri(cachedPdf));
-        return;
-      }
-
       setSourceUri(uri);
-      void prefetchPdf(uri).then(async (path) => {
-        if (!path || cancelled) {
-          return;
-        }
-        const rasterized = await rasterizePdfPages(path, uri, scale);
-        if (cancelled || showedPdfRef.current || !rasterized?.length) {
-          return;
-        }
-        setPages(rasterized);
-        setSourceUri('');
-        setLoading(false);
-      });
+      void prefetchPdf(uri);
     };
     void run();
 
     return () => {
       cancelled = true;
     };
-  }, [uri, contentWidth]);
+  }, [uri]);
 
   const openExternal = () => {
     void WebBrowser.openBrowserAsync(uri);
@@ -117,28 +62,6 @@ export function NativePdfPreview({ uri }: Props) {
     );
   }
 
-  if (pages.length) {
-    return (
-      <ScrollView
-        style={styles.fill}
-        contentContainerStyle={styles.pageList}
-        showsVerticalScrollIndicator={false}
-      >
-        {pages.map((page, index) => {
-          const displayHeight = (contentWidth * page.height) / page.width;
-          return (
-            <Image
-              key={`${page.uri}-${index}`}
-              source={{ uri: page.uri }}
-              style={{ width: contentWidth, height: displayHeight }}
-              contentFit="contain"
-            />
-          );
-        })}
-      </ScrollView>
-    );
-  }
-
   return (
     <View style={styles.fill}>
       {sourceUri ? (
@@ -148,37 +71,35 @@ export function NativePdfPreview({ uri }: Props) {
           trustAllCerts={false}
           fitPolicy={0}
           spacing={8}
-          onLoadComplete={() => {
-            showedPdfRef.current = true;
-            setLoading(false);
-          }}
+          minScale={1}
+          maxScale={4}
+          enableDoubleTapZoom
+          onLoadComplete={() => setLoading(false)}
           onError={() => {
+            if (recoveringRef.current) {
+              return;
+            }
+            const current = sourceUri;
+            if (failedLocalUriRef.current && failedLocalUriRef.current === current) {
+              setLoading(false);
+              setError('预览失败');
+              return;
+            }
+            recoveringRef.current = true;
+            setLoading(true);
             void (async () => {
-              if (fallbackTriedRef.current) {
-                setLoading(false);
-                setError('预览失败');
-                return;
-              }
-              fallbackTriedRef.current = true;
-              const cached = await prefetchPdf(uri);
-              if (cached) {
-                const rasterized = await rasterizePdfPages(
-                  cached,
-                  uri,
-                  pageRenderScale(contentWidth),
-                );
-                if (rasterized?.length) {
-                  setError('');
-                  setPages(rasterized);
-                  setSourceUri('');
-                  setLoading(false);
-                  return;
-                }
+              const cached = (await getCachedPdfPath(uri)) || (await prefetchPdf(uri));
+              const localUri = cached ? toFileUri(cached) : '';
+              if (localUri && localUri !== current) {
+                recoveringRef.current = false;
                 setError('');
-                setLoading(true);
-                setSourceUri(toFileUri(cached));
+                setSourceUri(localUri);
                 return;
               }
+              if (localUri) {
+                failedLocalUriRef.current = localUri;
+              }
+              recoveringRef.current = false;
               setLoading(false);
               setError('预览失败');
             })();
@@ -199,9 +120,6 @@ const styles = StyleSheet.create({
   fill: {
     flex: 1,
     backgroundColor: '#050B1C',
-  },
-  pageList: {
-    paddingBottom: 16,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
