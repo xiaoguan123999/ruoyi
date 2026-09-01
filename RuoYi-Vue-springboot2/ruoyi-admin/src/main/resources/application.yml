@@ -59,7 +59,7 @@ spring:
   # IDEA: Active profiles 填 druid,dev
   # 启动参数: java -jar ruoyi-admin.jar --spring.profiles.active=druid,prod
   profiles:
-    active: druid
+    active: dev
   # 文件上传
   servlet:
     multipart:

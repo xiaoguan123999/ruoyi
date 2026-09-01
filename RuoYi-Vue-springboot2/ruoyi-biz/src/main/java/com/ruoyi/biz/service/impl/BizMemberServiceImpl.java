@@ -23,6 +23,7 @@ import com.ruoyi.biz.domain.BizTeamRelationRow;
 import com.ruoyi.biz.domain.BizTeamTreeNode;
 import com.ruoyi.biz.mapper.BizCheckinMapper;
 import com.ruoyi.biz.mapper.BizMemberMapper;
+import com.ruoyi.biz.mapper.BizRechargeMapper;
 import com.ruoyi.biz.service.IBizBlacklistService;
 import com.ruoyi.biz.service.IBizLevelRewardService;
 import com.ruoyi.biz.service.IBizMemberService;
@@ -54,6 +55,9 @@ public class BizMemberServiceImpl implements IBizMemberService
 
     @Autowired
     private BizCheckinMapper checkinMapper;
+
+    @Autowired
+    private BizRechargeMapper rechargeMapper;
 
     @Override
     public BizMember selectMemberById(Long memberId)
@@ -421,6 +425,7 @@ public class BizMemberServiceImpl implements IBizMemberService
         data.setLevel7(byLevel.get(Integer.valueOf(7)));
         data.setLevel1Members(byLevel.get(Integer.valueOf(1)));
         data.setMembers1(byLevel.get(Integer.valueOf(1)));
+        fillDepositSummary(data, memberId, depth);
         return data;
     }
 
@@ -528,6 +533,24 @@ public class BizMemberServiceImpl implements IBizMemberService
             dest.setRechargeUsdt(nvl(row.getRechargeUsdt()));
             dest.setRechargeCny(nvl(row.getRechargeCny()));
         }
+    }
+
+    private void fillDepositSummary(AppTeamData data, Long memberId, int viewerDepth)
+    {
+        Integer maxDepth = Integer.valueOf(BizConstants.TEAM_MAX_LEVEL);
+        Integer depth = Integer.valueOf(viewerDepth);
+        BigDecimal selfCny = nvl(rechargeMapper.sumPassedRecharge(memberId, BizConstants.CURRENCY_CNY));
+        BigDecimal selfUsdt = nvl(rechargeMapper.sumPassedRecharge(memberId, BizConstants.CURRENCY_USDT));
+        BigDecimal downCny = nvl(rechargeMapper.sumTeamPassedRecharge(memberId, BizConstants.CURRENCY_CNY, false,
+                maxDepth, depth));
+        BigDecimal downUsdt = nvl(rechargeMapper.sumTeamPassedRecharge(memberId, BizConstants.CURRENCY_USDT, false,
+                maxDepth, depth));
+        data.setSelfDepositAmountCny(selfCny);
+        data.setSelfDepositAmountUsdt(selfUsdt);
+        data.setDownlineDepositAmountCny(downCny);
+        data.setDownlineDepositAmountUsdt(downUsdt);
+        data.setTotalDepositAmountCny(selfCny.add(downCny));
+        data.setTotalDepositAmountUsdt(selfUsdt.add(downUsdt));
     }
 
     private int nvl(Integer v)

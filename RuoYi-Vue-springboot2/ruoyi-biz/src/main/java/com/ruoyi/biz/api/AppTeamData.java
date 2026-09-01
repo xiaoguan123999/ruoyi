@@ -1,5 +1,6 @@
 package com.ruoyi.biz.api;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -24,6 +25,19 @@ public class AppTeamData
     private List<AppTeamMemberItem> level1Members;
     private List<AppTeamMemberItem> members1;
 
+    @ApiModelProperty("本人已通过充值 CNY")
+    private BigDecimal selfDepositAmountCny;
+    @ApiModelProperty("本人已通过充值 USDT")
+    private BigDecimal selfDepositAmountUsdt;
+    @ApiModelProperty("1～7级下级已通过充值 CNY，不含本人")
+    private BigDecimal downlineDepositAmountCny;
+    @ApiModelProperty("1～7级下级已通过充值 USDT，不含本人")
+    private BigDecimal downlineDepositAmountUsdt;
+    @ApiModelProperty("本人+1～7级下级已通过充值 CNY")
+    private BigDecimal totalDepositAmountCny;
+    @ApiModelProperty("本人+1～7级下级已通过充值 USDT")
+    private BigDecimal totalDepositAmountUsdt;
+
     public AppTeamSummary getSummary() { return summary; }
     public void setSummary(AppTeamSummary summary) { this.summary = summary; }
     public Map<String, List<AppTeamMemberItem>> getMembers() { return members; }
@@ -46,4 +60,16 @@ public class AppTeamData
     public void setLevel1Members(List<AppTeamMemberItem> level1Members) { this.level1Members = level1Members; }
     public List<AppTeamMemberItem> getMembers1() { return members1; }
     public void setMembers1(List<AppTeamMemberItem> members1) { this.members1 = members1; }
+    public BigDecimal getSelfDepositAmountCny() { return selfDepositAmountCny; }
+    public void setSelfDepositAmountCny(BigDecimal selfDepositAmountCny) { this.selfDepositAmountCny = selfDepositAmountCny; }
+    public BigDecimal getSelfDepositAmountUsdt() { return selfDepositAmountUsdt; }
+    public void setSelfDepositAmountUsdt(BigDecimal selfDepositAmountUsdt) { this.selfDepositAmountUsdt = selfDepositAmountUsdt; }
+    public BigDecimal getDownlineDepositAmountCny() { return downlineDepositAmountCny; }
+    public void setDownlineDepositAmountCny(BigDecimal downlineDepositAmountCny) { this.downlineDepositAmountCny = downlineDepositAmountCny; }
+    public BigDecimal getDownlineDepositAmountUsdt() { return downlineDepositAmountUsdt; }
+    public void setDownlineDepositAmountUsdt(BigDecimal downlineDepositAmountUsdt) { this.downlineDepositAmountUsdt = downlineDepositAmountUsdt; }
+    public BigDecimal getTotalDepositAmountCny() { return totalDepositAmountCny; }
+    public void setTotalDepositAmountCny(BigDecimal totalDepositAmountCny) { this.totalDepositAmountCny = totalDepositAmountCny; }
+    public BigDecimal getTotalDepositAmountUsdt() { return totalDepositAmountUsdt; }
+    public void setTotalDepositAmountUsdt(BigDecimal totalDepositAmountUsdt) { this.totalDepositAmountUsdt = totalDepositAmountUsdt; }
 }
