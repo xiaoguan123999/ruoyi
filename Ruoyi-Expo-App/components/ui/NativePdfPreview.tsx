@@ -7,15 +7,16 @@ import { WebView } from 'react-native-webview';
 
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
-import { getCachedPdfPath, prefetchPdf, readPdfAsBase64 } from '@/utils/pdf-cache';
+import { prefetchPdf, readPdfAsBase64 } from '@/utils/pdf-cache';
 import { resolvePdfFetchUrl } from '@/utils/pdf-url';
 
 import pdfMainAsset from '../../assets/pdf/pdf.min.bin';
 import pdfWorkerAsset from '../../assets/pdf/pdf.worker.min.bin';
 
 const RENDER_TIMEOUT_MS = 60_000;
-const PDFJS_CACHE_VER = '4.10.38-3';
 const INJECT_CHUNK = 80_000;
+
+let pdfJsAssets: { pdfJs: string; workerJs: string } | null = null;
 
 const VIEWER_HTML = `<!DOCTYPE html>
 <html>
@@ -31,8 +32,6 @@ const VIEWER_HTML = `<!DOCTYPE html>
 <body>
 <div id="msg" class="msg">加载中…</div>
 <div id="root"></div>
-<script src="pdf.min.js"></script>
-<script src="worker-data.js"></script>
 <script>
 (function () {
   function post(type) {
@@ -46,62 +45,41 @@ const VIEWER_HTML = `<!DOCTYPE html>
     for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
     return bytes;
   }
-  try {
-    if (typeof pdfjsLib === 'undefined' || !window.__PDF_WORKER) {
-      throw new Error('pdfjs');
-    }
-    pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
-      new Blob([window.__PDF_WORKER], { type: 'text/javascript' })
-    );
-  } catch (e) {
-    post('error');
-    return;
-  }
-
-  var rendering = false;
-  window.renderFromBase64 = function (b64) {
-    if (rendering) {
-      return;
-    }
-    rendering = true;
+  window.__startPdf = async function () {
     var msg = document.getElementById('msg');
     var root = document.getElementById('root');
-    (async function () {
-      try {
-        var pdf = await pdfjsLib.getDocument({
-          data: b64ToBytes(b64),
-          disableStream: true,
-          disableAutoFetch: true,
-          isEvalSupported: false
-        }).promise;
-        if (msg) msg.style.display = 'none';
-        root.innerHTML = '';
-        for (var p = 1; p <= pdf.numPages; p++) {
-          var page = await pdf.getPage(p);
-          var unscaled = page.getViewport({ scale: 1 });
-          var scale = Math.max(1, window.innerWidth / unscaled.width);
-          var viewport = page.getViewport({ scale: scale });
-          var canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
-          root.appendChild(canvas);
-          if (p === 1) {
-            post('page');
-          }
+    try {
+      var mainUrl = URL.createObjectURL(new Blob([window.__PDF_JS], { type: 'text/javascript' }));
+      var workerUrl = URL.createObjectURL(new Blob([window.__PDF_WORKER], { type: 'text/javascript' }));
+      var pdfjs = await import(mainUrl);
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+      var pdf = await pdfjs.getDocument({
+        data: b64ToBytes(window.__PDF_B64),
+        disableStream: true,
+        disableAutoFetch: true,
+        isEvalSupported: false
+      }).promise;
+      if (msg) msg.remove();
+      for (var p = 1; p <= pdf.numPages; p++) {
+        var page = await pdf.getPage(p);
+        var unscaled = page.getViewport({ scale: 1 });
+        var scale = Math.max(1, window.innerWidth / unscaled.width);
+        var viewport = page.getViewport({ scale: scale });
+        var canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+        root.appendChild(canvas);
+        if (p === 1) {
+          post('page');
         }
-        post('ok');
-      } catch (e) {
-        rendering = false;
-        if (msg) {
-          msg.style.display = 'block';
-          msg.textContent = '预览失败';
-        }
-        post('error');
       }
-    })();
+      post('ok');
+    } catch (e) {
+      if (msg) msg.textContent = '预览失败';
+      post('error');
+    }
   };
-
   post('ready');
 })();
 </script>
@@ -126,52 +104,39 @@ async function copyAssetTo(mod: number, dest: string) {
   await FileSystem.copyAsync({ from, to: dest });
 }
 
-async function ensureViewer() {
+async function loadPdfJsAssets() {
+  if (pdfJsAssets) {
+    return pdfJsAssets;
+  }
   const dir = viewerDir();
   if (!dir) {
     throw new Error('无法创建预览目录');
   }
   await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-  const verPath = `${dir}ver.txt`;
-  const htmlPath = `${dir}index.html`;
-  let cachedVer = '';
-  try {
-    cachedVer = await FileSystem.readAsStringAsync(verPath);
-  } catch {
-    cachedVer = '';
-  }
-  if (cachedVer === PDFJS_CACHE_VER) {
-    const htmlInfo = await FileSystem.getInfoAsync(htmlPath);
-    if (htmlInfo.exists) {
-      return { dir, htmlPath };
-    }
-  }
-  await FileSystem.deleteAsync(dir, { idempotent: true });
-  await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
   const mainPath = `${dir}pdf.min.js`;
   const workerPath = `${dir}pdf.worker.min.js`;
   await Promise.all([copyAssetTo(pdfMainAsset, mainPath), copyAssetTo(pdfWorkerAsset, workerPath)]);
-  const workerJs = await FileSystem.readAsStringAsync(workerPath);
-  if (!workerJs) {
+  const [pdfJs, workerJs] = await Promise.all([
+    FileSystem.readAsStringAsync(mainPath),
+    FileSystem.readAsStringAsync(workerPath),
+  ]);
+  if (!pdfJs || !workerJs) {
     throw new Error('PDF 组件加载失败');
   }
-  await FileSystem.writeAsStringAsync(`${dir}worker-data.js`, `window.__PDF_WORKER = ${JSON.stringify(workerJs)};`);
-  await FileSystem.writeAsStringAsync(htmlPath, VIEWER_HTML);
-  await FileSystem.writeAsStringAsync(verPath, PDFJS_CACHE_VER);
-  return { dir, htmlPath };
+  pdfJsAssets = { pdfJs, workerJs };
+  return pdfJsAssets;
 }
 
 function injectScript(web: WebView, script: string) {
   web.injectJavaScript(`${script}; true;`);
 }
 
-async function injectBase64(web: WebView, b64: string) {
-  injectScript(web, 'window.__pdfB64=""');
-  for (let i = 0; i < b64.length; i += INJECT_CHUNK) {
-    injectScript(web, `window.__pdfB64+=${JSON.stringify(b64.slice(i, i + INJECT_CHUNK))}`);
+async function injectString(web: WebView, name: string, value: string) {
+  injectScript(web, `window.${name}=""`);
+  for (let i = 0; i < value.length; i += INJECT_CHUNK) {
+    injectScript(web, `window.${name}+=${JSON.stringify(value.slice(i, i + INJECT_CHUNK))}`);
     await new Promise((resolve) => setTimeout(resolve, 8));
   }
-  injectScript(web, 'window.renderFromBase64(window.__pdfB64)');
 }
 
 type Props = {
@@ -181,27 +146,46 @@ type Props = {
 export function NativePdfPreview({ uri }: Props) {
   const webRef = useRef<WebView>(null);
   const startedRef = useRef(false);
-  const [pageUri, setPageUri] = useState('');
-  const [readAccessUrl, setReadAccessUrl] = useState('');
+  const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const fetchUrl = resolvePdfFetchUrl(uri);
 
   useEffect(() => {
-    let cancelled = false;
     startedRef.current = false;
+    setReady(false);
+    setLoading(true);
+    setError('');
+    void prefetchPdf(fetchUrl);
+  }, [fetchUrl]);
+
+  useEffect(() => {
+    if (!ready || startedRef.current) {
+      return;
+    }
+    const web = webRef.current;
+    if (!web) {
+      return;
+    }
+    startedRef.current = true;
+    let cancelled = false;
     const run = async () => {
-      setLoading(true);
-      setError('');
-      setPageUri('');
-      void prefetchPdf(fetchUrl);
       try {
-        const { dir, htmlPath } = await ensureViewer();
-        if (!cancelled) {
-          setReadAccessUrl(dir);
-          setPageUri(htmlPath);
+        const [{ pdfJs, workerJs }, pdfPath] = await Promise.all([loadPdfJsAssets(), prefetchPdf(fetchUrl)]);
+        if (cancelled) {
+          return;
         }
+        if (!pdfPath) {
+          setError('PDF 下载失败');
+          setLoading(false);
+          return;
+        }
+        const pdfB64 = await readPdfAsBase64(pdfPath);
+        await injectString(web, '__PDF_JS', pdfJs);
+        await injectString(web, '__PDF_WORKER', workerJs);
+        await injectString(web, '__PDF_B64', pdfB64);
+        injectScript(web, 'window.__startPdf()');
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'PDF 加载失败');
@@ -213,10 +197,10 @@ export function NativePdfPreview({ uri }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [fetchUrl]);
+  }, [ready, fetchUrl]);
 
   useEffect(() => {
-    if (!pageUri || !loading) {
+    if (!loading) {
       return;
     }
     const timer = setTimeout(() => {
@@ -224,24 +208,11 @@ export function NativePdfPreview({ uri }: Props) {
       setLoading(false);
     }, RENDER_TIMEOUT_MS);
     return () => clearTimeout(timer);
-  }, [pageUri, loading]);
+  }, [loading, fetchUrl]);
 
   const onMessage = (type: string) => {
-    const web = webRef.current;
     if (type === 'ready') {
-      if (!web || startedRef.current) {
-        return;
-      }
-      startedRef.current = true;
-      void (async () => {
-        const cached = (await getCachedPdfPath(fetchUrl)) || (await prefetchPdf(fetchUrl));
-        if (!cached || !webRef.current) {
-          setLoading(false);
-          setError('PDF 下载失败');
-          return;
-        }
-        await injectBase64(webRef.current, await readPdfAsBase64(cached));
-      })();
+      setReady(true);
       return;
     }
     if (type === 'page' || type === 'ok') {
@@ -255,7 +226,7 @@ export function NativePdfPreview({ uri }: Props) {
     }
   };
 
-  if (error && !pageUri) {
+  if (error && !ready) {
     return (
       <View style={styles.fallback}>
         <Text style={styles.fallbackText}>{error}</Text>
@@ -266,36 +237,30 @@ export function NativePdfPreview({ uri }: Props) {
 
   return (
     <View style={styles.fill}>
-      {pageUri ? (
-        <WebView
-          ref={webRef}
-          source={{ uri: pageUri }}
-          style={styles.fill}
-          originWhitelist={['*', 'file://*']}
-          allowFileAccess
-          allowFileAccessFromFileURLs
-          allowUniversalAccessFromFileURLs
-          allowingReadAccessToURL={readAccessUrl}
-          mixedContentMode="always"
-          javaScriptEnabled
-          domStorageEnabled
-          nestedScrollEnabled
-          scalesPageToFit={Platform.OS === 'android'}
-          setSupportMultipleWindows={false}
-          onMessage={(event) => onMessage(event.nativeEvent.data)}
-          onError={() => {
-            setLoading(false);
-            setError('预览失败');
-          }}
-        />
-      ) : null}
+      <WebView
+        ref={webRef}
+        source={{ html: VIEWER_HTML, baseUrl: 'https://localhost/' }}
+        style={styles.fill}
+        originWhitelist={['*']}
+        mixedContentMode="always"
+        javaScriptEnabled
+        domStorageEnabled
+        nestedScrollEnabled
+        scalesPageToFit={Platform.OS === 'android'}
+        setSupportMultipleWindows={false}
+        onMessage={(event) => onMessage(event.nativeEvent.data)}
+        onError={() => {
+          setLoading(false);
+          setError('预览失败');
+        }}
+      />
       {loading ? (
         <View style={styles.loadingOverlay} pointerEvents="none">
           <ActivityIndicator color={colors.accent} />
           <Text style={styles.progress}>加载中…</Text>
         </View>
       ) : null}
-      {error && pageUri ? (
+      {error ? (
         <View style={styles.fallback}>
           <Text style={styles.fallbackText}>{error}</Text>
           <PrimaryButton title="打开 PDF" onPress={() => void WebBrowser.openBrowserAsync(uri)} />
