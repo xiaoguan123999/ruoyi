@@ -1,6 +1,5 @@
-import * as FileSystem from 'expo-file-system/legacy';
 import * as WebBrowser from 'expo-web-browser';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
@@ -8,17 +7,8 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
 import { resolvePdfFetchUrl } from '@/utils/pdf-url';
 
-const PDFJS_DIR = `${FileSystem.cacheDirectory ?? ''}pdfjs-4.10.38/`;
-const PDF_DOC_DIR = `${FileSystem.cacheDirectory ?? ''}pdf-preview/`;
-
-const PDFJS_MAIN = [
-  'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.min.js',
-  'https://unpkg.com/pdfjs-dist@4.10.38/legacy/build/pdf.min.js',
-];
-const PDFJS_WORKER = [
-  'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.js',
-  'https://unpkg.com/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.js',
-];
+const FETCH_TIMEOUT_MS = 20_000;
+const RENDER_TIMEOUT_MS = 25_000;
 
 const VIEWER_HTML = `<!DOCTYPE html>
 <html>
@@ -34,19 +24,55 @@ const VIEWER_HTML = `<!DOCTYPE html>
 <body>
 <div id="msg" class="msg">加载中…</div>
 <div id="root"></div>
-<script src="pdf.min.js"></script>
 <script>
-  (async function () {
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  function b64ToBytes(b64) {
+    var raw = atob(b64);
+    var bytes = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    return bytes;
+  }
+  function post(type) {
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(type);
+    }
+  }
+  window.renderPdf = async function (b64) {
     var msg = document.getElementById('msg');
     var root = document.getElementById('root');
     try {
-      var workerRes = await fetch('pdf.worker.min.js');
-      var workerBlob = await workerRes.blob();
-      pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
-      var pdf = await pdfjsLib.getDocument({ url: 'doc.pdf' }).promise;
+      var mains = [
+        'https://unpkg.com/pdfjs-dist@4.10.38/legacy/build/pdf.min.js',
+        'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.min.js'
+      ];
+      var workers = [
+        'https://unpkg.com/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.js',
+        'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.js'
+      ];
+      var loaded = false;
+      for (var i = 0; i < mains.length; i++) {
+        try {
+          await loadScript(mains[i]);
+          loaded = true;
+          break;
+        } catch (e) {}
+      }
+      if (!loaded || typeof pdfjsLib === 'undefined') {
+        throw new Error('pdfjs');
+      }
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workers[0];
+      var pdf = await pdfjsLib.getDocument({ data: b64ToBytes(b64) }).promise;
       msg.remove();
-      for (var i = 1; i <= pdf.numPages; i++) {
-        var page = await pdf.getPage(i);
+      for (var p = 1; p <= pdf.numPages; p++) {
+        var page = await pdf.getPage(p);
         var unscaled = page.getViewport({ scale: 1 });
         var scale = window.innerWidth / unscaled.width;
         var viewport = page.getViewport({ scale: scale });
@@ -56,37 +82,16 @@ const VIEWER_HTML = `<!DOCTYPE html>
         await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
         root.appendChild(canvas);
       }
+      post('ok');
     } catch (e) {
       msg.textContent = '预览失败';
+      post('error');
     }
-  })();
+  };
+  post('ready');
 </script>
 </body>
 </html>`;
-
-async function downloadFirst(urls: string[], dest: string) {
-  let last: unknown;
-  for (const url of urls) {
-    try {
-      const result = await FileSystem.downloadAsync(url, dest);
-      if (result.status === 200) {
-        return;
-      }
-      last = new Error(`下载失败 ${result.status}`);
-    } catch (error) {
-      last = error;
-    }
-  }
-  throw last instanceof Error ? last : new Error('脚本下载失败');
-}
-
-async function ensureFile(path: string, urls: string[]) {
-  const info = await FileSystem.getInfoAsync(path);
-  if (info.exists && 'size' in info && (info.size ?? 0) > 0) {
-    return;
-  }
-  await downloadFirst(urls, path);
-}
 
 function arrayBufferToBase64(data: ArrayBuffer) {
   const bytes = new Uint8Array(data);
@@ -98,31 +103,28 @@ function arrayBufferToBase64(data: ArrayBuffer) {
   return btoa(binary);
 }
 
-async function writePdf(uri: string, dest: string) {
+async function loadPdfBase64(uri: string) {
   const url = resolvePdfFetchUrl(uri);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const result = await FileSystem.downloadAsync(url, dest);
-    if (result.status === 200) {
-      return;
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`PDF 下载失败 ${response.status}`);
     }
-  } catch {
-    // 带鉴权或非直链时改用 fetch
+    const data = await response.arrayBuffer();
+    if (data.byteLength === 0) {
+      throw new Error('PDF 加载失败');
+    }
+    return arrayBufferToBase64(data);
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('PDF 下载超时，请稍后重试');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
   }
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`PDF 下载失败 ${response.status}`);
-  }
-  const data = await response.arrayBuffer();
-  if (data.byteLength === 0) {
-    throw new Error('PDF 加载失败');
-  }
-  await FileSystem.writeAsStringAsync(dest, arrayBufferToBase64(data), {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-}
-
-function toFileUri(path: string) {
-  return path.startsWith('file://') ? path : `file://${path}`;
 }
 
 type Props = {
@@ -130,8 +132,9 @@ type Props = {
 };
 
 export function NativePdfPreview({ uri }: Props) {
-  const [htmlUri, setHtmlUri] = useState('');
-  const [readAccessUrl, setReadAccessUrl] = useState('');
+  const webRef = useRef<WebView>(null);
+  const [pdfB64, setPdfB64] = useState('');
+  const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -140,36 +143,16 @@ export function NativePdfPreview({ uri }: Props) {
     const run = async () => {
       setLoading(true);
       setError('');
-      setHtmlUri('');
+      setPdfB64('');
+      setReady(false);
       try {
-        if (!FileSystem.cacheDirectory) {
-          throw new Error('无法写入缓存');
-        }
-        await FileSystem.makeDirectoryAsync(PDFJS_DIR, { intermediates: true });
-        await FileSystem.makeDirectoryAsync(PDF_DOC_DIR, { intermediates: true });
-        await Promise.all([
-          ensureFile(`${PDFJS_DIR}pdf.min.js`, PDFJS_MAIN),
-          ensureFile(`${PDFJS_DIR}pdf.worker.min.js`, PDFJS_WORKER),
-        ]);
-        await FileSystem.deleteAsync(`${PDF_DOC_DIR}pdf.min.js`, { idempotent: true });
-        await FileSystem.deleteAsync(`${PDF_DOC_DIR}pdf.worker.min.js`, { idempotent: true });
-        await FileSystem.copyAsync({ from: `${PDFJS_DIR}pdf.min.js`, to: `${PDF_DOC_DIR}pdf.min.js` });
-        await FileSystem.copyAsync({
-          from: `${PDFJS_DIR}pdf.worker.min.js`,
-          to: `${PDF_DOC_DIR}pdf.worker.min.js`,
-        });
-        await writePdf(uri, `${PDF_DOC_DIR}doc.pdf`);
-        await FileSystem.writeAsStringAsync(`${PDF_DOC_DIR}index.html`, VIEWER_HTML);
+        const next = await loadPdfBase64(uri);
         if (!cancelled) {
-          setReadAccessUrl(toFileUri(PDF_DOC_DIR));
-          setHtmlUri(toFileUri(`${PDF_DOC_DIR}index.html`));
+          setPdfB64(next);
         }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'PDF 加载失败');
-        }
-      } finally {
-        if (!cancelled) {
           setLoading(false);
         }
       }
@@ -180,7 +163,36 @@ export function NativePdfPreview({ uri }: Props) {
     };
   }, [uri]);
 
-  if (error) {
+  useEffect(() => {
+    if (!ready || !pdfB64) {
+      return;
+    }
+    const payload = JSON.stringify(pdfB64);
+    webRef.current?.injectJavaScript(`window.renderPdf(${payload}); true;`);
+    const timer = setTimeout(() => {
+      setError((prev) => prev || '预览超时，请使用系统阅读器打开');
+      setLoading(false);
+    }, RENDER_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [ready, pdfB64]);
+
+  const onMessage = (type: string) => {
+    if (type === 'ready') {
+      setReady(true);
+      return;
+    }
+    if (type === 'ok') {
+      setLoading(false);
+      setError('');
+      return;
+    }
+    if (type === 'error') {
+      setLoading(false);
+      setError('预览失败');
+    }
+  };
+
+  if (error && !pdfB64) {
     return (
       <View style={styles.fallback}>
         <Text style={styles.fallbackText}>{error}</Text>
@@ -189,32 +201,40 @@ export function NativePdfPreview({ uri }: Props) {
     );
   }
 
-  if (loading || !htmlUri) {
-    return (
-      <View style={styles.loadingWrap}>
-        <ActivityIndicator color={colors.accent} />
-        <Text style={styles.progress}>加载中…</Text>
-      </View>
-    );
-  }
-
   return (
-    <WebView
-      source={{ uri: htmlUri }}
-      style={styles.fill}
-      originWhitelist={['*', 'file://*']}
-      allowFileAccess
-      allowFileAccessFromFileURLs
-      allowUniversalAccessFromFileURLs
-      allowingReadAccessToURL={readAccessUrl}
-      mixedContentMode="always"
-      javaScriptEnabled
-      domStorageEnabled
-      nestedScrollEnabled
-      scalesPageToFit={Platform.OS === 'android'}
-      setSupportMultipleWindows={false}
-      onError={() => setError('预览失败')}
-    />
+    <View style={styles.fill}>
+      {pdfB64 ? (
+        <WebView
+          ref={webRef}
+          source={{ html: VIEWER_HTML, baseUrl: 'https://localhost/' }}
+          style={styles.fill}
+          originWhitelist={['*']}
+          mixedContentMode="always"
+          javaScriptEnabled
+          domStorageEnabled
+          nestedScrollEnabled
+          scalesPageToFit={Platform.OS === 'android'}
+          setSupportMultipleWindows={false}
+          onMessage={(event) => onMessage(event.nativeEvent.data)}
+          onError={() => {
+            setLoading(false);
+            setError('预览失败');
+          }}
+        />
+      ) : null}
+      {loading ? (
+        <View style={styles.loadingOverlay} pointerEvents="none">
+          <ActivityIndicator color={colors.accent} />
+          <Text style={styles.progress}>加载中…</Text>
+        </View>
+      ) : null}
+      {error && pdfB64 ? (
+        <View style={styles.fallback}>
+          <Text style={styles.fallbackText}>{error}</Text>
+          <PrimaryButton title="打开 PDF" onPress={() => void WebBrowser.openBrowserAsync(uri)} />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -223,21 +243,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#050B1C',
   },
-  loadingWrap: {
-    flex: 1,
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
+    backgroundColor: '#050B1C',
   },
   progress: {
     color: colors.muted,
     fontSize: 13,
   },
   fallback: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     paddingHorizontal: 28,
     gap: 16,
+    backgroundColor: '#050B1C',
   },
   fallbackText: {
     color: colors.muted,

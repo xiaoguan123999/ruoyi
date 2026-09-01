@@ -1,7 +1,6 @@
 import { createElement, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Linking,
   Modal,
   Platform,
   Pressable,
@@ -11,11 +10,11 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 
 import { useStableSafeTop } from '@/hooks/useStableSafeTop';
 
 import { resolvePlayUrl, revokePlayUri } from '@/utils/video-cache';
-import { modalWarning } from '@/utils/toast';
 
 type Props = {
   /** 远程视频地址 */
@@ -82,6 +81,102 @@ function WebVideo({ uri }: { uri: string }) {
   } as Record<string, unknown>);
 }
 
+function escapeHtmlAttr(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;');
+}
+
+function buildPlayerHtml(src: string) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<style>
+  html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
+  video{width:100%;height:100%;object-fit:contain;background:#000}
+</style>
+</head>
+<body>
+<video id="v" controls autoplay muted playsinline webkit-playsinline preload="auto">
+  <source src="${escapeHtmlAttr(src)}" type="video/mp4"/>
+</video>
+<script>
+  var v = document.getElementById('v');
+  v.muted = true;
+  var play = function () { v.play().catch(function () {}); };
+  v.addEventListener('canplay', play);
+  play();
+</script>
+</body>
+</html>`;
+}
+
+function NativeVideo({ uri, width, height }: { uri: string; width: number; height: number }) {
+  const [source, setSource] = useState<{ html?: string; uri?: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSource(null);
+
+    const run = async () => {
+      if (uri.startsWith('http://') || uri.startsWith('https://')) {
+        if (!cancelled) {
+          setSource({ html: buildPlayerHtml(uri) });
+        }
+        return;
+      }
+
+      if (!uri.startsWith('file:')) {
+        return;
+      }
+
+      const FileSystem = await import('expo-file-system/legacy');
+      const fileName = uri.split('/').pop() || 'video.mp4';
+      const dir = uri.slice(0, uri.length - fileName.length);
+      const htmlPath = `${dir}player.html`;
+      await FileSystem.writeAsStringAsync(htmlPath, buildPlayerHtml(fileName));
+      if (!cancelled) {
+        setSource({ uri: htmlPath });
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [uri]);
+
+  if (!source) {
+    return (
+      <View style={[styles.loading, { width, height }]}>
+        <ActivityIndicator color="#FFFFFF" />
+      </View>
+    );
+  }
+
+  return (
+    <WebView
+      source={source.html ? { html: source.html, baseUrl: 'https://localhost/' } : { uri: source.uri! }}
+      style={{ width, height, backgroundColor: '#000' }}
+      allowsInlineMediaPlayback
+      mediaPlaybackRequiresUserAction={false}
+      javaScriptEnabled
+      mixedContentMode="always"
+      originWhitelist={['*', 'file://*']}
+      allowFileAccess
+      allowFileAccessFromFileURLs
+      allowingReadAccessToURL={uri.startsWith('file:') ? uri.replace(/[^/]+$/, '') : undefined}
+      allowsFullscreenVideo
+      androidLayerType="hardware"
+      setSupportMultipleWindows={false}
+    />
+  );
+}
+
 export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const topInset = useStableSafeTop();
@@ -90,7 +185,7 @@ export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Pro
   const [viewMode, setViewMode] = useState<ViewMode>('portrait');
   const [playUri, setPlayUri] = useState('');
   const [fromCache, setFromCache] = useState(false);
-  const [resolving, setResolving] = useState(false);
+  const [caching, setCaching] = useState(false);
   const revokeRef = useRef<string | undefined>(undefined);
   const cacheIdRef = useRef<string | undefined>(undefined);
 
@@ -106,9 +201,9 @@ export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Pro
     }
 
     let cancelled = false;
-    setResolving(true);
     setPlayUri('');
     setFromCache(false);
+    setCaching(true);
 
     void (async () => {
       const result = await resolvePlayUrl(cacheId || uri, uri);
@@ -122,17 +217,7 @@ export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Pro
       cacheIdRef.current = cacheId || uri;
       setPlayUri(result.uri);
       setFromCache(result.fromCache);
-      setResolving(false);
-
-      if (Platform.OS !== 'web') {
-        void Linking.openURL(result.uri)
-          .catch(() => {
-            modalWarning('无法打开视频，请稍后重试');
-          })
-          .finally(() => {
-            onClose();
-          });
-      }
+      setCaching(!result.fromCache);
     })();
 
     return () => {
@@ -145,6 +230,7 @@ export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Pro
     revokeRef.current = undefined;
     setPlayUri('');
     setFromCache(false);
+    setCaching(false);
     onClose();
   };
 
@@ -164,31 +250,63 @@ export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Pro
     };
   }, [viewMode, isDeviceLandscape, width, height]);
 
-  if (Platform.OS !== 'web') {
-    return null;
-  }
-
   const topPad = Math.max(topInset, 12) + 4;
   const rightPad = Math.max(insets.right, 12) + 4;
   const leftPad = Math.max(insets.left, 12) + 8;
+
+  if (Platform.OS !== 'web') {
+    return (
+      <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+        <View style={styles.viewport}>
+          <View style={[styles.stage, stageStyle]}>
+            {visible && playUri ? (
+              <NativeVideo uri={playUri} width={stageStyle.width} height={stageStyle.height} />
+            ) : (
+              <View style={styles.loading}>
+                <ActivityIndicator color="#FFFFFF" />
+                <Text style={styles.loadingText}>加载中…</Text>
+              </View>
+            )}
+          </View>
+          <View style={[styles.toolbar, { top: topPad, right: rightPad }]}>
+            {fromCache ? (
+              <View style={styles.cacheTag}>
+                <Text style={styles.cacheTagText}>已缓存</Text>
+              </View>
+            ) : caching ? (
+              <View style={styles.cacheTag}>
+                <Text style={styles.cacheTagText}>缓存中</Text>
+              </View>
+            ) : null}
+            <Pressable style={styles.closeBtn} onPress={handleClose} hitSlop={12}>
+              <Text style={styles.closeText}>关闭</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <View style={styles.viewport}>
         <View style={[styles.stage, stageStyle]}>
-          {visible && playUri && !resolving ? <WebVideo uri={playUri} /> : null}
-          {resolving ? (
+          {visible && playUri ? <WebVideo uri={playUri} /> : (
             <View style={styles.loading}>
               <ActivityIndicator color="#FFFFFF" />
               <Text style={styles.loadingText}>加载中…</Text>
             </View>
-          ) : null}
+          )}
         </View>
 
         <View style={[styles.toolbar, { top: topPad, right: rightPad }]}>
           {fromCache ? (
             <View style={styles.cacheTag}>
               <Text style={styles.cacheTagText}>已缓存</Text>
+            </View>
+          ) : caching ? (
+            <View style={styles.cacheTag}>
+              <Text style={styles.cacheTagText}>缓存中</Text>
             </View>
           ) : null}
           <Pressable
@@ -238,6 +356,10 @@ const styles = StyleSheet.create({
   stage: {
     backgroundColor: '#000',
     overflow: 'hidden',
+  },
+  nativeVideo: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
   },
   loading: {
     ...StyleSheet.absoluteFillObject,
