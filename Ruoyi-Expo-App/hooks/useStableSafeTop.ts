@@ -10,3 +10,10 @@ export function useStableSafeTop() {
     0;
   return Math.max(insets.top, fallback);
 }
+
+/** 真机底部 Home / 手势条；首帧同样可能为 0 */
+export function useStableSafeBottom() {
+  const insets = useSafeAreaInsets();
+  const fallback = initialWindowMetrics?.insets.bottom || 0;
+  return Math.max(insets.bottom, fallback);
+}

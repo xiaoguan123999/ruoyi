@@ -6,7 +6,7 @@ import { fetchAppServiceCenter } from '@/api/app-service';
 import { ApiError } from '@/api/request';
 import { OnlineChatFrame } from '@/components/ui/OnlineChatFrame';
 import { useAuth } from '@/hooks/useAuth';
-import { useStableSafeTop } from '@/hooks/useStableSafeTop';
+import { useStableSafeBottom, useStableSafeTop } from '@/hooks/useStableSafeTop';
 import { pickOnlineChatChannel, resolveChatChannelUrl } from '@/utils/online-chat';
 import { modalError } from '@/utils/toast';
 
@@ -40,6 +40,7 @@ function useWebKeyboardInset() {
 export default function ServiceChatScreen() {
   const router = useRouter();
   const top = useStableSafeTop();
+  const bottom = useStableSafeBottom();
   const keyboardInset = useWebKeyboardInset();
   const { user } = useAuth();
   const [url, setUrl] = useState('');
@@ -95,7 +96,7 @@ export default function ServiceChatScreen() {
         <Text style={styles.title}>{title}</Text>
         <View style={styles.side} />
       </View>
-      <View style={[styles.frame, { paddingBottom: keyboardInset }]}>
+      <View style={[styles.frame, { paddingBottom: Math.max(bottom, keyboardInset) }]}>
         {loading ? (
           <View style={styles.loading}>
             <ActivityIndicator color="#FFFFFF" />

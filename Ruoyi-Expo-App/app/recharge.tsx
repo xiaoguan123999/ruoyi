@@ -19,8 +19,8 @@ import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
 const methods = [
   { key: 'wechat', label: '微信', icon: images.payWechat, currency: 'CNY' as const },
   { key: 'alipay', label: '支付宝', icon: images.payAlipay, currency: 'CNY' as const },
-  { key: 'usdt', label: 'USDT', icon: images.payUsdt, currency: 'USDT' as const },
-  { key: 'bank', label: '银行卡（客服）', icon: images.payCard, currency: 'CNY' as const },
+  { key: 'usdt', label: 'USDT（客服）', icon: images.payUsdt, currency: 'USDT' as const, toService: true },
+  { key: 'bank', label: '银行卡（客服）', icon: images.payCard, currency: 'CNY' as const, toService: true },
 ];
 
 export default function RechargeScreen() {
@@ -52,6 +52,10 @@ export default function RechargeScreen() {
   const selected = methods.find((item) => item.key === method) ?? methods[0];
 
   const onSubmit = async () => {
+    if (selected.toService) {
+      router.push('/service-chat');
+      return;
+    }
     const value = parseAmountInput(amount);
     if (value <= 0) {
       modalWarning('请输入有效充值金额');
