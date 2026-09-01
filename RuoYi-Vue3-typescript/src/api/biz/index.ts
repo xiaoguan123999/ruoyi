@@ -527,3 +527,35 @@ export function listPayOrder(query: any): Promise<TableDataInfo<any[]>> {
 export function simulatePayOrder(outTradeNo: string): Promise<AjaxResult> {
   return request({ url: '/biz/payOrder/simulate/' + outTradeNo, method: 'put' })
 }
+
+export function listAppVersion(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/appVersion/list', method: 'get', params: query })
+}
+
+export function getAppVersion(versionId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/appVersion/' + versionId, method: 'get' })
+}
+
+export function addAppVersion(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/appVersion', method: 'post', data })
+}
+
+export function updateAppVersion(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/appVersion', method: 'put', data })
+}
+
+export function delAppVersion(versionIds: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/appVersion/' + versionIds, method: 'delete' })
+}
+
+export function setAppVersionLatest(id: number, isLatest: boolean): Promise<AjaxResult> {
+  return request({ url: '/biz/appVersion/' + id + '/latest', method: 'post', data: { isLatest } })
+}
+
+export function setAppVersionForceUpdate(id: number, forceUpdate: boolean): Promise<AjaxResult> {
+  return request({ url: '/biz/appVersion/' + id + '/forceUpdate', method: 'post', data: { forceUpdate } })
+}
+
+export function setAppVersionEnabled(id: number, isEnabled: boolean): Promise<AjaxResult> {
+  return request({ url: '/biz/appVersion/' + id + '/enabled', method: 'post', data: { isEnabled } })
+}
