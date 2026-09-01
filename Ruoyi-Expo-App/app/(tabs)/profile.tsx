@@ -8,8 +8,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import { useStableSafeTop } from '@/hooks/useStableSafeTop';
 
 import {
   appLogout,
@@ -27,7 +27,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useVersionUpdatePrompt } from '@/hooks/useVersionUpdatePrompt';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
-import { modalError, toastSuccess, toastThenNavigate } from '@/utils/toast';
+import { modalError, modalWarning, toastSuccess, toastThenNavigate } from '@/utils/toast';
 
 function GradientPill({
   title,
@@ -117,7 +117,7 @@ function BoostValueBox({ value }: { value: number }) {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const top = useStableSafeTop();
   const { user, hydrated, isLoggedIn } = useAuth();
   const [wallet, setWallet] = useState<AppWallet | null>(null);
   const { isChecking, runVersionUpdateCheck, prompt, closePrompt } = useVersionUpdatePrompt();
@@ -148,7 +148,7 @@ export default function ProfileScreen() {
       onLatest: () => toastSuccess('已是最新版本'),
       onError: () => modalError('检查更新失败'),
       onOpenUrlFailed: () => modalError('无法打开下载地址'),
-      onUnsupported: () => modalError('网页版请直接刷新页面'),
+      onUnsupported: () => modalWarning('网页版请直接刷新页面'),
     });
   };
 
@@ -180,7 +180,7 @@ export default function ProfileScreen() {
       <RefreshableScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: insets.top + 18,
+          paddingTop: top + 18,
           paddingBottom: 24,
           paddingHorizontal: 18,
         }}
@@ -307,7 +307,7 @@ export default function ProfileScreen() {
               <Menu icon={images.iconTeamSmall} label="我的团队" onPress={() => router.push('/team')} />
               <Menu icon={images.iconInfo} label="关于我们" onPress={() => router.push('/about')} />
               <Menu
-                icon={images.iconInfo}
+                iconNode={<UpdateIcon />}
                 label={isChecking ? '检查中…' : '检查更新'}
                 onPress={() => void checkUpdate()}
               />
@@ -335,13 +335,35 @@ function Quick({ icon, label, onPress }: { icon: number; label: string; onPress:
   );
 }
 
+function UpdateIcon() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M20.5 12a8.5 8.5 0 1 1-2.5-6.02"
+        stroke="#7EC8FF"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M20.5 4.5v5h-5"
+        stroke="#7EC8FF"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 function Menu({
   icon,
+  iconNode,
   label,
   onPress,
   last,
 }: {
-  icon: number;
+  icon?: number;
+  iconNode?: React.ReactNode;
   label: string;
   onPress: () => void;
   last?: boolean;
@@ -351,7 +373,11 @@ function Menu({
       onPress={onPress}
       style={[styles.menuRow, !last && styles.menuRowBorder]}
     >
-      <Image source={icon} style={styles.menuIcon} contentFit="contain" />
+      {iconNode ? (
+        <View style={styles.menuIcon}>{iconNode}</View>
+      ) : (
+        <Image source={icon} style={styles.menuIcon} contentFit="contain" />
+      )}
       <Text style={styles.menuLabel}>{label}</Text>
       <Text style={styles.menuChevron}>›</Text>
     </Pressable>

@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useStableSafeTop } from '@/hooks/useStableSafeTop';
 import { colors } from '@/theme/colors';
 
 type Props = {
@@ -14,10 +14,10 @@ type Props = {
 
 export function PageHeader({ title, right, showBack = true, onBack }: Props) {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const top = useStableSafeTop();
 
   return (
-    <View style={[styles.wrap, { paddingTop: insets.top + 6 }]}>
+    <View style={[styles.wrap, { paddingTop: top + 6 }]}>
       <View style={styles.side}>
         {showBack ? (
           <Pressable

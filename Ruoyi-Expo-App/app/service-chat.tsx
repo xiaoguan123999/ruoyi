@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fetchAppServiceCenter } from '@/api/app-service';
 import { ApiError } from '@/api/request';
 import { OnlineChatFrame } from '@/components/ui/OnlineChatFrame';
 import { useAuth } from '@/hooks/useAuth';
+import { useStableSafeTop } from '@/hooks/useStableSafeTop';
 import { pickOnlineChatChannel, resolveChatChannelUrl } from '@/utils/online-chat';
 import { modalError } from '@/utils/toast';
 
@@ -39,7 +39,7 @@ function useWebKeyboardInset() {
 
 export default function ServiceChatScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const top = useStableSafeTop();
   const keyboardInset = useWebKeyboardInset();
   const { user } = useAuth();
   const [url, setUrl] = useState('');
@@ -81,7 +81,7 @@ export default function ServiceChatScreen() {
       <View
         style={[
           styles.bar,
-          { paddingTop: insets.top },
+          { paddingTop: top },
           Platform.OS === 'web'
             ? ({
                 backgroundImage: 'linear-gradient(90deg, #4EB4FF 0%, #3A78F0 100%)',

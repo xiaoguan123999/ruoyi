@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useStableSafeTop } from '@/hooks/useStableSafeTop';
 
 import {
   fetchAppProductSeriesList,
@@ -21,7 +21,7 @@ import type { ProductItem, ProductSeries } from '@/types/product';
 import { modalWarning } from '@/utils/toast';
 
 export default function ProductsScreen() {
-  const insets = useSafeAreaInsets();
+  const top = useStableSafeTop();
   const router = useRouter();
   const { seriesId: seriesIdParam } = useLocalSearchParams<{ seriesId?: string }>();
   const [seriesList, setSeriesList] = useState<ProductSeries[]>([]);
@@ -113,7 +113,7 @@ export default function ProductsScreen() {
 
   return (
     <View style={styles.page}>
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
+      <View style={[styles.header, { paddingTop: Math.max(top, 12) + 8 }]}>
         {seriesList.length > 0 ? (
           <ScrollView
             horizontal

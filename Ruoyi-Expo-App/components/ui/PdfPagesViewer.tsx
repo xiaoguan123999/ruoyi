@@ -11,9 +11,10 @@ import {
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 
+import { NativePdfPreview } from '@/components/ui/NativePdfPreview';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
-import { config } from '@/config';
+import { toApiR2ProxyUrl } from '@/utils/pdf-url';
 
 type Props = {
   /** PDF 绝对或相对地址 */
@@ -108,32 +109,6 @@ async function loadPdfJs(): Promise<PdfJsModule> {
   throw lastError instanceof Error ? lastError : new Error('pdf.js 脚本加载失败');
 }
 
-function toApiR2ProxyUrl(uri: string): string | null {
-  const api = config.API_URL;
-  if (!api || typeof uri !== 'string' || !uri.trim()) {
-    return null;
-  }
-  try {
-    const target = new URL(uri, typeof window !== 'undefined' ? window.location.href : api);
-    const apiOrigin = new URL(api).origin;
-    if (target.origin === apiOrigin) {
-      return null;
-    }
-    const proxyIdx = target.pathname.indexOf('/common/r2/');
-    if (proxyIdx >= 0) {
-      return `${api}${target.pathname.slice(proxyIdx)}${target.search}`;
-    }
-    const isR2Host = /\.r2\.dev$/i.test(target.hostname);
-    const key = target.pathname.replace(/^\//, '');
-    if (!key || (!isR2Host && !/\.pdf$/i.test(target.pathname))) {
-      return null;
-    }
-    return `${api}/common/r2/${key}${target.search}`;
-  } catch {
-    return null;
-  }
-}
-
 async function loadPdfData(uri: string): Promise<ArrayBuffer> {
   // 跨域 R2 没有 CORS 头，先直连再回退仍会在控制台打红字，因此只走 API 代理
   const url = toApiR2ProxyUrl(uri) ?? uri;
@@ -152,7 +127,7 @@ async function loadPdfData(uri: string): Promise<ArrayBuffer> {
  * 用 pdf.js 把每一页画成图片再列表展示。
  * 手机端无法可靠 iframe 嵌 PDF，需要解码后展示；本地文件同样要逐页画图。
  */
-export function PdfPagesViewer({ uri }: Props) {
+function WebPdfPagesViewer({ uri }: Props) {
   const { width: windowWidth } = useWindowDimensions();
   // 取整，避免手机浏览器地址栏显隐导致宽度微变、整份 PDF 重渲
   const contentWidth = Math.max(280, Math.round((windowWidth - 24) / 8) * 8);
@@ -178,12 +153,6 @@ export function PdfPagesViewer({ uri }: Props) {
       setPages([]);
 
       try {
-        if (Platform.OS !== 'web' || typeof document === 'undefined') {
-          setError('native');
-          setLoading(false);
-          return;
-        }
-
         const pdfjs = await loadPdfJs();
         const data = await loadPdfData(uri);
         const pdf = await pdfjs.getDocument({ data }).promise;
@@ -242,15 +211,6 @@ export function PdfPagesViewer({ uri }: Props) {
     };
   }, [uri, contentWidth]);
 
-  if (error === 'native' || (error && Platform.OS !== 'web')) {
-    return (
-      <View style={styles.fallback}>
-        <Text style={styles.fallbackText}>当前环境请使用系统阅读器打开</Text>
-        <PrimaryButton title="打开 PDF" onPress={() => void WebBrowser.openBrowserAsync(uri)} />
-      </View>
-    );
-  }
-
   if (error && pages.length === 0) {
     return (
       <View style={styles.fallback}>
@@ -293,6 +253,13 @@ export function PdfPagesViewer({ uri }: Props) {
       )}
     </View>
   );
+}
+
+export function PdfPagesViewer({ uri }: Props) {
+  if (Platform.OS !== 'web') {
+    return <NativePdfPreview uri={uri} />;
+  }
+  return <WebPdfPagesViewer uri={uri} />;
 }
 
 const styles = StyleSheet.create({

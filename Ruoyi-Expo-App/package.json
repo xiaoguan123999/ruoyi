@@ -20,6 +20,8 @@
     "update:preview": "APP_ENV=preview eas update --channel preview --environment preview --auto --non-interactive",
     "update:production": "pnpm dlx jiti ./scripts/publish-production-ota.ts",
     "upload:r2": "pnpm dlx jiti ./scripts/upload-to-r2.ts",
+    "upload:r2:preview": "APP_ENV=preview pnpm dlx jiti ./scripts/upload-to-r2.ts",
+    "upload:r2:production": "APP_ENV=production pnpm dlx jiti ./scripts/upload-to-r2.ts",
     "lint": "biome check .",
     "typecheck": "tsc --noEmit"
   },

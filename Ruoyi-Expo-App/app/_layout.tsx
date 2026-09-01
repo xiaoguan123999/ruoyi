@@ -6,6 +6,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 
 import { isPublicAuthRoute, setCurrentAuthSegments } from '@/api/auth-state';
 import { useAuth } from '@/hooks/useAuth';
@@ -64,7 +65,14 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <AuthGate>
         <AppUpdateGate />
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: Platform.OS === 'android' ? 'fade' : 'slide_from_right',
+            animationDuration: 180,
+            contentStyle: { backgroundColor: '#050B1C' },
+          }}
+        >
           <Stack.Screen name="index" />
           <Stack.Screen name="splash" />
           <Stack.Screen name="sign-in" />

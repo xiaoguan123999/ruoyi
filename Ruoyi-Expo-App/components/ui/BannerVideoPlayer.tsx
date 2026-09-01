@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useStableSafeTop } from '@/hooks/useStableSafeTop';
+
 import { resolvePlayUrl, revokePlayUri } from '@/utils/video-cache';
 import { modalWarning } from '@/utils/toast';
 
@@ -82,6 +84,7 @@ function WebVideo({ uri }: { uri: string }) {
 
 export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Props) {
   const insets = useSafeAreaInsets();
+  const topInset = useStableSafeTop();
   const { width, height } = useWindowDimensions();
   const isDeviceLandscape = width > height;
   const [viewMode, setViewMode] = useState<ViewMode>('portrait');
@@ -165,7 +168,7 @@ export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Pro
     return null;
   }
 
-  const topPad = Math.max(insets.top, 12) + 4;
+  const topPad = Math.max(topInset, 12) + 4;
   const rightPad = Math.max(insets.right, 12) + 4;
   const leftPad = Math.max(insets.left, 12) + 8;
 

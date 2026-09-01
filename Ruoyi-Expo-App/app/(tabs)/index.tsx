@@ -2,7 +2,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fetchAppVideoCarousel } from '@/api/app-video';
 import { fetchAppNotices } from '@/api/app-notice';
@@ -12,6 +11,7 @@ import { BannerVideoPlayer } from '@/components/ui/BannerVideoPlayer';
 import { NoticeMarquee } from '@/components/ui/NoticeMarquee';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
+import { useStableSafeTop } from '@/hooks/useStableSafeTop';
 import { colors } from '@/theme/colors';
 import { modalWarning } from '@/utils/toast';
 import { prefetchVideos } from '@/utils/video-cache';
@@ -132,7 +132,7 @@ const services = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const top = useStableSafeTop();
   const { width } = useWindowDimensions();
   const bannerH = Math.round(width * (194 / 402));
   const iconSize = Math.min(70, Math.max(56, Math.round(width * 0.155)));
@@ -180,11 +180,11 @@ export default function HomeScreen() {
         onRefresh={() => Promise.all([load(), loadVideos()]).then(() => undefined)}
       >
         <View>
-          {bannerEl}
-          <View style={[styles.header, { top: insets.top + 4 }]}>
+          <View style={[styles.header, { paddingTop: top + 6 }]}>
             <Image source={images.logo} style={styles.headerLogo} contentFit="contain" />
             <Text style={styles.headerTitle}>星帆智联</Text>
           </View>
+          {bannerEl}
         </View>
 
         <View style={styles.body}>
@@ -246,12 +246,12 @@ const styles = StyleSheet.create({
     backgroundColor: PAGE_BG,
   },
   header: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    backgroundColor: PAGE_BG,
   },
   headerLogo: { width: 26, height: 26, borderRadius: 6 },
   headerTitle: { color: colors.text, fontSize: 16, fontWeight: '700' },

@@ -9,7 +9,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { displayText } from '@/api/app-auth';
 import {
@@ -26,6 +25,7 @@ import { LevelRewardModal } from '@/components/ui/LevelRewardModal';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { useAuth } from '@/hooks/useAuth';
+import { useStableSafeTop } from '@/hooks/useStableSafeTop';
 import { colors } from '@/theme/colors';
 import { modalError, modalSuccess } from '@/utils/toast';
 
@@ -141,7 +141,7 @@ function LevelTableRow({
 
 export default function LevelsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const top = useStableSafeTop();
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [rulesVisible, setRulesVisible] = useState(false);
@@ -251,7 +251,7 @@ export default function LevelsScreen() {
 
   return (
     <AppBackground source={images.levelBg} dim={false} contentPosition="top">
-      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
+      <View style={[styles.header, { paddingTop: top + 6 }]}>
         <View style={styles.headerLeft}>
           <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
             <Text style={styles.back}>‹</Text>

@@ -2,7 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useStableSafeTop } from '@/hooks/useStableSafeTop';
 
 import { fetchAppNews } from '@/api/app-news';
 import { ApiError } from '@/api/request';
@@ -14,7 +14,7 @@ import { modalError } from '@/utils/toast';
 
 export default function NewsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const top = useStableSafeTop();
   const { width } = useWindowDimensions();
   const headerH = Math.round(width * (170 / 402));
   const thumb = Math.min(84, Math.max(72, Math.round(width * 0.19)));
@@ -48,7 +48,7 @@ export default function NewsScreen() {
           contentFit="cover"
           contentPosition="top"
         />
-        <Text style={[styles.title, { top: insets.top + 10 }]}>新闻资讯</Text>
+        <Text style={[styles.title, { top: top + 10 }]}>新闻资讯</Text>
       </View>
 
       {loading ? (

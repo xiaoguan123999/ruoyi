@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { TamaguiProvider, Theme } from 'tamagui';
 
 import { AppToast } from '@/components/AppToast';
@@ -29,19 +30,21 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   const theme = 'dark';
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, position: 'relative' }}>
-      <KeyboardGate>
-        <QueryClientProvider client={queryClient}>
-          <TamaguiProvider config={tamaguiConfig} defaultTheme={theme}>
-            <Theme name={theme}>
-              <WebShell>
-                {children}
-                <AppToast />
-              </WebShell>
-            </Theme>
-          </TamaguiProvider>
-        </QueryClientProvider>
-      </KeyboardGate>
-    </GestureHandlerRootView>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <GestureHandlerRootView style={{ flex: 1, position: 'relative' }}>
+        <KeyboardGate>
+          <QueryClientProvider client={queryClient}>
+            <TamaguiProvider config={tamaguiConfig} defaultTheme={theme}>
+              <Theme name={theme}>
+                <WebShell>
+                  {children}
+                  <AppToast />
+                </WebShell>
+              </Theme>
+            </TamaguiProvider>
+          </QueryClientProvider>
+        </KeyboardGate>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }
