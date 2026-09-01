@@ -7,13 +7,12 @@ import { WebView } from 'react-native-webview';
 
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
-import { prefetchPdf, readPdfAsBase64 } from '@/utils/pdf-cache';
 import { resolvePdfFetchUrl } from '@/utils/pdf-url';
 
 import pdfMainAsset from '../../assets/pdf/pdf.min.bin';
 import pdfWorkerAsset from '../../assets/pdf/pdf.worker.min.bin';
 
-const RENDER_TIMEOUT_MS = 60_000;
+const RENDER_TIMEOUT_MS = 90_000;
 const INJECT_CHUNK = 80_000;
 
 let pdfJsAssets: { pdfJs: string; workerJs: string } | null = null;
@@ -39,13 +38,7 @@ const VIEWER_HTML = `<!DOCTYPE html>
       window.ReactNativeWebView.postMessage(type);
     }
   }
-  function b64ToBytes(b64) {
-    var raw = atob(b64);
-    var bytes = new Uint8Array(raw.length);
-    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-    return bytes;
-  }
-  window.__startPdf = async function () {
+  window.__startPdf = async function (url) {
     var msg = document.getElementById('msg');
     var root = document.getElementById('root');
     try {
@@ -54,9 +47,10 @@ const VIEWER_HTML = `<!DOCTYPE html>
       var pdfjs = await import(mainUrl);
       pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
       var pdf = await pdfjs.getDocument({
-        data: b64ToBytes(window.__PDF_B64),
-        disableStream: true,
-        disableAutoFetch: true,
+        url: url,
+        withCredentials: false,
+        disableStream: false,
+        disableRange: false,
         isEvalSupported: false
       }).promise;
       if (msg) msg.remove();
@@ -157,7 +151,6 @@ export function NativePdfPreview({ uri }: Props) {
     setReady(false);
     setLoading(true);
     setError('');
-    void prefetchPdf(fetchUrl);
   }, [fetchUrl]);
 
   useEffect(() => {
@@ -172,20 +165,13 @@ export function NativePdfPreview({ uri }: Props) {
     let cancelled = false;
     const run = async () => {
       try {
-        const [{ pdfJs, workerJs }, pdfPath] = await Promise.all([loadPdfJsAssets(), prefetchPdf(fetchUrl)]);
+        const { pdfJs, workerJs } = await loadPdfJsAssets();
         if (cancelled) {
           return;
         }
-        if (!pdfPath) {
-          setError('PDF 下载失败');
-          setLoading(false);
-          return;
-        }
-        const pdfB64 = await readPdfAsBase64(pdfPath);
         await injectString(web, '__PDF_JS', pdfJs);
         await injectString(web, '__PDF_WORKER', workerJs);
-        await injectString(web, '__PDF_B64', pdfB64);
-        injectScript(web, 'window.__startPdf()');
+        injectScript(web, `window.__startPdf(${JSON.stringify(fetchUrl)})`);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'PDF 加载失败');
