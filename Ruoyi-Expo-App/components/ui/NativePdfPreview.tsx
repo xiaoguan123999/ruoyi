@@ -1,11 +1,25 @@
+import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  PixelRatio,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Pdf from 'react-native-pdf';
 
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
 import { getCachedPdfPath, prefetchPdf } from '@/utils/pdf-cache';
+import {
+  getCachedPdfPages,
+  rasterizePdfPages,
+  type CachedPdfPage,
+} from '@/utils/pdf-page-cache';
 
 type Props = {
   uri: string;
@@ -15,39 +29,72 @@ function toFileUri(path: string) {
   return path.startsWith('file:') ? path : `file://${path}`;
 }
 
+function pageRenderScale(viewWidth: number) {
+  return Number(Math.min(2, Math.max(1.25, (viewWidth * PixelRatio.get()) / 595)).toFixed(2));
+}
+
 export function NativePdfPreview({ uri }: Props) {
+  const { width: windowWidth } = useWindowDimensions();
+  const contentWidth = Math.max(280, windowWidth);
+  const [pages, setPages] = useState<CachedPdfPage[]>([]);
   const [sourceUri, setSourceUri] = useState('');
-  const [fromCache, setFromCache] = useState(false);
-  const [caching, setCaching] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const fallbackTriedRef = useRef(false);
+  const showedPdfRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError('');
+    setPages([]);
     setSourceUri('');
-    setFromCache(false);
-    setCaching(false);
     fallbackTriedRef.current = false;
+    showedPdfRef.current = false;
+
+    const scale = pageRenderScale(contentWidth);
 
     const run = async () => {
-      const cached = await getCachedPdfPath(uri);
+      const cachedPages = await getCachedPdfPages(uri);
       if (cancelled) {
         return;
       }
-      if (cached) {
-        setFromCache(true);
-        setSourceUri(toFileUri(cached));
+      if (cachedPages?.length) {
+        setPages(cachedPages);
+        setLoading(false);
         return;
       }
-      setCaching(true);
-      setSourceUri(uri);
-      void prefetchPdf(uri).then((path) => {
-        if (!cancelled && path) {
-          setCaching(false);
+
+      const cachedPdf = await getCachedPdfPath(uri);
+      if (cancelled) {
+        return;
+      }
+      if (cachedPdf) {
+        const rasterized = await rasterizePdfPages(cachedPdf, uri, scale);
+        if (cancelled) {
+          return;
         }
+        if (rasterized?.length) {
+          setPages(rasterized);
+          setLoading(false);
+          return;
+        }
+        setSourceUri(toFileUri(cachedPdf));
+        return;
+      }
+
+      setSourceUri(uri);
+      void prefetchPdf(uri).then(async (path) => {
+        if (!path || cancelled) {
+          return;
+        }
+        const rasterized = await rasterizePdfPages(path, uri, scale);
+        if (cancelled || showedPdfRef.current || !rasterized?.length) {
+          return;
+        }
+        setPages(rasterized);
+        setSourceUri('');
+        setLoading(false);
       });
     };
     void run();
@@ -55,7 +102,7 @@ export function NativePdfPreview({ uri }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [uri]);
+  }, [uri, contentWidth]);
 
   const openExternal = () => {
     void WebBrowser.openBrowserAsync(uri);
@@ -70,6 +117,28 @@ export function NativePdfPreview({ uri }: Props) {
     );
   }
 
+  if (pages.length) {
+    return (
+      <ScrollView
+        style={styles.fill}
+        contentContainerStyle={styles.pageList}
+        showsVerticalScrollIndicator={false}
+      >
+        {pages.map((page, index) => {
+          const displayHeight = (contentWidth * page.height) / page.width;
+          return (
+            <Image
+              key={`${page.uri}-${index}`}
+              source={{ uri: page.uri }}
+              style={{ width: contentWidth, height: displayHeight }}
+              contentFit="contain"
+            />
+          );
+        })}
+      </ScrollView>
+    );
+  }
+
   return (
     <View style={styles.fill}>
       {sourceUri ? (
@@ -79,7 +148,10 @@ export function NativePdfPreview({ uri }: Props) {
           trustAllCerts={false}
           fitPolicy={0}
           spacing={8}
-          onLoadComplete={() => setLoading(false)}
+          onLoadComplete={() => {
+            showedPdfRef.current = true;
+            setLoading(false);
+          }}
           onError={() => {
             void (async () => {
               if (fallbackTriedRef.current) {
@@ -90,8 +162,18 @@ export function NativePdfPreview({ uri }: Props) {
               fallbackTriedRef.current = true;
               const cached = await prefetchPdf(uri);
               if (cached) {
-                setFromCache(true);
-                setCaching(false);
+                const rasterized = await rasterizePdfPages(
+                  cached,
+                  uri,
+                  pageRenderScale(contentWidth),
+                );
+                if (rasterized?.length) {
+                  setError('');
+                  setPages(rasterized);
+                  setSourceUri('');
+                  setLoading(false);
+                  return;
+                }
                 setError('');
                 setLoading(true);
                 setSourceUri(toFileUri(cached));
@@ -109,11 +191,6 @@ export function NativePdfPreview({ uri }: Props) {
           <Text style={styles.progress}>加载中…</Text>
         </View>
       ) : null}
-      {fromCache || caching ? (
-        <View style={styles.cacheTag}>
-          <Text style={styles.cacheTagText}>{fromCache ? '已缓存' : '缓存中'}</Text>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -122,6 +199,9 @@ const styles = StyleSheet.create({
   fill: {
     flex: 1,
     backgroundColor: '#050B1C',
+  },
+  pageList: {
+    paddingBottom: 16,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -133,19 +213,6 @@ const styles = StyleSheet.create({
   progress: {
     color: colors.muted,
     fontSize: 13,
-  },
-  cacheTag: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  cacheTagText: {
-    color: '#FFFFFF',
-    fontSize: 12,
   },
   fallback: {
     flex: 1,

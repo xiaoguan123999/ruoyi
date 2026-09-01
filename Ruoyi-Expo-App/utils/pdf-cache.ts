@@ -16,6 +16,10 @@ function hashKey(input: string): string {
   return `p_${Math.abs(hash).toString(36)}`;
 }
 
+export function pdfCacheId(remoteUrl: string): string {
+  return hashKey(resolvePdfFetchUrl(remoteUrl));
+}
+
 async function cacheDir(): Promise<string | null> {
   const base = FileSystem.cacheDirectory;
   if (!base) {
