@@ -1,3 +1,5 @@
+import { Asset } from 'expo-asset';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
@@ -5,12 +7,36 @@ import { WebView } from 'react-native-webview';
 
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
+import { getCachedPdfPath, getPdfAuthHeaders, prefetchPdf, readPdfAsBase64 } from '@/utils/pdf-cache';
 import { resolvePdfFetchUrl } from '@/utils/pdf-url';
 
-const FETCH_TIMEOUT_MS = 20_000;
-const RENDER_TIMEOUT_MS = 25_000;
+import pdfMainAsset from '../../assets/pdf/pdf.min.bin';
+import pdfWorkerAsset from '../../assets/pdf/pdf.worker.min.bin';
 
-const VIEWER_HTML = `<!DOCTYPE html>
+const RENDER_TIMEOUT_MS = 45_000;
+const PDFJS_CACHE_VER = '4.10.38-2';
+const INJECT_CHUNK = 80_000;
+
+function viewerDir() {
+  return `${FileSystem.cacheDirectory ?? ''}pdf-viewer/`;
+}
+
+async function copyAssetTo(mod: number, dest: string) {
+  const asset = Asset.fromModule(mod);
+  await asset.downloadAsync();
+  const from = asset.localUri;
+  if (!from) {
+    throw new Error('PDF 组件加载失败');
+  }
+  const info = await FileSystem.getInfoAsync(dest);
+  if (info.exists && 'size' in info && typeof info.size === 'number' && info.size > 0) {
+    return;
+  }
+  await FileSystem.copyAsync({ from, to: dest });
+}
+
+function buildViewerHtml(pdfJs: string, workerJs: string) {
+  return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8"/>
@@ -24,15 +50,14 @@ const VIEWER_HTML = `<!DOCTYPE html>
 <body>
 <div id="msg" class="msg">加载中…</div>
 <div id="root"></div>
+<script>${pdfJs}</script>
+<script type="text/plain" id="wk">${workerJs}</script>
 <script>
-  function loadScript(src) {
-    return new Promise(function (resolve, reject) {
-      var s = document.createElement('script');
-      s.src = src;
-      s.onload = resolve;
-      s.onerror = reject;
-      document.head.appendChild(s);
-    });
+(function () {
+  function post(type) {
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(type);
+    }
   }
   function b64ToBytes(b64) {
     var raw = atob(b64);
@@ -40,91 +65,134 @@ const VIEWER_HTML = `<!DOCTYPE html>
     for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
     return bytes;
   }
-  function post(type) {
-    if (window.ReactNativeWebView) {
-      window.ReactNativeWebView.postMessage(type);
+  try {
+    if (typeof pdfjsLib === 'undefined') {
+      throw new Error('pdfjs');
     }
+    pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
+      new Blob([document.getElementById('wk').textContent || ''], { type: 'text/javascript' })
+    );
+  } catch (e) {
+    post('error');
+    return;
   }
-  window.renderPdf = async function (b64) {
+
+  var rendering = false;
+  async function renderPdf(loader) {
+    if (rendering) {
+      return;
+    }
+    rendering = true;
     var msg = document.getElementById('msg');
     var root = document.getElementById('root');
     try {
-      var mains = [
-        'https://unpkg.com/pdfjs-dist@4.10.38/legacy/build/pdf.min.js',
-        'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.min.js'
-      ];
-      var workers = [
-        'https://unpkg.com/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.js',
-        'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.js'
-      ];
-      var loaded = false;
-      for (var i = 0; i < mains.length; i++) {
-        try {
-          await loadScript(mains[i]);
-          loaded = true;
-          break;
-        } catch (e) {}
-      }
-      if (!loaded || typeof pdfjsLib === 'undefined') {
-        throw new Error('pdfjs');
-      }
-      pdfjsLib.GlobalWorkerOptions.workerSrc = workers[0];
-      var pdf = await pdfjsLib.getDocument({ data: b64ToBytes(b64) }).promise;
-      msg.remove();
+      var pdf = await loader();
+      if (msg) msg.style.display = 'none';
+      root.innerHTML = '';
       for (var p = 1; p <= pdf.numPages; p++) {
         var page = await pdf.getPage(p);
         var unscaled = page.getViewport({ scale: 1 });
-        var scale = window.innerWidth / unscaled.width;
+        var scale = Math.max(1, window.innerWidth / unscaled.width);
         var viewport = page.getViewport({ scale: scale });
         var canvas = document.createElement('canvas');
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
         root.appendChild(canvas);
+        if (p === 1) {
+          post('page');
+        }
       }
       post('ok');
     } catch (e) {
-      msg.textContent = '预览失败';
+      rendering = false;
+      if (msg) {
+        msg.style.display = 'block';
+        msg.textContent = '预览失败';
+      }
       post('error');
     }
+  }
+
+  window.renderFromUrl = function (url, headers) {
+    renderPdf(function () {
+      return pdfjsLib.getDocument({
+        url: url,
+        httpHeaders: headers || {},
+        withCredentials: false,
+        disableStream: false,
+        disableRange: false,
+        isEvalSupported: false
+      }).promise;
+    });
   };
+
+  window.renderFromBase64 = function (b64) {
+    renderPdf(function () {
+      return pdfjsLib.getDocument({
+        data: b64ToBytes(b64),
+        disableStream: true,
+        disableAutoFetch: true,
+        isEvalSupported: false
+      }).promise;
+    });
+  };
+
   post('ready');
+})();
 </script>
 </body>
 </html>`;
-
-function arrayBufferToBase64(data: ArrayBuffer) {
-  const bytes = new Uint8Array(data);
-  const chunkSize = 8192;
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
 }
 
-async function loadPdfBase64(uri: string) {
-  const url = resolvePdfFetchUrl(uri);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) {
-      throw new Error(`PDF 下载失败 ${response.status}`);
-    }
-    const data = await response.arrayBuffer();
-    if (data.byteLength === 0) {
-      throw new Error('PDF 加载失败');
-    }
-    return arrayBufferToBase64(data);
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('PDF 下载超时，请稍后重试');
-    }
-    throw error;
-  } finally {
-    clearTimeout(timer);
+async function ensureViewer() {
+  const dir = viewerDir();
+  if (!dir) {
+    throw new Error('无法创建预览目录');
   }
+  await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+  const verPath = `${dir}ver.txt`;
+  const htmlPath = `${dir}index.html`;
+  let cachedVer = '';
+  try {
+    cachedVer = await FileSystem.readAsStringAsync(verPath);
+  } catch {
+    cachedVer = '';
+  }
+  if (cachedVer === PDFJS_CACHE_VER) {
+    const htmlInfo = await FileSystem.getInfoAsync(htmlPath);
+    if (htmlInfo.exists) {
+      return { dir, htmlPath };
+    }
+  }
+  await FileSystem.deleteAsync(dir, { idempotent: true });
+  await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+  const mainPath = `${dir}pdf.min.js`;
+  const workerPath = `${dir}pdf.worker.min.js`;
+  await Promise.all([copyAssetTo(pdfMainAsset, mainPath), copyAssetTo(pdfWorkerAsset, workerPath)]);
+  const [pdfJs, workerJs] = await Promise.all([
+    FileSystem.readAsStringAsync(mainPath),
+    FileSystem.readAsStringAsync(workerPath),
+  ]);
+  if (!pdfJs || !workerJs) {
+    throw new Error('PDF 组件加载失败');
+  }
+  await FileSystem.writeAsStringAsync(htmlPath, buildViewerHtml(pdfJs, workerJs));
+  await FileSystem.writeAsStringAsync(verPath, PDFJS_CACHE_VER);
+  return { dir, htmlPath };
+}
+
+function injectScript(web: WebView, script: string) {
+  web.injectJavaScript(`${script}; true;`);
+}
+
+async function injectBase64(web: WebView, b64: string) {
+  injectScript(web, 'window.__pdfB64=""');
+  for (let i = 0; i < b64.length; i += INJECT_CHUNK) {
+    injectScript(web, `window.__pdfB64+=${JSON.stringify(b64.slice(i, i + INJECT_CHUNK))}`);
+    await new Promise((resolve) => setTimeout(resolve, 8));
+  }
+  injectScript(web, 'window.renderFromBase64(window.__pdfB64)');
 }
 
 type Props = {
@@ -133,22 +201,28 @@ type Props = {
 
 export function NativePdfPreview({ uri }: Props) {
   const webRef = useRef<WebView>(null);
-  const [pdfB64, setPdfB64] = useState('');
-  const [ready, setReady] = useState(false);
+  const startedRef = useRef(false);
+  const fallbackTriedRef = useRef(false);
+  const [pageUri, setPageUri] = useState('');
+  const [readAccessUrl, setReadAccessUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const fetchUrl = resolvePdfFetchUrl(uri);
+
   useEffect(() => {
     let cancelled = false;
+    startedRef.current = false;
+    fallbackTriedRef.current = false;
     const run = async () => {
       setLoading(true);
       setError('');
-      setPdfB64('');
-      setReady(false);
+      setPageUri('');
       try {
-        const next = await loadPdfBase64(uri);
+        const { dir, htmlPath } = await ensureViewer();
         if (!cancelled) {
-          setPdfB64(next);
+          setReadAccessUrl(dir);
+          setPageUri(htmlPath);
         }
       } catch (err) {
         if (!cancelled) {
@@ -161,38 +235,72 @@ export function NativePdfPreview({ uri }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [uri]);
+  }, [fetchUrl]);
 
   useEffect(() => {
-    if (!ready || !pdfB64) {
+    if (!pageUri || !loading) {
       return;
     }
-    const payload = JSON.stringify(pdfB64);
-    webRef.current?.injectJavaScript(`window.renderPdf(${payload}); true;`);
     const timer = setTimeout(() => {
       setError((prev) => prev || '预览超时，请使用系统阅读器打开');
       setLoading(false);
     }, RENDER_TIMEOUT_MS);
     return () => clearTimeout(timer);
-  }, [ready, pdfB64]);
+  }, [pageUri, loading]);
+
+  const startFromCache = async (web: WebView, path: string) => {
+    const b64 = await readPdfAsBase64(path);
+    await injectBase64(web, b64);
+  };
+
+  const startFromRemote = (web: WebView, headers: Record<string, string>) => {
+    injectScript(web, `window.renderFromUrl(${JSON.stringify(fetchUrl)}, ${JSON.stringify(headers)})`);
+    void prefetchPdf(fetchUrl);
+  };
 
   const onMessage = (type: string) => {
+    const web = webRef.current;
     if (type === 'ready') {
-      setReady(true);
+      if (!web || startedRef.current) {
+        return;
+      }
+      startedRef.current = true;
+      void (async () => {
+        const cached = await getCachedPdfPath(fetchUrl);
+        if (cached) {
+          await startFromCache(web, cached);
+          return;
+        }
+        const headers = await getPdfAuthHeaders();
+        startFromRemote(web, headers);
+      })();
       return;
     }
-    if (type === 'ok') {
+    if (type === 'page' || type === 'ok') {
       setLoading(false);
       setError('');
       return;
     }
     if (type === 'error') {
-      setLoading(false);
-      setError('预览失败');
+      if (fallbackTriedRef.current) {
+        setLoading(false);
+        setError('预览失败');
+        return;
+      }
+      fallbackTriedRef.current = true;
+      void (async () => {
+        const cached = (await getCachedPdfPath(fetchUrl)) || (await prefetchPdf(fetchUrl));
+        if (cached && webRef.current) {
+          await startFromCache(webRef.current, cached);
+          return;
+        }
+        setLoading(false);
+        setError('预览失败');
+      })();
     }
   };
 
-  if (error && !pdfB64) {
+  if (error && !pageUri) {
     return (
       <View style={styles.fallback}>
         <Text style={styles.fallbackText}>{error}</Text>
@@ -203,12 +311,16 @@ export function NativePdfPreview({ uri }: Props) {
 
   return (
     <View style={styles.fill}>
-      {pdfB64 ? (
+      {pageUri ? (
         <WebView
           ref={webRef}
-          source={{ html: VIEWER_HTML, baseUrl: 'https://localhost/' }}
+          source={{ uri: pageUri }}
           style={styles.fill}
-          originWhitelist={['*']}
+          originWhitelist={['*', 'file://*']}
+          allowFileAccess
+          allowFileAccessFromFileURLs
+          allowUniversalAccessFromFileURLs
+          allowingReadAccessToURL={readAccessUrl}
           mixedContentMode="always"
           javaScriptEnabled
           domStorageEnabled
@@ -228,7 +340,7 @@ export function NativePdfPreview({ uri }: Props) {
           <Text style={styles.progress}>加载中…</Text>
         </View>
       ) : null}
-      {error && pdfB64 ? (
+      {error && pageUri ? (
         <View style={styles.fallback}>
           <Text style={styles.fallbackText}>{error}</Text>
           <PrimaryButton title="打开 PDF" onPress={() => void WebBrowser.openBrowserAsync(uri)} />
