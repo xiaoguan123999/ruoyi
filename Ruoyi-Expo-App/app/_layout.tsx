@@ -5,6 +5,7 @@ import 'react-native-reanimated';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
@@ -60,6 +61,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+    void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+  }, []);
+
   return (
     <AppProviders>
       <StatusBar style="light" />

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 import { useStableSafeTop } from '@/hooks/useStableSafeTop';
 
@@ -184,8 +185,6 @@ export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Pro
   const isDeviceLandscape = width > height;
   const [viewMode, setViewMode] = useState<ViewMode>('portrait');
   const [playUri, setPlayUri] = useState('');
-  const [fromCache, setFromCache] = useState(false);
-  const [caching, setCaching] = useState(false);
   const revokeRef = useRef<string | undefined>(undefined);
   const cacheIdRef = useRef<string | undefined>(undefined);
 
@@ -196,14 +195,27 @@ export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Pro
   }, [visible]);
 
   useEffect(() => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+    if (!visible) {
+      void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      return;
+    }
+    void ScreenOrientation.lockAsync(
+      viewMode === 'landscape'
+        ? ScreenOrientation.OrientationLock.LANDSCAPE
+        : ScreenOrientation.OrientationLock.PORTRAIT_UP,
+    );
+  }, [visible, viewMode]);
+
+  useEffect(() => {
     if (!visible || !uri) {
       return;
     }
 
     let cancelled = false;
     setPlayUri('');
-    setFromCache(false);
-    setCaching(true);
 
     void (async () => {
       const result = await resolvePlayUrl(cacheId || uri, uri);
@@ -216,8 +228,6 @@ export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Pro
       revokeRef.current = result.revokeUri;
       cacheIdRef.current = cacheId || uri;
       setPlayUri(result.uri);
-      setFromCache(result.fromCache);
-      setCaching(!result.fromCache);
     })();
 
     return () => {
@@ -226,15 +236,23 @@ export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Pro
   }, [visible, uri, cacheId, onClose]);
 
   const handleClose = () => {
+    if (Platform.OS !== 'web') {
+      void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    }
     revokePlayUri(revokeRef.current, cacheIdRef.current);
     revokeRef.current = undefined;
     setPlayUri('');
-    setFromCache(false);
-    setCaching(false);
     onClose();
   };
 
   const stageStyle = useMemo(() => {
+    if (Platform.OS !== 'web') {
+      return {
+        width,
+        height,
+        transform: undefined as undefined,
+      };
+    }
     const needRotate = (viewMode === 'landscape') !== isDeviceLandscape;
     if (!needRotate) {
       return {
@@ -254,44 +272,17 @@ export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Pro
   const rightPad = Math.max(insets.right, 12) + 4;
   const leftPad = Math.max(insets.left, 12) + 8;
 
-  if (Platform.OS !== 'web') {
-    return (
-      <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-        <View style={styles.viewport}>
-          <View style={[styles.stage, stageStyle]}>
-            {visible && playUri ? (
-              <NativeVideo uri={playUri} width={stageStyle.width} height={stageStyle.height} />
-            ) : (
-              <View style={styles.loading}>
-                <ActivityIndicator color="#FFFFFF" />
-                <Text style={styles.loadingText}>加载中…</Text>
-              </View>
-            )}
-          </View>
-          <View style={[styles.toolbar, { top: topPad, right: rightPad }]}>
-            {fromCache ? (
-              <View style={styles.cacheTag}>
-                <Text style={styles.cacheTagText}>已缓存</Text>
-              </View>
-            ) : caching ? (
-              <View style={styles.cacheTag}>
-                <Text style={styles.cacheTagText}>缓存中</Text>
-              </View>
-            ) : null}
-            <Pressable style={styles.closeBtn} onPress={handleClose} hitSlop={12}>
-              <Text style={styles.closeText}>关闭</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-    );
-  }
-
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <View style={styles.viewport}>
         <View style={[styles.stage, stageStyle]}>
-          {visible && playUri ? <WebVideo uri={playUri} /> : (
+          {visible && playUri ? (
+            Platform.OS === 'web' ? (
+              <WebVideo uri={playUri} />
+            ) : (
+              <NativeVideo uri={playUri} width={stageStyle.width} height={stageStyle.height} />
+            )
+          ) : (
             <View style={styles.loading}>
               <ActivityIndicator color="#FFFFFF" />
               <Text style={styles.loadingText}>加载中…</Text>
@@ -300,15 +291,6 @@ export function BannerVideoPlayer({ uri, cacheId, title, visible, onClose }: Pro
         </View>
 
         <View style={[styles.toolbar, { top: topPad, right: rightPad }]}>
-          {fromCache ? (
-            <View style={styles.cacheTag}>
-              <Text style={styles.cacheTagText}>已缓存</Text>
-            </View>
-          ) : caching ? (
-            <View style={styles.cacheTag}>
-              <Text style={styles.cacheTagText}>缓存中</Text>
-            </View>
-          ) : null}
           <Pressable
             style={[styles.toolBtn, viewMode === 'portrait' && styles.toolBtnActive]}
             onPress={() => setViewMode('portrait')}
@@ -373,29 +355,19 @@ const styles = StyleSheet.create({
   },
   title: {
     position: 'absolute',
+    zIndex: 10,
+    elevation: 10,
     color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 14,
     fontWeight: '600',
   },
   toolbar: {
     position: 'absolute',
-    zIndex: 2,
+    zIndex: 10,
+    elevation: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  cacheTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: 'rgba(61, 220, 132, 0.28)',
-    borderWidth: 1,
-    borderColor: 'rgba(61, 220, 132, 0.55)',
-  },
-  cacheTagText: {
-    color: '#B8F5D0',
-    fontSize: 12,
-    fontWeight: '700',
   },
   toolBtn: {
     paddingHorizontal: 12,

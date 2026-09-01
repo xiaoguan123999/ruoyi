@@ -97,7 +97,7 @@ const config: ExpoConfig = {
   runtimeVersion: {
     policy: 'appVersion',
   },
-  orientation: 'portrait',
+  orientation: 'default',
   icon: './assets/images/icon.png',
   scheme: 'ruoyi',
   userInterfaceStyle: 'automatic',
@@ -110,6 +110,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.ruoyi.expoapp',
+    requireFullScreen: true,
     infoPlist: {
       NSAppTransportSecurity: {
         NSAllowsLocalNetworking: true,
@@ -139,6 +140,12 @@ const config: ExpoConfig = {
     'expo-web-browser',
     'expo-font',
     'expo-updates',
+    [
+      'expo-screen-orientation',
+      {
+        initialOrientation: 'PORTRAIT_UP',
+      },
+    ],
     [
       'expo-splash-screen',
       {
