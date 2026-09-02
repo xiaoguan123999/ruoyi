@@ -193,7 +193,11 @@ export default function HomeScreen() {
               <Text style={styles.noticeTagText}>公告</Text>
             </View>
             <NoticeMarquee
-              texts={notices.map((item) => item.title)}
+              texts={notices.map((item) => {
+                const title = item.title.trim();
+                const content = (item.content || '').replace(/\s+/g, ' ').trim();
+                return content ? `${title}　${content}` : title;
+              })}
               textStyle={styles.noticeText}
             />
           </Pressable>
@@ -310,6 +314,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     gap: 8,
+    overflow: 'hidden',
+    minWidth: 0,
   },
   noticeTag: {
     backgroundColor: '#2F7BFF',
