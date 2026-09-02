@@ -4,7 +4,9 @@ import { Tabs } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AnnouncementPopup } from '@/components/ui/AnnouncementPopup';
 import { images } from '@/constants/images';
+import { useAnnouncementPopup } from '@/hooks/useAnnouncementPopup';
 import { colors } from '@/theme/colors';
 
 const TAB_ITEMS = [
@@ -42,16 +44,21 @@ function AppTabBar({ state, navigation }: BottomTabBarProps) {
 }
 
 export default function TabLayout() {
+  const { notice, index, total, close } = useAnnouncementPopup();
+
   return (
-    <Tabs
-      tabBar={(props) => <AppTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tabs.Screen name="index" />
-      <Tabs.Screen name="news" />
-      <Tabs.Screen name="products" />
-      <Tabs.Screen name="profile" />
-    </Tabs>
+    <>
+      <Tabs
+        tabBar={(props) => <AppTabBar {...props} />}
+        screenOptions={{ headerShown: false }}
+      >
+        <Tabs.Screen name="index" />
+        <Tabs.Screen name="news" />
+        <Tabs.Screen name="products" />
+        <Tabs.Screen name="profile" />
+      </Tabs>
+      <AnnouncementPopup notice={notice} index={index} total={total} onClose={close} />
+    </>
   );
 }
 

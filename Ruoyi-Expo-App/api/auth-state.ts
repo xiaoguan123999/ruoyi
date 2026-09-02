@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 
 import type { RuoyiUser } from '@/api/types';
+import { resetAnnouncementPopupSession } from '@/utils/announcement-popup-session';
 import { getTokenSync, removeToken } from '@/utils/storage';
 import { toastThenNavigate } from '@/utils/toast';
 
@@ -62,6 +63,7 @@ export function setCurrentUser(
 }
 
 export function clearCurrentUser(): void {
+  resetAnnouncementPopupSession();
   setCurrentUser(null, [], []);
 }
 

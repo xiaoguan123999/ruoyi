@@ -119,8 +119,8 @@ function LightToast({
   }, [dismiss, payload.autoClose, payload.duration]);
 
   return (
-    <Modal transparent visible animationType="fade" statusBarTranslucent>
-      <View style={[styles.lightHost, { paddingTop: topInset + 8 }]} pointerEvents="box-none">
+    <View style={[styles.lightHost, { paddingTop: topInset + 8 }]} pointerEvents="box-none">
+      <Pressable onPress={dismiss} accessibilityRole="alert" style={styles.lightPress}>
         <Animated.View
           style={[
             styles.lightBar,
@@ -136,8 +136,8 @@ function LightToast({
             {payload.message}
           </Text>
         </Animated.View>
-      </View>
-    </Modal>
+      </Pressable>
+    </View>
   );
 }
 
@@ -301,6 +301,10 @@ const styles = StyleSheet.create({
     elevation: 10000,
     alignItems: 'center',
     paddingHorizontal: 16,
+  },
+  lightPress: {
+    width: '100%',
+    maxWidth: 420,
   },
   lightBar: {
     flexDirection: 'row',

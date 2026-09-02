@@ -10,7 +10,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { colors } from '@/theme/colors';
-import { modalError } from '@/utils/toast';
+import { NoticeHtmlContent } from '@/components/ui/NoticeHtmlContent';
 
 export default function NoticeDetailScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -29,8 +29,8 @@ export default function NoticeDetailScreen() {
     } catch (error) {
       setNotice(null);
       if (!(error instanceof ApiError) || error.code !== 401) {
-        modalError(error instanceof ApiError ? error.message : '获取公告详情失败');
-      }
+          modalError(error instanceof ApiError ? error.message : '获取公告详情失败');
+        }
     } finally {
       setLoading(false);
     }
@@ -61,7 +61,7 @@ export default function NoticeDetailScreen() {
             <GlassCard>
               <Text style={styles.title}>{notice.title}</Text>
               <Text style={styles.date}>{notice.createTime}</Text>
-              <Text style={styles.body}>{notice.content || '暂无内容'}</Text>
+              <NoticeHtmlContent html={notice.contentHtml || notice.content} textStyle={styles.body} />
             </GlassCard>
           )}
         </RefreshableScrollView>

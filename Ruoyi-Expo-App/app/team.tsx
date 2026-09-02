@@ -6,6 +6,8 @@ import {
   StyleSheet,
   Text,
   View,
+  type StyleProp,
+  type TextStyle,
 } from 'react-native';
 
 import { emptyTeamView, fetchAppTeam, formatTeamAmount, TEAM_LEVEL_NOS } from '@/api/app-team';
@@ -57,11 +59,31 @@ function sumStats(rows: TeamUiLevelRow[]) {
   );
 }
 
+function FitText({
+  children,
+  style,
+}: {
+  children: string;
+  style: StyleProp<TextStyle>;
+}) {
+  return (
+    <Text
+      style={style}
+      numberOfLines={1}
+      allowFontScaling={false}
+      adjustsFontSizeToFit
+      minimumFontScale={0.7}
+    >
+      {children}
+    </Text>
+  );
+}
+
 function UnitStack() {
   return (
     <View style={styles.unitStack}>
-      <Text style={styles.unitText}>¥</Text>
-      <Text style={styles.unitText}>USDT</Text>
+      <FitText style={styles.unitText}>¥</FitText>
+      <FitText style={styles.unitText}>USDT</FitText>
     </View>
   );
 }
@@ -69,8 +91,8 @@ function UnitStack() {
 function AmountNumbers({ usdt, cny }: { usdt: number; cny: number }) {
   return (
     <View style={styles.moneyStack}>
-      <Text style={styles.moneyValue}>{formatTeamAmount(cny)}</Text>
-      <Text style={styles.moneyValue}>{formatTeamAmount(usdt)}</Text>
+      <FitText style={styles.moneyValue}>{formatTeamAmount(cny)}</FitText>
+      <FitText style={styles.moneyValue}>{formatTeamAmount(usdt)}</FitText>
     </View>
   );
 }
@@ -78,8 +100,8 @@ function AmountNumbers({ usdt, cny }: { usdt: number; cny: number }) {
 function SummaryMetric({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.metricCol}>
-      <Text style={styles.th}>{label}</Text>
-      <Text style={styles.td}>{value}</Text>
+      <FitText style={styles.th}>{label}</FitText>
+      <FitText style={styles.td}>{value}</FitText>
     </View>
   );
 }
@@ -87,7 +109,7 @@ function SummaryMetric({ label, value }: { label: string; value: string }) {
 function AmountMetric({ label, usdt, cny }: { label: string; usdt: number; cny: number }) {
   return (
     <View style={styles.amountMetricCol}>
-      <Text style={[styles.th, styles.amountMetricLabel]}>{label}</Text>
+      <FitText style={[styles.th, styles.amountMetricLabel]}>{label}</FitText>
       <AmountNumbers usdt={usdt} cny={cny} />
     </View>
   );
@@ -96,9 +118,9 @@ function AmountMetric({ label, usdt, cny }: { label: string; usdt: number; cny: 
 function LevelTableRow({ label, row }: { label: string; row: TeamUiLevelRow }) {
   return (
     <View style={styles.levelRow}>
-      <Text style={[styles.td, styles.colLevelNo]}>{label}</Text>
-      <Text style={[styles.td, styles.colCount]}>{formatTeamAmount(row.register)}</Text>
-      <Text style={[styles.td, styles.colCount]}>{formatTeamAmount(row.active)}</Text>
+      <FitText style={[styles.td, styles.colLevelNo]}>{label}</FitText>
+      <FitText style={[styles.td, styles.colCount]}>{formatTeamAmount(row.register)}</FitText>
+      <FitText style={[styles.td, styles.colCount]}>{formatTeamAmount(row.active)}</FitText>
       <View style={styles.colUnit}>
         <UnitStack />
       </View>
@@ -119,12 +141,8 @@ function MemberRow({
 }) {
   return (
     <View style={styles.listRow}>
-      <Text style={[styles.td, styles.colName]} numberOfLines={1}>
-        {member.name}
-      </Text>
-      <Text style={[styles.td, styles.colPhone]} numberOfLines={1}>
-        {member.phone}
-      </Text>
+      <FitText style={[styles.td, styles.colName]}>{member.name}</FitText>
+      <FitText style={[styles.td, styles.colPhone]}>{member.phone}</FitText>
       <View style={styles.colUnit}>
         <UnitStack />
       </View>
@@ -200,12 +218,12 @@ export default function TeamScreen() {
 
         <View style={styles.tableCard}>
           <View style={styles.levelHeadRow}>
-            <Text style={[styles.th, styles.colLevelNo]}>级别</Text>
-            <Text style={[styles.th, styles.colCount]}>注册人数</Text>
-            <Text style={[styles.th, styles.colCount]}>激活人数</Text>
+            <FitText style={[styles.th, styles.colLevelNo]}>级别</FitText>
+            <FitText style={[styles.th, styles.colCount]}>注册人数</FitText>
+            <FitText style={[styles.th, styles.colCount]}>激活人数</FitText>
             <View style={styles.colUnit} />
-            <Text style={[styles.th, styles.colDualHead]}>充值金额</Text>
-            <Text style={[styles.th, styles.colDualHead]}>认购金额</Text>
+            <FitText style={[styles.th, styles.colDualHead]}>充值金额</FitText>
+            <FitText style={[styles.th, styles.colDualHead]}>认购金额</FitText>
           </View>
           {TEAM_LEVEL_LABELS.map((label, index) => (
             <LevelTableRow key={label} label={label} row={levelRows[index]} />
@@ -228,10 +246,10 @@ export default function TeamScreen() {
           </View>
 
           <View style={styles.listHead}>
-            <Text style={[styles.th, styles.colName]}>姓名</Text>
-            <Text style={[styles.th, styles.colPhone]}>电话</Text>
+            <FitText style={[styles.th, styles.colName]}>姓名</FitText>
+            <FitText style={[styles.th, styles.colPhone]}>电话</FitText>
             <View style={styles.colUnit} />
-            <Text style={[styles.th, styles.colMoneyHead]}>累计充值</Text>
+            <FitText style={[styles.th, styles.colMoneyHead]}>累计充值</FitText>
           </View>
 
           {members.length === 0 ? (
@@ -274,9 +292,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   topUnitCol: {
-    width: 36,
+    width: 46,
     alignItems: 'flex-end',
-    paddingRight: 6,
+    paddingRight: 4,
     gap: 8,
   },
   amountUnitSpacer: {
@@ -284,6 +302,7 @@ const styles = StyleSheet.create({
   },
   amountMetricCol: {
     flex: 1,
+    minWidth: 0,
     alignItems: 'flex-start',
     gap: 8,
   },
@@ -292,6 +311,7 @@ const styles = StyleSheet.create({
   },
   metricCol: {
     flex: 1,
+    minWidth: 0,
     alignItems: 'center',
     gap: 8,
   },
@@ -339,18 +359,20 @@ const styles = StyleSheet.create({
     width: '15%',
   },
   colUnit: {
-    width: 36,
+    width: 46,
     alignItems: 'flex-end',
-    paddingRight: 6,
+    paddingRight: 4,
     paddingTop: 1,
   },
   colDual: {
     flex: 1,
+    minWidth: 0,
     alignItems: 'flex-start',
     paddingTop: 1,
   },
   colDualHead: {
     flex: 1,
+    minWidth: 0,
     textAlign: 'left',
   },
   tabs: {
@@ -395,23 +417,29 @@ const styles = StyleSheet.create({
   },
   colName: {
     flex: 0.9,
+    minWidth: 0,
   },
   colPhone: {
     flex: 1.2,
+    minWidth: 0,
   },
   colMoney: {
     flex: 1.2,
+    minWidth: 0,
     alignItems: 'flex-start',
   },
   colMoneyHead: {
     flex: 1.2,
+    minWidth: 0,
     textAlign: 'left',
   },
   unitStack: {
+    width: '100%',
     gap: 2,
     alignItems: 'flex-end',
   },
   unitText: {
+    width: '100%',
     color: 'rgba(180, 200, 230, 0.9)',
     fontSize: 11,
     fontWeight: '600',
@@ -419,9 +447,11 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   moneyStack: {
+    width: '100%',
     gap: 2,
   },
   moneyValue: {
+    width: '100%',
     color: colors.text,
     fontSize: 13,
     fontWeight: '600',

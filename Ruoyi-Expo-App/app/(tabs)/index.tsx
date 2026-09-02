@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { fetchAppVideoCarousel } from '@/api/app-video';
-import { fetchAppNotices } from '@/api/app-notice';
+import { fetchAppNotices, NOTICE_TYPE_NOTIFICATION } from '@/api/app-notice';
 import { fetchAppOverview } from '@/api/app-overview';
 import type { AppNotice, AppOverviewItem, AppVideoCarouselItem } from '@/api/types';
 import { BannerVideoPlayer } from '@/components/ui/BannerVideoPlayer';
@@ -142,7 +142,7 @@ export default function HomeScreen() {
 
   const load = useCallback(async () => {
     const [nextNotices, nextOverview] = await Promise.all([
-      fetchAppNotices().catch(() => [] as AppNotice[]),
+      fetchAppNotices(NOTICE_TYPE_NOTIFICATION).catch(() => [] as AppNotice[]),
       fetchAppOverview().catch(() => [] as AppOverviewItem[]),
     ]);
     setNotices(nextNotices);

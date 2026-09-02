@@ -453,14 +453,20 @@ export type AppVideoCarouselItem = {
   sort: number;
 };
 
+export type AppNoticeType = '1' | '2';
+
 export type AppNotice = {
   id: string;
   title: string;
   createTime: string;
+  noticeType?: AppNoticeType;
+  content?: string;
+  contentHtml?: string;
 };
 
 export type AppNoticeDetail = AppNotice & {
   content: string;
+  contentHtml: string;
 };
 
 export type AppOverviewItem = {

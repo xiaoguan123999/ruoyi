@@ -1,5 +1,10 @@
 import { request } from '@/api/request';
 import type { AppNotice, AppNoticeDetail } from '@/api/types';
+import { sanitizeNoticeHtml } from '@/utils/notice-html';
+
+/** 若依：1 通知，2 公告 */
+export const NOTICE_TYPE_NOTIFICATION = '1' as const;
+export const NOTICE_TYPE_ANNOUNCEMENT = '2' as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -31,11 +36,8 @@ function formatNoticeTime(value: unknown): string {
   if (!raw) {
     return '--';
   }
-  // 2026-08-19T22:48:36.000+08:00 → 2026-08-19
-  if (raw.includes('T')) {
-    return raw.slice(0, 10);
-  }
-  return raw.slice(0, 19).replace('T', ' ');
+  const date = raw.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : raw;
 }
 
 /** RuoYi 公告内容可能是富文本 HTML，RN Text 仅展示纯文本 */
@@ -54,6 +56,14 @@ export function stripNoticeHtml(html: string): string {
     .trim();
 }
 
+function mapNoticeType(raw: unknown): AppNotice['noticeType'] | undefined {
+  const value = String(raw ?? '').trim();
+  if (value === '1' || value === '2') {
+    return value;
+  }
+  return undefined;
+}
+
 function mapNotice(raw: unknown): AppNotice | null {
   if (!isRecord(raw)) {
     return null;
@@ -62,10 +72,18 @@ function mapNotice(raw: unknown): AppNotice | null {
   if (!id) {
     return null;
   }
+  const contentRaw = pickString(raw, ['noticeContent', 'content', 'remark']);
   return {
     id,
     title: pickString(raw, ['noticeTitle', 'title'], '--'),
     createTime: formatNoticeTime(raw.createTime ?? raw.create_time),
+    noticeType: mapNoticeType(raw.noticeType ?? raw.notice_type),
+    ...(contentRaw
+      ? {
+          content: stripNoticeHtml(contentRaw),
+          contentHtml: sanitizeNoticeHtml(contentRaw),
+        }
+      : {}),
   };
 }
 
@@ -78,6 +96,7 @@ function mapNoticeDetail(raw: unknown): AppNoticeDetail | null {
   return {
     ...base,
     content: stripNoticeHtml(contentRaw),
+    contentHtml: sanitizeNoticeHtml(contentRaw),
   };
 }
 
@@ -97,8 +116,9 @@ function extractList(res: Record<string, unknown>): unknown[] {
   return [];
 }
 
-export async function fetchAppNotices(): Promise<AppNotice[]> {
-  const res = await request<unknown>('/app/notices', { withToken: false });
+export async function fetchAppNotices(noticeType?: '1' | '2'): Promise<AppNotice[]> {
+  const query = noticeType ? `?noticeType=${encodeURIComponent(noticeType)}` : '';
+  const res = await request<unknown>(`/app/notices${query}`, { withToken: false });
   return extractList(res as Record<string, unknown>)
     .map(mapNotice)
     .filter((item): item is AppNotice => item !== null);
