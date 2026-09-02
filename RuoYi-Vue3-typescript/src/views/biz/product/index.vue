@@ -234,6 +234,16 @@
         <el-form-item label="备注">
           <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="卡片说明文案，选填" />
         </el-form-item>
+        <el-form-item label="激活条件">
+          <el-input
+            v-model="form.unlockRuleText"
+            type="textarea"
+            :rows="2"
+            maxlength="500"
+            show-word-limit
+            placeholder="App 认购页展示，如：直推下级认购2份相同价格产品"
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <div class="drawer-footer">
@@ -359,6 +369,7 @@ function reset() {
     unlockDelayHours: 0,
     payoutMethod: "",
     riskLevel: "",
+    unlockRuleText: "",
     sort: 0,
     categoryId: undefined,
     nameEn: "",

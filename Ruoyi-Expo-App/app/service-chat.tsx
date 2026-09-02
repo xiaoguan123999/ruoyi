@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useKeyboardState } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 
 import { fetchAppServiceCenter } from '@/api/app-service';
@@ -37,11 +38,17 @@ function useWebKeyboardInset() {
   return inset;
 }
 
+function useChatKeyboardInset() {
+  const nativeHeight = useKeyboardState((state) => (state.isVisible ? state.height : 0));
+  const webInset = useWebKeyboardInset();
+  return Platform.OS === 'web' ? webInset : nativeHeight;
+}
+
 export default function ServiceChatScreen() {
   const router = useRouter();
   const top = useStableSafeTop();
   const bottom = useStableSafeBottom();
-  const keyboardInset = useWebKeyboardInset();
+  const keyboardInset = useChatKeyboardInset();
   const { user } = useAuth();
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('在线客服');
@@ -96,7 +103,7 @@ export default function ServiceChatScreen() {
         <Text style={styles.title}>{title}</Text>
         <View style={styles.side} />
       </View>
-      <View style={[styles.frame, { paddingBottom: Math.max(bottom, keyboardInset) }]}>
+      <View style={[styles.frame, { paddingBottom: keyboardInset > 0 ? keyboardInset : bottom }]}>
         {loading ? (
           <View style={styles.loading}>
             <ActivityIndicator color="#FFFFFF" />

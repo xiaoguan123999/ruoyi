@@ -13,12 +13,10 @@ import {
 } from 'react-native';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
-/** 恒定横向速度（px/s），Web / 真机体感一致 */
 const SCROLL_SPEED = 40;
 const GAP = 64;
 const SEPARATOR = '　　';
-/** 测量容器足够宽，避免真机把文案压窄后出现省略号 */
-const MEASURE_WIDTH = 8192;
+const FONT_SIZE = 13;
 
 type NoticeMarqueeProps = {
   texts: string[];
@@ -26,6 +24,10 @@ type NoticeMarqueeProps = {
   textStyle?: StyleProp<TextStyle>;
   emptyText?: string;
 };
+
+function estimateLineWidth(text: string) {
+  return Math.ceil(text.length * FONT_SIZE * 0.92);
+}
 
 export function NoticeMarquee({
   texts,
@@ -44,11 +46,14 @@ export function NoticeMarquee({
 
   const translateX = useRef(new Animated.Value(0)).current;
   const [viewportW, setViewportW] = useState(0);
-  const [contentW, setContentW] = useState(0);
+  const [measuredW, setMeasuredW] = useState(0);
 
   useEffect(() => {
-    setContentW(0);
+    setMeasuredW(0);
   }, [line]);
+
+  const contentW = Math.max(measuredW, estimateLineWidth(line));
+  const shouldScroll = items.length > 0;
 
   const onViewportLayout = (e: LayoutChangeEvent) => {
     const next = Math.round(e.nativeEvent.layout.width);
@@ -56,16 +61,6 @@ export function NoticeMarquee({
       setViewportW(next);
     }
   };
-
-  const onContentLayout = (e: LayoutChangeEvent) => {
-    const next = Math.round(e.nativeEvent.layout.width);
-    if (next > 0 && next !== contentW) {
-      setContentW(next);
-    }
-  };
-
-  const shouldScroll =
-    items.length > 1 || (contentW > 0 && viewportW > 0 && contentW > viewportW + 2);
 
   useEffect(() => {
     translateX.stopAnimation();
@@ -101,11 +96,11 @@ export function NoticeMarquee({
     );
   }
 
-  const textNode = (extraStyle?: StyleProp<TextStyle>) => (
+  const textNode = (key: string) => (
     <Text
-      style={[styles.text, textStyle, extraStyle]}
+      key={key}
+      style={[styles.text, textStyle, { width: contentW }]}
       numberOfLines={1}
-      // clip：真机单行截断但不显示 "..."；宽度设为完整内容宽后即可完整展示
       ellipsizeMode="clip"
     >
       {line}
@@ -113,24 +108,23 @@ export function NoticeMarquee({
   );
 
   return (
-    <View style={[styles.viewport, style]} onLayout={onViewportLayout}>
-      {/* 真机：collapsable=false + 非 0 opacity，避免测量节点被优化掉 */}
-      <View
-        collapsable={false}
-        pointerEvents="none"
-        style={styles.measureHost}
-      >
+    <View style={[styles.wrap, style]}>
+      <View pointerEvents="none" collapsable={false} style={styles.measureHost}>
         <Text
-          style={[styles.text, textStyle, styles.measureText]}
           numberOfLines={1}
           ellipsizeMode="clip"
-          onLayout={onContentLayout}
+          style={[styles.text, textStyle, styles.measureText]}
+          onTextLayout={(e) => {
+            const next = Math.ceil(e.nativeEvent.lines.reduce((sum, item) => sum + item.width, 0));
+            if (next > 0 && next !== measuredW) {
+              setMeasuredW(next);
+            }
+          }}
         >
           {line}
         </Text>
       </View>
-
-      {contentW > 0 ? (
+      <View style={styles.viewport} onLayout={onViewportLayout}>
         <Animated.View
           style={[
             styles.track,
@@ -140,15 +134,29 @@ export function NoticeMarquee({
             },
           ]}
         >
-          {textNode({ width: contentW })}
-          {shouldScroll ? textNode({ width: contentW, marginLeft: GAP }) : null}
+          {textNode('a')}
+          {shouldScroll ? (
+            <Text
+              key="b"
+              style={[styles.text, textStyle, { width: contentW, marginLeft: GAP }]}
+              numberOfLines={1}
+              ellipsizeMode="clip"
+            >
+              {line}
+            </Text>
+          ) : null}
         </Animated.View>
-      ) : null}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+  },
   viewport: {
     flex: 1,
     overflow: 'hidden',
@@ -159,12 +167,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 0,
-    width: MEASURE_WIDTH,
-    // 不能用 0：Android 可能跳过布局；Web 仍不可见
     opacity: 0.01,
   },
   measureText: {
-    alignSelf: 'flex-start',
+    width: 4096,
   },
   track: {
     flexDirection: 'row',
@@ -173,7 +179,7 @@ const styles = StyleSheet.create({
   },
   text: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: FONT_SIZE,
     lineHeight: 18,
     flexShrink: 0,
     ...(Platform.OS === 'web'

@@ -93,11 +93,11 @@ const config: ExpoConfig = {
   name: '星帆智联',
   slug: 'ruoyi-expo-app',
   ...(expoOwner ? { owner: expoOwner } : {}),
-  version: '1.0.0',
+  version: '1.2.6',
   runtimeVersion: {
     policy: 'appVersion',
   },
-  orientation: 'portrait',
+  orientation: 'default',
   icon: './assets/images/icon.png',
   scheme: 'ruoyi',
   userInterfaceStyle: 'automatic',
@@ -110,6 +110,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.ruoyi.expoapp',
+    requireFullScreen: true,
     infoPlist: {
       NSAppTransportSecurity: {
         NSAllowsLocalNetworking: true,
@@ -140,6 +141,12 @@ const config: ExpoConfig = {
     'expo-font',
     'expo-updates',
     [
+      'expo-screen-orientation',
+      {
+        initialOrientation: 'PORTRAIT_UP',
+      },
+    ],
+    [
       'expo-splash-screen',
       {
         image: './assets/images/splash-icon.png',
@@ -162,6 +169,8 @@ const config: ExpoConfig = {
         },
       },
     ],
+    '@config-plugins/react-native-blob-util',
+    '@config-plugins/react-native-pdf',
   ],
   extra: {
     appEnv,

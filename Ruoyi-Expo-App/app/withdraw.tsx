@@ -212,10 +212,7 @@ export default function WithdrawScreen() {
         </GlassCard>
 
         <GlassCard>
-          <Text style={styles.label}>
-            提现金额{' '}
-            <Text style={styles.hint}>（通道拥堵可联系在线客服充值）</Text>
-          </Text>
+          <Text style={styles.label}>提现金额</Text>
           <TextInput
             ref={amountRef}
             value={amount}
@@ -341,9 +338,6 @@ const styles = StyleSheet.create({
   },
   balanceWrap: {
     marginTop: 14,
-  },
-  hint: {
-    color: colors.danger,
   },
   input: {
     color: colors.text,

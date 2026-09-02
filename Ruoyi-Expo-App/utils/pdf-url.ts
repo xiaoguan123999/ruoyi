@@ -20,7 +20,7 @@ export function toApiR2ProxyUrl(uri: string): string | null {
     }
     const isR2Host = /\.r2\.dev$/i.test(target.hostname);
     const key = target.pathname.replace(/^\//, '');
-    if (!key || (!isR2Host && !/\.pdf$/i.test(target.pathname))) {
+    if (!key || (!isR2Host && !/\.(pdf|mp4|webm|mov)$/i.test(target.pathname))) {
       return null;
     }
     return `${api}/common/r2/${key}${target.search}`;

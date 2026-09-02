@@ -38,6 +38,6 @@ if (result.status !== 0) {
 console.log(`APK: ${output}`);
 console.log(
   profile === 'production'
-    ? '下一步：APP_ENV=production pnpm upload:r2'
-    : '下一步：APP_ENV=preview pnpm upload:r2',
+    ? '下一步：pnpm upload:r2:production'
+    : '下一步：pnpm upload:r2:preview',
 );

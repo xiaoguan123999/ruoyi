@@ -154,6 +154,10 @@ function runEasJson(command: string) {
   return execSync(command, {
     encoding: "utf8",
     stdio: ["inherit", "pipe", "inherit"],
+    env: {
+      ...process.env,
+      APP_ENV: "production",
+    },
   });
 }
 

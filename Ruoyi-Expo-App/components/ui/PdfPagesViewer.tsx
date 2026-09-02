@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +10,6 @@ import {
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 
-import { NativePdfPreview } from '@/components/ui/NativePdfPreview';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
 import { toApiR2ProxyUrl } from '@/utils/pdf-url';
@@ -256,9 +254,6 @@ function WebPdfPagesViewer({ uri }: Props) {
 }
 
 export function PdfPagesViewer({ uri }: Props) {
-  if (Platform.OS !== 'web') {
-    return <NativePdfPreview uri={uri} />;
-  }
   return <WebPdfPagesViewer uri={uri} />;
 }
 

@@ -160,6 +160,7 @@ function mapProduct(raw: unknown): AppProduct | null {
     riskLevel: pickString(raw, ['riskLevel']) || undefined,
     payoutMethod: pickString(raw, ['payoutMethod']) || undefined,
     onSaleFlag: raw.onSaleFlag === true,
+    unlockRuleText: pickString(raw, ['unlockRuleText']) || undefined,
   };
 }
 
@@ -200,6 +201,7 @@ export function mapAppProductToItem(product: AppProduct, index = 0): ProductItem
     currencies: support.length ? support.join(' / ') : '--',
     riskLevel: product.riskLevel || undefined,
     onSaleFlag: product.onSaleFlag === true,
+    unlockRuleText: product.unlockRuleText || undefined,
   };
 }
 

@@ -53,6 +53,12 @@
           <el-option label="停用" value="1" />
         </el-select>
       </el-form-item>
+      <el-form-item label="账号类型" prop="testFlag">
+        <el-select v-model="queryParams.testFlag" placeholder="账号类型" clearable style="width: 160px">
+          <el-option label="正式" value="0" />
+          <el-option label="测试" value="1" />
+        </el-select>
+      </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
         <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -69,7 +75,12 @@
     <el-table v-loading="loading" :data="memberList">
       <el-table-column label="ID" align="center" prop="memberId" width="90" />
       <el-table-column label="邀请码" align="center" prop="inviteCode" width="110" />
-      <el-table-column label="手机号" align="center" prop="phone" width="120" />
+      <el-table-column label="手机号" align="center" prop="phone" width="120">
+        <template #default="scope">
+          <span>{{ scope.row.phone }}</span>
+          <el-tag v-if="isTestMember(scope.row)" type="warning" size="small" style="margin-left: 4px">测试</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="姓名" align="center" prop="realName" min-width="100" />
       <el-table-column label="身份证" align="center" prop="idCard" width="180" />
       <el-table-column label="谷歌验证" align="center" prop="gaStatus" width="100">
@@ -98,6 +109,15 @@
       <el-table-column label="状态" align="center" prop="status" width="80">
         <template #default="scope">
           <el-tag :type="scope.row.status === '0' ? 'success' : 'danger'">{{ scope.row.status === '0' ? '正常' : '停用' }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="测试账号" align="center" width="90">
+        <template #default="scope">
+          <el-switch
+            :model-value="isTestMember(scope.row)"
+            @change="(val: boolean) => handleToggleTest(scope.row, val)"
+            v-hasPermi="['biz:member:edit']"
+          />
         </template>
       </el-table-column>
       <el-table-column label="创建时间" align="center" prop="createTime" width="160">
@@ -150,6 +170,12 @@
               <el-radio value="1">停用</el-radio>
             </el-radio-group>
           </el-form-item>
+          <el-form-item label="测试账号">
+            <div class="switch-line">
+              <el-switch v-model="form.testFlag" active-value="1" inactive-value="0" />
+              <span class="tip inline">测试账号不计入看板、团队与奖励统计，一拖二仍生效</span>
+            </div>
+          </el-form-item>
           <el-form-item label="备注">
             <el-input v-model="form.remark" type="textarea" />
           </el-form-item>
@@ -194,7 +220,8 @@ const data = reactive({
     inviteCode: undefined,
     kycStatus: undefined,
     status: undefined,
-    gaStatus: undefined
+    gaStatus: undefined,
+    testFlag: undefined
   },
   rules: {
     phone: [{ required: true, message: "请输入手机号", trigger: "blur" }],
@@ -203,6 +230,39 @@ const data = reactive({
 })
 const { queryParams, form, rules } = toRefs(data)
 const route = useRoute()
+
+function isTestMember(row: any) {
+  if (row.testFlag !== undefined && row.testFlag !== null && row.testFlag !== "") {
+    return row.testFlag === "1" || row.testFlag === 1 || row.testFlag === true
+  }
+  if (typeof row.testFlagFlag === "boolean") return row.testFlagFlag
+  if (typeof row.testAccount === "boolean") return row.testAccount
+  return false
+}
+
+function asTestFlagStr(value: any) {
+  if (typeof value === "boolean") return value ? "1" : "0"
+  return value === "1" || value === 1 || value === true ? "1" : "0"
+}
+
+function normalizeMemberForm(data: any) {
+  return {
+    ...data,
+    testFlag: asTestFlagStr(data.testFlag ?? data.testFlagFlag ?? data.testAccount)
+  }
+}
+
+function buildMemberUpdatePayload(data: any) {
+  return {
+    memberId: data.memberId,
+    realName: data.realName,
+    idCard: data.idCard,
+    kycStatus: data.kycStatus,
+    status: data.status,
+    testFlag: asTestFlagStr(data.testFlag),
+    remark: data.remark
+  }
+}
 
 function applyRouteQuery() {
   const kyc = String(route.query.kycStatus || "")
@@ -257,11 +317,24 @@ function handleUpdate(row: any) {
   reset()
   isAdd.value = false
   getMember(row.memberId).then((res: any) => {
-    form.value = res.data
+    form.value = normalizeMemberForm(res.data || {})
     form.value.password = undefined
     open.value = true
     title.value = "修改会员"
   })
+}
+function handleToggleTest(row: any, val: boolean) {
+  const next = val ? "1" : "0"
+  const action = val ? "标记为测试账号" : "取消测试账号标记"
+  const tip = val
+    ? "标记后该账号不计入看板、团队与奖励统计，一拖二仍生效；历史已发佣金不会追回。"
+    : "取消后该账号将按正式用户参与统计与奖励。"
+  proxy.$modal.confirm(`确认对「${row.phone || row.memberId}」${action}？${tip}`).then(() => {
+    return updateMember({ memberId: row.memberId, testFlag: next })
+  }).then(() => {
+    proxy.$modal.msgSuccess(val ? "已标记为测试账号" : "已取消测试账号标记")
+    getList()
+  }).catch(() => getList())
 }
 function openAdjust(row: any) {
   adjustMemberId.value = row.memberId
@@ -321,7 +394,7 @@ function submitForm() {
       })
       return
     }
-    updateMember(form.value).then(() => {
+    updateMember(buildMemberUpdatePayload(form.value)).then(() => {
       proxy.$modal.msgSuccess("修改成功")
       open.value = false
       getList()
@@ -342,4 +415,11 @@ watch(
 
 <style scoped>
 .tip { margin-left: 12px; color: #909399; font-size: 13px; }
+.tip.inline { margin-left: 10px; }
+.switch-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
 </style>
