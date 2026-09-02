@@ -93,7 +93,7 @@ const config: ExpoConfig = {
   name: '星帆智联',
   slug: 'ruoyi-expo-app',
   ...(expoOwner ? { owner: expoOwner } : {}),
-  version: '1.0.0',
+  version: '1.2.6',
   runtimeVersion: {
     policy: 'appVersion',
   },
