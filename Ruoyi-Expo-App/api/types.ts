@@ -225,6 +225,8 @@ export type AppProduct = {
   payoutMethod?: string;
   /** 是否已开售，未开售不可进详情 */
   onSaleFlag?: boolean;
+  /** 激活条件文案，仅展示 */
+  unlockRuleText?: string;
 };
 
 /** GET /app/product/series */

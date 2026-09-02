@@ -19,6 +19,7 @@ export type ProductItem = {
   riskLevel?: string;
   apiId?: number;
   onSaleFlag?: boolean;
+  unlockRuleText?: string;
 };
 
 export type ProductSeries = {

@@ -90,6 +90,7 @@ export function ProductSubscribePanel({
     { label: '产品期限', value: term, highlight: true },
     { label: '支持货币', value: item.currencies || '--' },
     { label: '风险等级', value: item.riskLevel || '--' },
+    { label: '激活条件', value: item.unlockRuleText || '--' },
   ] as const;
 
   const changeQuantity = (delta: number) => {
