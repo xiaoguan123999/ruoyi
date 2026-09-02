@@ -163,6 +163,10 @@ public class BizMemberServiceImpl implements IBizMemberService
         {
             member.setPassword(SecurityUtils.encryptPassword(member.getPassword()));
         }
+        if (member.getTestFlag() != null)
+        {
+            member.setTestFlag(member.testAccount() || "true".equalsIgnoreCase(member.getTestFlag()) ? "1" : "0");
+        }
         memberMapper.updateMember(member);
         refreshLevel(member.getMemberId());
     }

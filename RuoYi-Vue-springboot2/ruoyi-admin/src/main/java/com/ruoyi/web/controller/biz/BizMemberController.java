@@ -33,7 +33,7 @@ public class BizMemberController extends BaseController
     @Autowired
     private IBizGoogleAuthService googleAuthService;
 
-    @ApiOperation("会员列表")
+    @ApiOperation("会员列表，testFlag=1 仅测试账号，testFlag=0 仅正式账号")
     @PreAuthorize("@ss.hasPermi('biz:member:list')")
     @GetMapping("/list")
     public TableDataInfo list(BizMember member)
@@ -82,7 +82,7 @@ public class BizMemberController extends BaseController
         return ajax;
     }
 
-    @ApiOperation("修改会员")
+    @ApiOperation("修改会员，可改 status、testFlag（0正式 1测试）等")
     @PreAuthorize("@ss.hasPermi('biz:member:edit')")
     @Log(title = "会员管理", businessType = BusinessType.UPDATE)
     @PutMapping

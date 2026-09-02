@@ -235,12 +235,12 @@ public class BizPromoServiceImpl implements IBizPromoService
             return;
         }
         BizMember invitee = memberMapper.selectMemberById(memberId);
-        if (invitee == null || invitee.getParentId() == null || !BizConstants.KYC_DONE.equals(invitee.getKycStatus()))
+        if (invitee == null || invitee.testAccount() || invitee.getParentId() == null || !BizConstants.KYC_DONE.equals(invitee.getKycStatus()))
         {
             return;
         }
         BizMember parent = memberMapper.selectMemberById(invitee.getParentId());
-        if (parent == null || BizConstants.STATUS_DISABLE.equals(parent.getStatus()))
+        if (parent == null || parent.testAccount() || BizConstants.STATUS_DISABLE.equals(parent.getStatus()))
         {
             return;
         }
@@ -300,6 +300,10 @@ public class BizPromoServiceImpl implements IBizPromoService
         if (member == null)
         {
             throw new ServiceException("会员不存在");
+        }
+        if (member.testAccount())
+        {
+            throw new ServiceException("测试账号不参与活动奖励");
         }
         if (!BizConstants.KYC_DONE.equals(member.getKycStatus()))
         {

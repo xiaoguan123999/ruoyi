@@ -59,6 +59,10 @@ public class BizProductServiceImpl implements IBizProductService
         {
             product.setUnlockDelayHours(Integer.valueOf(0));
         }
+        if (product.getUnlockRuleText() == null)
+        {
+            product.setUnlockRuleText("");
+        }
         if (!"0".equals(product.getOnSale()))
         {
             product.setOnSale("1");

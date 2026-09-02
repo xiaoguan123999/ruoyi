@@ -56,7 +56,7 @@ public class BizCommissionServiceImpl implements IBizCommissionService
         }
         String currency = order.getCurrency() == null ? BizConstants.CURRENCY_CNY : order.getCurrency().toUpperCase();
         BizMember current = memberService.selectMemberById(order.getMemberId());
-        if (current == null)
+        if (current == null || current.testAccount())
         {
             return;
         }
@@ -67,6 +67,11 @@ public class BizCommissionServiceImpl implements IBizCommissionService
             if (parent == null || BizConstants.STATUS_DISABLE.equals(parent.getStatus()))
             {
                 break;
+            }
+            if (parent.testAccount())
+            {
+                parentId = parent.getParentId();
+                continue;
             }
             BigDecimal rate = configService.getTeamRate(level);
             if (rate.compareTo(BigDecimal.ZERO) > 0)
