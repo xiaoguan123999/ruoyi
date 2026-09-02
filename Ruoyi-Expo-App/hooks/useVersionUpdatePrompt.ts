@@ -109,12 +109,18 @@ export function useVersionUpdatePrompt() {
 
             const latest = nativeResult.version;
             const isForce = latest.forceUpdate;
-            const notes = latest.description.trim() || '请更新到最新版本后继续使用';
+            const notes = latest.description.trim();
             const confirmed = await confirm({
-              title: isForce ? '必须更新' : '发现新版本',
-              description: `当前 ${currentVersion}，最新 ${latest.version}\n${notes}`,
+              title: isForce ? '请更新后继续使用' : '发现新版本',
+              description: isForce
+                ? [notes || '为了更好地使用，请先完成这次更新。', `当前版本 ${currentVersion}`]
+                    .filter(Boolean)
+                    .join('\n')
+                : [notes || '建议更新后使用，体验会更顺畅。', `新版本 ${latest.version}`]
+                    .filter(Boolean)
+                    .join('\n'),
               confirmText: '立即更新',
-              cancelText: isForce ? null : '稍后',
+              cancelText: isForce ? null : '稍后再说',
             });
 
             if (!confirmed) {
@@ -147,10 +153,10 @@ export function useVersionUpdatePrompt() {
 
         if (otaResult.status === 'available') {
           const confirmed = await confirm({
-            title: '发现热更新',
-            description: '有新的应用内容，更新后即可使用，无需重新安装。',
+            title: '有新内容可更新',
+            description: '更新很快，不用重新安装，完成后即可继续使用。',
             confirmText: '立即更新',
-            cancelText: '稍后提醒',
+            cancelText: '稍后再说',
           });
 
           if (!confirmed) {
