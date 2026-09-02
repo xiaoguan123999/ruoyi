@@ -85,6 +85,7 @@ import type { CaptchaInfoResult } from '@/types/api/login'
 import type { LoginForm } from '@/types/api/login'
 
 const title = import.meta.env.VITE_APP_TITLE
+const isProd = import.meta.env.VITE_APP_ENV === 'production'
 const footerContent = defaultSettings.footerContent
 const userStore = useUserStore()
 const route = useRoute()
@@ -92,8 +93,8 @@ const router = useRouter()
 const { proxy } = getCurrentInstance()
 
 const loginForm = ref<LoginForm>({
-  username: "admin",
-  password: "admin123",
+  username: isProd ? "" : "admin",
+  password: isProd ? "" : "admin123",
   rememberMe: false,
   code: "",
   uuid: "",
