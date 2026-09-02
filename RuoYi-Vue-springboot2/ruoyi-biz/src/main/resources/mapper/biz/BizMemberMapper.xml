@@ -16,6 +16,7 @@
         <result property="levelId"      column="level_id"/>
         <result property="levelName"    column="level_name"/>
         <result property="status"       column="status"/>
+        <result property="testFlag"     column="test_flag"/>
         <result property="gaSecret"     column="ga_secret"/>
         <result property="gaStatus"     column="ga_status"/>
         <result property="cnyAvailable" column="cny_available"/>
@@ -36,7 +37,7 @@
 
     <sql id="selectMemberVo">
         select m.member_id, m.phone, m.password, m.pay_password, m.invite_code, m.parent_id, m.ancestors,
-               m.real_name, m.id_card, m.kyc_status, m.level_id, l.level_name, m.status, m.ga_secret, m.ga_status,
+               m.real_name, m.id_card, m.kyc_status, m.level_id, l.level_name, m.status, m.test_flag, m.ga_secret, m.ga_status,
                m.create_by, m.create_time, m.update_by, m.update_time, m.remark,
                (select ifnull(w.available, 0) from biz_wallet w where w.member_id = m.member_id and w.type_code = 'BALANCE' and w.currency = 'CNY') as cny_available,
                (select ifnull(sum(w.frozen), 0) from biz_wallet w where w.member_id = m.member_id and w.currency = 'CNY') as cny_frozen,
@@ -46,7 +47,7 @@
                (select ifnull(sum(w.frozen), 0) from biz_wallet w where w.member_id = m.member_id and w.currency = 'USDT') as usdt_frozen,
                (select ifnull(w.available, 0) from biz_wallet w where w.member_id = m.member_id and w.type_code = 'PRODUCT' and w.currency = 'USDT') as usdt_product_income,
                (select ifnull(w.available, 0) from biz_wallet w where w.member_id = m.member_id and w.type_code = 'PROMO' and w.currency = 'USDT') as usdt_assist_value,
-               (select count(1) from biz_member t where find_in_set(m.member_id, t.ancestors)) as team_count
+               (select count(1) from biz_member t where find_in_set(m.member_id, t.ancestors) and ifnull(t.test_flag, '0') = '0') as team_count
         from biz_member m
         left join biz_level l on l.level_id = m.level_id
     </sql>
@@ -74,6 +75,7 @@
             <if test="parentId != null">and m.parent_id = #{parentId}</if>
             <if test="kycStatus != null and kycStatus != ''">and m.kyc_status = #{kycStatus}</if>
             <if test="status != null and status != ''">and m.status = #{status}</if>
+            <if test="testFlag != null and testFlag != ''">and m.test_flag = #{testFlag}</if>
             <if test="gaStatus != null and gaStatus != ''">and m.ga_status = #{gaStatus}</if>
             <if test="realName != null and realName != ''">and m.real_name like concat('%', #{realName}, '%')</if>
             <if test="memberId != null">and m.member_id = #{memberId}</if>
@@ -105,6 +107,7 @@
             <if test="kycStatus != null">kyc_status = #{kycStatus},</if>
             <if test="levelId != null">level_id = #{levelId},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="testFlag != null">test_flag = #{testFlag},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             <if test="remark != null">remark = #{remark},</if>
             update_time = sysdate()
@@ -128,6 +131,7 @@
         select count(1)
         from biz_member m
         where find_in_set(#{memberId}, m.ancestors)
+          and ifnull(m.test_flag, '0') = '0'
           and m.kyc_status = '1'
           and exists (select 1 from biz_order o where o.member_id = m.member_id)
     </select>
@@ -136,6 +140,7 @@
         select count(1)
         from biz_member m
         where find_in_set(#{memberId}, m.ancestors)
+          and ifnull(m.test_flag, '0') = '0'
         <if test="maxDepth != null">
             and (length(ifnull(m.ancestors,'')) - length(replace(ifnull(m.ancestors,''), ',', '')) - ifnull(#{viewerDepth}, 0)) between 1 and #{maxDepth}
         </if>
@@ -148,7 +153,7 @@
     </select>
 
     <select id="countDirectMembers" parameterType="Long" resultType="int">
-        select count(1) from biz_member where parent_id = #{memberId}
+        select count(1) from biz_member where parent_id = #{memberId} and ifnull(test_flag, '0') = '0'
     </select>
 
     <select id="selectTeamMembers" resultMap="BizMemberResult">
@@ -192,6 +197,7 @@
                ifnull((select sum(o.price) from biz_order o where o.member_id = m.member_id and o.currency = 'CNY'), 0) as subscribe_cny
         from biz_member m
         where find_in_set(#{memberId}, m.ancestors)
+          and ifnull(m.test_flag, '0') = '0'
           and <include refid="teamDepthExpr"/> between 1 and 7
         <if test="teamLevel != null">
             and <include refid="teamDepthExpr"/> = #{teamLevel}
@@ -207,6 +213,7 @@
             select m.member_id, <include refid="teamDepthExpr"/> as depth
             from biz_member m
             where find_in_set(#{memberId}, m.ancestors)
+              and ifnull(m.test_flag, '0') = '0'
         ) t
         where depth between 1 and 7
         group by depth
@@ -220,6 +227,7 @@
         from biz_order o
         inner join biz_member m on m.member_id = o.member_id
         where find_in_set(#{memberId}, m.ancestors)
+          and ifnull(m.test_flag, '0') = '0'
           and <include refid="teamDepthExpr"/> between 1 and 7
         group by <include refid="teamDepthExpr"/>
     </select>
@@ -233,6 +241,7 @@
         inner join biz_member m on m.member_id = r.member_id
         where r.status = '1'
           and find_in_set(#{memberId}, m.ancestors)
+          and ifnull(m.test_flag, '0') = '0'
           and <include refid="teamDepthExpr"/> between 1 and 7
         group by <include refid="teamDepthExpr"/>
     </select>

@@ -54,6 +54,10 @@ set @exist := (select count(*) from information_schema.columns where table_schem
 set @sql := if(@exist = 0, 'alter table biz_product add column unlock_delay_hours int(11) not null default 0 comment ''认购完成后等待小时数再开始返利'' after unlock_direct_qty', 'select 1');
 prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'unlock_rule_text');
+set @sql := if(@exist = 0, 'alter table biz_product add column unlock_rule_text varchar(500) default '''' comment ''激活条件文案，App原样展示'' after unlock_delay_hours', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
+
 set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'payout_method');
 set @sql := if(@exist = 0, 'alter table biz_product add column payout_method varchar(100) default '''' comment ''收益发放方式'' after unlock_delay_hours', 'select 1');
 prepare stmt from @sql; execute stmt; deallocate prepare stmt;

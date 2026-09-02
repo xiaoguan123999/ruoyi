@@ -55,6 +55,7 @@
         from biz_recharge r
         inner join biz_member m on m.member_id = r.member_id
         where r.currency = #{currency} and r.status = '1'
+          and ifnull(m.test_flag, '0') = '0'
           and (
             (
               find_in_set(#{memberId}, m.ancestors)

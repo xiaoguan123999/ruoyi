@@ -100,6 +100,7 @@
         from biz_order o
         inner join biz_member m on m.member_id = o.member_id
         where o.currency = #{currency}
+          and ifnull(m.test_flag, '0') = '0'
           and (
             (
               find_in_set(#{memberId}, m.ancestors)

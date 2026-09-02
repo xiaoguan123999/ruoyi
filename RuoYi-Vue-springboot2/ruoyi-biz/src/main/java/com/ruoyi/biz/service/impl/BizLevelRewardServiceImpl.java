@@ -217,7 +217,7 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
             return;
         }
         BizMember member = memberMapper.selectMemberById(memberId);
-        if (member == null || BizConstants.STATUS_DISABLE.equals(member.getStatus()))
+        if (member == null || member.testAccount() || BizConstants.STATUS_DISABLE.equals(member.getStatus()))
         {
             return;
         }

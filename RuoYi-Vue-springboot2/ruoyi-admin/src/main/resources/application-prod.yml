@@ -4,11 +4,11 @@
 ruoyi:
   profile: ${RUOYI_PROFILE:/home/ruoyi/uploadPath}
   r2:
-    endpoint: ${R2_ENDPOINT:https://f3b250c05ff64494b781db0c600a3756.r2.cloudflarestorage.com}
+    endpoint: ${R2_ENDPOINT:https://f71f5e85dae20a74d1b683bde66520d7.r2.cloudflarestorage.com}
     bucket: ${R2_BUCKET:project-bucket}
-    access-key: ${R2_ACCESS_KEY:f50e0113e01ac57789dc1c07beec6dc4}
-    secret-key: ${R2_SECRET_KEY:e5d5e8961e81c800da557eff2643ed384345e54d39eb87aece9d94683390baaf}
-    public-url: ${R2_PUBLIC_URL:https://pub-83b77826080f40fe9ab80115e92f4e3e.r2.dev}
+    access-key: ${R2_ACCESS_KEY:8591f70cef503691d7ef27228b111443}
+    secret-key: ${R2_SECRET_KEY:a6b9f4ca585bb7e486d5a92f0afa389d18de434312e96855810cd507e9193e86}
+    public-url: ${R2_PUBLIC_URL:https://pub-ff6db24eced24830803721122df49551.r2.dev}
 
 logging:
   level:
@@ -17,6 +17,7 @@ logging:
 
 server:
   port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
 
 spring:
   devtools:
@@ -102,4 +103,4 @@ swagger:
 
 referer:
   enabled: true
-  allowed-domains: ${REFERER_DOMAINS:your-domain.com,www.your-domain.com}
+  allowed-domains: ${REFERER_DOMAINS:api.rgoslz.com,rgoslz.com,www.rgoslz.com}

@@ -29,6 +29,12 @@ public class BizConstants
     /** 停用/下架 */
     public static final String STATUS_DISABLE = "1";
 
+    /** 正式用户 */
+    public static final String TEST_NO = "0";
+
+    /** 测试用户，数据不计入统计 */
+    public static final String TEST_YES = "1";
+
     /** 待审 */
     public static final String AUDIT_PENDING = "0";
 

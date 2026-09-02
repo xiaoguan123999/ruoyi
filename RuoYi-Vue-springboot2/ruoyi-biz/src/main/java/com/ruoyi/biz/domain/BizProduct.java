@@ -61,6 +61,9 @@ public class BizProduct extends BaseEntity
     @ApiModelProperty("激活后再等待多少小时才开始日返，0表示激活后即可日返")
     private Integer unlockDelayHours;
 
+    @ApiModelProperty("激活条件文案，后台填写，App 原样展示")
+    private String unlockRuleText;
+
     @ApiModelProperty("收益发放方式，App 展示")
     private String payoutMethod;
 
@@ -299,6 +302,16 @@ public class BizProduct extends BaseEntity
     public void setUnlockDelayHours(Integer unlockDelayHours)
     {
         this.unlockDelayHours = unlockDelayHours;
+    }
+
+    public String getUnlockRuleText()
+    {
+        return unlockRuleText;
+    }
+
+    public void setUnlockRuleText(String unlockRuleText)
+    {
+        this.unlockRuleText = unlockRuleText;
     }
 
     public String getPayoutMethod()

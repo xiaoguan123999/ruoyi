@@ -4,78 +4,86 @@
 
     <sql id="rechargePassedDay">
         r.status = '1'
+        and r.member_id in (select member_id from biz_member where ifnull(test_flag, '0') = '0')
         and coalesce(r.audit_time, r.create_time) &gt;= #{dayStart}
         and coalesce(r.audit_time, r.create_time) &lt; #{dayEnd}
     </sql>
 
     <sql id="withdrawPassedDay">
         w.status = '1'
+        and w.member_id in (select member_id from biz_member where ifnull(test_flag, '0') = '0')
         and coalesce(w.audit_time, w.create_time) &gt;= #{dayStart}
         and coalesce(w.audit_time, w.create_time) &lt; #{dayEnd}
+    </sql>
+
+    <sql id="realMemberId">
+        member_id in (select member_id from biz_member where ifnull(test_flag, '0') = '0')
     </sql>
 
     <select id="selectStats" resultType="BizDashboardRow">
         select
             (select count(*) from biz_member
-              where create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as registerToday,
-            (select count(*) from biz_member) as registerTotal,
+              where ifnull(test_flag, '0') = '0'
+                and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as registerToday,
+            (select count(*) from biz_member where ifnull(test_flag, '0') = '0') as registerTotal,
             (select count(*) from biz_member
-              where kyc_status = '1'
+              where ifnull(test_flag, '0') = '0'
+                and kyc_status = '1'
                 and update_time &gt;= #{dayStart} and update_time &lt; #{dayEnd}) as kycToday,
-            (select count(*) from biz_member where kyc_status = '1') as kycTotal,
-            (select count(*) from biz_checkin where checkin_date = #{dayText}) as checkinToday,
-            (select count(*) from biz_checkin) as checkinTotal,
+            (select count(*) from biz_member where ifnull(test_flag, '0') = '0' and kyc_status = '1') as kycTotal,
+            (select count(*) from biz_checkin where <include refid="realMemberId"/> and checkin_date = #{dayText}) as checkinToday,
+            (select count(*) from biz_checkin where <include refid="realMemberId"/>) as checkinTotal,
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_checkin
-              where checkin_date = #{dayText}) as checkinRewardTodayCny,
+              where <include refid="realMemberId"/> and checkin_date = #{dayText}) as checkinRewardTodayCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_checkin
-              where checkin_date = #{dayText}) as checkinRewardTodayUsdt,
-            (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_checkin) as checkinRewardTotalCny,
-            (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_checkin) as checkinRewardTotalUsdt,
+              where <include refid="realMemberId"/> and checkin_date = #{dayText}) as checkinRewardTodayUsdt,
+            (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_checkin where <include refid="realMemberId"/>) as checkinRewardTotalCny,
+            (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_checkin where <include refid="realMemberId"/>) as checkinRewardTotalUsdt,
 
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_recharge r
               where <include refid="rechargePassedDay"/>) as rechargeTodayCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_recharge r
               where <include refid="rechargePassedDay"/>) as rechargeTodayUsdt,
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_recharge
-              where status = '1') as rechargeTotalCny,
+              where status = '1' and <include refid="realMemberId"/>) as rechargeTotalCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_recharge
-              where status = '1') as rechargeTotalUsdt,
+              where status = '1' and <include refid="realMemberId"/>) as rechargeTotalUsdt,
             (select count(*) from biz_recharge r where <include refid="rechargePassedDay"/>) as rechargeTodayCount,
-            (select count(*) from biz_recharge where status = '1') as rechargeTotalCount,
+            (select count(*) from biz_recharge where status = '1' and <include refid="realMemberId"/>) as rechargeTotalCount,
             (select count(distinct member_id) from biz_recharge r where <include refid="rechargePassedDay"/>) as rechargeTodayUsers,
-            (select count(distinct member_id) from biz_recharge where status = '1') as rechargeTotalUsers,
+            (select count(distinct member_id) from biz_recharge where status = '1' and <include refid="realMemberId"/>) as rechargeTotalUsers,
 
             (select count(distinct member_id) from biz_order
-              where create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as subscribeTodayUsers,
-            (select count(distinct member_id) from biz_order) as subscribeTotalUsers,
+              where <include refid="realMemberId"/> and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as subscribeTodayUsers,
+            (select count(distinct member_id) from biz_order where <include refid="realMemberId"/>) as subscribeTotalUsers,
             (select count(*) from (
-                select member_id from biz_order group by member_id
+                select member_id from biz_order where <include refid="realMemberId"/> group by member_id
                 having min(create_time) &gt;= #{dayStart} and min(create_time) &lt; #{dayEnd}
             ) first_buy) as subscribeNewToday,
-            (select count(distinct member_id) from biz_order) as subscribeNewTotal,
+            (select count(distinct member_id) from biz_order where <include refid="realMemberId"/>) as subscribeNewTotal,
 
             (select count(*) from biz_order
-              where create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as pullTodayCount,
-            (select count(*) from biz_order) as pullTotalCount,
+              where <include refid="realMemberId"/> and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as pullTodayCount,
+            (select count(*) from biz_order where <include refid="realMemberId"/>) as pullTotalCount,
             (select ifnull(sum(case when currency = 'CNY' then price else 0 end), 0) from biz_order
-              where create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as pullTodayCny,
+              where <include refid="realMemberId"/> and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as pullTodayCny,
             (select ifnull(sum(case when currency = 'USDT' then price else 0 end), 0) from biz_order
-              where create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as pullTodayUsdt,
-            (select ifnull(sum(case when currency = 'CNY' then price else 0 end), 0) from biz_order) as pullTotalCny,
-            (select ifnull(sum(case when currency = 'USDT' then price else 0 end), 0) from biz_order) as pullTotalUsdt,
+              where <include refid="realMemberId"/> and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as pullTodayUsdt,
+            (select ifnull(sum(case when currency = 'CNY' then price else 0 end), 0) from biz_order where <include refid="realMemberId"/>) as pullTotalCny,
+            (select ifnull(sum(case when currency = 'USDT' then price else 0 end), 0) from biz_order where <include refid="realMemberId"/>) as pullTotalUsdt,
 
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_withdraw w
               where <include refid="withdrawPassedDay"/> and ifnull(w.remark, '') like '???????%') as wdProductTodayCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_withdraw w
               where <include refid="withdrawPassedDay"/> and ifnull(w.remark, '') like '???????%') as wdProductTodayUsdt,
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_withdraw
-              where status = '1' and ifnull(remark, '') like '???????%') as wdProductTotalCny,
+              where status = '1' and <include refid="realMemberId"/> and ifnull(remark, '') like '???????%') as wdProductTotalCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_withdraw
-              where status = '1' and ifnull(remark, '') like '???????%') as wdProductTotalUsdt,
+              where status = '1' and <include refid="realMemberId"/> and ifnull(remark, '') like '???????%') as wdProductTotalUsdt,
             (select count(*) from biz_withdraw w
               where <include refid="withdrawPassedDay"/> and ifnull(w.remark, '') like '???????%') as wdProductTodayCount,
             (select count(*) from biz_withdraw
-              where status = '1' and ifnull(remark, '') like '???????%') as wdProductTotalCount,
+              where status = '1' and <include refid="realMemberId"/> and ifnull(remark, '') like '???????%') as wdProductTotalCount,
 
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_withdraw w
               where <include refid="withdrawPassedDay"/>
@@ -84,119 +92,122 @@
               where <include refid="withdrawPassedDay"/>
                 and (ifnull(w.remark, '') like '?????%' or ifnull(w.remark, '') like '???????%')) as wdPromoTodayUsdt,
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_withdraw
-              where status = '1' and (ifnull(remark, '') like '?????%' or ifnull(remark, '') like '???????%')) as wdPromoTotalCny,
+              where status = '1' and <include refid="realMemberId"/> and (ifnull(remark, '') like '?????%' or ifnull(remark, '') like '???????%')) as wdPromoTotalCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_withdraw
-              where status = '1' and (ifnull(remark, '') like '?????%' or ifnull(remark, '') like '???????%')) as wdPromoTotalUsdt,
+              where status = '1' and <include refid="realMemberId"/> and (ifnull(remark, '') like '?????%' or ifnull(remark, '') like '???????%')) as wdPromoTotalUsdt,
             (select count(*) from biz_withdraw w
               where <include refid="withdrawPassedDay"/>
                 and (ifnull(w.remark, '') like '?????%' or ifnull(w.remark, '') like '???????%')) as wdPromoTodayCount,
             (select count(*) from biz_withdraw
-              where status = '1' and (ifnull(remark, '') like '?????%' or ifnull(remark, '') like '???????%')) as wdPromoTotalCount,
+              where status = '1' and <include refid="realMemberId"/> and (ifnull(remark, '') like '?????%' or ifnull(remark, '') like '???????%')) as wdPromoTotalCount,
 
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_withdraw w
               where <include refid="withdrawPassedDay"/> and ifnull(w.remark, '') like '?????%') as wdAssistTodayCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_withdraw w
               where <include refid="withdrawPassedDay"/> and ifnull(w.remark, '') like '?????%') as wdAssistTodayUsdt,
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_withdraw
-              where status = '1' and ifnull(remark, '') like '?????%') as wdAssistTotalCny,
+              where status = '1' and <include refid="realMemberId"/> and ifnull(remark, '') like '?????%') as wdAssistTotalCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_withdraw
-              where status = '1' and ifnull(remark, '') like '?????%') as wdAssistTotalUsdt,
+              where status = '1' and <include refid="realMemberId"/> and ifnull(remark, '') like '?????%') as wdAssistTotalUsdt,
             (select count(*) from biz_withdraw w
               where <include refid="withdrawPassedDay"/> and ifnull(w.remark, '') like '?????%') as wdAssistTodayCount,
             (select count(*) from biz_withdraw
-              where status = '1' and ifnull(remark, '') like '?????%') as wdAssistTotalCount,
+              where status = '1' and <include refid="realMemberId"/> and ifnull(remark, '') like '?????%') as wdAssistTotalCount,
 
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_withdraw w
               where <include refid="withdrawPassedDay"/>) as wdTotalTodayCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_withdraw w
               where <include refid="withdrawPassedDay"/>) as wdTotalTodayUsdt,
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_withdraw
-              where status = '1') as wdTotalTotalCny,
+              where status = '1' and <include refid="realMemberId"/>) as wdTotalTotalCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_withdraw
-              where status = '1') as wdTotalTotalUsdt,
+              where status = '1' and <include refid="realMemberId"/>) as wdTotalTotalUsdt,
             (select count(*) from biz_withdraw w where <include refid="withdrawPassedDay"/>) as wdTotalTodayCount,
-            (select count(*) from biz_withdraw where status = '1') as wdTotalTotalCount,
+            (select count(*) from biz_withdraw where status = '1' and <include refid="realMemberId"/>) as wdTotalTotalCount,
 
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_withdraw
-              where create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as wdApplyTodayCny,
+              where <include refid="realMemberId"/> and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as wdApplyTodayCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_withdraw
-              where create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as wdApplyTodayUsdt,
+              where <include refid="realMemberId"/> and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as wdApplyTodayUsdt,
             (select count(*) from biz_withdraw
-              where create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as wdApplyTodayCount,
+              where <include refid="realMemberId"/> and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as wdApplyTodayCount,
 
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_wallet_log
-              where biz_type = 'REBATE' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as rebateTodayCny,
+              where <include refid="realMemberId"/> and biz_type = 'REBATE' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as rebateTodayCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_wallet_log
-              where biz_type = 'REBATE' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as rebateTodayUsdt,
+              where <include refid="realMemberId"/> and biz_type = 'REBATE' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as rebateTodayUsdt,
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_wallet_log
-              where biz_type = 'REBATE') as rebateTotalCny,
+              where <include refid="realMemberId"/> and biz_type = 'REBATE') as rebateTotalCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_wallet_log
-              where biz_type = 'REBATE') as rebateTotalUsdt,
+              where <include refid="realMemberId"/> and biz_type = 'REBATE') as rebateTotalUsdt,
             (select count(*) from biz_wallet_log
-              where biz_type = 'REBATE' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as rebateTodayCount,
-            (select count(*) from biz_wallet_log where biz_type = 'REBATE') as rebateTotalCount,
+              where <include refid="realMemberId"/> and biz_type = 'REBATE' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as rebateTodayCount,
+            (select count(*) from biz_wallet_log where <include refid="realMemberId"/> and biz_type = 'REBATE') as rebateTotalCount,
 
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_wallet_log
-              where biz_type = 'COMMISSION' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as commissionTodayCny,
+              where <include refid="realMemberId"/> and biz_type = 'COMMISSION' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as commissionTodayCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_wallet_log
-              where biz_type = 'COMMISSION' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as commissionTodayUsdt,
+              where <include refid="realMemberId"/> and biz_type = 'COMMISSION' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as commissionTodayUsdt,
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_wallet_log
-              where biz_type = 'COMMISSION') as commissionTotalCny,
+              where <include refid="realMemberId"/> and biz_type = 'COMMISSION') as commissionTotalCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_wallet_log
-              where biz_type = 'COMMISSION') as commissionTotalUsdt,
+              where <include refid="realMemberId"/> and biz_type = 'COMMISSION') as commissionTotalUsdt,
             (select count(*) from biz_wallet_log
-              where biz_type = 'COMMISSION' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as commissionTodayCount,
-            (select count(*) from biz_wallet_log where biz_type = 'COMMISSION') as commissionTotalCount,
+              where <include refid="realMemberId"/> and biz_type = 'COMMISSION' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as commissionTodayCount,
+            (select count(*) from biz_wallet_log where <include refid="realMemberId"/> and biz_type = 'COMMISSION') as commissionTotalCount,
 
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_wallet_log
-              where biz_type = 'INVITE' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as inviteTodayCny,
+              where <include refid="realMemberId"/> and biz_type = 'INVITE' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as inviteTodayCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_wallet_log
-              where biz_type = 'INVITE' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as inviteTodayUsdt,
+              where <include refid="realMemberId"/> and biz_type = 'INVITE' and create_time &gt;= #{dayStart} and create_time &lt; #{dayEnd}) as inviteTodayUsdt,
             (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_wallet_log
-              where biz_type = 'INVITE') as inviteTotalCny,
+              where <include refid="realMemberId"/> and biz_type = 'INVITE') as inviteTotalCny,
             (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_wallet_log
-              where biz_type = 'INVITE') as inviteTotalUsdt,
+              where <include refid="realMemberId"/> and biz_type = 'INVITE') as inviteTotalUsdt,
 
-            (select count(*) from biz_order where status = '0') as holdingOrders,
-            (select count(distinct member_id) from biz_order where status = '0') as holdingUsers,
-            (select ifnull(sum(available), 0) from biz_wallet where currency = 'CNY') as walletCnyAvailable,
-            (select ifnull(sum(available), 0) from biz_wallet where currency = 'USDT') as walletUsdtAvailable,
-            (select ifnull(sum(frozen), 0) from biz_wallet where currency = 'CNY') as walletCnyFrozen,
-            (select ifnull(sum(frozen), 0) from biz_wallet where currency = 'USDT') as walletUsdtFrozen,
-            (select count(*) from biz_recharge where status = '0') as pendingRecharge,
-            (select count(*) from biz_withdraw where status = '0') as pendingWithdraw,
-            (select count(*) from biz_level_reward_grant where status = '0') as pendingLevelReward,
-            (select count(*) from biz_member where kyc_status = '0') as pendingKyc,
-            (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_withdraw where status = '0') as pendingWithdrawCny,
-            (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_withdraw where status = '0') as pendingWithdrawUsdt
+            (select count(*) from biz_order where status = '0' and <include refid="realMemberId"/>) as holdingOrders,
+            (select count(distinct member_id) from biz_order where status = '0' and <include refid="realMemberId"/>) as holdingUsers,
+            (select ifnull(sum(available), 0) from biz_wallet where currency = 'CNY' and <include refid="realMemberId"/>) as walletCnyAvailable,
+            (select ifnull(sum(available), 0) from biz_wallet where currency = 'USDT' and <include refid="realMemberId"/>) as walletUsdtAvailable,
+            (select ifnull(sum(frozen), 0) from biz_wallet where currency = 'CNY' and <include refid="realMemberId"/>) as walletCnyFrozen,
+            (select ifnull(sum(frozen), 0) from biz_wallet where currency = 'USDT' and <include refid="realMemberId"/>) as walletUsdtFrozen,
+            (select count(*) from biz_recharge where status = '0' and <include refid="realMemberId"/>) as pendingRecharge,
+            (select count(*) from biz_withdraw where status = '0' and <include refid="realMemberId"/>) as pendingWithdraw,
+            (select count(*) from biz_level_reward_grant g inner join biz_member m on m.member_id = g.member_id where g.status = '0' and ifnull(m.test_flag, '0') = '0') as pendingLevelReward,
+            (select count(*) from biz_member where ifnull(test_flag, '0') = '0' and kyc_status = '0') as pendingKyc,
+            (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_withdraw where status = '0' and <include refid="realMemberId"/>) as pendingWithdrawCny,
+            (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_withdraw where status = '0' and <include refid="realMemberId"/>) as pendingWithdrawUsdt
         from (select 1) dummy
     </select>
 
     <select id="selectTrendRegister" resultType="BizDashboardTrendPoint">
         select date_format(create_time, '%Y-%m-%d') as dayKey, count(*) as cnt
         from biz_member
-        where create_time &gt;= #{begin} and create_time &lt; #{end}
+        where ifnull(test_flag, '0') = '0'
+          and create_time &gt;= #{begin} and create_time &lt; #{end}
         group by date_format(create_time, '%Y-%m-%d')
     </select>
 
     <select id="selectTrendOrder" resultType="BizDashboardTrendPoint">
         select date_format(create_time, '%Y-%m-%d') as dayKey, count(*) as cnt
         from biz_order
-        where create_time &gt;= #{begin} and create_time &lt; #{end}
+        where <include refid="realMemberId"/>
+          and create_time &gt;= #{begin} and create_time &lt; #{end}
         group by date_format(create_time, '%Y-%m-%d')
     </select>
 
     <select id="selectTrendOrderUsers" resultType="BizDashboardTrendPoint">
         select date_format(create_time, '%Y-%m-%d') as dayKey, count(distinct member_id) as cnt
         from biz_order
-        where create_time &gt;= #{begin} and create_time &lt; #{end}
+        where <include refid="realMemberId"/>
+          and create_time &gt;= #{begin} and create_time &lt; #{end}
         group by date_format(create_time, '%Y-%m-%d')
     </select>
 
     <select id="selectTrendRechargeCny" resultType="BizDashboardTrendPoint">
         select date_format(coalesce(audit_time, create_time), '%Y-%m-%d') as dayKey, ifnull(sum(amount), 0) as amount
         from biz_recharge
-        where status = '1' and currency = 'CNY'
+        where status = '1' and currency = 'CNY' and <include refid="realMemberId"/>
           and coalesce(audit_time, create_time) &gt;= #{begin}
           and coalesce(audit_time, create_time) &lt; #{end}
         group by date_format(coalesce(audit_time, create_time), '%Y-%m-%d')
@@ -205,7 +216,7 @@
     <select id="selectTrendWithdrawCny" resultType="BizDashboardTrendPoint">
         select date_format(coalesce(audit_time, create_time), '%Y-%m-%d') as dayKey, ifnull(sum(amount), 0) as amount
         from biz_withdraw
-        where status = '1' and currency = 'CNY'
+        where status = '1' and currency = 'CNY' and <include refid="realMemberId"/>
           and coalesce(audit_time, create_time) &gt;= #{begin}
           and coalesce(audit_time, create_time) &lt; #{end}
         group by date_format(coalesce(audit_time, create_time), '%Y-%m-%d')
@@ -215,6 +226,7 @@
         select l.biz_type as bizType, m.phone, l.member_id as memberId, l.currency, l.amount, l.remark, l.create_time as createTime
         from biz_wallet_log l
         left join biz_member m on m.member_id = l.member_id
+        where ifnull(m.test_flag, '0') = '0'
         order by l.log_id desc
         limit #{limit}
     </select>

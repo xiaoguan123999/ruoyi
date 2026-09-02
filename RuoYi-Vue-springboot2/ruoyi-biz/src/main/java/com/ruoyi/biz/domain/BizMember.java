@@ -67,6 +67,9 @@ public class BizMember extends BaseEntity
     @ApiModelProperty("账号状态：0正常 1停用")
     private String status;
 
+    @ApiModelProperty("测试账号：0否 1是。测试用户可正常使用，数据不计入任何统计")
+    private String testFlag;
+
     /** 谷歌验证密钥 */
     @JsonIgnore
     private String gaSecret;
@@ -256,6 +259,27 @@ public class BizMember extends BaseEntity
     public void setStatus(String status)
     {
         this.status = status;
+    }
+
+    public String getTestFlag()
+    {
+        return testFlag;
+    }
+
+    public void setTestFlag(String testFlag)
+    {
+        this.testFlag = testFlag;
+    }
+
+    @ApiModelProperty("是否测试账号")
+    public Boolean getTestFlagFlag()
+    {
+        return Boolean.valueOf(testAccount());
+    }
+
+    public boolean testAccount()
+    {
+        return "1".equals(testFlag);
     }
 
     public String getGaSecret()

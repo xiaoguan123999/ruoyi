@@ -1601,6 +1601,10 @@ set @exist := (select count(*) from information_schema.columns where table_schem
 set @sql := if(@exist = 0, 'alter table biz_product add column unlock_delay_hours int(11) not null default 0 comment ''认购完成后等待小时数再开始返利'' after unlock_direct_qty', 'select 1');
 prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
+set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'unlock_rule_text');
+set @sql := if(@exist = 0, 'alter table biz_product add column unlock_rule_text varchar(500) default '''' comment ''激活条件文案，App原样展示'' after unlock_delay_hours', 'select 1');
+prepare stmt from @sql; execute stmt; deallocate prepare stmt;
+
 set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'payout_method');
 set @sql := if(@exist = 0, 'alter table biz_product add column payout_method varchar(100) default '''' comment ''收益发放方式'' after unlock_delay_hours', 'select 1');
 prepare stmt from @sql; execute stmt; deallocate prepare stmt;
@@ -1814,6 +1818,23 @@ set @exist := (
 );
 set @sql := if(@exist = 0,
   'alter table biz_product add column on_sale char(1) not null default ''1'' comment ''1开售 0未开售'' after risk_level',
+  'select 1');
+prepare stmt from @sql;
+execute stmt;
+deallocate prepare stmt;
+
+-- ---------- biz_product_unlock_rule_text_patch.sql ----------
+SET NAMES utf8mb4;
+-- 产品激活条件文案。后台填写，App 原样展示。可重复执行。
+
+set @exist := (
+  select count(*) from information_schema.columns
+  where table_schema = database()
+    and table_name = 'biz_product'
+    and column_name = 'unlock_rule_text'
+);
+set @sql := if(@exist = 0,
+  'alter table biz_product add column unlock_rule_text varchar(500) default '''' comment ''激活条件文案，App原样展示'' after unlock_delay_hours',
   'select 1');
 prepare stmt from @sql;
 execute stmt;
@@ -3606,6 +3627,25 @@ join (
 ) m
 where rm.menu_id = 2016
   and not exists (select 1 from sys_role_menu x where x.role_id = rm.role_id and x.menu_id = m.menu_id);
+
+-- ---------- biz_member_test_flag_patch.sql ----------
+SET NAMES utf8mb4;
+-- 会员测试标记。打标后其数据不计入任何统计。可重复执行。
+
+set @exist := (
+  select count(*) from information_schema.columns
+  where table_schema = database()
+    and table_name = 'biz_member'
+    and column_name = 'test_flag'
+);
+set @sql := if(@exist = 0,
+  'alter table biz_member add column test_flag char(1) not null default ''0'' comment ''测试账号 0否 1是'' after status',
+  'select 1');
+prepare stmt from @sql;
+execute stmt;
+deallocate prepare stmt;
+
+update biz_member set test_flag = '0' where test_flag is null;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

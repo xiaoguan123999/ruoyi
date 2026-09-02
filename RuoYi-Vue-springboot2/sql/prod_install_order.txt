@@ -19,6 +19,7 @@ biz_product_buy_limit_patch.sql
 biz_product_display_patch.sql
 biz_product_unlock_patch.sql
 biz_product_on_sale_patch.sql
+biz_product_unlock_rule_text_patch.sql
 biz_order_quantity_patch.sql
 biz_order_unlock_lot_patch.sql
 biz_subscribe_max_quantity_patch.sql
@@ -65,3 +66,4 @@ biz_trade_menu_patch.sql
 biz_menu_name_utf8_fix.sql
 biz_member_center_menu_patch.sql
 biz_app_version_patch.sql
+biz_member_test_flag_patch.sql
