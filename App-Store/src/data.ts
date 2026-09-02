@@ -45,7 +45,7 @@ export const apps: AppItem[] = [
     version: '1.0.0',
     downloads: 0,
     links: {
-      android: 'https://download.rgoslz.com/production/xfzl-1.0.0.apk',
+      android: 'https://download.rgoslz.com/production/xfzl-1.2.6.apk',
       web: 'https://xfzl.rgoslz.com/',
     },
   },
