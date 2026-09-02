@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import config from '../app.config';
 
 const BUCKET_NAME = 'xfzl-app';
-const PUBLIC_BASE = 'https://pub-33104bf8be274132a2d86c3749ec3d4b.r2.dev';
+const PUBLIC_BASE = 'https://download.rgoslz.com';
 
 function run() {
   const appEnv = process.env.APP_ENV === 'production' ? 'production' : 'preview';
