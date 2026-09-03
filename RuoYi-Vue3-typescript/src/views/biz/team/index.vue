@@ -46,7 +46,7 @@
           <template #default="scope">{{ scope.row.teamLevel }}级</template>
         </el-table-column>
         <el-table-column label="注册人数" align="center" prop="register" />
-        <el-table-column label="实名人数" align="center" prop="active" />
+        <el-table-column label="认购人数" align="center" prop="active" />
         <el-table-column label="认购CNY" align="center" prop="subscribeCny" />
         <el-table-column label="认购USDT" align="center" prop="subscribeUsdt" />
         <el-table-column label="充值CNY" align="center" prop="rechargeCny" />
