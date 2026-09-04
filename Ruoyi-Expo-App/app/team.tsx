@@ -1,11 +1,13 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   type StyleProp,
   type TextStyle,
 } from 'react-native';
@@ -26,6 +28,9 @@ import {
 } from '@/constants/team-ui';
 import { colors } from '@/theme/colors';
 import { modalError } from '@/utils/toast';
+
+const MEMBER_PAGE_SIZE = 20;
+const LOAD_MORE_DISTANCE = 160;
 
 function toLevelRow(api: AppTeamLevelStats): TeamUiLevelRow {
   return {
@@ -155,8 +160,10 @@ function MemberRow({
 
 export default function TeamScreen() {
   const [level, setLevel] = useState<TeamLevelNo>(1);
+  const [visibleCount, setVisibleCount] = useState(MEMBER_PAGE_SIZE);
   const [refreshing, setRefreshing] = useState(false);
   const [team, setTeam] = useState(emptyTeamView());
+  const loadingMoreRef = useRef(false);
 
   const loadTeam = useCallback(async (silent = false) => {
     if (!silent) {
@@ -165,6 +172,7 @@ export default function TeamScreen() {
     try {
       const data = await fetchAppTeam();
       setTeam(data);
+      setVisibleCount(MEMBER_PAGE_SIZE);
     } catch (error) {
       if (!(error instanceof ApiError) || error.code !== 401) {
         modalError(error instanceof ApiError ? error.message : '获取团队数据失败');
@@ -188,6 +196,40 @@ export default function TeamScreen() {
   const totals = useMemo(() => sumStats(levelRows), [levelRows]);
 
   const members = useMemo(() => team.members[level] ?? [], [level, team.members]);
+  const visibleMembers = members.slice(0, visibleCount);
+  const hasMore = visibleCount < members.length;
+
+  const selectLevel = (next: TeamLevelNo) => {
+    setLevel(next);
+    setVisibleCount(MEMBER_PAGE_SIZE);
+  };
+
+  const loadMore = useCallback(() => {
+    setVisibleCount((current) => {
+      if (current >= members.length) {
+        return current;
+      }
+      return Math.min(current + MEMBER_PAGE_SIZE, members.length);
+    });
+  }, [members.length]);
+
+  const onScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (!hasMore || loadingMoreRef.current) {
+        return;
+      }
+      const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+      const distance = contentSize.height - contentOffset.y - layoutMeasurement.height;
+      if (distance < LOAD_MORE_DISTANCE) {
+        loadingMoreRef.current = true;
+        loadMore();
+        setTimeout(() => {
+          loadingMoreRef.current = false;
+        }, 280);
+      }
+    },
+    [hasMore, loadMore],
+  );
 
   return (
     <AppBackground source={images.pageBg} dim={false}>
@@ -196,6 +238,8 @@ export default function TeamScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         onRefresh={() => loadTeam()}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
         <View style={styles.topCard}>
           <SummaryMetric label="注册人数" value={formatTeamAmount(totals.register)} />
@@ -235,7 +279,7 @@ export default function TeamScreen() {
             {TEAM_LEVELS.map((n) => {
               const active = level === n;
               return (
-                <Pressable key={n} onPress={() => setLevel(n)} style={styles.tab}>
+                <Pressable key={n} onPress={() => selectLevel(n)} style={styles.tab}>
                   <Text style={[styles.tabText, active && styles.tabTextActive]}>
                     {TEAM_TAB_LABELS[n - 1]}
                   </Text>
@@ -255,13 +299,24 @@ export default function TeamScreen() {
           {members.length === 0 ? (
             <Text style={styles.emptyText}>暂无团队成员</Text>
           ) : (
-            members.map((member, index) => {
-              const key =
-                'memberId' in member && member.memberId != null
-                  ? String(member.memberId)
-                  : `${member.phone}-${index}`;
-              return <MemberRow key={key} member={member} />;
-            })
+            <>
+              {visibleMembers.map((member, index) => {
+                const key =
+                  'memberId' in member && member.memberId != null
+                    ? String(member.memberId)
+                    : `${member.phone}-${index}`;
+                return <MemberRow key={key} member={member} />;
+              })}
+              {hasMore ? (
+                <Pressable onPress={loadMore} style={styles.moreBtn}>
+                  <Text style={styles.moreText}>
+                    加载更多（{visibleMembers.length}/{members.length}）
+                  </Text>
+                </Pressable>
+              ) : members.length > MEMBER_PAGE_SIZE ? (
+                <Text style={styles.moreDone}>已全部加载 {members.length} 人</Text>
+              ) : null}
+            </>
           )}
         </View>
 
@@ -463,6 +518,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     paddingVertical: 24,
+  },
+  moreBtn: {
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  moreText: {
+    color: colors.accent,
+    fontSize: 13,
+  },
+  moreDone: {
+    color: 'rgba(180, 200, 230, 0.7)',
+    fontSize: 12,
+    textAlign: 'center',
+    paddingVertical: 12,
   },
   refreshHint: {
     alignItems: 'center',
