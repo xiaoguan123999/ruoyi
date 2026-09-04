@@ -45,13 +45,13 @@
         <el-button type="primary" plain icon="Setting" @click="openRuleDialog" v-hasPermi="['biz:withdraw:audit']">提现规则</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="success" plain icon="Finished" :loading="batchLoading" @click="handleBatch('3')" v-hasPermi="['biz:withdraw:audit']">批量改为待打款{{ selectionSuffix }}</el-button>
+        <el-button type="success" plain icon="Finished" :loading="batchLoading" @click="handleBatch('3')" v-hasPermi="['biz:withdraw:audit']">批量审核通过{{ selectionSuffix }}</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="primary" plain icon="CircleCheck" :loading="batchLoading" @click="handleBatch('1')" v-hasPermi="['biz:withdraw:audit']">批量提现成功{{ selectionSuffix }}</el-button>
+        <el-button type="primary" plain icon="CircleCheck" :loading="batchLoading" @click="handleBatch('1')" v-hasPermi="['biz:withdraw:audit']">批量确认打款{{ selectionSuffix }}</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="danger" plain icon="CircleClose" :loading="batchLoading" @click="handleBatch('2')" v-hasPermi="['biz:withdraw:audit']">批量提现失败{{ selectionSuffix }}</el-button>
+        <el-button type="danger" plain icon="CircleClose" :loading="batchLoading" @click="handleBatch('2')" v-hasPermi="['biz:withdraw:audit']">批量审核驳回{{ selectionSuffix }}</el-button>
       </el-col>
       <el-col :span="1.5">
         <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['biz:withdraw:list']">导出Excel{{ selectionSuffix }}</el-button>
@@ -218,11 +218,11 @@
       </template>
     </el-dialog>
 
-    <el-dialog title="批量提现失败" v-model="batchFailOpen" width="480px" append-to-body>
+    <el-dialog title="批量审核驳回" v-model="batchFailOpen" width="480px" append-to-body>
       <el-form label-width="100px">
-        <div class="tip tip-block" style="margin-bottom: 12px">将把{{ batchScopeText() }}标记为提现失败并解冻退回。</div>
-        <el-form-item label="失败原因" required>
-          <el-input v-model="batchFailRemark" type="textarea" :rows="3" placeholder="请填写提现失败原因，将写入审核备注" />
+        <div class="tip tip-block" style="margin-bottom: 12px">将把{{ batchScopeText() }}审核驳回并解冻退回。</div>
+        <el-form-item label="驳回原因" required>
+          <el-input v-model="batchFailRemark" type="textarea" :rows="3" placeholder="请填写驳回原因，将写入审核备注" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -256,7 +256,7 @@ const dateRange = ref<string[]>([])
 const tableRef = ref<any>()
 const selectedRows = ref<any[]>([])
 const batchLoading = ref(false)
-const selectionSuffix = computed(() => selectedRows.value.length ? `（已选${selectedRows.value.length}）` : "（搜索结果）")
+const selectionSuffix = computed(() => selectedRows.value.length ? `（已选${selectedRows.value.length}）` : "（按筛选）")
 const batchFailOpen = ref(false)
 const batchFailRemark = ref("")
 const queryParams = ref({ pageNum: 1, pageSize: 100, withdrawId: undefined, memberId: undefined, phone: undefined, currency: undefined, status: undefined })
@@ -396,7 +396,7 @@ function batchScopeText() {
     return `勾选的 ${selectedRows.value.length} 笔`
   }
   const n = total.value
-  return n > 0 ? `当前搜索结果共 ${n} 笔` : "当前搜索结果"
+  return n > 0 ? `当前筛选共 ${n} 笔` : "当前筛选结果"
 }
 function handleBatch(status: string) {
   if (status === "2") {
@@ -404,17 +404,17 @@ function handleBatch(status: string) {
     batchFailOpen.value = true
     return
   }
-  const name = status === "3" ? "待打款" : "提现成功"
+  const name = status === "3" ? "审核通过（待打款）" : "确认打款（提现成功）"
   const extra = status === "3"
     ? "余额继续冻结，不会扣款。"
-    : "将立即扣冻结。仅「待打款」状态会成功，审核中的单请先改为待打款。"
-  proxy.$modal.confirm(`确认将${batchScopeText()}改为「${name}」？${extra}`).then(() => {
+    : "将立即扣冻结。仅「待打款」状态会成功，审核中的单请先批量审核通过。"
+  proxy.$modal.confirm(`确认对${batchScopeText()}执行「${name}」？${extra}`).then(() => {
     return runBatch(status, "")
   }).catch(() => {})
 }
 function submitBatchFail() {
   if (!batchFailRemark.value.trim()) {
-    proxy.$modal.msgWarning("请填写提现失败原因")
+    proxy.$modal.msgWarning("请填写驳回原因")
     return
   }
   runBatch("2", batchFailRemark.value.trim()).then(() => {
