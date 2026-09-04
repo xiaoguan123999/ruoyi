@@ -375,6 +375,8 @@ function mapWithdrawConfig(raw: unknown): AppWithdrawConfig | null {
     feeRate: pickNumber(raw, ['feeRate']),
     productWalletType: pickString(raw, ['productWalletType']) || undefined,
     promoWalletType: pickString(raw, ['promoWalletType']) || undefined,
+    withdrawForbidden:
+      raw.withdrawForbidden === true || raw.withdrawForbidden === 'true' || raw.withdrawForbidden === 1,
   };
 }
 
@@ -419,6 +421,9 @@ function mapFundStatusLabel(kind: 'recharge' | 'withdraw', status: string): stri
   }
   if (['2', 'reject', 'rejected', 'fail', 'failed', '拒绝', '已拒绝', '失败'].includes(lower)) {
     return `${prefix}失败`;
+  }
+  if (['3', 'pay_pending', '待打款'].includes(lower) || raw === '待打款') {
+    return '待打款';
   }
   if (
     ['0', 'pending', 'processing', 'audit', 'waiting', '申请中', '审核中', '处理中', '待审', '待审核'].includes(
@@ -469,7 +474,10 @@ function mapFundRecord(
   const currency = normalizeCurrency(raw.currency);
   const status = pickString(raw, ['status', 'auditStatus', 'statusCode'], '');
   const titleFromApi = pickString(raw, ['statusLabel', 'title', 'statusName']);
-  const title = normalizeFundStatusTitle(titleFromApi || mapFundStatusLabel(kind, status));
+  const title =
+    kind === 'withdraw'
+      ? mapWithdrawStatusLabel(status, titleFromApi || undefined)
+      : normalizeFundStatusTitle(titleFromApi || mapFundStatusLabel(kind, status));
 
   return {
     id: String(id || `${kind}-${pickString(raw, ['createTime'])}-${amount}`),
@@ -517,23 +525,32 @@ export async function fetchAppRechargeRecords(): Promise<AppFundRecord[]> {
   return fetchAppFundRecords({ bizType: 'RECHARGE', pageNum: 1, pageSize: 50 });
 }
 
-/** 提现申请单状态：0 待打款 / 1 已打款 / 2 已拒绝 */
+/** 提现申请单状态：0 审核中 / 3 待打款 / 1 提现成功 / 2 提现失败 */
 function mapWithdrawStatusLabel(status: string, statusLabel?: string): string {
-  const fromApi = statusLabel?.trim();
-  if (fromApi) {
-    return fromApi;
-  }
   const code = status.trim();
   if (code === '0') {
+    return '审核中';
+  }
+  if (code === '3') {
     return '待打款';
   }
   if (code === '1') {
-    return '已打款';
+    return '提现成功';
   }
   if (code === '2') {
-    return '已拒绝';
+    return '提现失败';
   }
-  return '待打款';
+  const fromApi = statusLabel?.trim();
+  if (fromApi === '已打款') {
+    return '提现成功';
+  }
+  if (fromApi === '已拒绝') {
+    return '提现失败';
+  }
+  if (fromApi) {
+    return fromApi;
+  }
+  return '审核中';
 }
 
 function mapWithdrawRecord(raw: unknown): AppFundRecord | null {
@@ -547,6 +564,7 @@ function mapWithdrawRecord(raw: unknown): AppFundRecord | null {
   const status = pickString(raw, ['status'], '');
   const statusLabel = pickString(raw, ['statusLabel']);
   const title = mapWithdrawStatusLabel(status, statusLabel || undefined);
+  const auditRemark = pickString(raw, ['auditRemark', 'remark']);
 
   return {
     id: String(id || `withdraw-${pickString(raw, ['createTime'])}-${amount}`),
@@ -554,6 +572,7 @@ function mapWithdrawRecord(raw: unknown): AppFundRecord | null {
     amount,
     feeAmount: feeAmount > 0 ? feeAmount : undefined,
     arrivalAmount: arrivalAmount > 0 ? arrivalAmount : undefined,
+    remark: status === '2' && auditRemark ? auditRemark : undefined,
     currency: normalizeCurrency(raw.currency),
     status,
     createTime: formatDateTime(raw.createTime ?? raw.auditTime ?? raw.updateTime),

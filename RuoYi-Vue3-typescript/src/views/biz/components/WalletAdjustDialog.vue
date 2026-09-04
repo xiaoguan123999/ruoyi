@@ -20,6 +20,12 @@
           <el-option label="USDT" value="USDT" />
         </el-select>
       </el-form-item>
+      <el-form-item label="当前余额">
+        <div class="balance-line">
+          <span>可用 <b>{{ balanceText }}</b></span>
+          <span class="frozen">冻结 {{ frozenText }}</span>
+        </div>
+      </el-form-item>
       <el-form-item label="方向" prop="direction">
         <el-radio-group v-model="form.direction">
           <el-radio value="PLUS">增加</el-radio>
@@ -41,7 +47,7 @@
 </template>
 
 <script setup lang="ts" name="WalletAdjustDialog">
-import { adjustWallet, listWalletTypeOptions } from "@/api/biz"
+import { adjustWallet, getWalletBalance, listWalletTypeOptions } from "@/api/biz"
 
 const props = defineProps<{
   modelValue: boolean
@@ -66,6 +72,34 @@ const form = reactive({
   remark: ""
 })
 const typeOptions = ref<any[]>([])
+const available = ref<number | null>(null)
+const frozen = ref<number | null>(null)
+const balanceText = computed(() => formatMoney(available.value) + " " + form.currency)
+const frozenText = computed(() => formatMoney(frozen.value) + " " + form.currency)
+
+function formatMoney(val: number | null) {
+  if (val == null || !Number.isFinite(Number(val))) return "--"
+  return Number(val).toFixed(4)
+}
+
+function loadBalance() {
+  if (!form.memberId || !form.currency) {
+    available.value = null
+    frozen.value = null
+    return
+  }
+  getWalletBalance({
+    memberId: form.memberId as number,
+    typeCode: form.typeCode,
+    currency: form.currency
+  }).then((res: any) => {
+    available.value = Number(res.available ?? res.data?.available ?? 0)
+    frozen.value = Number(res.frozen ?? res.data?.frozen ?? 0)
+  }).catch(() => {
+    available.value = null
+    frozen.value = null
+  })
+}
 const rules = {
   memberId: [{ required: true, message: "请选择会员", trigger: "change" }],
   typeCode: [{ required: true, message: "请选择钱包", trigger: "change" }],
@@ -85,7 +119,17 @@ watch(
     form.direction = "PLUS"
     form.amount = undefined
     form.remark = ""
-    nextTick(() => formRef.value?.clearValidate?.())
+    nextTick(() => {
+      formRef.value?.clearValidate?.()
+      loadBalance()
+    })
+  }
+)
+
+watch(
+  () => [form.memberId, form.typeCode, form.currency],
+  () => {
+    if (props.modelValue) loadBalance()
   }
 )
 
@@ -106,7 +150,7 @@ function submit() {
     const dirLabel = form.direction === "MINUS" ? "减少" : "增加"
     const who = props.phone ? props.phone : ("会员 " + form.memberId)
     const typeName = typeOptions.value.find((item: any) => item.typeCode === form.typeCode)?.typeName || form.typeCode
-    proxy.$modal.confirm("确认对 " + who + " 的" + typeName + " " + dirLabel + " " + amount + " " + form.currency + "？将立即入账并记流水。").then(() => {
+    proxy.$modal.confirm("当前可用 " + formatMoney(available.value) + " " + form.currency + "。确认对 " + who + " 的" + typeName + " " + dirLabel + " " + amount + " " + form.currency + "？将立即入账并记流水。").then(() => {
       submitting.value = true
       return adjustWallet({
         memberId: form.memberId as number,
@@ -126,3 +170,18 @@ function submit() {
   })
 }
 </script>
+
+<style scoped>
+.balance-line {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  line-height: 32px;
+}
+.balance-line b {
+  font-size: 16px;
+}
+.frozen {
+  color: var(--el-text-color-secondary);
+}
+</style>

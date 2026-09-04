@@ -172,11 +172,11 @@
             (select ifnull(sum(frozen), 0) from biz_wallet where currency = 'CNY' and <include refid="realMemberId"/>) as walletCnyFrozen,
             (select ifnull(sum(frozen), 0) from biz_wallet where currency = 'USDT' and <include refid="realMemberId"/>) as walletUsdtFrozen,
             (select count(*) from biz_recharge where status = '0' and <include refid="realMemberId"/>) as pendingRecharge,
-            (select count(*) from biz_withdraw where status = '0' and <include refid="realMemberId"/>) as pendingWithdraw,
+            (select count(*) from biz_withdraw where status in ('0', '3') and <include refid="realMemberId"/>) as pendingWithdraw,
             (select count(*) from biz_level_reward_grant g inner join biz_member m on m.member_id = g.member_id where g.status = '0' and ifnull(m.test_flag, '0') = '0') as pendingLevelReward,
             (select count(*) from biz_member where ifnull(test_flag, '0') = '0' and kyc_status = '0') as pendingKyc,
-            (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_withdraw where status = '0' and <include refid="realMemberId"/>) as pendingWithdrawCny,
-            (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_withdraw where status = '0' and <include refid="realMemberId"/>) as pendingWithdrawUsdt
+            (select ifnull(sum(case when currency = 'CNY' then amount else 0 end), 0) from biz_withdraw where status in ('0', '3') and <include refid="realMemberId"/>) as pendingWithdrawCny,
+            (select ifnull(sum(case when currency = 'USDT' then amount else 0 end), 0) from biz_withdraw where status in ('0', '3') and <include refid="realMemberId"/>) as pendingWithdrawUsdt
         from (select 1) dummy
     </select>
 

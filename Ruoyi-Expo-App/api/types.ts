@@ -41,6 +41,8 @@ export type RuoyiUser = {
   /** 兼容旧单值，等同 cnyAssistValue */
   assistValue?: number;
   status?: string;
+  /** 提现状态 0正常 1禁止 */
+  withdrawStatus?: string;
   /** 是否已设置支付密码 */
   hasPayPassword?: boolean;
 };
@@ -89,6 +91,8 @@ export type AppMember = {
   productIncome?: number;
   assistValue?: number;
   status?: string;
+  /** 提现状态 0正常 1禁止 */
+  withdrawStatus?: string;
   /** 是否已设置支付密码 */
   hasPayPassword?: boolean;
 };
@@ -156,6 +160,8 @@ export type AppWithdrawConfig = {
   feeRate: number;
   productWalletType?: string;
   promoWalletType?: string;
+  /** 当前会员是否禁止提现 */
+  withdrawForbidden?: boolean;
 };
 
 /** 收款账户类型 */
@@ -316,6 +322,8 @@ export type AppFundRecord = {
   feeAmount?: number;
   /** 到账金额（提现记录） */
   arrivalAmount?: number;
+  /** 后台审核备注（提现失败时展示） */
+  remark?: string;
   currency: string;
   status: string;
   createTime: string;

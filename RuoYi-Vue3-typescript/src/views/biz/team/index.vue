@@ -1,7 +1,7 @@
 <template>
   <div class="app-container ops-page">
     <el-alert
-      title="团队查询：按手机号或会员ID查找后，可看 1～7 级下线汇总。结构图看下级树，推荐关系图看从顶点到该会员的路径及同级列表。"
+      title="团队查询：按手机号或会员ID查找后，可看全部下线汇总（不限 7 级）。结构图看下级树，推荐关系图看从顶点到该会员的路径及同级列表。"
       type="info"
       :closable="false"
       show-icon
@@ -67,6 +67,15 @@
       <el-table-column label="注册时间" align="center" prop="createTime" width="160">
         <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
       </el-table-column>
+      <el-table-column label="最后登录时间" align="center" width="160">
+        <template #default="scope"><span>{{ scope.row.lastLoginTime ? parseTime(scope.row.lastLoginTime) : "--" }}</span></template>
+      </el-table-column>
+      <el-table-column label="注册IP" align="center" prop="registerIp" width="130">
+        <template #default="scope">{{ scope.row.registerIp || "--" }}</template>
+      </el-table-column>
+      <el-table-column label="最后登录IP" align="center" prop="lastLoginIp" width="130">
+        <template #default="scope">{{ scope.row.lastLoginIp || "--" }}</template>
+      </el-table-column>
       <el-table-column label="操作" align="center" width="260" fixed="right">
         <template #default="scope">
           <el-button link type="primary" @click="openTeam(scope.row)" v-hasPermi="['biz:team:list']">查看下线</el-button>
@@ -78,8 +87,8 @@
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
     <el-dialog :title="teamTitle" v-model="teamOpen" width="960px" append-to-body>
-      <el-radio-group v-model="teamLevel" @change="loadTeamMembers" class="mb8">
-        <el-radio-button v-for="n in 7" :key="n" :value="n">{{ n }}级</el-radio-button>
+      <el-radio-group v-model="teamLevel" @change="loadTeamMembers" class="mb8 team-level-group">
+        <el-radio-button v-for="n in teamLevelOptions" :key="n" :value="n">{{ n }}级</el-radio-button>
       </el-radio-group>
       <el-table v-loading="teamLoading" :data="teamRows" max-height="420">
         <el-table-column label="会员ID" align="center" prop="memberId" width="90" />
@@ -99,6 +108,15 @@
         <el-table-column label="团队人数" align="center" prop="teamCount" width="90" />
         <el-table-column label="注册时间" align="center" prop="createTime" width="160">
           <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
+        </el-table-column>
+        <el-table-column label="最后登录时间" align="center" width="160">
+          <template #default="scope"><span>{{ scope.row.lastLoginTime ? parseTime(scope.row.lastLoginTime) : "--" }}</span></template>
+        </el-table-column>
+        <el-table-column label="注册IP" align="center" width="130">
+          <template #default="scope">{{ scope.row.registerIp || "--" }}</template>
+        </el-table-column>
+        <el-table-column label="最后登录IP" align="center" width="130">
+          <template #default="scope">{{ scope.row.lastLoginIp || "--" }}</template>
         </el-table-column>
         <el-table-column label="操作" align="center" width="90" fixed="right">
           <template #default="scope">
@@ -129,15 +147,26 @@ const currentMemberId = ref<number>()
 const summaryMember = ref<any>(null)
 const summaryRows = ref<any[]>([])
 
-function levelStats(summary: any, n: number) {
-  return summary?.["level" + n] || { teamLevel: n, register: 0, active: 0, subscribeCny: 0, subscribeUsdt: 0, rechargeCny: 0, rechargeUsdt: 0 }
+const teamLevelOptions = computed(() => {
+  const max = summaryRows.value.reduce((m: number, r: any) => Math.max(m, Number(r.teamLevel) || 0), 0)
+  return Array.from({ length: Math.max(max, 1) }, (_, i) => i + 1)
+})
+
+function emptyLevel(n: number) {
+  return { teamLevel: n, register: 0, active: 0, subscribeCny: 0, subscribeUsdt: 0, rechargeCny: 0, rechargeUsdt: 0 }
 }
 
 function loadSummary(memberId: number) {
   getTeamSummary(memberId).then((res: any) => {
     summaryMember.value = res.member || res.data?.member || null
-    const summary = res.summary || res.data?.summary
-    summaryRows.value = summary ? [1, 2, 3, 4, 5, 6, 7].map(n => levelStats(summary, n)) : []
+    const levels = res.levels || res.data?.levels
+    if (Array.isArray(levels) && levels.length) {
+      const max = levels.reduce((m: number, r: any) => Math.max(m, Number(r.teamLevel) || 0), 0)
+      const byLevel = new Map(levels.map((r: any) => [Number(r.teamLevel), r]))
+      summaryRows.value = Array.from({ length: max }, (_, i) => byLevel.get(i + 1) || emptyLevel(i + 1))
+      return
+    }
+    summaryRows.value = []
   }).catch(() => {
     summaryMember.value = null
     summaryRows.value = []
@@ -204,3 +233,11 @@ function loadTeamMembers() {
 }
 getList()
 </script>
+
+<style scoped>
+.team-level-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 0;
+}
+</style>

@@ -46,9 +46,13 @@
       <el-col :span="1.5">
         <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['biz:recharge:add']">人工充值</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['biz:recharge:list']">导出{{ selectedRows.length ? `（${selectedRows.length}）` : "" }}</el-button>
+      </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
-    <el-table v-loading="loading" :data="dataList">
+    <el-table v-loading="loading" :data="dataList" @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="50" align="center" />
       <el-table-column label="单号" align="center" prop="rechargeId" width="80" />
       <el-table-column label="会员ID" align="center" prop="memberId" width="90" />
       <el-table-column label="手机号" align="center" prop="phone" width="120" />
@@ -128,6 +132,7 @@ const showSearch = ref(true)
 const total = ref(0)
 const open = ref(false)
 const dateRange = ref<string[]>([])
+const selectedRows = ref<any[]>([])
 const data = reactive({
   form: { memberId: undefined, currency: "CNY", amount: undefined, remark: undefined } as any,
   queryParams: { pageNum: 1, pageSize: 100, memberId: undefined, phone: undefined, currency: undefined, status: undefined },
@@ -160,6 +165,18 @@ function getList() {
     total.value = res.total
     loading.value = false
   })
+}
+function handleSelectionChange(rows: any[]) {
+  selectedRows.value = rows || []
+}
+function handleExport() {
+  const ids = selectedRows.value.map((r: any) => r.rechargeId).filter((id: any) => id != null)
+  if (ids.length) {
+    proxy.download("biz/recharge/export", { rechargeIds: ids.join(",") }, `recharge_${new Date().getTime()}.xlsx`)
+    return
+  }
+  const { pageNum, pageSize, ...q } = queryParams.value
+  proxy.download("biz/recharge/export", proxy.addDateRange(q, dateRange.value), `recharge_${new Date().getTime()}.xlsx`)
 }
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { dateRange.value = []; proxy.resetForm("queryRef"); handleQuery() }

@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.biz;
 
 import java.util.List;
+import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,7 @@ import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.utils.poi.ExcelUtil;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
@@ -41,6 +43,21 @@ public class BizMemberController extends BaseController
         startPage();
         List<BizMember> list = memberService.selectMemberList(member);
         return getDataTable(list);
+    }
+
+    @ApiOperation("导出会员，按当前筛选条件；传 memberIds 则只导出勾选行")
+    @PreAuthorize("@ss.hasPermi('biz:member:list')")
+    @Log(title = "会员导出", businessType = BusinessType.EXPORT)
+    @PostMapping("/export")
+    public void export(HttpServletResponse response, BizMember member)
+    {
+        List<BizMember> list = memberService.selectMemberList(member);
+        for (int i = 0; i < list.size(); i++)
+        {
+            list.get(i).setApplyTime(list.get(i).getCreateTime());
+        }
+        ExcelUtil<BizMember> util = new ExcelUtil<BizMember>(BizMember.class);
+        util.exportExcel(response, list, "会员");
     }
 
     @ApiOperation("App谷歌验证配置")
@@ -82,7 +99,7 @@ public class BizMemberController extends BaseController
         return ajax;
     }
 
-    @ApiOperation("修改会员，可改 status、testFlag（0正式 1测试）等")
+    @ApiOperation("修改会员，可改手机号（不可与其他会员重复）、status、testFlag（0正式 1测试）等")
     @PreAuthorize("@ss.hasPermi('biz:member:edit')")
     @Log(title = "会员管理", businessType = BusinessType.UPDATE)
     @PutMapping

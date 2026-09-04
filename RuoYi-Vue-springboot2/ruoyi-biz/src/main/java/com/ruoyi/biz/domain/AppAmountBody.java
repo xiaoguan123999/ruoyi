@@ -27,6 +27,9 @@ public class AppAmountBody
     @ApiModelProperty(value = "提现账户信息")
     private String accountInfo;
 
+    @ApiModelProperty(value = "收款方式 ALIPAY/BANK/USDT，传 accountId 时以后台账户类型为准")
+    private String payMethod;
+
     @ApiModelProperty(value = "备注")
     private String remark;
 
@@ -95,6 +98,16 @@ public class AppAmountBody
     public void setAccountInfo(String accountInfo)
     {
         this.accountInfo = accountInfo;
+    }
+
+    public String getPayMethod()
+    {
+        return payMethod;
+    }
+
+    public void setPayMethod(String payMethod)
+    {
+        this.payMethod = payMethod;
     }
 
     public String getRemark()

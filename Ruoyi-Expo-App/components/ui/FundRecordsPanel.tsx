@@ -160,13 +160,13 @@ export function FundRecordsPanel({
             <View style={styles.detailRow}>
               <View style={styles.detailLeft}>
                 <Text style={[styles.title, item.tone]}>{item.title}</Text>
-                {item.remark ? <Text style={styles.remark}>{item.remark}</Text> : null}
                 <Text style={styles.time}>{item.date}</Text>
                 {item.fee || item.arrival ? (
                   <Text style={styles.meta}>
                     {[item.fee, item.arrival].filter(Boolean).join(' · ')}
                   </Text>
                 ) : null}
+                {item.remark ? <Text style={styles.remark}>备注：{item.remark}</Text> : null}
               </View>
               <Text style={styles.amount}>{item.amount}</Text>
             </View>
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   remark: {
-    marginTop: 4,
+    marginTop: 6,
     color: colors.muted,
     fontSize: 12,
     lineHeight: 18,

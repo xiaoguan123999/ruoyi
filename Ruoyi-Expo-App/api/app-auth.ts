@@ -54,6 +54,12 @@ function mapMember(member: AppMember): RuoyiUser {
     avatar: '',
     inviteCode: member.inviteCode,
     kycStatus: kycRaw === undefined || kycRaw === null ? undefined : String(kycRaw),
+    withdrawStatus:
+      raw.withdrawStatus === undefined || raw.withdrawStatus === null
+        ? raw.withdrawForbidden === true || raw.withdrawForbidden === 'true' || raw.withdrawForbidden === 1
+          ? '1'
+          : '0'
+        : String(raw.withdrawStatus),
     levelId: member.levelId,
     levelName: member.levelName,
     usdtAvailable: toBalanceNumber(member.usdtAvailable) ?? 0,
@@ -227,6 +233,10 @@ export function isKycVerified(kycStatus?: string | number | null): boolean {
   return ['1', 'approved', 'passed', 'pass', 'success', 'verified', '已认证', '已通过', '已实名', 'true', 'y'].includes(
     status,
   );
+}
+
+export function isWithdrawForbidden(withdrawStatus?: string | number | null): boolean {
+  return String(withdrawStatus ?? '').trim() === '1';
 }
 
 export function kycStatusLabel(kycStatus?: string | number | null): string {

@@ -16,11 +16,14 @@ import com.ruoyi.biz.api.AppWithdrawRuleResult;
 import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.AppAmountBody;
 import com.ruoyi.biz.domain.BizCheckin;
+import com.ruoyi.biz.domain.BizWithdrawRule;
 import com.ruoyi.biz.domain.BizOrder;
 import com.ruoyi.biz.domain.BizPayAccount;
 import com.ruoyi.biz.domain.BizRecharge;
+import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizWithdraw;
 import com.ruoyi.biz.service.IBizCheckinService;
+import com.ruoyi.biz.service.IBizMemberService;
 import com.ruoyi.biz.service.IBizOrderService;
 import com.ruoyi.biz.service.IBizPayAccountService;
 import com.ruoyi.biz.service.IBizRechargeService;
@@ -57,6 +60,9 @@ public class AppBizController extends BaseController
 
     @Autowired
     private IBizWithdrawService withdrawService;
+
+    @Autowired
+    private IBizMemberService memberService;
 
     @Autowired
     private ServerConfig serverConfig;
@@ -149,7 +155,10 @@ public class AppBizController extends BaseController
     @GetMapping("/withdraw/config")
     public AppWithdrawRuleResult withdrawConfig()
     {
-        return AppWithdrawRuleResult.ok(withdrawService.getRule());
+        BizWithdrawRule rule = withdrawService.getRule();
+        BizMember member = memberService.selectMemberById(AppSecurityUtils.getMemberId());
+        rule.setWithdrawForbidden(member != null && BizConstants.WITHDRAW_FORBID.equals(member.getWithdrawStatus()));
+        return AppWithdrawRuleResult.ok(rule);
     }
 
     @ApiOperation(value = "申请提现", notes = "提交后冻结余额，后台确认打款才扣掉。可传已保存的 accountId，或直接传 accountInfo。")
@@ -159,6 +168,7 @@ public class AppBizController extends BaseController
         Long memberId = AppSecurityUtils.getMemberId();
         String currency = StringUtils.isEmpty(body.getCurrency()) ? BizConstants.CURRENCY_CNY : body.getCurrency();
         String accountInfo = body.getAccountInfo();
+        String payMethod = body.getPayMethod();
         if (body.getAccountId() != null)
         {
             BizPayAccount acc = payAccountService.selectPayAccountById(body.getAccountId());
@@ -167,9 +177,10 @@ public class AppBizController extends BaseController
                 throw new ServiceException("收款账户不存在");
             }
             accountInfo = formatPayAccount(acc);
+            payMethod = acc.getAccountType();
         }
         return AppWithdrawResult.ok(withdrawService.apply(memberId, currency, body.getAmount(),
-                accountInfo, body.getRemark(), body.getGoogleCode()));
+                accountInfo, body.getRemark(), body.getGoogleCode(), payMethod));
     }
 
     @ApiOperation(value = "提现记录", notes = "分页。rows 含 amount、accountInfo、status、statusLabel、payMethodLabel。")

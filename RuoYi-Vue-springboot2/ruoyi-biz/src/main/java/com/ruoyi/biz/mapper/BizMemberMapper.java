@@ -6,6 +6,7 @@ import com.ruoyi.biz.api.AppTeamLevelStats;
 import com.ruoyi.biz.api.AppTeamMemberItem;
 import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizTeamTreeNode;
+import com.ruoyi.biz.domain.BizTeamTreeSummary;
 
 public interface BizMemberMapper
 {
@@ -48,9 +49,20 @@ public interface BizMemberMapper
     List<AppTeamLevelStats> selectAppTeamRechargeStats(@Param("memberId") Long memberId,
             @Param("viewerDepth") int viewerDepth);
 
+    List<AppTeamLevelStats> selectAdminTeamRegisterStats(@Param("memberId") Long memberId,
+            @Param("viewerDepth") int viewerDepth);
+
+    List<AppTeamLevelStats> selectAdminTeamOrderStats(@Param("memberId") Long memberId,
+            @Param("viewerDepth") int viewerDepth);
+
+    List<AppTeamLevelStats> selectAdminTeamRechargeStats(@Param("memberId") Long memberId,
+            @Param("viewerDepth") int viewerDepth);
+
     int countByIdCard(@Param("idCard") String idCard, @Param("excludeMemberId") Long excludeMemberId);
 
     BizTeamTreeNode selectTeamTreeNode(Long memberId);
 
     List<BizTeamTreeNode> selectTeamTreeChildren(Long parentId);
+
+    BizTeamTreeSummary selectTeamTreeSummary(Long memberId);
 }

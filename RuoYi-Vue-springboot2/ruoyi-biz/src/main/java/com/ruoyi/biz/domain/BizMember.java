@@ -1,8 +1,12 @@
 package com.ruoyi.biz.domain;
 
 import java.math.BigDecimal;
+import java.util.Date;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.ruoyi.biz.constant.BizConstants;
+import com.ruoyi.common.annotation.Excel;
 import com.ruoyi.common.core.domain.BaseEntity;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
@@ -16,10 +20,12 @@ public class BizMember extends BaseEntity
     private static final long serialVersionUID = 1L;
 
     /** 会员ID/邀请码 */
+    @Excel(name = "会员ID")
     @ApiModelProperty("会员ID/邀请码")
     private Long memberId;
 
     /** 手机号 */
+    @Excel(name = "手机号")
     @ApiModelProperty("手机号")
     private String phone;
 
@@ -32,18 +38,25 @@ public class BizMember extends BaseEntity
     private String payPassword;
 
     /** 邀请码 */
+    @Excel(name = "邀请码")
     @ApiModelProperty("邀请码")
     private String inviteCode;
 
     /** 上级ID */
+    @Excel(name = "直推上级ID")
     @ApiModelProperty("上级ID")
     private Long parentId;
+
+    @Excel(name = "直推上级邀请码")
+    @ApiModelProperty("直推上级邀请码")
+    private String parentInviteCode;
 
     /** 祖级列表 */
     @ApiModelProperty("祖级列表")
     private String ancestors;
 
     /** 真实姓名 */
+    @Excel(name = "姓名")
     @ApiModelProperty("真实姓名")
     private String realName;
 
@@ -52,6 +65,7 @@ public class BizMember extends BaseEntity
     private String idCard;
 
     /** 实名状态 */
+    @Excel(name = "实名", readConverterExp = "0=未实名,1=已实名")
     @ApiModelProperty("实名状态：0未实名 1已实名")
     private String kycStatus;
 
@@ -60,13 +74,20 @@ public class BizMember extends BaseEntity
     private Long levelId;
 
     /** 等级名称 */
+    @Excel(name = "等级")
     @ApiModelProperty("等级名称")
     private String levelName;
 
     /** 状态 */
+    @Excel(name = "状态", readConverterExp = "0=正常,1=停用")
     @ApiModelProperty("账号状态：0正常 1停用")
     private String status;
 
+    @Excel(name = "提现状态", readConverterExp = "0=正常,1=禁止")
+    @ApiModelProperty("提现状态：0正常 1禁止")
+    private String withdrawStatus;
+
+    @Excel(name = "测试账号", readConverterExp = "0=正式,1=测试")
     @ApiModelProperty("测试账号：0否 1是。测试用户可正常使用，数据不计入任何统计")
     private String testFlag;
 
@@ -114,8 +135,39 @@ public class BizMember extends BaseEntity
     private BigDecimal usdtAssistValue;
 
     /** 团队人数 */
+    @Excel(name = "团队人数")
     @ApiModelProperty("团队人数")
     private Integer teamCount;
+
+    @Excel(name = "直推人数")
+    @ApiModelProperty("直推人数")
+    private Integer directCount;
+
+    @ApiModelProperty("筛选：直推人数不少于")
+    private Integer minDirectCount;
+
+    @ApiModelProperty("筛选：直推人数不多于")
+    private Integer maxDirectCount;
+
+    @ApiModelProperty("勾选导出的会员ID")
+    private Long[] memberIds;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Excel(name = "最后登录时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
+    @ApiModelProperty("最后登录时间")
+    private Date lastLoginTime;
+
+    @Excel(name = "注册IP")
+    @ApiModelProperty("注册IP")
+    private String registerIp;
+
+    @Excel(name = "最后登录IP")
+    @ApiModelProperty("最后登录IP")
+    private String lastLoginIp;
+
+    @Excel(name = "注册时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date applyTime;
 
     public Long getMemberId()
     {
@@ -191,6 +243,16 @@ public class BizMember extends BaseEntity
         this.parentId = parentId;
     }
 
+    public String getParentInviteCode()
+    {
+        return parentInviteCode;
+    }
+
+    public void setParentInviteCode(String parentInviteCode)
+    {
+        this.parentInviteCode = parentInviteCode;
+    }
+
     public String getAncestors()
     {
         return ancestors;
@@ -261,6 +323,16 @@ public class BizMember extends BaseEntity
         this.status = status;
     }
 
+    public String getWithdrawStatus()
+    {
+        return withdrawStatus;
+    }
+
+    public void setWithdrawStatus(String withdrawStatus)
+    {
+        this.withdrawStatus = withdrawStatus;
+    }
+
     public String getTestFlag()
     {
         return testFlag;
@@ -280,6 +352,12 @@ public class BizMember extends BaseEntity
     public boolean testAccount()
     {
         return "1".equals(testFlag);
+    }
+
+    @ApiModelProperty("是否禁止提现")
+    public Boolean getWithdrawForbidden()
+    {
+        return Boolean.valueOf(BizConstants.WITHDRAW_FORBID.equals(withdrawStatus));
     }
 
     public String getGaSecret()
@@ -390,6 +468,86 @@ public class BizMember extends BaseEntity
     public void setTeamCount(Integer teamCount)
     {
         this.teamCount = teamCount;
+    }
+
+    public Date getLastLoginTime()
+    {
+        return lastLoginTime;
+    }
+
+    public void setLastLoginTime(Date lastLoginTime)
+    {
+        this.lastLoginTime = lastLoginTime;
+    }
+
+    public String getRegisterIp()
+    {
+        return registerIp;
+    }
+
+    public void setRegisterIp(String registerIp)
+    {
+        this.registerIp = registerIp;
+    }
+
+    public String getLastLoginIp()
+    {
+        return lastLoginIp;
+    }
+
+    public void setLastLoginIp(String lastLoginIp)
+    {
+        this.lastLoginIp = lastLoginIp;
+    }
+
+    public Integer getDirectCount()
+    {
+        return directCount;
+    }
+
+    public void setDirectCount(Integer directCount)
+    {
+        this.directCount = directCount;
+    }
+
+    public Integer getMinDirectCount()
+    {
+        return minDirectCount;
+    }
+
+    public void setMinDirectCount(Integer minDirectCount)
+    {
+        this.minDirectCount = minDirectCount;
+    }
+
+    public Integer getMaxDirectCount()
+    {
+        return maxDirectCount;
+    }
+
+    public void setMaxDirectCount(Integer maxDirectCount)
+    {
+        this.maxDirectCount = maxDirectCount;
+    }
+
+    public Long[] getMemberIds()
+    {
+        return memberIds;
+    }
+
+    public void setMemberIds(Long[] memberIds)
+    {
+        this.memberIds = memberIds;
+    }
+
+    public Date getApplyTime()
+    {
+        return applyTime != null ? applyTime : getCreateTime();
+    }
+
+    public void setApplyTime(Date applyTime)
+    {
+        this.applyTime = applyTime;
     }
 
 }

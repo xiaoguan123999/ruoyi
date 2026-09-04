@@ -16,12 +16,14 @@ import {
   fetchAppProfile,
   formatBalance,
   isKycVerified,
+  isWithdrawForbidden,
   maskPhone,
   toNumberOrZero,
 } from '@/api/app-auth';
 import { fetchAppWallet } from '@/api/app-trade';
 import type { AppWallet } from '@/api/types';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
+import { CopyButton } from '@/components/ui/CopyButton';
 import { UpdateConfirmModal } from '@/components/ui/UpdateConfirmModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useVersionUpdatePrompt } from '@/hooks/useVersionUpdatePrompt';
@@ -204,9 +206,12 @@ export default function ProfileScreen() {
                 <Text style={styles.metaLine} numberOfLines={1}>
                   账号 {account || '--'}
                 </Text>
-                <Text style={styles.metaLine} numberOfLines={1}>
-                  {inviteCode ? `邀请码 ${inviteCode}` : '邀请码 --'}
-                </Text>
+                <View style={styles.metaRow}>
+                  <Text style={[styles.metaLine, styles.metaLineFlex]} numberOfLines={1}>
+                    {inviteCode ? `邀请码 ${inviteCode}` : '邀请码 --'}
+                  </Text>
+                  {inviteCode ? <CopyButton value={inviteCode} /> : null}
+                </View>
                 <Text style={styles.slogan} numberOfLines={1}>
                   连接星空 · 智联未来
                 </Text>
@@ -289,7 +294,16 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.actions}>
                 <GradientPill title="充值" onPress={() => router.push('/recharge')} />
-                <GradientPill title="提现" onPress={() => router.push('/withdraw')} />
+                <GradientPill
+                  title="提现"
+                  onPress={() => {
+                    if (isWithdrawForbidden(user?.withdrawStatus)) {
+                      modalWarning('您的账号已被禁止提现');
+                      return;
+                    }
+                    router.push('/withdraw');
+                  }}
+                />
               </View>
             </View>
 
@@ -471,6 +485,15 @@ const styles = StyleSheet.create({
     color: 'rgba(210, 225, 245, 0.78)',
     fontSize: 14,
     lineHeight: 20,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minWidth: 0,
+  },
+  metaLineFlex: {
+    flexShrink: 1,
   },
   slogan: {
     color: 'rgba(170, 195, 225, 0.72)',

@@ -9,7 +9,7 @@ public class BizAuditBody
     @ApiModelProperty(value = "单据ID", required = true, example = "1")
     private Long id;
 
-    @ApiModelProperty(value = "审核结果，1通过 2拒绝", required = true, example = "1")
+    @ApiModelProperty(value = "审核结果：提现 3待打款 1已打款 2拒绝；充值 1通过 2拒绝", required = true, example = "1")
     private String status;
 
     @ApiModelProperty(value = "审核备注")

@@ -8,6 +8,7 @@ import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-s
 import { displayText } from '@/api/app-auth';
 import { fetchAppInvite } from '@/api/app-member';
 import { AppBackground } from '@/components/ui/AppBackground';
+import { CopyButton } from '@/components/ui/CopyButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { useAuth } from '@/hooks/useAuth';
@@ -104,6 +105,9 @@ export default function InviteScreen() {
 
           <View style={styles.codeBox}>
             <Text style={styles.code}>{inviteCode}</Text>
+            {inviteCode && inviteCode !== '--' ? (
+              <CopyButton value={inviteCode} size={20} />
+            ) : null}
           </View>
 
           <View style={styles.qrWrap}>
@@ -166,9 +170,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(140, 190, 255, 0.55)',
     borderRadius: 6,
-    paddingHorizontal: 28,
+    paddingHorizontal: 20,
     paddingVertical: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
   },
   code: {
     color: colors.text,

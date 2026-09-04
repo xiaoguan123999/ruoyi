@@ -2,11 +2,13 @@ package com.ruoyi.biz.service;
 
 import java.util.List;
 import com.ruoyi.biz.api.AppTeamData;
+import com.ruoyi.biz.api.AppTeamLevelStats;
 import com.ruoyi.biz.domain.AppKycBody;
 import com.ruoyi.biz.domain.AppRegisterBody;
 import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizTeamRelationRow;
 import com.ruoyi.biz.domain.BizTeamTreeNode;
+import com.ruoyi.biz.domain.BizTeamTreeSummary;
 
 public interface IBizMemberService
 {
@@ -38,9 +40,13 @@ public interface IBizMemberService
 
     AppTeamData getAppTeam(Long memberId);
 
+    List<AppTeamLevelStats> getAdminTeamLevels(Long memberId);
+
     BizTeamTreeNode selectTeamTreeRoot(String keyword);
 
     List<BizTeamTreeNode> selectTeamTreeChildren(Long memberId);
+
+    BizTeamTreeSummary selectTeamTreeSummary(Long memberId);
 
     List<BizTeamRelationRow> selectRecommendRelation(String keyword);
 

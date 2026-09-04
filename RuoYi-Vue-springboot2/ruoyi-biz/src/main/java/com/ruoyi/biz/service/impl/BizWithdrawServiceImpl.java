@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.util.Date;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.biz.constant.BizConstants;
@@ -26,6 +27,10 @@ import com.ruoyi.common.utils.StringUtils;
 @Service
 public class BizWithdrawServiceImpl implements IBizWithdrawService
 {
+    @Autowired
+    @Lazy
+    private IBizWithdrawService self;
+
     @Autowired
     private BizWithdrawMapper withdrawMapper;
 
@@ -112,14 +117,27 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
     @Transactional(rollbackFor = Exception.class)
     public BizWithdraw apply(Long memberId, String currency, BigDecimal amount, String accountInfo, String remark, String googleCode)
     {
+        return apply(memberId, currency, amount, accountInfo, remark, googleCode, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BizWithdraw apply(Long memberId, String currency, BigDecimal amount, String accountInfo, String remark,
+            String googleCode, String payMethod)
+    {
         googleAuthService.assertForWithdraw(memberId, googleCode);
-        if (configService.isWithdrawNeedKyc())
+        BizMember member = memberMapper.selectMemberById(memberId);
+        if (member == null)
         {
-            BizMember member = memberMapper.selectMemberById(memberId);
-            if (member == null || !BizConstants.KYC_DONE.equals(member.getKycStatus()))
-            {
-                throw new ServiceException("请先完成实名认证");
-            }
+            throw new ServiceException("会员不存在");
+        }
+        if (BizConstants.WITHDRAW_FORBID.equals(member.getWithdrawStatus()))
+        {
+            throw new ServiceException("您的账号已被禁止提现");
+        }
+        if (configService.isWithdrawNeedKyc() && !BizConstants.KYC_DONE.equals(member.getKycStatus()))
+        {
+            throw new ServiceException("请先完成实名认证");
         }
         configService.assertCurrencyEnabled(currency);
         String payCurrency = currency.toUpperCase();
@@ -158,7 +176,7 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
         withdraw.setFeeAmount(feeAmount);
         withdraw.setArrivalAmount(arrivalAmount);
         withdraw.setAccountInfo(accountInfo.trim());
-        withdraw.setPayMethod(BizConstants.CURRENCY_USDT.equals(payCurrency) ? BizConstants.PAY_USDT : BizConstants.PAY_ALIPAY);
+        withdraw.setPayMethod(resolvePayMethod(payCurrency, payMethod, accountInfo, remark));
         withdraw.setStatus(BizConstants.AUDIT_PENDING);
         withdraw.setRemark(remark);
         withdrawMapper.insertWithdraw(withdraw);
@@ -176,26 +194,50 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
         {
             throw new ServiceException("提现单不存在");
         }
-        if (!BizConstants.AUDIT_PENDING.equals(withdraw.getStatus()))
+        String fromStatus = withdraw.getStatus();
+        boolean reviewing = BizConstants.AUDIT_PENDING.equals(fromStatus);
+        boolean payPending = BizConstants.WD_PAY_PENDING.equals(fromStatus);
+        if (!reviewing && !payPending)
         {
             throw new ServiceException("该提现单已处理");
         }
-        if (!BizConstants.AUDIT_PASS.equals(status) && !BizConstants.AUDIT_REJECT.equals(status))
+        if (BizConstants.WD_PAY_PENDING.equals(status))
+        {
+            if (!reviewing)
+            {
+                throw new ServiceException("只有审核中的提现可以改为待打款");
+            }
+        }
+        else if (BizConstants.AUDIT_PASS.equals(status))
+        {
+            if (!payPending)
+            {
+                throw new ServiceException("请先改为待打款，再标记提现成功");
+            }
+        }
+        else if (BizConstants.AUDIT_REJECT.equals(status))
+        {
+            if (StringUtils.isEmpty(auditRemark))
+            {
+                throw new ServiceException("请填写提现失败原因");
+            }
+        }
+        else
         {
             throw new ServiceException("审核状态不正确");
-        }
-        if (BizConstants.AUDIT_REJECT.equals(status) && StringUtils.isEmpty(auditRemark))
-        {
-            throw new ServiceException("请填写拒绝原因");
         }
         withdraw.setStatus(status);
         withdraw.setAuditBy(auditBy);
         withdraw.setAuditTime(new Date());
         withdraw.setAuditRemark(auditRemark);
         withdraw.setPayProofUrl(payProofUrl);
-        if (withdrawMapper.updateWithdrawIfPending(withdraw) <= 0)
+        if (withdrawMapper.updateWithdrawIfStatus(withdraw, fromStatus) <= 0)
         {
             throw new ServiceException("该提现单已处理");
+        }
+        if (BizConstants.WD_PAY_PENDING.equals(status))
+        {
+            return;
         }
         String typeCode = StringUtils.isEmpty(withdraw.getWalletTypeCode())
                 ? resolveWalletTypeCode(withdraw.getRemark())
@@ -203,13 +245,78 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
         if (BizConstants.AUDIT_PASS.equals(status))
         {
             walletService.unfreezeSuccess(withdraw.getMemberId(), typeCode, withdraw.getCurrency(), withdraw.getAmount(),
-                    BizConstants.BIZ_WITHDRAW_SUCCESS, withdraw.getWithdrawId(), "提现已打款");
+                    BizConstants.BIZ_WITHDRAW_SUCCESS, withdraw.getWithdrawId(), "提现成功");
         }
         else
         {
             walletService.unfreezeReject(withdraw.getMemberId(), typeCode, withdraw.getCurrency(), withdraw.getAmount(),
-                    BizConstants.BIZ_WITHDRAW_REJECT, withdraw.getWithdrawId(), "提现拒绝解冻");
+                    BizConstants.BIZ_WITHDRAW_REJECT, withdraw.getWithdrawId(), "提现失败解冻");
         }
+    }
+
+    @Override
+    public String auditBatch(Long[] ids, String status, String auditBy, String auditRemark, String payProofUrl)
+    {
+        if (ids == null || ids.length == 0)
+        {
+            throw new ServiceException("请选择提现单");
+        }
+        if (ids.length > 2000)
+        {
+            throw new ServiceException("单次最多处理 2000 笔，请缩小筛选范围");
+        }
+        int ok = 0;
+        int fail = 0;
+        StringBuilder errors = new StringBuilder();
+        for (int i = 0; i < ids.length; i++)
+        {
+            Long id = ids[i];
+            try
+            {
+                self.audit(id, status, auditBy, auditRemark, payProofUrl);
+                ok++;
+            }
+            catch (Exception e)
+            {
+                fail++;
+                if (errors.length() < 400)
+                {
+                    errors.append("单号").append(id).append("：").append(e.getMessage()).append("；");
+                }
+            }
+        }
+        if (ok == 0)
+        {
+            throw new ServiceException(fail > 0 ? errors.toString() : "没有可处理的提现单");
+        }
+        String msg = "成功 " + ok + " 笔";
+        if (fail > 0)
+        {
+            msg = msg + "，失败 " + fail + " 笔。" + errors.toString();
+        }
+        return msg;
+    }
+
+    private String resolvePayMethod(String currency, String payMethod, String accountInfo, String remark)
+    {
+        if (BizConstants.CURRENCY_USDT.equals(currency))
+        {
+            return BizConstants.PAY_USDT;
+        }
+        String method = payMethod == null ? "" : payMethod.trim().toUpperCase();
+        if (BizConstants.PAY_USDT.equals(method) || BizConstants.PAY_BANK.equals(method))
+        {
+            return method;
+        }
+        if (BizWithdraw.looksLikeBank(accountInfo) || BizWithdraw.looksLikeBank(remark))
+        {
+            return BizConstants.PAY_BANK;
+        }
+        if (BizConstants.PAY_ALIPAY.equals(method))
+        {
+            return method;
+        }
+        return BizConstants.PAY_ALIPAY;
     }
 
     private String resolveWalletTypeCode(String remark)

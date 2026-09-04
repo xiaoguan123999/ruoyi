@@ -25,6 +25,8 @@ public class BizWithdrawRule
     private String promoWalletType;
     @ApiModelProperty("是否需要完成实名才能提现，true需要 false不需要")
     private Boolean needKyc;
+    @ApiModelProperty("当前登录会员是否禁止提现，仅 App 提现配置接口返回")
+    private Boolean withdrawForbidden;
 
     public BigDecimal getMinCny() { return minCny; }
     public void setMinCny(BigDecimal minCny) { this.minCny = minCny; }
@@ -44,4 +46,6 @@ public class BizWithdrawRule
     public void setPromoWalletType(String promoWalletType) { this.promoWalletType = promoWalletType; }
     public Boolean getNeedKyc() { return needKyc; }
     public void setNeedKyc(Boolean needKyc) { this.needKyc = needKyc; }
+    public Boolean getWithdrawForbidden() { return withdrawForbidden; }
+    public void setWithdrawForbidden(Boolean withdrawForbidden) { this.withdrawForbidden = withdrawForbidden; }
 }

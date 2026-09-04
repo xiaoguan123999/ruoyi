@@ -41,16 +41,16 @@
           <el-option label="已实名" value="1" />
         </el-select>
       </el-form-item>
-      <el-form-item label="谷歌验证" prop="gaStatus">
-        <el-select v-model="queryParams.gaStatus" placeholder="谷歌验证" clearable style="width: 160px">
-          <el-option label="未绑定" value="0" />
-          <el-option label="已绑定" value="1" />
-        </el-select>
-      </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="queryParams.status" placeholder="状态" clearable style="width: 160px">
           <el-option label="正常" value="0" />
           <el-option label="停用" value="1" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="提现状态" prop="withdrawStatus">
+        <el-select v-model="queryParams.withdrawStatus" placeholder="提现状态" clearable style="width: 160px">
+          <el-option label="正常" value="0" />
+          <el-option label="禁止" value="1" />
         </el-select>
       </el-form-item>
       <el-form-item label="账号类型" prop="testFlag">
@@ -58,6 +58,11 @@
           <el-option label="正式" value="0" />
           <el-option label="测试" value="1" />
         </el-select>
+      </el-form-item>
+      <el-form-item label="直推人数">
+        <el-input-number v-model="queryParams.minDirectCount" :min="0" :controls="false" placeholder="最少" style="width: 90px" />
+        <span style="margin: 0 6px">-</span>
+        <el-input-number v-model="queryParams.maxDirectCount" :min="0" :controls="false" placeholder="最多" style="width: 90px" />
       </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -69,10 +74,14 @@
       <el-col :span="1.5">
         <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['biz:member:add']">新增顶级会员</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['biz:member:list']">导出{{ selectedRows.length ? `（${selectedRows.length}）` : "" }}</el-button>
+      </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
-    <el-table v-loading="loading" :data="memberList">
+    <el-table v-loading="loading" :data="memberList" @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="50" align="center" />
       <el-table-column label="ID" align="center" prop="memberId" width="90" />
       <el-table-column label="邀请码" align="center" prop="inviteCode" width="110" />
       <el-table-column label="手机号" align="center" prop="phone" width="120">
@@ -83,11 +92,6 @@
       </el-table-column>
       <el-table-column label="姓名" align="center" prop="realName" min-width="100" />
       <el-table-column label="身份证" align="center" prop="idCard" width="180" />
-      <el-table-column label="谷歌验证" align="center" prop="gaStatus" width="100">
-        <template #default="scope">
-          <el-tag :type="scope.row.gaStatus === '1' ? 'success' : 'info'">{{ scope.row.gaStatus === '1' ? '已绑定' : '未绑定' }}</el-tag>
-        </template>
-      </el-table-column>
       <el-table-column label="实名" align="center" prop="kycStatus" width="80">
         <template #default="scope">
           <el-tag :type="scope.row.kycStatus === '1' ? 'success' : 'info'">{{ scope.row.kycStatus === '1' ? '已实名' : '未实名' }}</el-tag>
@@ -96,7 +100,12 @@
       <el-table-column label="等级" align="center" prop="levelName" width="90">
         <template #default="scope">{{ scope.row.levelName || "无等级" }}</template>
       </el-table-column>
-      <el-table-column label="上级ID" align="center" prop="parentId" width="90" />
+      <el-table-column label="直推上级" align="center" min-width="140">
+        <template #default="scope">
+          <span v-if="scope.row.parentId">{{ scope.row.parentId }} / {{ scope.row.parentInviteCode || "—" }}</span>
+          <span v-else>—</span>
+        </template>
+      </el-table-column>
       <el-table-column label="余额CNY" align="center" prop="cnyAvailable" width="100" />
       <el-table-column label="产品收益CNY" align="center" prop="cnyProductIncome" width="120" />
       <el-table-column label="推广收益CNY" align="center" prop="cnyAssistValue" width="120" />
@@ -105,10 +114,16 @@
       <el-table-column label="产品收益USDT" align="center" prop="usdtProductIncome" width="130" />
       <el-table-column label="推广收益USDT" align="center" prop="usdtAssistValue" width="130" />
       <el-table-column label="USDT冻结" align="center" prop="usdtFrozen" width="110" />
+      <el-table-column label="直推人数" align="center" prop="directCount" width="90" />
       <el-table-column label="团队人数" align="center" prop="teamCount" width="90" />
       <el-table-column label="状态" align="center" prop="status" width="80">
         <template #default="scope">
           <el-tag :type="scope.row.status === '0' ? 'success' : 'danger'">{{ scope.row.status === '0' ? '正常' : '停用' }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="提现状态" align="center" prop="withdrawStatus" width="90">
+        <template #default="scope">
+          <el-tag :type="scope.row.withdrawStatus === '1' ? 'danger' : 'success'">{{ scope.row.withdrawStatus === '1' ? '禁止' : '正常' }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="测试账号" align="center" width="90">
@@ -131,19 +146,15 @@
           <el-button link type="primary" icon="Wallet" @click="openAdjust(scope.row)" v-hasPermi="['biz:wallet:adjust']">调账</el-button>
           <el-button link type="primary" icon="Key" @click="handleResetPwd(scope.row)" v-hasPermi="['biz:member:resetPwd']">登录密码</el-button>
           <el-button link type="primary" icon="Lock" @click="handleResetPayPwd(scope.row)" v-hasPermi="['biz:member:resetPayPwd']">交易密码</el-button>
-          <el-button v-if="scope.row.gaStatus === '1'" link type="primary" icon="Unlock" @click="handleResetGoogle(scope.row)" v-hasPermi="['biz:member:edit']">解绑谷歌</el-button>
         </template>
       </el-table-column>
     </el-table>
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
     <el-dialog :title="title" v-model="open" width="520px" append-to-body>
-      <el-form ref="formRef" :model="form" :rules="isAdd ? rules : {}" label-width="90px">
-        <el-form-item v-if="isAdd" label="手机号" prop="phone">
-          <el-input v-model="form.phone" placeholder="请输入手机号" />
-        </el-form-item>
-        <el-form-item v-else label="手机号">
-          <el-input v-model="form.phone" disabled />
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="form.phone" placeholder="请输入手机号" maxlength="11" />
         </el-form-item>
         <template v-if="isAdd">
           <el-form-item label="登录密码" prop="password">
@@ -170,6 +181,12 @@
               <el-radio value="1">停用</el-radio>
             </el-radio-group>
           </el-form-item>
+          <el-form-item label="提现状态" prop="withdrawStatus">
+            <el-radio-group v-model="form.withdrawStatus">
+              <el-radio value="0">正常</el-radio>
+              <el-radio value="1">禁止</el-radio>
+            </el-radio-group>
+          </el-form-item>
           <el-form-item label="测试账号">
             <div class="switch-line">
               <el-switch v-model="form.testFlag" active-value="1" inactive-value="0" />
@@ -193,7 +210,7 @@
 </template>
 
 <script setup lang="ts" name="BizMember">
-import { listMember, getMember, addMember, updateMember, resetMemberGoogle, resetMemberPwd, resetMemberPayPwd, getMemberGoogleConfig, saveMemberGoogleConfig } from "@/api/biz"
+import { listMember, getMember, addMember, updateMember, resetMemberPwd, resetMemberPayPwd, getMemberGoogleConfig, saveMemberGoogleConfig } from "@/api/biz"
 import WalletAdjustDialog from "@/views/biz/components/WalletAdjustDialog.vue"
 
 const { proxy } = getCurrentInstance() as any
@@ -209,6 +226,7 @@ const adjustMemberId = ref<number | undefined>()
 const adjustPhone = ref("")
 const googleLoading = ref(false)
 const google = ref({ enabled: true, issuer: "App" })
+const selectedRows = ref<any[]>([])
 
 const data = reactive({
   form: {} as any,
@@ -220,15 +238,26 @@ const data = reactive({
     inviteCode: undefined,
     kycStatus: undefined,
     status: undefined,
-    gaStatus: undefined,
-    testFlag: undefined
+    withdrawStatus: undefined,
+    testFlag: undefined,
+    minDirectCount: undefined,
+    maxDirectCount: undefined
   },
   rules: {
-    phone: [{ required: true, message: "请输入手机号", trigger: "blur" }],
+    phone: [
+      { required: true, message: "请输入手机号", trigger: "blur" },
+      { pattern: /^1\d{10}$/, message: "请输入11位手机号", trigger: "blur" }
+    ],
     password: [{ required: true, message: "请输入密码", trigger: "blur" }]
   }
 })
 const { queryParams, form, rules } = toRefs(data)
+const formRules = computed(() => {
+  if (isAdd.value) {
+    return rules.value
+  }
+  return { phone: rules.value.phone }
+})
 const route = useRoute()
 
 function isTestMember(row: any) {
@@ -245,20 +274,29 @@ function asTestFlagStr(value: any) {
   return value === "1" || value === 1 || value === true ? "1" : "0"
 }
 
+function asStatusStr(value: any, fallback = "0") {
+  if (value === "1" || value === 1 || value === true) return "1"
+  if (value === "0" || value === 0 || value === false) return "0"
+  return fallback
+}
+
 function normalizeMemberForm(data: any) {
   return {
     ...data,
-    testFlag: asTestFlagStr(data.testFlag ?? data.testFlagFlag ?? data.testAccount)
+    testFlag: asTestFlagStr(data.testFlag ?? data.testFlagFlag ?? data.testAccount),
+    withdrawStatus: asStatusStr(data.withdrawStatus ?? data.withdrawForbidden, "0")
   }
 }
 
 function buildMemberUpdatePayload(data: any) {
   return {
     memberId: data.memberId,
+    phone: data.phone,
     realName: data.realName,
     idCard: data.idCard,
     kycStatus: data.kycStatus,
     status: data.status,
+    withdrawStatus: asStatusStr(data.withdrawStatus, "0"),
     testFlag: asTestFlagStr(data.testFlag),
     remark: data.remark
   }
@@ -294,6 +332,18 @@ function getList() {
     total.value = res.total
     loading.value = false
   })
+}
+function handleSelectionChange(rows: any[]) {
+  selectedRows.value = rows || []
+}
+function handleExport() {
+  const ids = selectedRows.value.map((r: any) => r.memberId).filter((id: any) => id != null)
+  if (ids.length) {
+    proxy.download("biz/member/export", { memberIds: ids.join(",") }, `member_${new Date().getTime()}.xlsx`)
+    return
+  }
+  const { pageNum, pageSize, ...q } = queryParams.value
+  proxy.download("biz/member/export", q, `member_${new Date().getTime()}.xlsx`)
 }
 function handleQuery() {
   queryParams.value.pageNum = 1
@@ -340,14 +390,6 @@ function openAdjust(row: any) {
   adjustMemberId.value = row.memberId
   adjustPhone.value = row.phone || ""
   adjustOpen.value = true
-}
-function handleResetGoogle(row: any) {
-  proxy.$modal.confirm('确认解绑会员 ' + row.phone + ' 的谷歌验证器？解绑后需重新绑定。').then(() => {
-    return resetMemberGoogle(row.memberId)
-  }).then(() => {
-    proxy.$modal.msgSuccess("已解绑")
-    getList()
-  }).catch(() => {})
 }
 function handleResetPwd(row: any) {
   proxy.$prompt("请输入「" + row.phone + "」的新登录密码", "重置登录密码", {

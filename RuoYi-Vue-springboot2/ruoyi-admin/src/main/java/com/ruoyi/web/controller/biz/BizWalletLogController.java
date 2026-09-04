@@ -1,5 +1,6 @@
 package com.ruoyi.web.controller.biz;
 
+import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -7,8 +8,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.biz.domain.BizMember;
+import com.ruoyi.biz.domain.BizWallet;
 import com.ruoyi.biz.domain.BizWalletAdjustBody;
 import com.ruoyi.biz.domain.BizWalletLog;
 import com.ruoyi.biz.service.IBizMemberService;
@@ -40,6 +43,22 @@ public class BizWalletLogController extends BaseController
         startPage();
         List<BizWalletLog> list = walletService.selectWalletLogList(log);
         return getDataTable(list);
+    }
+
+    @ApiOperation("调账前查看钱包余额")
+    @PreAuthorize("@ss.hasPermi('biz:wallet:adjust')")
+    @GetMapping("/balance")
+    public AjaxResult balance(@RequestParam Long memberId,
+            @RequestParam(required = false) String typeCode,
+            @RequestParam String currency)
+    {
+        BizWallet wallet = walletService.getWallet(memberId, typeCode, currency);
+        AjaxResult ajax = success();
+        ajax.put("available", wallet == null || wallet.getAvailable() == null ? BigDecimal.ZERO : wallet.getAvailable());
+        ajax.put("frozen", wallet == null || wallet.getFrozen() == null ? BigDecimal.ZERO : wallet.getFrozen());
+        ajax.put("typeCode", typeCode);
+        ajax.put("currency", currency);
+        return ajax;
     }
 
     @ApiOperation("钱包调账")

@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import com.ruoyi.biz.api.AppTeamData;
 import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizTeamRelationRow;
 import com.ruoyi.biz.domain.BizTeamTreeNode;
@@ -52,10 +51,9 @@ public class BizTeamController extends BaseController
         {
             return error("会员不存在");
         }
-        AppTeamData team = memberService.getAppTeam(memberId);
         AjaxResult ajax = success();
         ajax.put("member", member);
-        ajax.put("summary", team == null ? null : team.getSummary());
+        ajax.put("levels", memberService.getAdminTeamLevels(memberId));
         return ajax;
     }
 
@@ -69,7 +67,9 @@ public class BizTeamController extends BaseController
         {
             return error("会员不存在");
         }
-        return success(root);
+        AjaxResult ajax = success(root);
+        ajax.put("summary", memberService.selectTeamTreeSummary(root.getMemberId()));
+        return ajax;
     }
 
     @ApiOperation("会员结构图直推下级")

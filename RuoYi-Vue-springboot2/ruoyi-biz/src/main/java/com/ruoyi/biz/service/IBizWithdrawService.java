@@ -13,7 +13,13 @@ public interface IBizWithdrawService
 
     BizWithdraw apply(Long memberId, String currency, BigDecimal amount, String accountInfo, String remark, String googleCode);
 
+    BizWithdraw apply(Long memberId, String currency, BigDecimal amount, String accountInfo, String remark,
+            String googleCode, String payMethod);
+
     void audit(Long withdrawId, String status, String auditBy, String auditRemark, String payProofUrl);
+
+    /** 批量审核，逐单提交；返回成功/失败笔数说明 */
+    String auditBatch(Long[] ids, String status, String auditBy, String auditRemark, String payProofUrl);
 
     BizWithdrawRule getRule();
 

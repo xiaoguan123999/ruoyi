@@ -500,7 +500,7 @@ const todoList = computed(() => {
     {
       key: 'withdrawCount',
       title: '待处理提现笔数',
-      desc: '待打款申请',
+      desc: '审核中 / 待打款',
       count: n(stats.value.pendingWithdraw),
       unit: '笔',
       menuTitles: ['提现审核'],
@@ -514,7 +514,7 @@ const todoList = computed(() => {
     {
       key: 'withdrawAmount',
       title: '待处理提现金额',
-      desc: '待打款金额，CNY / USDT 分开',
+      desc: '审核中 / 待打款金额，CNY / USDT 分开',
       count: n(stats.value.pendingWithdraw),
       unit: '笔',
       amountText: `${fmtMoney(pendingAmount.totalCny)} CNY`,

@@ -121,8 +121,20 @@ export function auditWithdraw(data: any): Promise<AjaxResult> {
   return request({ url: '/biz/withdraw/audit', method: 'put', data })
 }
 
+export function auditWithdrawBatch(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/withdraw/audit/batch', method: 'put', data })
+}
+
 export function listWalletLog(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/walletLog/list', method: 'get', params: query })
+}
+
+export function getWalletBalance(params: {
+  memberId: number
+  typeCode?: string
+  currency: string
+}): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/walletLog/balance', method: 'get', params })
 }
 
 export function adjustWallet(data: {

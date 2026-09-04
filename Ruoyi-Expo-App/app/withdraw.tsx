@@ -105,6 +105,7 @@ export default function WithdrawScreen() {
 
   const selected = accounts.find((item) => item.accountId === accountId);
   const selectedCurrency = selected ? payAccountCurrency(selected) : null;
+  const withdrawForbidden = config?.withdrawForbidden === true;
   const tabLabel = tabs.find((item) => item.key === activeTab)?.label ?? '产品收益';
   const availableCny =
     activeTab === 'income'
@@ -133,6 +134,10 @@ export default function WithdrawScreen() {
   };
 
   const onSubmit = async () => {
+    if (withdrawForbidden) {
+      modalWarning('您的账号已被禁止提现');
+      return;
+    }
     if (!selected) {
       modalWarning('请先添加收款方式');
       return;
@@ -199,6 +204,11 @@ export default function WithdrawScreen() {
         keyboardShouldPersistTaps="handled"
         onRefresh={load}
       >
+        {withdrawForbidden ? (
+          <GlassCard>
+            <Text style={styles.forbidText}>您的账号已被禁止提现，请联系客服</Text>
+          </GlassCard>
+        ) : null}
         <GlassCard>
           <View style={styles.row}>
             <Text style={styles.label}>账户可用余额</Text>
@@ -275,7 +285,7 @@ export default function WithdrawScreen() {
           )}
         </GlassCard>
 
-        <PrimaryButton title="提 现" onPress={() => void onSubmit()} disabled={submitting} />
+        <PrimaryButton title="提 现" onPress={() => void onSubmit()} disabled={submitting || withdrawForbidden} />
 
         <View style={styles.notice}>
           <Text style={styles.noticeTitle}>提现须知</Text>
@@ -322,6 +332,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 28,
     gap: 12,
+  },
+  forbidText: {
+    color: '#FF4D4F',
+    fontSize: 14,
+    textAlign: 'center',
   },
   row: {
     flexDirection: 'row',

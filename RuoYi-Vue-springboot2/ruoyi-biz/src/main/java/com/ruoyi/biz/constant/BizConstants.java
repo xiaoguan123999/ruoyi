@@ -44,6 +44,9 @@ public class BizConstants
     /** 拒绝 */
     public static final String AUDIT_REJECT = "2";
 
+    /** 提现审核通过、待打款，余额仍冻结 */
+    public static final String WD_PAY_PENDING = "3";
+
     /** 持仓中 */
     public static final String ORDER_HOLDING = "0";
 
@@ -206,6 +209,12 @@ public class BizConstants
     public static final int TEAM_MAX_LEVEL = 7;
 
     public static final String PAY_BANK = "BANK";
+
+    /** 提现状态：正常 */
+    public static final String WITHDRAW_OK = "0";
+
+    /** 提现状态：禁止 */
+    public static final String WITHDRAW_FORBID = "1";
 
     public static final String BLACKLIST_LOGIN = "LOGIN";
 

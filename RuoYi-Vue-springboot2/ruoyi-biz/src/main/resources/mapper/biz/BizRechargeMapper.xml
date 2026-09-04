@@ -36,6 +36,10 @@
         left join biz_member m on m.member_id = r.member_id
         <where>
             <if test="memberId != null">and r.member_id = #{memberId}</if>
+            <if test="rechargeIds != null and rechargeIds.length > 0">
+                and r.recharge_id in
+                <foreach collection="rechargeIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+            </if>
             <if test="currency != null and currency != ''">and r.currency = #{currency}</if>
             <if test="status != null and status != ''">and r.status = #{status}</if>
             <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>

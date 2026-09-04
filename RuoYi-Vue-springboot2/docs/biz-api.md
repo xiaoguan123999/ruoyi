@@ -795,7 +795,7 @@ GET /app/fundRecords?bizType=RECHARGE&status=0
 }
 ```
 
-充值 `statusLabel`：待审 / 已通过 / 已拒绝。提现：待打款 / 已打款 / 已拒绝。
+充值 `statusLabel`：待审 / 已通过 / 已拒绝。提现：审核中 / 待打款 / 已打款 / 已拒绝。
 
 ---
 
@@ -899,7 +899,8 @@ App 提现不需要绑定或填写谷歌验证码，`googleCode` 可省略。
 
 | status | statusLabel |
 |---|---|
-| 0 | 待打款 |
+| 0 | 审核中 |
+| 3 | 待打款 |
 | 1 | 已打款 |
 | 2 | 已拒绝 |
 

@@ -21,6 +21,7 @@ import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizTeamRelationPeer;
 import com.ruoyi.biz.domain.BizTeamRelationRow;
 import com.ruoyi.biz.domain.BizTeamTreeNode;
+import com.ruoyi.biz.domain.BizTeamTreeSummary;
 import com.ruoyi.biz.mapper.BizCheckinMapper;
 import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.mapper.BizRechargeMapper;
@@ -126,6 +127,7 @@ public class BizMemberServiceImpl implements IBizMemberService
         member.setInviteCode(nextInviteCode());
         member.setKycStatus(BizConstants.KYC_NONE);
         member.setStatus(BizConstants.STATUS_OK);
+        member.setWithdrawStatus(BizConstants.WITHDRAW_OK);
         member.setRealName("");
         member.setIdCard("");
         if (parent != null)
@@ -166,6 +168,25 @@ public class BizMemberServiceImpl implements IBizMemberService
         if (member.getTestFlag() != null)
         {
             member.setTestFlag(member.testAccount() || "true".equalsIgnoreCase(member.getTestFlag()) ? "1" : "0");
+        }
+        if (member.getWithdrawStatus() != null)
+        {
+            member.setWithdrawStatus(BizConstants.WITHDRAW_FORBID.equals(member.getWithdrawStatus())
+                    ? BizConstants.WITHDRAW_FORBID : BizConstants.WITHDRAW_OK);
+        }
+        if (member.getPhone() != null)
+        {
+            String phone = member.getPhone().trim();
+            if (StringUtils.isEmpty(phone))
+            {
+                throw new ServiceException("手机号不能为空");
+            }
+            member.setPhone(phone);
+            BizMember exist = memberMapper.selectMemberByPhone(phone);
+            if (exist != null && !exist.getMemberId().equals(member.getMemberId()))
+            {
+                throw new ServiceException("手机号已存在");
+            }
         }
         memberMapper.updateMember(member);
         refreshLevel(member.getMemberId());
@@ -398,7 +419,7 @@ public class BizMemberServiceImpl implements IBizMemberService
                 byLevel.get(lv).add(item);
             }
         }
-        Map<Integer, AppTeamLevelStats> stats = emptyStats();
+        Map<Integer, AppTeamLevelStats> stats = emptyStats(BizConstants.TEAM_MAX_LEVEL);
         mergeRegister(stats, memberMapper.selectAppTeamRegisterStats(memberId, depth));
         mergeOrder(stats, memberMapper.selectAppTeamOrderStats(memberId, depth));
         mergeRecharge(stats, memberMapper.selectAppTeamRechargeStats(memberId, depth));
@@ -433,6 +454,50 @@ public class BizMemberServiceImpl implements IBizMemberService
         return data;
     }
 
+    @Override
+    public List<AppTeamLevelStats> getAdminTeamLevels(Long memberId)
+    {
+        int depth = viewerDepth(memberId);
+        List<AppTeamLevelStats> registers = memberMapper.selectAdminTeamRegisterStats(memberId, depth);
+        List<AppTeamLevelStats> orders = memberMapper.selectAdminTeamOrderStats(memberId, depth);
+        List<AppTeamLevelStats> recharges = memberMapper.selectAdminTeamRechargeStats(memberId, depth);
+        int max = 0;
+        max = maxTeamLevel(max, registers);
+        max = maxTeamLevel(max, orders);
+        max = maxTeamLevel(max, recharges);
+        if (max < 1)
+        {
+            return new ArrayList<AppTeamLevelStats>();
+        }
+        Map<Integer, AppTeamLevelStats> stats = emptyStats(max);
+        mergeRegister(stats, registers);
+        mergeOrder(stats, orders);
+        mergeRecharge(stats, recharges);
+        List<AppTeamLevelStats> rows = new ArrayList<AppTeamLevelStats>(max);
+        for (int i = 1; i <= max; i++)
+        {
+            rows.add(stats.get(Integer.valueOf(i)));
+        }
+        return rows;
+    }
+
+    private int maxTeamLevel(int current, List<AppTeamLevelStats> rows)
+    {
+        if (rows == null)
+        {
+            return current;
+        }
+        for (int i = 0; i < rows.size(); i++)
+        {
+            Integer lv = rows.get(i).getTeamLevel();
+            if (lv != null && lv.intValue() > current)
+            {
+                current = lv.intValue();
+            }
+        }
+        return current;
+    }
+
     private int viewerDepth(Long memberId)
     {
         BizMember member = memberMapper.selectMemberById(memberId);
@@ -460,10 +525,10 @@ public class BizMemberServiceImpl implements IBizMemberService
         return n;
     }
 
-    private Map<Integer, AppTeamLevelStats> emptyStats()
+    private Map<Integer, AppTeamLevelStats> emptyStats(int maxLevel)
     {
         Map<Integer, AppTeamLevelStats> map = new HashMap<Integer, AppTeamLevelStats>();
-        for (int i = 1; i <= BizConstants.TEAM_MAX_LEVEL; i++)
+        for (int i = 1; i <= maxLevel; i++)
         {
             AppTeamLevelStats s = new AppTeamLevelStats();
             s.setTeamLevel(Integer.valueOf(i));
@@ -641,6 +706,17 @@ public class BizMemberServiceImpl implements IBizMemberService
             list.add(fillTreeNode(rows.get(i)));
         }
         return list;
+    }
+
+    @Override
+    public BizTeamTreeSummary selectTeamTreeSummary(Long memberId)
+    {
+        if (memberId == null)
+        {
+            throw new ServiceException("会员不存在");
+        }
+        BizTeamTreeSummary summary = memberMapper.selectTeamTreeSummary(memberId);
+        return summary == null ? new BizTeamTreeSummary() : summary;
     }
 
     @Override
