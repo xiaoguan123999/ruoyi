@@ -75,7 +75,7 @@ export default function AddUsdtWalletScreen() {
           ))}
         </View>
 
-        <Text style={[styles.label, styles.labelGap]}>银行卡号</Text>
+        <Text style={[styles.label, styles.labelGap]}>虚拟币地址</Text>
         <TextInput
           value={address}
           onChangeText={setAddress}

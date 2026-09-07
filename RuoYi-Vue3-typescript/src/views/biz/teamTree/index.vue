@@ -1,28 +1,22 @@
 <template>
   <div class="app-container ops-page">
     <el-alert
-      title="搜索会员后可展开下级。同一注册/登录 IP 会标红，便于判断是否同一设备刷团队。"
+      title="选择会员后可展开直属下级。点击 ID 可下钻为新根节点继续往下看；路径可点击回退。同一注册/登录 IP 会标红。"
       type="info"
       :closable="false"
       show-icon
       class="mb8"
     />
     <el-form :inline="true" @submit.prevent="handleQuery">
-      <el-form-item>
-        <el-input
-          v-model="keyword"
-          placeholder="手机号 / 会员ID / 邀请码"
-          clearable
-          style="width: 280px"
-          @keyup.enter="handleQuery"
-        />
+      <el-form-item label="会员">
+        <MemberSelect v-model="memberId" @change="onMemberChange" />
       </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
       </el-form-item>
     </el-form>
 
-    <el-empty v-if="!root && !loading" description="输入手机号或会员ID，查看该会员及其下级结构" />
+    <el-empty v-if="!root && !loading" description="请选择会员，查看该会员及其下级结构" />
 
     <template v-if="root">
       <el-row :gutter="12" class="mb8 summary-row">
@@ -34,6 +28,20 @@
         </el-col>
       </el-row>
 
+      <div v-if="pathStack.length" class="path-bar mb8">
+        <span class="path-label">当前路径</span>
+        <template v-for="(item, index) in pathStack" :key="item.memberId">
+          <span v-if="index > 0" class="path-sep">/</span>
+          <el-button
+            link
+            type="primary"
+            class="path-item"
+            :class="{ 'is-current': index === pathStack.length - 1 }"
+            @click="jumpToPath(index)"
+          >{{ item.memberId }}{{ item.phone ? `（${item.phone}）` : "" }}</el-button>
+        </template>
+      </div>
+
       <el-table
         v-loading="loading"
         :data="tableData"
@@ -41,16 +49,22 @@
         row-key="memberId"
         border
         lazy
+        :indent="0"
         :load="loadChildren"
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
         :default-expand-all="false"
+        :row-class-name="rowClassName"
+        class="team-tree-table"
       >
-        <el-table-column label="ID" min-width="110" fixed>
+        <el-table-column label="会员" min-width="200" fixed>
           <template #default="scope">
-            <el-button link type="primary" @click="drill(scope.row)">{{ scope.row.memberId }}</el-button>
+            <div class="member-cell">
+              <el-tag size="small" effect="plain" class="depth-tag" :class="'depth-tag-' + depthTone(scope.row)">L{{ rowDepth(scope.row) }}</el-tag>
+              <el-button link type="primary" class="id-link" @click="drill(scope.row)">{{ scope.row.memberId }}</el-button>
+              <span class="phone-text">{{ scope.row.phone || "—" }}</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="账号" align="center" prop="phone" min-width="120" />
         <el-table-column label="姓名" align="center" min-width="100">
           <template #default="scope">
             {{ scope.row.realName || "—" }}
@@ -102,12 +116,13 @@ import { getTeamTree, listTeamChildren } from "@/api/biz"
 
 const { proxy } = getCurrentInstance() as any
 const route = useRoute()
-const keyword = ref("")
+const memberId = ref<number | undefined>()
 const loading = ref(false)
 const root = ref<any>(null)
 const summary = ref<any>(null)
 const tableData = ref<any[]>([])
 const loadedRows = ref<any[]>([])
+const pathStack = ref<any[]>([])
 
 const summaryCards = computed(() => {
   const s = summary.value || {}
@@ -154,37 +169,102 @@ function isDupIp(ip: string) {
   return !!ip && dupIps.value.has(ip)
 }
 
+function pickPathItem(row: any) {
+  return {
+    memberId: row.memberId,
+    phone: row.phone || "",
+    realName: row.realName || ""
+  }
+}
+
 function remember(rows: any[]) {
   const byId = new Map(loadedRows.value.map((r: any) => [r.memberId, r]))
   rows.forEach((r: any) => byId.set(r.memberId, r))
   loadedRows.value = Array.from(byId.values())
 }
 
-function handleQuery() {
-  const q = (keyword.value || "").trim()
-  if (!q) {
-    proxy.$modal.msgWarning("请输入手机号或会员ID")
+function withDepth(rows: any[], depth: number) {
+  return (rows || []).map((row: any) => ({ ...row, _depth: depth }))
+}
+
+function rowDepth(row: any) {
+  const d = Number(row?._depth)
+  return Number.isFinite(d) && d > 0 ? d : 1
+}
+
+/** 相邻层级高对比色，超过 10 层循环 */
+const DEPTH_TONE_COUNT = 10
+function depthTone(row: any) {
+  return ((rowDepth(row) - 1) % DEPTH_TONE_COUNT) + 1
+}
+
+function rowClassName({ row }: { row: any }) {
+  return `depth-row depth-${depthTone(row)}`
+}
+
+function clearView() {
+  root.value = null
+  summary.value = null
+  tableData.value = []
+  loadedRows.value = []
+  pathStack.value = []
+}
+
+function syncPath(node: any, mode: "reset" | "drill") {
+  const item = pickPathItem(node)
+  if (mode === "reset") {
+    pathStack.value = [item]
     return
   }
+  const idx = pathStack.value.findIndex((p) => Number(p.memberId) === Number(item.memberId))
+  if (idx >= 0) {
+    pathStack.value = pathStack.value.slice(0, idx + 1)
+  } else {
+    pathStack.value = [...pathStack.value, item]
+  }
+}
+
+function loadByKeyword(q: string, mode: "reset" | "drill" = "reset") {
   loading.value = true
   getTeamTree(q).then((res: any) => {
-    root.value = res.data
+    const node = res.data ? { ...res.data, _depth: 1 } : null
+    root.value = node
     summary.value = res.summary || res.data?.summary || null
-    tableData.value = root.value ? [root.value] : []
-    loadedRows.value = root.value ? [root.value] : []
+    tableData.value = node ? [node] : []
+    loadedRows.value = node ? [node] : []
+    if (node?.memberId) {
+      memberId.value = Number(node.memberId)
+      syncPath(node, mode)
+    } else {
+      pathStack.value = []
+    }
   }).catch(() => {
-    root.value = null
-    summary.value = null
-    tableData.value = []
-    loadedRows.value = []
+    clearView()
   }).finally(() => {
     loading.value = false
   })
 }
 
+function handleQuery() {
+  if (!memberId.value) {
+    proxy.$modal.msgWarning("请选择会员")
+    return
+  }
+  loadByKeyword(String(memberId.value), "reset")
+}
+
+function onMemberChange(id?: number) {
+  if (!id) {
+    clearView()
+    return
+  }
+  handleQuery()
+}
+
 function loadChildren(row: any, _treeNode: any, resolve: (data: any[]) => void) {
+  const depth = rowDepth(row) + 1
   listTeamChildren(row.memberId).then((res: any) => {
-    const rows = res.data || []
+    const rows = withDepth(res.data || [], depth)
     remember(rows)
     resolve(rows)
   }).catch(() => resolve([]))
@@ -192,21 +272,37 @@ function loadChildren(row: any, _treeNode: any, resolve: (data: any[]) => void) 
 
 function drill(row: any) {
   if (!row?.memberId) return
-  keyword.value = String(row.phone || row.memberId)
-  handleQuery()
+  if (Number(row.memberId) === Number(root.value?.memberId)) return
+  memberId.value = Number(row.memberId)
+  loadByKeyword(String(row.memberId), "drill")
 }
 
 function drillById(id: number) {
-  keyword.value = String(id)
-  handleQuery()
+  if (!id) return
+  if (Number(id) === Number(root.value?.memberId)) return
+  memberId.value = Number(id)
+  loadByKeyword(String(id), "drill")
+}
+
+function jumpToPath(index: number) {
+  const item = pathStack.value[index]
+  if (!item?.memberId) return
+  if (Number(item.memberId) === Number(root.value?.memberId)) return
+  memberId.value = Number(item.memberId)
+  pathStack.value = pathStack.value.slice(0, index + 1)
+  loadByKeyword(String(item.memberId), "drill")
 }
 
 onMounted(() => {
-  const q = (route.query.keyword as string) || ""
-  if (q) {
-    keyword.value = q
+  const q = String(route.query.keyword || "").trim()
+  if (!q) return
+  const asId = Number(q)
+  if (Number.isFinite(asId) && String(asId) === q) {
+    memberId.value = asId
     handleQuery()
+    return
   }
+  loadByKeyword(q, "reset")
 })
 </script>
 
@@ -233,8 +329,91 @@ onMounted(() => {
   line-height: 1.2;
   word-break: break-all;
 }
+.path-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 2px;
+  padding: 10px 14px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+}
+.path-label {
+  margin-right: 8px;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+.path-sep {
+  color: var(--el-text-color-placeholder);
+  margin: 0 2px;
+}
+.path-item {
+  padding: 0 4px;
+}
+.path-item.is-current {
+  font-weight: 700;
+  color: var(--el-text-color-primary) !important;
+  cursor: default;
+}
 .ip-dup {
   color: var(--el-color-danger);
   font-weight: 600;
 }
+.member-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  vertical-align: middle;
+}
+.depth-tag {
+  flex: none;
+  min-width: 36px;
+  justify-content: center;
+  border-width: 1px;
+}
+.depth-tag-1 { color: #1677ff; background: #e6f4ff; border-color: #91caff; }
+.depth-tag-2 { color: #d46b08; background: #fff7e6; border-color: #ffd591; }
+.depth-tag-3 { color: #389e0d; background: #f6ffed; border-color: #b7eb8f; }
+.depth-tag-4 { color: #cf1322; background: #fff1f0; border-color: #ffa39e; }
+.depth-tag-5 { color: #531dab; background: #f9f0ff; border-color: #d3adf7; }
+.depth-tag-6 { color: #08979c; background: #e6fffb; border-color: #87e8de; }
+.depth-tag-7 { color: #c41d7f; background: #fff0f6; border-color: #ffadd2; }
+.depth-tag-8 { color: #ad4e00; background: #fff7e6; border-color: #ffc069; }
+.depth-tag-9 { color: #1d39c4; background: #f0f5ff; border-color: #adc6ff; }
+.depth-tag-10 { color: #5b8c00; background: #fcffe6; border-color: #eaff8f; }
+.id-link {
+  flex: none;
+  font-weight: 600;
+}
+.phone-text {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.team-tree-table :deep(.el-table__indent),
+.team-tree-table :deep(.el-table__placeholder) {
+  display: none !important;
+  width: 0 !important;
+  padding: 0 !important;
+}
+.team-tree-table :deep(.el-table__expand-icon) {
+  margin-right: 6px;
+}
+.team-tree-table :deep(.depth-row > td:first-child) {
+  box-shadow: inset 3px 0 0 var(--depth-color, transparent);
+}
+.team-tree-table :deep(.depth-1) { --depth-color: #1677ff; }
+.team-tree-table :deep(.depth-2) { --depth-color: #d46b08; }
+.team-tree-table :deep(.depth-3) { --depth-color: #389e0d; }
+.team-tree-table :deep(.depth-4) { --depth-color: #cf1322; }
+.team-tree-table :deep(.depth-5) { --depth-color: #531dab; }
+.team-tree-table :deep(.depth-6) { --depth-color: #08979c; }
+.team-tree-table :deep(.depth-7) { --depth-color: #c41d7f; }
+.team-tree-table :deep(.depth-8) { --depth-color: #ad4e00; }
+.team-tree-table :deep(.depth-9) { --depth-color: #1d39c4; }
+.team-tree-table :deep(.depth-10) { --depth-color: #5b8c00; }
 </style>

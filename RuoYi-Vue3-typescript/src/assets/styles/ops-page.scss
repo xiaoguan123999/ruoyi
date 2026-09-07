@@ -110,6 +110,15 @@
     margin-bottom: var(--ops-gap);
   }
 
+  /* 工具栏后接卡片（如团队汇总）：同样拼成一张卡，避免中间双圆角 */
+  > .el-row.mb8 + .el-card {
+    margin-top: 0 !important;
+    margin-bottom: var(--ops-gap);
+    border-top: 1px solid var(--el-border-color-extra-light);
+    border-radius: 0 0 var(--ops-radius) var(--ops-radius);
+    box-shadow: var(--ops-shadow);
+  }
+
   /* 表格后接分页：合并成一张卡 */
   > .el-table:has(+ .pagination-container) {
     border-radius: var(--ops-radius) var(--ops-radius) 0 0;
