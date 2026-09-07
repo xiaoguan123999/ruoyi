@@ -14,7 +14,6 @@ import {
   applyAppWithdraw,
   fetchAppWallet,
   fetchAppWithdrawConfig,
-  parseAmountInput,
 } from '@/api/app-trade';
 import type { AppPayAccount, AppWallet, AppWithdrawConfig } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
@@ -49,11 +48,16 @@ function accountTypeLabel(account: AppPayAccount): string {
 
 function calcFee(amount: number, feeRate: number) {
   if (amount <= 0 || feeRate <= 0) {
-    return { fee: 0, arrival: Math.max(0, amount) };
+    return { fee: 0, arrival: Math.max(0, Math.trunc(amount)) };
   }
-  const fee = Math.round(amount * feeRate) / 100;
-  const arrival = Math.max(0, Math.round((amount - fee) * 100) / 100);
-  return { fee: Math.round(fee * 100) / 100, arrival };
+  const fee = Math.round((amount * feeRate) / 100);
+  const arrival = Math.max(0, amount - fee);
+  return { fee, arrival };
+}
+
+function parseIntegerAmount(value: string): number {
+  const next = Number.parseInt(value.replace(/[^\d]/g, ''), 10);
+  return Number.isFinite(next) ? next : 0;
 }
 
 export default function WithdrawScreen() {
@@ -124,7 +128,7 @@ export default function WithdrawScreen() {
   const maxAmount =
     selectedCurrency === 'USDT' ? (config?.maxUsdt ?? 0) : (config?.maxCny ?? 0);
   const feeRate = config?.feeRate ?? 0;
-  const amountValue = parseAmountInput(amount);
+  const amountValue = parseIntegerAmount(amount);
   const { fee: feePreview, arrival: arrivalPreview } = calcFee(amountValue, feeRate);
   const noticeMinCny = config?.minCny && config.minCny > 0 ? config.minCny : 100;
   const noticeFeeRate = feeRate > 0 ? feeRate : 3;
@@ -146,9 +150,9 @@ export default function WithdrawScreen() {
       modalWarning('暂未开放 USDT 提现');
       return;
     }
-    const value = parseAmountInput(amount);
-    if (value <= 0) {
-      modalWarning('请输入有效提现金额');
+    const value = parseIntegerAmount(amount);
+    if (value <= 0 || !Number.isInteger(value)) {
+      modalWarning('提现金额必须是整数');
       return;
     }
     if (maxAmount > 0 && value > maxAmount) {
@@ -226,10 +230,12 @@ export default function WithdrawScreen() {
           <TextInput
             ref={amountRef}
             value={amount}
-            onChangeText={setAmount}
-            keyboardType="numeric"
+            onChangeText={(text) => setAmount(text.replace(/[^\d]/g, ''))}
+            keyboardType="number-pad"
             style={styles.input}
-            placeholder={selectedCurrency === 'CNY' ? '¥ 0' : 'USDT 0'}
+            placeholder={
+              selectedCurrency === 'CNY' ? '¥ 0' : selectedCurrency === 'USDT' ? 'USDT 0' : '0'
+            }
             placeholderTextColor={colors.placeholder}
             autoFocus
           />
