@@ -38,21 +38,25 @@
           <span class="summary-meta">团队 {{ summaryMember.teamCount ?? 0 }} 人 · 注册 {{ parseTime(summaryMember.createTime) }}</span>
         </div>
         <div class="summary-hd__actions">
-          <el-button type="primary" plain @click="openTree(summaryMember)" v-hasPermi="['biz:team:tree']">会员结构图</el-button>
-          <el-button type="primary" plain @click="openRelation(summaryMember)" v-hasPermi="['biz:team:relation']">推荐关系图</el-button>
           <el-button type="primary" plain @click="openTeam(summaryMember)" v-hasPermi="['biz:team:list']">查看下线</el-button>
+          <el-button type="primary" plain @click="openTree(summaryMember)" v-hasPermi="['biz:team:tree']">结构图</el-button>
+          <el-button type="primary" plain @click="openRelation(summaryMember)" v-hasPermi="['biz:team:relation']">关系图</el-button>
         </div>
       </div>
 
       <el-descriptions :column="4" border size="small" class="summary-desc">
         <el-descriptions-item label="会员ID">{{ summaryMember.memberId }}</el-descriptions-item>
         <el-descriptions-item label="上级ID">{{ summaryMember.parentId || "—" }}</el-descriptions-item>
+        <el-descriptions-item label="邀请码">{{ summaryMember.inviteCode || "—" }}</el-descriptions-item>
+        <el-descriptions-item label="最后登录">{{ summaryMember.lastLoginTime ? parseTime(summaryMember.lastLoginTime) : "—" }}</el-descriptions-item>
         <el-descriptions-item label="CNY可用">{{ summaryMember.cnyAvailable ?? 0 }}</el-descriptions-item>
         <el-descriptions-item label="CNY冻结">{{ summaryMember.cnyFrozen ?? 0 }}</el-descriptions-item>
         <el-descriptions-item label="USDT可用">{{ summaryMember.usdtAvailable ?? 0 }}</el-descriptions-item>
         <el-descriptions-item label="USDT冻结">{{ summaryMember.usdtFrozen ?? 0 }}</el-descriptions-item>
         <el-descriptions-item label="推广收益CNY">{{ summaryMember.cnyAssistValue ?? 0 }}</el-descriptions-item>
         <el-descriptions-item label="推广收益USDT">{{ summaryMember.usdtAssistValue ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="注册IP">{{ summaryMember.registerIp || "—" }}</el-descriptions-item>
+        <el-descriptions-item label="登录IP">{{ summaryMember.lastLoginIp || "—" }}</el-descriptions-item>
         <el-descriptions-item label="今日注册">{{ teamOverview.registerToday ?? 0 }}</el-descriptions-item>
         <el-descriptions-item label="总注册">{{ teamOverview.registerTotal ?? 0 }}</el-descriptions-item>
         <el-descriptions-item label="今日实名">{{ teamOverview.kycToday ?? 0 }}</el-descriptions-item>
@@ -88,41 +92,42 @@
       </template>
     </el-card>
 
-    <el-table v-loading="loading" :data="dataList">
-      <el-table-column label="会员ID" align="center" prop="memberId" width="90" />
-      <el-table-column label="手机号" align="center" prop="phone" width="120" />
-      <el-table-column label="姓名" align="center" prop="realName" />
-      <el-table-column label="上级ID" align="center" prop="parentId" width="90" />
-      <el-table-column label="祖级" align="center" prop="ancestors" min-width="140" show-overflow-tooltip />
-      <el-table-column label="等级" align="center" min-width="90"><template #default="scope">{{ scope.row.levelName || "无等级" }}</template></el-table-column>
-      <el-table-column label="CNY可用" align="center" prop="cnyAvailable" width="100" />
-      <el-table-column label="USDT可用" align="center" prop="usdtAvailable" width="100" />
-      <el-table-column label="签到总次数" align="center" prop="checkinCount" width="100">
-        <template #default="scope">{{ scope.row.checkinCount ?? 0 }}</template>
-      </el-table-column>
-      <el-table-column label="团队人数" align="center" prop="teamCount" width="90" />
-      <el-table-column label="注册时间" align="center" prop="createTime" width="160">
-        <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
-      </el-table-column>
-      <el-table-column label="最后登录时间" align="center" width="160">
-        <template #default="scope"><span>{{ scope.row.lastLoginTime ? parseTime(scope.row.lastLoginTime) : "--" }}</span></template>
-      </el-table-column>
-      <el-table-column label="注册IP" align="center" prop="registerIp" width="130">
-        <template #default="scope">{{ scope.row.registerIp || "--" }}</template>
-      </el-table-column>
-      <el-table-column label="最后登录IP" align="center" prop="lastLoginIp" width="130">
-        <template #default="scope">{{ scope.row.lastLoginIp || "--" }}</template>
-      </el-table-column>
-      <el-table-column label="操作" align="center" width="260" fixed="right">
-        <template #default="scope">
-          <el-button link type="primary" @click="openTeam(scope.row)" v-hasPermi="['biz:team:list']">查看下线</el-button>
-          <el-button link type="primary" @click="openTree(scope.row)" v-hasPermi="['biz:team:tree']">结构图</el-button>
-          <el-button link type="primary" @click="openRelation(scope.row)" v-hasPermi="['biz:team:relation']">关系图</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
-
+    <template v-if="showMemberList">
+      <el-table v-loading="loading" :data="dataList">
+        <el-table-column label="会员ID" align="center" prop="memberId" width="90" />
+        <el-table-column label="手机号" align="center" prop="phone" width="120" />
+        <el-table-column label="姓名" align="center" prop="realName" />
+        <el-table-column label="上级ID" align="center" prop="parentId" width="90" />
+        <el-table-column label="祖级" align="center" prop="ancestors" min-width="140" show-overflow-tooltip />
+        <el-table-column label="等级" align="center" min-width="90"><template #default="scope">{{ scope.row.levelName || "无等级" }}</template></el-table-column>
+        <el-table-column label="CNY可用" align="center" prop="cnyAvailable" width="100" />
+        <el-table-column label="USDT可用" align="center" prop="usdtAvailable" width="100" />
+        <el-table-column label="签到总次数" align="center" prop="checkinCount" width="100">
+          <template #default="scope">{{ scope.row.checkinCount ?? 0 }}</template>
+        </el-table-column>
+        <el-table-column label="团队人数" align="center" prop="teamCount" width="90" />
+        <el-table-column label="注册时间" align="center" prop="createTime" width="160">
+          <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
+        </el-table-column>
+        <el-table-column label="最后登录时间" align="center" width="160">
+          <template #default="scope"><span>{{ scope.row.lastLoginTime ? parseTime(scope.row.lastLoginTime) : "--" }}</span></template>
+        </el-table-column>
+        <el-table-column label="注册IP" align="center" prop="registerIp" width="130">
+          <template #default="scope">{{ scope.row.registerIp || "--" }}</template>
+        </el-table-column>
+        <el-table-column label="最后登录IP" align="center" prop="lastLoginIp" width="130">
+          <template #default="scope">{{ scope.row.lastLoginIp || "--" }}</template>
+        </el-table-column>
+        <el-table-column label="操作" align="center" width="260" fixed="right">
+          <template #default="scope">
+            <el-button link type="primary" @click="openTeam(scope.row)" v-hasPermi="['biz:team:list']">查看下线</el-button>
+            <el-button link type="primary" @click="openTree(scope.row)" v-hasPermi="['biz:team:tree']">结构图</el-button>
+            <el-button link type="primary" @click="openRelation(scope.row)" v-hasPermi="['biz:team:relation']">关系图</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+    </template>
     <el-dialog :title="teamTitle" v-model="teamOpen" width="960px" append-to-body>
       <el-radio-group v-model="teamLevel" @change="loadTeamMembers" class="mb8 team-level-group">
         <el-radio-button v-for="n in teamLevelOptions" :key="n" :value="n">{{ n }}级</el-radio-button>
@@ -193,6 +198,9 @@ const teamLevelOptions = computed(() => {
   return Array.from({ length: Math.max(max, 1) }, (_, i) => i + 1)
 })
 
+/** 精确查到单人并已展示汇总时，下方列表与汇总重复，隐藏 */
+const showMemberList = computed(() => !(summaryMember.value && dataList.value.length === 1 && total.value <= 1))
+
 function emptyLevel(n: number) {
   return { teamLevel: n, registerToday: 0, register: 0, active: 0, subscribeCny: 0, subscribeUsdt: 0, rechargeCny: 0, rechargeUsdt: 0 }
 }
@@ -257,10 +265,10 @@ function openBizMenu(titles: string[], keyword: string) {
   proxy.$router.push({ path, query: { keyword } })
 }
 function openTree(row: any) {
-  openBizMenu(["会员结构图"], row.phone || String(row.memberId))
+  openBizMenu(["会员结构图"], String(row.memberId))
 }
 function openRelation(row: any) {
-  openBizMenu(["推荐关系图"], row.phone || String(row.memberId))
+  openBizMenu(["推荐关系图"], String(row.memberId))
 }
 function drillDown(row: any) {
   currentMemberId.value = row.memberId

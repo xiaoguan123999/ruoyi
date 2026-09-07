@@ -1,14 +1,8 @@
 <template>
   <div class="app-container ops-page">
     <el-form :inline="true" @submit.prevent="handleQuery">
-      <el-form-item>
-        <el-input
-          v-model="keyword"
-          placeholder="手机号 / 会员ID / 邀请码"
-          clearable
-          style="width: 280px"
-          @keyup.enter="handleQuery"
-        />
+      <el-form-item label="会员">
+        <MemberSelect v-model="memberId" @change="onMemberChange" />
       </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -43,7 +37,7 @@ import { listTeamRelation } from "@/api/biz"
 
 const { proxy } = getCurrentInstance() as any
 const route = useRoute()
-const keyword = ref("")
+const memberId = ref<number | undefined>()
 const loading = ref(false)
 const rows = ref<any[]>([])
 
@@ -53,15 +47,23 @@ function formatAmount(v: any) {
   return Number.isNaN(n) ? v : n.toFixed(2)
 }
 
-function handleQuery() {
-  const q = (keyword.value || "").trim()
-  if (!q) {
-    proxy.$modal.msgWarning("请输入手机号或会员ID")
-    return
-  }
+function loadByKeyword(q: string) {
   loading.value = true
   listTeamRelation(q).then((res: any) => {
     rows.value = res.data || []
+    if (!memberId.value) {
+      for (const r of rows.value) {
+        const hit = (r.peers || []).find((p: any) => p.current)
+        if (hit?.memberId) {
+          memberId.value = Number(hit.memberId)
+          break
+        }
+        if (r.memberId) {
+          memberId.value = Number(r.memberId)
+          break
+        }
+      }
+    }
   }).catch(() => {
     rows.value = []
   }).finally(() => {
@@ -69,21 +71,40 @@ function handleQuery() {
   })
 }
 
-function handleExport() {
-  const q = (keyword.value || "").trim()
-  if (!q) {
-    proxy.$modal.msgWarning("请先搜索会员")
+function handleQuery() {
+  if (!memberId.value) {
+    proxy.$modal.msgWarning("请选择会员")
     return
   }
-  proxy.download("biz/team/relation/export", { keyword: q }, `relation_${new Date().getTime()}.xlsx`)
+  loadByKeyword(String(memberId.value))
+}
+
+function onMemberChange(id?: number) {
+  if (!id) {
+    rows.value = []
+    return
+  }
+  handleQuery()
+}
+
+function handleExport() {
+  if (!memberId.value) {
+    proxy.$modal.msgWarning("请先选择会员")
+    return
+  }
+  proxy.download("biz/team/relation/export", { keyword: String(memberId.value) }, `relation_${new Date().getTime()}.xlsx`)
 }
 
 onMounted(() => {
-  const q = (route.query.keyword as string) || ""
-  if (q) {
-    keyword.value = q
+  const q = String(route.query.keyword || "").trim()
+  if (!q) return
+  const asId = Number(q)
+  if (Number.isFinite(asId) && String(asId) === q) {
+    memberId.value = asId
     handleQuery()
+    return
   }
+  loadByKeyword(q)
 })
 </script>
 
