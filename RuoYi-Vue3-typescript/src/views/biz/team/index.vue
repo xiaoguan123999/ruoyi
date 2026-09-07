@@ -37,6 +37,25 @@
         <el-descriptions-item label="实名">{{ summaryMember.kycStatus === "1" ? "已实名" : "未实名" }}</el-descriptions-item>
         <el-descriptions-item label="注册时间" :span="2">{{ parseTime(summaryMember.createTime) }}</el-descriptions-item>
       </el-descriptions>
+      <div class="mb8" style="font-weight: 600">总团队</div>
+      <el-descriptions :column="4" border size="small" class="mb8">
+        <el-descriptions-item label="团队今日注册">{{ teamOverview.registerToday ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队总注册">{{ teamOverview.registerTotal ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队今日实名">{{ teamOverview.kycToday ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队总实名">{{ teamOverview.kycTotal ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队今日激活人数">{{ teamOverview.activeToday ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队总激活人数">{{ teamOverview.activeTotal ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队今日总认购CNY">{{ teamOverview.subscribeTodayCny ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队总认购CNY">{{ teamOverview.subscribeTotalCny ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队今日总认购USDT">{{ teamOverview.subscribeTodayUsdt ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队总认购USDT">{{ teamOverview.subscribeTotalUsdt ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队今日充值CNY">{{ teamOverview.rechargeTodayCny ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队总充值CNY">{{ teamOverview.rechargeTotalCny ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队今日充值USDT">{{ teamOverview.rechargeTodayUsdt ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队总充值USDT">{{ teamOverview.rechargeTotalUsdt ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队今日签到人数">{{ teamOverview.checkinToday ?? 0 }}</el-descriptions-item>
+        <el-descriptions-item label="团队昨日签到人数">{{ teamOverview.checkinYesterday ?? 0 }}</el-descriptions-item>
+      </el-descriptions>
       <div class="mb8">
         <el-button type="primary" plain @click="openTree(summaryMember)" v-hasPermi="['biz:team:tree']">会员结构图</el-button>
         <el-button type="primary" plain @click="openRelation(summaryMember)" v-hasPermi="['biz:team:relation']">推荐关系图</el-button>
@@ -45,6 +64,7 @@
         <el-table-column label="层级" align="center" prop="teamLevel" width="80">
           <template #default="scope">{{ scope.row.teamLevel }}级</template>
         </el-table-column>
+        <el-table-column label="今日新注册" align="center" prop="registerToday" />
         <el-table-column label="注册人数" align="center" prop="register" />
         <el-table-column label="激活人数" align="center" prop="active" />
         <el-table-column label="认购CNY" align="center" prop="subscribeCny" />
@@ -63,6 +83,9 @@
       <el-table-column label="等级" align="center" min-width="90"><template #default="scope">{{ scope.row.levelName || "无等级" }}</template></el-table-column>
       <el-table-column label="CNY可用" align="center" prop="cnyAvailable" width="100" />
       <el-table-column label="USDT可用" align="center" prop="usdtAvailable" width="100" />
+      <el-table-column label="签到总次数" align="center" prop="checkinCount" width="100">
+        <template #default="scope">{{ scope.row.checkinCount ?? 0 }}</template>
+      </el-table-column>
       <el-table-column label="团队人数" align="center" prop="teamCount" width="90" />
       <el-table-column label="注册时间" align="center" prop="createTime" width="160">
         <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
@@ -105,6 +128,9 @@
         </el-table-column>
         <el-table-column label="CNY可用" align="center" prop="cnyAvailable" width="100" />
         <el-table-column label="USDT可用" align="center" prop="usdtAvailable" width="110" />
+        <el-table-column label="签到总次数" align="center" prop="checkinCount" width="100">
+          <template #default="scope">{{ scope.row.checkinCount ?? 0 }}</template>
+        </el-table-column>
         <el-table-column label="团队人数" align="center" prop="teamCount" width="90" />
         <el-table-column label="注册时间" align="center" prop="createTime" width="160">
           <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
@@ -146,6 +172,7 @@ const teamLevel = ref(1)
 const currentMemberId = ref<number>()
 const summaryMember = ref<any>(null)
 const summaryRows = ref<any[]>([])
+const teamOverview = ref<any>({})
 
 const teamLevelOptions = computed(() => {
   const max = summaryRows.value.reduce((m: number, r: any) => Math.max(m, Number(r.teamLevel) || 0), 0)
@@ -153,12 +180,13 @@ const teamLevelOptions = computed(() => {
 })
 
 function emptyLevel(n: number) {
-  return { teamLevel: n, register: 0, active: 0, subscribeCny: 0, subscribeUsdt: 0, rechargeCny: 0, rechargeUsdt: 0 }
+  return { teamLevel: n, registerToday: 0, register: 0, active: 0, subscribeCny: 0, subscribeUsdt: 0, rechargeCny: 0, rechargeUsdt: 0 }
 }
 
 function loadSummary(memberId: number) {
   getTeamSummary(memberId).then((res: any) => {
     summaryMember.value = res.member || res.data?.member || null
+    teamOverview.value = res.overview || res.data?.overview || {}
     const levels = res.levels || res.data?.levels
     if (Array.isArray(levels) && levels.length) {
       const max = levels.reduce((m: number, r: any) => Math.max(m, Number(r.teamLevel) || 0), 0)
@@ -170,6 +198,7 @@ function loadSummary(memberId: number) {
   }).catch(() => {
     summaryMember.value = null
     summaryRows.value = []
+    teamOverview.value = {}
   })
 }
 
@@ -185,16 +214,18 @@ function getList() {
     } else if (!focused) {
       summaryMember.value = null
       summaryRows.value = []
+      teamOverview.value = {}
     } else if (res.rows && res.rows.length > 0) {
       loadSummary(res.rows[0].memberId)
     } else {
       summaryMember.value = null
       summaryRows.value = []
+      teamOverview.value = {}
     }
   })
 }
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
-function resetQuery() { summaryMember.value = null; summaryRows.value = []; proxy.resetForm("queryRef"); handleQuery() }
+function resetQuery() { summaryMember.value = null; summaryRows.value = []; teamOverview.value = {}; proxy.resetForm("queryRef"); handleQuery() }
 function openTeam(row: any) {
   currentMemberId.value = row.memberId
   teamLevel.value = 1

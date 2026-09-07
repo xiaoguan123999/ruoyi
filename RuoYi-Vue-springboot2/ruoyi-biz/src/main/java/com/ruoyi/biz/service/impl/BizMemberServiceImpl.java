@@ -2,6 +2,8 @@ package com.ruoyi.biz.service.impl;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +24,7 @@ import com.ruoyi.biz.domain.BizTeamRelationPeer;
 import com.ruoyi.biz.domain.BizTeamRelationRow;
 import com.ruoyi.biz.domain.BizTeamTreeNode;
 import com.ruoyi.biz.domain.BizTeamTreeSummary;
+import com.ruoyi.biz.domain.BizTeamOverview;
 import com.ruoyi.biz.mapper.BizCheckinMapper;
 import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.mapper.BizRechargeMapper;
@@ -33,6 +36,7 @@ import com.ruoyi.biz.service.IBizWalletService;
 import com.ruoyi.biz.util.KycUtils;
 import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 
@@ -458,7 +462,12 @@ public class BizMemberServiceImpl implements IBizMemberService
     public List<AppTeamLevelStats> getAdminTeamLevels(Long memberId)
     {
         int depth = viewerDepth(memberId);
-        List<AppTeamLevelStats> registers = memberMapper.selectAdminTeamRegisterStats(memberId, depth);
+        Date todayStart = DateUtils.parseDate(DateUtils.getDate());
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(todayStart);
+        cal.add(Calendar.DAY_OF_MONTH, 1);
+        Date tomorrowStart = cal.getTime();
+        List<AppTeamLevelStats> registers = memberMapper.selectAdminTeamRegisterStats(memberId, depth, todayStart, tomorrowStart);
         List<AppTeamLevelStats> orders = memberMapper.selectAdminTeamOrderStats(memberId, depth);
         List<AppTeamLevelStats> recharges = memberMapper.selectAdminTeamRechargeStats(memberId, depth);
         int max = 0;
@@ -533,6 +542,7 @@ public class BizMemberServiceImpl implements IBizMemberService
             AppTeamLevelStats s = new AppTeamLevelStats();
             s.setTeamLevel(Integer.valueOf(i));
             s.setRegister(Integer.valueOf(0));
+            s.setRegisterToday(Integer.valueOf(0));
             s.setActive(Integer.valueOf(0));
             s.setSubscribeUsd(BigDecimal.ZERO);
             s.setSubscribeUsdt(BigDecimal.ZERO);
@@ -560,6 +570,7 @@ public class BizMemberServiceImpl implements IBizMemberService
                 continue;
             }
             dest.setRegister(nvl(row.getRegister()));
+            dest.setRegisterToday(nvl(row.getRegisterToday()));
             dest.setActive(nvl(row.getActive()));
         }
     }
@@ -717,6 +728,57 @@ public class BizMemberServiceImpl implements IBizMemberService
         }
         BizTeamTreeSummary summary = memberMapper.selectTeamTreeSummary(memberId);
         return summary == null ? new BizTeamTreeSummary() : summary;
+    }
+
+    @Override
+    public BizTeamOverview selectAdminTeamOverview(Long memberId)
+    {
+        if (memberId == null)
+        {
+            throw new ServiceException("会员不存在");
+        }
+        Date todayStart = DateUtils.parseDate(DateUtils.getDate());
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(todayStart);
+        cal.add(Calendar.DAY_OF_MONTH, 1);
+        Date tomorrowStart = cal.getTime();
+        cal.setTime(todayStart);
+        cal.add(Calendar.DAY_OF_MONTH, -1);
+        Date yesterday = cal.getTime();
+        String todayText = DateUtils.getDate();
+        String yesterdayText = DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD, yesterday);
+        BizTeamOverview overview = memberMapper.selectAdminTeamOverview(memberId, todayStart, tomorrowStart, todayText, yesterdayText);
+        if (overview == null)
+        {
+            overview = new BizTeamOverview();
+        }
+        overview.setRegisterToday(nvlInt(overview.getRegisterToday()));
+        overview.setRegisterTotal(nvlInt(overview.getRegisterTotal()));
+        overview.setKycToday(nvlInt(overview.getKycToday()));
+        overview.setKycTotal(nvlInt(overview.getKycTotal()));
+        overview.setActiveToday(nvlInt(overview.getActiveToday()));
+        overview.setActiveTotal(nvlInt(overview.getActiveTotal()));
+        overview.setSubscribeTodayCny(nvlMoney(overview.getSubscribeTodayCny()));
+        overview.setSubscribeTotalCny(nvlMoney(overview.getSubscribeTotalCny()));
+        overview.setSubscribeTodayUsdt(nvlMoney(overview.getSubscribeTodayUsdt()));
+        overview.setSubscribeTotalUsdt(nvlMoney(overview.getSubscribeTotalUsdt()));
+        overview.setRechargeTodayCny(nvlMoney(overview.getRechargeTodayCny()));
+        overview.setRechargeTotalCny(nvlMoney(overview.getRechargeTotalCny()));
+        overview.setRechargeTodayUsdt(nvlMoney(overview.getRechargeTodayUsdt()));
+        overview.setRechargeTotalUsdt(nvlMoney(overview.getRechargeTotalUsdt()));
+        overview.setCheckinToday(nvlInt(overview.getCheckinToday()));
+        overview.setCheckinYesterday(nvlInt(overview.getCheckinYesterday()));
+        return overview;
+    }
+
+    private Integer nvlInt(Integer value)
+    {
+        return value == null ? Integer.valueOf(0) : value;
+    }
+
+    private BigDecimal nvlMoney(BigDecimal value)
+    {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     @Override

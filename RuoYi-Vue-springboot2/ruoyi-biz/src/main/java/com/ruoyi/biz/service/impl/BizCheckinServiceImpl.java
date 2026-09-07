@@ -14,11 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.BizCheckin;
 import com.ruoyi.biz.domain.BizCheckinPrize;
+import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.CheckinPrizeRule;
 import com.ruoyi.biz.domain.CheckinResult;
 import com.ruoyi.biz.domain.CheckinRule;
 import com.ruoyi.biz.mapper.BizCheckinMapper;
 import com.ruoyi.biz.mapper.BizCheckinPrizeMapper;
+import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.service.IBizCheckinService;
 import com.ruoyi.biz.service.IBizConfigService;
 import com.ruoyi.biz.service.IBizWalletService;
@@ -37,6 +39,9 @@ public class BizCheckinServiceImpl implements IBizCheckinService
 
     @Autowired
     private BizCheckinPrizeMapper prizeMapper;
+
+    @Autowired
+    private BizMemberMapper memberMapper;
 
     @Autowired
     private IBizWalletService walletService;
@@ -118,6 +123,15 @@ public class BizCheckinServiceImpl implements IBizCheckinService
     @Transactional(rollbackFor = Exception.class)
     public CheckinResult checkin(Long memberId)
     {
+        BizMember member = memberMapper.selectMemberById(memberId);
+        if (member == null)
+        {
+            throw new ServiceException("会员不存在");
+        }
+        if (!BizConstants.KYC_DONE.equals(member.getKycStatus()))
+        {
+            throw new ServiceException("请先完成实名认证");
+        }
         java.util.Date today = DateUtils.parseDate(DateUtils.getDate());
         if (checkinMapper.selectByMemberAndDate(memberId, today) != null)
         {

@@ -145,6 +145,11 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
         {
             throw new ServiceException("提现金额必须大于0");
         }
+        if (amount.stripTrailingZeros().scale() > 0)
+        {
+            throw new ServiceException("提现金额必须为整数");
+        }
+        amount = amount.setScale(0, RoundingMode.UNNECESSARY);
         if (StringUtils.isEmpty(accountInfo))
         {
             throw new ServiceException(BizConstants.CURRENCY_USDT.equals(payCurrency) ? "请填写USDT收款地址" : "请填写收款账户");
@@ -350,9 +355,9 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
     {
         if (amount == null || feeRate == null || feeRate.compareTo(BigDecimal.ZERO) <= 0)
         {
-            return BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+            return BigDecimal.ZERO.setScale(0, RoundingMode.HALF_UP);
         }
-        return amount.multiply(feeRate).divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+        return amount.multiply(feeRate).divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP);
     }
 
     private BigDecimal normalizeFeeRate(BigDecimal feeRate)

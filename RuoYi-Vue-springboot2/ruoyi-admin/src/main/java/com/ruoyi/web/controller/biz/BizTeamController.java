@@ -54,6 +54,7 @@ public class BizTeamController extends BaseController
         AjaxResult ajax = success();
         ajax.put("member", member);
         ajax.put("levels", memberService.getAdminTeamLevels(memberId));
+        ajax.put("overview", memberService.selectAdminTeamOverview(memberId));
         return ajax;
     }
 

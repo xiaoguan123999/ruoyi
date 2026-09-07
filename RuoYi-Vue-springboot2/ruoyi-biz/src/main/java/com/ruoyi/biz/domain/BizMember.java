@@ -139,6 +139,11 @@ public class BizMember extends BaseEntity
     @ApiModelProperty("团队人数")
     private Integer teamCount;
 
+    /** 个人当前账号签到总次数 */
+    @Excel(name = "签到总次数")
+    @ApiModelProperty("个人当前账号签到总次数")
+    private Integer checkinCount;
+
     @Excel(name = "直推人数")
     @ApiModelProperty("直推人数")
     private Integer directCount;
@@ -468,6 +473,16 @@ public class BizMember extends BaseEntity
     public void setTeamCount(Integer teamCount)
     {
         this.teamCount = teamCount;
+    }
+
+    public Integer getCheckinCount()
+    {
+        return checkinCount;
+    }
+
+    public void setCheckinCount(Integer checkinCount)
+    {
+        this.checkinCount = checkinCount;
     }
 
     public Date getLastLoginTime()

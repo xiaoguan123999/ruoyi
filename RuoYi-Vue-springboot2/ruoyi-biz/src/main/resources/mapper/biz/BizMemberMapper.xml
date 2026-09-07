@@ -30,6 +30,7 @@
         <result property="usdtProductIncome" column="usdt_product_income"/>
         <result property="usdtAssistValue" column="usdt_assist_value"/>
         <result property="teamCount"    column="team_count"/>
+        <result property="checkinCount" column="checkin_count"/>
         <result property="directCount"  column="direct_count"/>
         <result property="lastLoginTime" column="last_login_time"/>
         <result property="registerIp"   column="register_ip"/>
@@ -54,6 +55,7 @@
                (select ifnull(w.available, 0) from biz_wallet w where w.member_id = m.member_id and w.type_code = 'PRODUCT' and w.currency = 'USDT') as usdt_product_income,
                (select ifnull(w.available, 0) from biz_wallet w where w.member_id = m.member_id and w.type_code = 'PROMO' and w.currency = 'USDT') as usdt_assist_value,
                (select count(1) from biz_member t where find_in_set(m.member_id, t.ancestors) and ifnull(t.test_flag, '0') = '0') as team_count,
+               (select count(1) from biz_checkin c where c.member_id = m.member_id) as checkin_count,
                (select count(1) from biz_member d where d.parent_id = m.member_id and ifnull(d.test_flag, '0') = '0') as direct_count,
                (select l.login_time from biz_member_logininfor l
                  where l.member_id = m.member_id and l.status = '0' and l.msg = '登录成功'
@@ -278,9 +280,10 @@
     <select id="selectAdminTeamRegisterStats" resultType="com.ruoyi.biz.api.AppTeamLevelStats">
         select depth as teamLevel,
                count(1) as register,
+               ifnull(sum(case when create_time &gt;= #{todayStart} and create_time &lt; #{tomorrowStart} then 1 else 0 end), 0) as registerToday,
                ifnull(sum(case when exists (select 1 from biz_order o where o.member_id = t.member_id) then 1 else 0 end), 0) as active
         from (
-            select m.member_id, <include refid="teamDepthExpr"/> as depth
+            select m.member_id, m.create_time, <include refid="teamDepthExpr"/> as depth
             from biz_member m
             where find_in_set(#{memberId}, m.ancestors)
               and ifnull(m.test_flag, '0') = '0'
@@ -405,6 +408,72 @@
             (select ifnull(sum(case when w.currency = 'USDT' then w.amount else 0 end), 0)
                 from biz_withdraw w inner join biz_member m on m.member_id = w.member_id
                 where w.status = '1' and find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as withdrawUsdt
+        from (select 1) dummy
+    </select>
+
+    <select id="selectAdminTeamOverview" resultType="com.ruoyi.biz.domain.BizTeamOverview">
+        select
+            (select count(1) from biz_member t
+              where find_in_set(#{memberId}, t.ancestors) and ifnull(t.test_flag, '0') = '0'
+                and t.create_time &gt;= #{todayStart} and t.create_time &lt; #{tomorrowStart}) as registerToday,
+            (select count(1) from biz_member t
+              where find_in_set(#{memberId}, t.ancestors) and ifnull(t.test_flag, '0') = '0') as registerTotal,
+            (select count(1) from biz_member t
+              where find_in_set(#{memberId}, t.ancestors) and ifnull(t.test_flag, '0') = '0'
+                and t.kyc_status = '1'
+                and t.update_time &gt;= #{todayStart} and t.update_time &lt; #{tomorrowStart}) as kycToday,
+            (select count(1) from biz_member t
+              where find_in_set(#{memberId}, t.ancestors) and ifnull(t.test_flag, '0') = '0'
+                and t.kyc_status = '1') as kycTotal,
+            (select count(1) from (
+                select o.member_id
+                from biz_order o
+                inner join biz_member m on m.member_id = o.member_id
+                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                group by o.member_id
+                having min(o.create_time) &gt;= #{todayStart} and min(o.create_time) &lt; #{tomorrowStart}
+            ) first_buy) as activeToday,
+            (select count(1) from biz_member t
+              where find_in_set(#{memberId}, t.ancestors) and ifnull(t.test_flag, '0') = '0'
+                and exists (select 1 from biz_order o where o.member_id = t.member_id)) as activeTotal,
+            (select ifnull(sum(case when o.currency = 'CNY' then o.price else 0 end), 0)
+                from biz_order o inner join biz_member m on m.member_id = o.member_id
+                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                  and o.create_time &gt;= #{todayStart} and o.create_time &lt; #{tomorrowStart}) as subscribeTodayCny,
+            (select ifnull(sum(case when o.currency = 'CNY' then o.price else 0 end), 0)
+                from biz_order o inner join biz_member m on m.member_id = o.member_id
+                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as subscribeTotalCny,
+            (select ifnull(sum(case when o.currency = 'USDT' then o.price else 0 end), 0)
+                from biz_order o inner join biz_member m on m.member_id = o.member_id
+                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                  and o.create_time &gt;= #{todayStart} and o.create_time &lt; #{tomorrowStart}) as subscribeTodayUsdt,
+            (select ifnull(sum(case when o.currency = 'USDT' then o.price else 0 end), 0)
+                from biz_order o inner join biz_member m on m.member_id = o.member_id
+                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as subscribeTotalUsdt,
+            (select ifnull(sum(case when r.currency = 'CNY' then r.amount else 0 end), 0)
+                from biz_recharge r inner join biz_member m on m.member_id = r.member_id
+                where r.status = '1' and find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                  and coalesce(r.audit_time, r.create_time) &gt;= #{todayStart}
+                  and coalesce(r.audit_time, r.create_time) &lt; #{tomorrowStart}) as rechargeTodayCny,
+            (select ifnull(sum(case when r.currency = 'CNY' then r.amount else 0 end), 0)
+                from biz_recharge r inner join biz_member m on m.member_id = r.member_id
+                where r.status = '1' and find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as rechargeTotalCny,
+            (select ifnull(sum(case when r.currency = 'USDT' then r.amount else 0 end), 0)
+                from biz_recharge r inner join biz_member m on m.member_id = r.member_id
+                where r.status = '1' and find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                  and coalesce(r.audit_time, r.create_time) &gt;= #{todayStart}
+                  and coalesce(r.audit_time, r.create_time) &lt; #{tomorrowStart}) as rechargeTodayUsdt,
+            (select ifnull(sum(case when r.currency = 'USDT' then r.amount else 0 end), 0)
+                from biz_recharge r inner join biz_member m on m.member_id = r.member_id
+                where r.status = '1' and find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as rechargeTotalUsdt,
+            (select count(distinct c.member_id)
+                from biz_checkin c inner join biz_member m on m.member_id = c.member_id
+                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                  and c.checkin_date = #{todayText}) as checkinToday,
+            (select count(distinct c.member_id)
+                from biz_checkin c inner join biz_member m on m.member_id = c.member_id
+                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                  and c.checkin_date = #{yesterdayText}) as checkinYesterday
         from (select 1) dummy
     </select>
 </mapper>

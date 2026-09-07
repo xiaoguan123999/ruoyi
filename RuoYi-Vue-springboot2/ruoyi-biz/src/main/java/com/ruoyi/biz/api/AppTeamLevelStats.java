@@ -11,6 +11,8 @@ public class AppTeamLevelStats
     private Integer teamLevel;
     @ApiModelProperty("注册人数")
     private Integer register;
+    @ApiModelProperty("今日新注册")
+    private Integer registerToday;
     @ApiModelProperty("激活人数（有认购订单）")
     private Integer active;
     @ApiModelProperty("认购USDT")
@@ -30,6 +32,8 @@ public class AppTeamLevelStats
     public void setTeamLevel(Integer teamLevel) { this.teamLevel = teamLevel; }
     public Integer getRegister() { return register; }
     public void setRegister(Integer register) { this.register = register; }
+    public Integer getRegisterToday() { return registerToday; }
+    public void setRegisterToday(Integer registerToday) { this.registerToday = registerToday; }
     public Integer getActive() { return active; }
     public void setActive(Integer active) { this.active = active; }
     public BigDecimal getSubscribeUsd() { return subscribeUsd; }

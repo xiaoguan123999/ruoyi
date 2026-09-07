@@ -7,6 +7,7 @@ import com.ruoyi.biz.api.AppTeamMemberItem;
 import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizTeamTreeNode;
 import com.ruoyi.biz.domain.BizTeamTreeSummary;
+import com.ruoyi.biz.domain.BizTeamOverview;
 
 public interface BizMemberMapper
 {
@@ -50,7 +51,8 @@ public interface BizMemberMapper
             @Param("viewerDepth") int viewerDepth);
 
     List<AppTeamLevelStats> selectAdminTeamRegisterStats(@Param("memberId") Long memberId,
-            @Param("viewerDepth") int viewerDepth);
+            @Param("viewerDepth") int viewerDepth, @Param("todayStart") java.util.Date todayStart,
+            @Param("tomorrowStart") java.util.Date tomorrowStart);
 
     List<AppTeamLevelStats> selectAdminTeamOrderStats(@Param("memberId") Long memberId,
             @Param("viewerDepth") int viewerDepth);
@@ -65,4 +67,8 @@ public interface BizMemberMapper
     List<BizTeamTreeNode> selectTeamTreeChildren(Long parentId);
 
     BizTeamTreeSummary selectTeamTreeSummary(Long memberId);
+
+    BizTeamOverview selectAdminTeamOverview(@Param("memberId") Long memberId, @Param("todayStart") java.util.Date todayStart,
+            @Param("tomorrowStart") java.util.Date tomorrowStart, @Param("todayText") String todayText,
+            @Param("yesterdayText") String yesterdayText);
 }

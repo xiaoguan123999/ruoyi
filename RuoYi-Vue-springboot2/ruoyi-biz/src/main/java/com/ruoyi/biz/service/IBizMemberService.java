@@ -9,6 +9,7 @@ import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizTeamRelationRow;
 import com.ruoyi.biz.domain.BizTeamTreeNode;
 import com.ruoyi.biz.domain.BizTeamTreeSummary;
+import com.ruoyi.biz.domain.BizTeamOverview;
 
 public interface IBizMemberService
 {
@@ -47,6 +48,8 @@ public interface IBizMemberService
     List<BizTeamTreeNode> selectTeamTreeChildren(Long memberId);
 
     BizTeamTreeSummary selectTeamTreeSummary(Long memberId);
+
+    BizTeamOverview selectAdminTeamOverview(Long memberId);
 
     List<BizTeamRelationRow> selectRecommendRelation(String keyword);
 

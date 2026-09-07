@@ -97,8 +97,8 @@ token:
   # 令牌自定义标识
   header: Authorization
   secret: abcdefghijklmnopqrstuvwxyz
-  # 令牌有效期（默认30分钟）
-  expireTime: 30
+  # 后台令牌有效期（分钟）。有操作会续期，超过该时间未操作自动掉线
+  expireTime: 120
   # App会员令牌有效期（分钟），7天；剩余不足1天有请求则自动续签
   appExpireTime: 10080
 
