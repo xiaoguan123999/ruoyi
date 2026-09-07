@@ -19,6 +19,10 @@ public interface BizMemberMapper
 
     List<BizMember> selectMemberList(BizMember member);
 
+    List<Long> selectMemberIdList();
+
+    BizMember selectMemberCore(Long memberId);
+
     int insertMember(BizMember member);
 
     int updateMember(BizMember member);

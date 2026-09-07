@@ -294,11 +294,15 @@ public class BizLevelRewardServiceImpl implements IBizLevelRewardService
     @Override
     public int evaluateAll()
     {
-        List<BizMember> members = memberMapper.selectMemberList(new BizMember());
+        List<Long> memberIds = memberMapper.selectMemberIdList();
         int count = 0;
-        for (int i = 0; i < members.size(); i++)
+        if (memberIds == null)
         {
-            evaluate(members.get(i).getMemberId());
+            return count;
+        }
+        for (int i = 0; i < memberIds.size(); i++)
+        {
+            evaluate(memberIds.get(i));
             count++;
         }
         return count;

@@ -68,3 +68,4 @@ biz_member_center_menu_patch.sql
 biz_app_version_patch.sql
 biz_member_test_flag_patch.sql
 biz_member_withdraw_status_patch.sql
+biz_member_ancestors_index_patch.sql

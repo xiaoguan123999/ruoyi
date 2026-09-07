@@ -650,7 +650,7 @@ public class BizMemberServiceImpl implements IBizMemberService
         {
             return;
         }
-        BizMember member = memberMapper.selectMemberById(memberId);
+        BizMember member = memberMapper.selectMemberCore(memberId);
         if (member == null)
         {
             return;
@@ -674,7 +674,7 @@ public class BizMemberServiceImpl implements IBizMemberService
         while (id != null && guard++ < 32)
         {
             refreshLevel(id);
-            BizMember row = memberMapper.selectMemberById(id);
+            BizMember row = memberMapper.selectMemberCore(id);
             id = row == null ? null : row.getParentId();
         }
     }
@@ -682,11 +682,15 @@ public class BizMemberServiceImpl implements IBizMemberService
     @Override
     public int refreshAllLevels()
     {
-        List<BizMember> members = memberMapper.selectMemberList(new BizMember());
+        List<Long> memberIds = memberMapper.selectMemberIdList();
         int count = 0;
-        for (int i = 0; i < members.size(); i++)
+        if (memberIds == null)
         {
-            refreshLevel(members.get(i).getMemberId());
+            return count;
+        }
+        for (int i = 0; i < memberIds.size(); i++)
+        {
+            refreshLevel(memberIds.get(i));
             count++;
         }
         return count;

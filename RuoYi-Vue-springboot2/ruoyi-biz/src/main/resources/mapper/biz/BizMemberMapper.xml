@@ -42,6 +42,20 @@
         <result property="remark"       column="remark"/>
     </resultMap>
 
+    <!-- 下级路径：ancestors = 上级路径 + 上级ID，可用前缀索引，避免 find_in_set 全表扫描 -->
+    <sql id="downlineById">
+        (
+            ${alias}.ancestors = (select concat(ifnull(nullif(x.ancestors, ''), '0'), ',', x.member_id) from biz_member x where x.member_id = #{memberId})
+            or ${alias}.ancestors like concat((select concat(ifnull(nullif(x.ancestors, ''), '0'), ',', x.member_id) from biz_member x where x.member_id = #{memberId}), ',%')
+        )
+    </sql>
+    <sql id="downlineOfCurrent">
+        (
+            t.ancestors = concat(ifnull(nullif(m.ancestors, ''), '0'), ',', m.member_id)
+            or t.ancestors like concat(ifnull(nullif(m.ancestors, ''), '0'), ',', m.member_id, ',%')
+        )
+    </sql>
+
     <sql id="selectMemberVo">
         select m.member_id, m.phone, m.password, m.pay_password, m.invite_code, m.parent_id, p.invite_code as parent_invite_code, m.ancestors,
                m.real_name, m.id_card, m.kyc_status, m.level_id, l.level_name, m.status, m.withdraw_status, m.test_flag, m.ga_secret, m.ga_status,
@@ -113,6 +127,21 @@
         order by m.member_id desc
     </select>
 
+    <select id="selectMemberIdList" resultType="long">
+        select member_id from biz_member order by member_id
+    </select>
+
+    <select id="selectMemberCore" parameterType="Long" resultMap="BizMemberResult">
+        select m.member_id, m.phone, m.password, m.pay_password, m.invite_code, m.parent_id,
+               p.invite_code as parent_invite_code, m.ancestors, m.real_name, m.id_card, m.kyc_status,
+               m.level_id, l.level_name, m.status, m.withdraw_status, m.test_flag, m.ga_secret, m.ga_status,
+               m.create_by, m.create_time, m.update_by, m.update_time, m.remark
+        from biz_member m
+        left join biz_member p on p.member_id = m.parent_id
+        left join biz_level l on l.level_id = m.level_id
+        where m.member_id = #{memberId}
+    </select>
+
     <insert id="insertMember" parameterType="BizMember" useGeneratedKeys="true" keyProperty="memberId">
         insert into biz_member (
             phone, password, pay_password, invite_code, parent_id, ancestors, real_name, id_card,
@@ -161,7 +190,7 @@
     <select id="countValidTeamMembers" parameterType="Long" resultType="int">
         select count(1)
         from biz_member m
-        where find_in_set(#{memberId}, m.ancestors)
+        where <include refid="downlineById"><property name="alias" value="m"/></include>
           and ifnull(m.test_flag, '0') = '0'
           and m.kyc_status = '1'
           and exists (select 1 from biz_order o where o.member_id = m.member_id)
@@ -170,7 +199,7 @@
     <select id="countValidTeamMembersConfig" resultType="int">
         select count(1)
         from biz_member m
-        where find_in_set(#{memberId}, m.ancestors)
+        where <include refid="downlineById"><property name="alias" value="m"/></include>
           and ifnull(m.test_flag, '0') = '0'
         <if test="maxDepth != null">
             and (length(ifnull(m.ancestors,'')) - length(replace(ifnull(m.ancestors,''), ',', '')) - ifnull(#{viewerDepth}, 0)) between 1 and #{maxDepth}
@@ -190,7 +219,7 @@
     <select id="selectTeamMembers" resultMap="BizMemberResult">
         <include refid="selectMemberVo"/>
         <where>
-            find_in_set(#{memberId}, m.ancestors)
+            <include refid="downlineById"><property name="alias" value="m"/></include>
             <if test="teamLevel != null">
                 and (length(ifnull(m.ancestors,'')) - length(replace(ifnull(m.ancestors,''), ',', ''))
                     - ifnull(#{viewerDepth}, 0)) = #{teamLevel}
@@ -227,7 +256,7 @@
                ifnull((select sum(o.price) from biz_order o where o.member_id = m.member_id and o.currency = 'USDT'), 0) as subscribe_usdt,
                ifnull((select sum(o.price) from biz_order o where o.member_id = m.member_id and o.currency = 'CNY'), 0) as subscribe_cny
         from biz_member m
-        where find_in_set(#{memberId}, m.ancestors)
+        where <include refid="downlineById"><property name="alias" value="m"/></include>
           and ifnull(m.test_flag, '0') = '0'
           and <include refid="teamDepthExpr"/> between 1 and 7
         <if test="teamLevel != null">
@@ -243,7 +272,7 @@
         from (
             select m.member_id, <include refid="teamDepthExpr"/> as depth
             from biz_member m
-            where find_in_set(#{memberId}, m.ancestors)
+            where <include refid="downlineById"><property name="alias" value="m"/></include>
               and ifnull(m.test_flag, '0') = '0'
         ) t
         where depth between 1 and 7
@@ -257,7 +286,7 @@
                ifnull(sum(case when o.currency = 'CNY' then o.price else 0 end), 0) as subscribeCny
         from biz_order o
         inner join biz_member m on m.member_id = o.member_id
-        where find_in_set(#{memberId}, m.ancestors)
+        where <include refid="downlineById"><property name="alias" value="m"/></include>
           and ifnull(m.test_flag, '0') = '0'
           and <include refid="teamDepthExpr"/> between 1 and 7
         group by <include refid="teamDepthExpr"/>
@@ -271,7 +300,7 @@
         from biz_recharge r
         inner join biz_member m on m.member_id = r.member_id
         where r.status = '1'
-          and find_in_set(#{memberId}, m.ancestors)
+          and <include refid="downlineById"><property name="alias" value="m"/></include>
           and ifnull(m.test_flag, '0') = '0'
           and <include refid="teamDepthExpr"/> between 1 and 7
         group by <include refid="teamDepthExpr"/>
@@ -285,7 +314,7 @@
         from (
             select m.member_id, m.create_time, <include refid="teamDepthExpr"/> as depth
             from biz_member m
-            where find_in_set(#{memberId}, m.ancestors)
+            where <include refid="downlineById"><property name="alias" value="m"/></include>
               and ifnull(m.test_flag, '0') = '0'
         ) t
         where depth &gt;= 1
@@ -299,7 +328,7 @@
                ifnull(sum(case when o.currency = 'CNY' then o.price else 0 end), 0) as subscribeCny
         from biz_order o
         inner join biz_member m on m.member_id = o.member_id
-        where find_in_set(#{memberId}, m.ancestors)
+        where <include refid="downlineById"><property name="alias" value="m"/></include>
           and ifnull(m.test_flag, '0') = '0'
           and <include refid="teamDepthExpr"/> &gt;= 1
         group by <include refid="teamDepthExpr"/>
@@ -313,7 +342,7 @@
         from biz_recharge r
         inner join biz_member m on m.member_id = r.member_id
         where r.status = '1'
-          and find_in_set(#{memberId}, m.ancestors)
+          and <include refid="downlineById"><property name="alias" value="m"/></include>
           and ifnull(m.test_flag, '0') = '0'
           and <include refid="teamDepthExpr"/> &gt;= 1
         group by <include refid="teamDepthExpr"/>
@@ -353,7 +382,7 @@
     <sql id="selectTeamTreeNodeVo">
         select m.member_id, m.parent_id, m.phone, m.real_name, m.id_card, m.kyc_status, m.create_time,
                (select count(1) from biz_member c where c.parent_id = m.member_id) as child_count,
-               (select count(1) from biz_member t where find_in_set(m.member_id, t.ancestors) and ifnull(t.test_flag, '0') = '0') as team_count,
+               (select count(1) from biz_member t where <include refid="downlineOfCurrent"/> and ifnull(t.test_flag, '0') = '0') as team_count,
                ifnull((select sum(r.amount) from biz_recharge r where r.member_id = m.member_id and r.currency = 'CNY' and r.status = '1'), 0) as recharge_cny,
                ifnull((select sum(r.amount) from biz_recharge r where r.member_id = m.member_id and r.currency = 'USDT' and r.status = '1'), 0) as recharge_usdt,
                ifnull((select sum(o.price) from biz_order o where o.member_id = m.member_id and o.currency = 'CNY'), 0) as subscribe_cny,
@@ -378,101 +407,132 @@
     </select>
 
     <select id="selectTeamTreeChildren" parameterType="Long" resultMap="TeamTreeNodeResult">
-        <include refid="selectTeamTreeNodeVo"/>
+        select m.member_id, m.parent_id, m.phone, m.real_name, m.id_card, m.kyc_status, m.create_time,
+               (select count(1) from biz_member c where c.parent_id = m.member_id) as child_count,
+               ifnull(tc.team_count, 0) as team_count,
+               ifnull((select sum(r.amount) from biz_recharge r where r.member_id = m.member_id and r.currency = 'CNY' and r.status = '1'), 0) as recharge_cny,
+               ifnull((select sum(r.amount) from biz_recharge r where r.member_id = m.member_id and r.currency = 'USDT' and r.status = '1'), 0) as recharge_usdt,
+               ifnull((select sum(o.price) from biz_order o where o.member_id = m.member_id and o.currency = 'CNY'), 0) as subscribe_cny,
+               ifnull((select sum(o.price) from biz_order o where o.member_id = m.member_id and o.currency = 'USDT'), 0) as subscribe_usdt,
+               ifnull((select sum(w.amount) from biz_withdraw w where w.member_id = m.member_id and w.currency = 'CNY' and w.status = '1'), 0) as withdraw_cny,
+               ifnull((select sum(w.amount) from biz_withdraw w where w.member_id = m.member_id and w.currency = 'USDT' and w.status = '1'), 0) as withdraw_usdt,
+               (select l.login_time from biz_member_logininfor l
+                 where l.member_id = m.member_id and l.status = '0' and l.msg = '登录成功'
+                 order by l.login_time desc, l.info_id desc limit 1) as last_login_time,
+               (select l.ipaddr from biz_member_logininfor l
+                 where l.member_id = m.member_id and l.status = '0' and l.msg = '登录成功'
+                 order by l.login_time desc, l.info_id desc limit 1) as last_login_ip,
+               (select l.ipaddr from biz_member_logininfor l
+                 where l.member_id = m.member_id and l.status = '0' and l.msg = '注册成功'
+                 order by l.info_id asc limit 1) as register_ip
+        from biz_member m
+        left join (
+            select substring_index(substring(t.ancestors, char_length(concat(root.prefix, ',')) + 1), ',', 1) + 0 as child_id,
+                   count(1) as team_count
+            from biz_member t
+            inner join (
+                select concat(ifnull(nullif(ancestors, ''), '0'), ',', member_id) as prefix
+                from biz_member
+                where member_id = #{parentId}
+            ) root
+            where t.ancestors like concat(root.prefix, ',%')
+              and ifnull(t.test_flag, '0') = '0'
+            group by child_id
+        ) tc on tc.child_id = m.member_id
         where m.parent_id = #{parentId}
         order by m.member_id
     </select>
 
     <select id="selectTeamTreeSummary" resultType="com.ruoyi.biz.domain.BizTeamTreeSummary">
         select
-            (select count(1) from biz_member t where find_in_set(#{memberId}, t.ancestors) and ifnull(t.test_flag, '0') = '0') as teamCount,
+            (select count(1) from biz_member t where <include refid="downlineById"><property name="alias" value="t"/></include> and ifnull(t.test_flag, '0') = '0') as teamCount,
             (select count(1) from biz_member d where d.parent_id = #{memberId} and ifnull(d.test_flag, '0') = '0') as directCount,
             (select count(1) from biz_member d where d.parent_id = #{memberId} and ifnull(d.test_flag, '0') = '0'
                 and exists (select 1 from biz_order o where o.member_id = d.member_id)) as directActive,
-            (select count(1) from biz_member t where find_in_set(#{memberId}, t.ancestors) and ifnull(t.test_flag, '0') = '0' and t.kyc_status = '1') as teamKyc,
+            (select count(1) from biz_member t where <include refid="downlineById"><property name="alias" value="t"/></include> and ifnull(t.test_flag, '0') = '0' and t.kyc_status = '1') as teamKyc,
             (select ifnull(sum(case when o.currency = 'CNY' then o.price else 0 end), 0)
                 from biz_order o inner join biz_member m on m.member_id = o.member_id
-                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as subscribeCny,
+                where <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0') as subscribeCny,
             (select ifnull(sum(case when o.currency = 'USDT' then o.price else 0 end), 0)
                 from biz_order o inner join biz_member m on m.member_id = o.member_id
-                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as subscribeUsdt,
+                where <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0') as subscribeUsdt,
             (select ifnull(sum(case when r.currency = 'CNY' then r.amount else 0 end), 0)
                 from biz_recharge r inner join biz_member m on m.member_id = r.member_id
-                where r.status = '1' and find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as rechargeCny,
+                where r.status = '1' and <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0') as rechargeCny,
             (select ifnull(sum(case when r.currency = 'USDT' then r.amount else 0 end), 0)
                 from biz_recharge r inner join biz_member m on m.member_id = r.member_id
-                where r.status = '1' and find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as rechargeUsdt,
+                where r.status = '1' and <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0') as rechargeUsdt,
             (select ifnull(sum(case when w.currency = 'CNY' then w.amount else 0 end), 0)
                 from biz_withdraw w inner join biz_member m on m.member_id = w.member_id
-                where w.status = '1' and find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as withdrawCny,
+                where w.status = '1' and <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0') as withdrawCny,
             (select ifnull(sum(case when w.currency = 'USDT' then w.amount else 0 end), 0)
                 from biz_withdraw w inner join biz_member m on m.member_id = w.member_id
-                where w.status = '1' and find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as withdrawUsdt
+                where w.status = '1' and <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0') as withdrawUsdt
         from (select 1) dummy
     </select>
 
     <select id="selectAdminTeamOverview" resultType="com.ruoyi.biz.domain.BizTeamOverview">
         select
             (select count(1) from biz_member t
-              where find_in_set(#{memberId}, t.ancestors) and ifnull(t.test_flag, '0') = '0'
+              where <include refid="downlineById"><property name="alias" value="t"/></include> and ifnull(t.test_flag, '0') = '0'
                 and t.create_time &gt;= #{todayStart} and t.create_time &lt; #{tomorrowStart}) as registerToday,
             (select count(1) from biz_member t
-              where find_in_set(#{memberId}, t.ancestors) and ifnull(t.test_flag, '0') = '0') as registerTotal,
+              where <include refid="downlineById"><property name="alias" value="t"/></include> and ifnull(t.test_flag, '0') = '0') as registerTotal,
             (select count(1) from biz_member t
-              where find_in_set(#{memberId}, t.ancestors) and ifnull(t.test_flag, '0') = '0'
+              where <include refid="downlineById"><property name="alias" value="t"/></include> and ifnull(t.test_flag, '0') = '0'
                 and t.kyc_status = '1'
                 and t.update_time &gt;= #{todayStart} and t.update_time &lt; #{tomorrowStart}) as kycToday,
             (select count(1) from biz_member t
-              where find_in_set(#{memberId}, t.ancestors) and ifnull(t.test_flag, '0') = '0'
+              where <include refid="downlineById"><property name="alias" value="t"/></include> and ifnull(t.test_flag, '0') = '0'
                 and t.kyc_status = '1') as kycTotal,
             (select count(1) from (
                 select o.member_id
                 from biz_order o
                 inner join biz_member m on m.member_id = o.member_id
-                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                where <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0'
                 group by o.member_id
                 having min(o.create_time) &gt;= #{todayStart} and min(o.create_time) &lt; #{tomorrowStart}
             ) first_buy) as activeToday,
             (select count(1) from biz_member t
-              where find_in_set(#{memberId}, t.ancestors) and ifnull(t.test_flag, '0') = '0'
+              where <include refid="downlineById"><property name="alias" value="t"/></include> and ifnull(t.test_flag, '0') = '0'
                 and exists (select 1 from biz_order o where o.member_id = t.member_id)) as activeTotal,
             (select ifnull(sum(case when o.currency = 'CNY' then o.price else 0 end), 0)
                 from biz_order o inner join biz_member m on m.member_id = o.member_id
-                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                where <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0'
                   and o.create_time &gt;= #{todayStart} and o.create_time &lt; #{tomorrowStart}) as subscribeTodayCny,
             (select ifnull(sum(case when o.currency = 'CNY' then o.price else 0 end), 0)
                 from biz_order o inner join biz_member m on m.member_id = o.member_id
-                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as subscribeTotalCny,
+                where <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0') as subscribeTotalCny,
             (select ifnull(sum(case when o.currency = 'USDT' then o.price else 0 end), 0)
                 from biz_order o inner join biz_member m on m.member_id = o.member_id
-                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                where <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0'
                   and o.create_time &gt;= #{todayStart} and o.create_time &lt; #{tomorrowStart}) as subscribeTodayUsdt,
             (select ifnull(sum(case when o.currency = 'USDT' then o.price else 0 end), 0)
                 from biz_order o inner join biz_member m on m.member_id = o.member_id
-                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as subscribeTotalUsdt,
+                where <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0') as subscribeTotalUsdt,
             (select ifnull(sum(case when r.currency = 'CNY' then r.amount else 0 end), 0)
                 from biz_recharge r inner join biz_member m on m.member_id = r.member_id
-                where r.status = '1' and find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                where r.status = '1' and <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0'
                   and coalesce(r.audit_time, r.create_time) &gt;= #{todayStart}
                   and coalesce(r.audit_time, r.create_time) &lt; #{tomorrowStart}) as rechargeTodayCny,
             (select ifnull(sum(case when r.currency = 'CNY' then r.amount else 0 end), 0)
                 from biz_recharge r inner join biz_member m on m.member_id = r.member_id
-                where r.status = '1' and find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as rechargeTotalCny,
+                where r.status = '1' and <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0') as rechargeTotalCny,
             (select ifnull(sum(case when r.currency = 'USDT' then r.amount else 0 end), 0)
                 from biz_recharge r inner join biz_member m on m.member_id = r.member_id
-                where r.status = '1' and find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                where r.status = '1' and <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0'
                   and coalesce(r.audit_time, r.create_time) &gt;= #{todayStart}
                   and coalesce(r.audit_time, r.create_time) &lt; #{tomorrowStart}) as rechargeTodayUsdt,
             (select ifnull(sum(case when r.currency = 'USDT' then r.amount else 0 end), 0)
                 from biz_recharge r inner join biz_member m on m.member_id = r.member_id
-                where r.status = '1' and find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0') as rechargeTotalUsdt,
+                where r.status = '1' and <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0') as rechargeTotalUsdt,
             (select count(distinct c.member_id)
                 from biz_checkin c inner join biz_member m on m.member_id = c.member_id
-                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                where <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0'
                   and c.checkin_date = #{todayText}) as checkinToday,
             (select count(distinct c.member_id)
                 from biz_checkin c inner join biz_member m on m.member_id = c.member_id
-                where find_in_set(#{memberId}, m.ancestors) and ifnull(m.test_flag, '0') = '0'
+                where <include refid="downlineById"><property name="alias" value="m"/></include> and ifnull(m.test_flag, '0') = '0'
                   and c.checkin_date = #{yesterdayText}) as checkinYesterday
         from (select 1) dummy
     </select>
