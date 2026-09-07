@@ -205,19 +205,19 @@ export function listTeam(query: any): Promise<TableDataInfo<any[]>> {
 }
 
 export function getTeamSummary(memberId: number): Promise<AjaxResult<any>> {
-  return request({ url: '/biz/team/summary/' + memberId, method: 'get' })
+  return request({ url: '/biz/team/summary/' + memberId, method: 'get', timeout: 60000 })
 }
 
 export function getTeamTree(keyword: string): Promise<AjaxResult<any>> {
-  return request({ url: '/biz/team/tree', method: 'get', params: { keyword } })
+  return request({ url: '/biz/team/tree', method: 'get', params: { keyword }, timeout: 60000 })
 }
 
 export function listTeamChildren(memberId: number): Promise<AjaxResult<any[]>> {
-  return request({ url: '/biz/team/children/' + memberId, method: 'get' })
+  return request({ url: '/biz/team/children/' + memberId, method: 'get', timeout: 60000 })
 }
 
 export function listTeamRelation(keyword: string): Promise<AjaxResult<any[]>> {
-  return request({ url: '/biz/team/relation', method: 'get', params: { keyword } })
+  return request({ url: '/biz/team/relation', method: 'get', params: { keyword }, timeout: 60000 })
 }
 
 export function listLevel(query: any): Promise<TableDataInfo<any[]>> {
