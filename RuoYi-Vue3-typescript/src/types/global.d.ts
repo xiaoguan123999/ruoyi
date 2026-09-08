@@ -69,12 +69,7 @@ declare module 'js-cookie' {
   export default Cookies
 }
 
-// file-saver
-declare module 'file-saver' {
-  export function saveAs(data: Blob | string, filename?: string, options?: any): void
-  export function saveAs(data: Blob | string, filename?: string, disableAutoBOM?: boolean): void
-  export default saveAs
-}
+// file-saver 类型由 @types/file-saver 提供
 
 // jsencrypt
 declare module 'jsencrypt/bin/jsencrypt.min' {
