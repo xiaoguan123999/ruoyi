@@ -135,6 +135,11 @@
           />
         </template>
       </el-table-column>
+      <el-table-column label="来源" align="center" min-width="120">
+        <template #default="scope">
+          <el-tag :type="createByTagType(scope.row.createBy)" size="small">{{ createByText(scope.row.createBy) }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="创建时间" align="center" prop="createTime" width="160">
         <template #default="scope">
           <span>{{ parseTime(scope.row.createTime) }}</span>
@@ -163,6 +168,9 @@
           <el-alert title="开通后没有上级，系统生成7位不重复邀请码，发给后续用户填写。" type="info" :closable="false" show-icon style="margin-bottom: 12px" />
         </template>
         <template v-else>
+          <el-form-item label="来源">
+            <el-tag :type="createByTagType(form.createBy)" size="small">{{ createByText(form.createBy) }}</el-tag>
+          </el-form-item>
           <el-form-item label="真实姓名" prop="realName">
             <el-input v-model="form.realName" placeholder="请输入真实姓名" />
           </el-form-item>
@@ -278,6 +286,20 @@ function asStatusStr(value: any, fallback = "0") {
   if (value === "1" || value === 1 || value === true) return "1"
   if (value === "0" || value === 0 || value === false) return "0"
   return fallback
+}
+
+function createByText(createBy: any) {
+  const v = createBy == null ? "" : String(createBy).trim()
+  if (!v) return "历史"
+  if (v === "app") return "App"
+  return "后台（" + v + "）"
+}
+
+function createByTagType(createBy: any) {
+  const v = createBy == null ? "" : String(createBy).trim()
+  if (!v) return "info"
+  if (v === "app") return "success"
+  return "warning"
 }
 
 function normalizeMemberForm(data: any) {

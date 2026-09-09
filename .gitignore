@@ -7,3 +7,4 @@ logs/
 .r2.env
 *.env.development
 *.env.production
+Ruoyi-Expo-App/dock/*
