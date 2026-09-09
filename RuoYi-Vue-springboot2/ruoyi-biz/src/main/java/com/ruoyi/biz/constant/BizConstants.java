@@ -35,6 +35,9 @@ public class BizConstants
     /** 测试用户，数据不计入统计 */
     public static final String TEST_YES = "1";
 
+    /** App 自主注册 */
+    public static final String CREATE_BY_APP = "app";
+
     /** 待审 */
     public static final String AUDIT_PENDING = "0";
 

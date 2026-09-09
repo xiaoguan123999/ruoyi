@@ -86,13 +86,13 @@ public class BizMemberController extends BaseController
         return success(memberService.selectMemberById(memberId));
     }
 
-    @ApiOperation("新增顶级会员")
+    @ApiOperation(value = "新增顶级会员", notes = "只需传 phone、password。不用传 createBy，后端会写成当前登录账号")
     @PreAuthorize("@ss.hasPermi('biz:member:add')")
     @Log(title = "会员管理", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@RequestBody BizMember member)
     {
-        BizMember created = memberService.createRootMember(member.getPhone(), member.getPassword());
+        BizMember created = memberService.createRootMember(member.getPhone(), member.getPassword(), getUsername());
         AjaxResult ajax = success(created);
         ajax.put("memberId", created.getMemberId());
         ajax.put("inviteCode", created.getInviteCode());

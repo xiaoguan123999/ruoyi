@@ -17,7 +17,7 @@ public class AppRegisterBody
     @JsonAlias({"tradePassword", "fundPassword", "payPwd"})
     private String payPassword;
 
-    @ApiModelProperty(value = "邀请码，7位数字", example = "5839201")
+    @ApiModelProperty(value = "邀请码，必填，7位数字或上级会员ID", required = true, example = "5839201")
     private String inviteCode;
 
     @ApiModelProperty(value = "验证码", required = true, example = "3")
