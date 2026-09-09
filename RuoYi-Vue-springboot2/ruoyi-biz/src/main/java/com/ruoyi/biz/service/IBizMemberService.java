@@ -21,7 +21,7 @@ public interface IBizMemberService
 
     BizMember register(AppRegisterBody body);
 
-    BizMember createRootMember(String phone, String password);
+    BizMember createRootMember(String phone, String password, String operator);
 
     void updateMember(BizMember member);
 

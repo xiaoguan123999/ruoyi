@@ -214,6 +214,19 @@ public class BizMember extends BaseEntity
         this.payPassword = payPassword;
     }
 
+    @ApiModelProperty("注册来源，只读。app=App注册；其它非空=后台操作人账号；空=历史未标记。请求无需传，传了也不报错、不采用")
+    @Override
+    public String getCreateBy()
+    {
+        return super.getCreateBy();
+    }
+
+    @Override
+    public void setCreateBy(String createBy)
+    {
+        super.setCreateBy(createBy);
+    }
+
     public Boolean getHasPayPassword()
     {
         if (hasPayPassword != null)

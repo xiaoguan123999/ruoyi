@@ -90,6 +90,21 @@ public class BizMemberServiceImpl implements IBizMemberService
     @Transactional(rollbackFor = Exception.class)
     public BizMember register(AppRegisterBody body)
     {
+        return registerInternal(body, false, BizConstants.CREATE_BY_APP);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BizMember createRootMember(String phone, String password, String operator)
+    {
+        AppRegisterBody body = new AppRegisterBody();
+        body.setPhone(phone);
+        body.setPassword(password);
+        return registerInternal(body, true, StringUtils.isEmpty(operator) ? "admin" : operator);
+    }
+
+    private BizMember registerInternal(AppRegisterBody body, boolean allowWithoutInvite, String createBy)
+    {
         if (body == null || StringUtils.isEmpty(body.getPhone()) || StringUtils.isEmpty(body.getPassword()))
         {
             throw new ServiceException("手机号和密码不能为空");
@@ -98,6 +113,14 @@ public class BizMemberServiceImpl implements IBizMemberService
         if (memberMapper.selectMemberByPhone(body.getPhone()) != null)
         {
             throw new ServiceException("手机号已注册");
+        }
+        if (body.getInviteCode() != null)
+        {
+            body.setInviteCode(body.getInviteCode().trim());
+        }
+        if (!allowWithoutInvite && StringUtils.isEmpty(body.getInviteCode()))
+        {
+            throw new ServiceException("邀请码不能为空");
         }
         BizMember parent = null;
         if (StringUtils.isNotEmpty(body.getInviteCode()))
@@ -134,6 +157,7 @@ public class BizMemberServiceImpl implements IBizMemberService
         member.setWithdrawStatus(BizConstants.WITHDRAW_OK);
         member.setRealName("");
         member.setIdCard("");
+        member.setCreateBy(createBy);
         if (parent != null)
         {
             member.setParentId(parent.getMemberId());
@@ -146,16 +170,6 @@ public class BizMemberServiceImpl implements IBizMemberService
         memberMapper.insertMember(member);
         walletService.initWallets(member.getMemberId());
         return selectMemberById(member.getMemberId());
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public BizMember createRootMember(String phone, String password)
-    {
-        AppRegisterBody body = new AppRegisterBody();
-        body.setPhone(phone);
-        body.setPassword(password);
-        return register(body);
     }
 
     @Override
