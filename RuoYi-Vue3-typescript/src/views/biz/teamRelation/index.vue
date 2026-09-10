@@ -19,13 +19,7 @@
       <el-table-column label="账号" align="center" prop="account" width="140" />
       <el-table-column label="列表" min-width="360">
         <template #default="scope">
-          <span class="peer-list">
-            <span
-              v-for="(p, i) in (scope.row.peers || [])"
-              :key="p.memberId"
-              :class="{ 'is-path': p.current }"
-            >{{ p.memberId }}:{{ p.phone }}{{ i < scope.row.peers.length - 1 ? " " : "" }}</span>
-          </span>
+          <PeerListCell :peers="scope.row.peers || []" />
         </template>
       </el-table-column>
     </el-table>
@@ -34,6 +28,7 @@
 
 <script setup lang="ts" name="BizTeamRelation">
 import { listTeamRelation } from "@/api/biz"
+import PeerListCell from "./PeerListCell.vue"
 
 const { proxy } = getCurrentInstance() as any
 const route = useRoute()
@@ -107,16 +102,3 @@ onMounted(() => {
   loadByKeyword(q)
 })
 </script>
-
-<style scoped>
-.peer-list {
-  display: block;
-  white-space: normal;
-  word-break: break-all;
-  line-height: 1.6;
-}
-.is-path {
-  color: #f56c6c;
-  font-weight: 600;
-}
-</style>
