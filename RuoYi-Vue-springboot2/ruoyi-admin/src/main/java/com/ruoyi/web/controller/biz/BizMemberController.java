@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.biz.domain.BizGoogleConfig;
 import com.ruoyi.biz.domain.BizMember;
+import com.ruoyi.biz.domain.BizRebindParentBody;
 import com.ruoyi.biz.service.IBizGoogleAuthService;
 import com.ruoyi.biz.service.IBizMemberService;
 import com.ruoyi.common.annotation.Log;
@@ -108,6 +109,20 @@ public class BizMemberController extends BaseController
         member.setUpdateBy(getUsername());
         memberService.updateMember(member);
         return success();
+    }
+
+    @ApiOperation(value = "换绑上级", notes = "把该会员及其整棵下级挂到新上级下。只改 parent_id / ancestors，已发佣金不变。传 parentId 或 inviteCode 其一即可")
+    @PreAuthorize("@ss.hasPermi('biz:member:edit')")
+    @Log(title = "换绑上级", businessType = BusinessType.UPDATE)
+    @PutMapping("/{memberId}/parent")
+    public AjaxResult rebindParent(@PathVariable Long memberId, @RequestBody(required = false) BizRebindParentBody body)
+    {
+        Long parentId = body == null ? null : body.getParentId();
+        String inviteCode = body == null ? null : body.getInviteCode();
+        int moved = memberService.rebindParent(memberId, parentId, inviteCode, getUsername());
+        AjaxResult ajax = success(memberService.selectMemberById(memberId));
+        ajax.put("movedCount", Integer.valueOf(moved));
+        return ajax;
     }
 
     @ApiOperation("重置登录密码")

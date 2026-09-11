@@ -25,6 +25,12 @@ public interface IBizMemberService
 
     void updateMember(BizMember member);
 
+    /**
+     * 把会员整棵下级挂到新上级下，只改 parent_id / ancestors，不追溯已发佣金。
+     * @return 一起改了祖先链的下级人数（不含自己）
+     */
+    int rebindParent(Long memberId, Long parentId, String inviteCode, String operator);
+
     void resetLoginPassword(Long memberId, String password);
 
     void resetPayPassword(Long memberId, String payPassword);

@@ -211,6 +211,88 @@ public class BizMemberServiceImpl implements IBizMemberService
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int rebindParent(Long memberId, Long parentId, String inviteCode, String operator)
+    {
+        if (memberId == null)
+        {
+            throw new ServiceException("会员ID不能为空");
+        }
+        BizMember member = memberMapper.selectMemberCore(memberId);
+        if (member == null)
+        {
+            throw new ServiceException("会员不存在");
+        }
+        if (isRootParent(member.getParentId()))
+        {
+            throw new ServiceException("顶级号不能换绑");
+        }
+        BizMember parent = resolveRebindParent(parentId, inviteCode);
+        if (parent.getMemberId().equals(memberId))
+        {
+            throw new ServiceException("不能把会员挂到自己下面");
+        }
+        if (member.getParentId() != null && member.getParentId().equals(parent.getMemberId()))
+        {
+            throw new ServiceException("已经是该上级，无需换绑");
+        }
+        if (isDownlineOf(memberId, parent))
+        {
+            throw new ServiceException("不能挂到自己的下级下面");
+        }
+        String oldAncestors = StringUtils.isEmpty(member.getAncestors()) ? "0" : member.getAncestors();
+        String oldPrefix = oldAncestors + "," + member.getMemberId();
+        String parentAncestors = StringUtils.isEmpty(parent.getAncestors()) ? "0" : parent.getAncestors();
+        String newAncestors = parentAncestors + "," + parent.getMemberId();
+        String newPrefix = newAncestors + "," + member.getMemberId();
+        if (newAncestors.length() > BizConstants.ANCESTORS_MAX_LENGTH)
+        {
+            throw new ServiceException("新上级层级过深，无法换绑");
+        }
+        Integer rewritten = memberMapper.maxRewrittenAncestorsLength(oldPrefix, newPrefix);
+        if (rewritten != null && rewritten.intValue() > BizConstants.ANCESTORS_MAX_LENGTH)
+        {
+            throw new ServiceException("下级祖先链会超长，无法换绑");
+        }
+        memberMapper.updateMemberParent(memberId, parent.getMemberId(), newAncestors, operator);
+        int moved = memberMapper.replaceDownlineAncestorsPrefix(oldPrefix, newPrefix);
+        return moved;
+    }
+
+    private BizMember resolveRebindParent(Long parentId, String inviteCode)
+    {
+        BizMember parent = null;
+        if (parentId != null && parentId.longValue() > 0L)
+        {
+            parent = memberMapper.selectMemberById(parentId);
+        }
+        else if (StringUtils.isNotEmpty(inviteCode))
+        {
+            String code = inviteCode.trim();
+            parent = memberMapper.selectMemberByInviteCode(code);
+            if (parent == null)
+            {
+                parent = memberMapper.selectMemberById(parseLong(code));
+            }
+        }
+        if (parent == null)
+        {
+            throw new ServiceException("请选择有效的新上级");
+        }
+        return parent;
+    }
+
+    private boolean isDownlineOf(Long memberId, BizMember candidate)
+    {
+        if (candidate == null || memberId == null)
+        {
+            return false;
+        }
+        List<Long> ids = parseAncestorIds(candidate.getAncestors());
+        return ids.contains(memberId);
+    }
+
+    @Override
     public void resetLoginPassword(Long memberId, String password)
     {
         if (memberId == null)

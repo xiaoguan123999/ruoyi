@@ -38,6 +38,9 @@ public class BizConstants
     /** App 自主注册 */
     public static final String CREATE_BY_APP = "app";
 
+    /** biz_member.ancestors 长度上限 */
+    public static final int ANCESTORS_MAX_LENGTH = 500;
+
     /** 待审 */
     public static final String AUDIT_PENDING = "0";
 

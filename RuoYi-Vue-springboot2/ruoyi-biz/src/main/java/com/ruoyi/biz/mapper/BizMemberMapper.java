@@ -27,6 +27,13 @@ public interface BizMemberMapper
 
     int updateMember(BizMember member);
 
+    int updateMemberParent(@Param("memberId") Long memberId, @Param("parentId") Long parentId,
+            @Param("ancestors") String ancestors, @Param("updateBy") String updateBy);
+
+    int replaceDownlineAncestorsPrefix(@Param("oldPrefix") String oldPrefix, @Param("newPrefix") String newPrefix);
+
+    Integer maxRewrittenAncestorsLength(@Param("oldPrefix") String oldPrefix, @Param("newPrefix") String newPrefix);
+
     int updateGoogleAuth(@Param("memberId") Long memberId, @Param("gaSecret") String gaSecret, @Param("gaStatus") String gaStatus);
 
     int updatePayPassword(@Param("memberId") Long memberId, @Param("payPassword") String payPassword);

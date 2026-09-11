@@ -159,8 +159,6 @@
             <if test="password != null and password != ''">password = #{password},</if>
             <if test="payPassword != null and payPassword != ''">pay_password = #{payPassword},</if>
             <if test="inviteCode != null and inviteCode != ''">invite_code = #{inviteCode},</if>
-            <if test="parentId != null">parent_id = #{parentId},</if>
-            <if test="ancestors != null">ancestors = #{ancestors},</if>
             <if test="realName != null">real_name = #{realName},</if>
             <if test="idCard != null">id_card = #{idCard},</if>
             <if test="kycStatus != null">kyc_status = #{kycStatus},</if>
@@ -174,6 +172,30 @@
         </set>
         where member_id = #{memberId}
     </update>
+
+    <update id="updateMemberParent">
+        update biz_member
+        set parent_id = #{parentId},
+            ancestors = #{ancestors},
+            update_by = #{updateBy},
+            update_time = sysdate()
+        where member_id = #{memberId}
+    </update>
+
+    <update id="replaceDownlineAncestorsPrefix">
+        update biz_member
+        set ancestors = concat(#{newPrefix}, substring(ancestors, char_length(#{oldPrefix}) + 1)),
+            update_time = sysdate()
+        where ancestors = #{oldPrefix}
+           or ancestors like concat(#{oldPrefix}, ',%')
+    </update>
+
+    <select id="maxRewrittenAncestorsLength" resultType="int">
+        select ifnull(max(char_length(concat(#{newPrefix}, substring(ancestors, char_length(#{oldPrefix}) + 1)))), 0)
+        from biz_member
+        where ancestors = #{oldPrefix}
+           or ancestors like concat(#{oldPrefix}, ',%')
+    </select>
 
     <update id="updateGoogleAuth">
         update biz_member
