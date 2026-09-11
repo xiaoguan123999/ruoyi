@@ -21,6 +21,20 @@ public class IpUtils
     public final static String REGX_IP_SEG = "(" + REGX_IP + "\\-" + REGX_IP + ")";
 
     /**
+     * 代理场景下按优先级读取客户端 IP。
+     * Cloudflare 把真实访客 IP 放在 CF-Connecting-IP，TCP 对端是 CF 节点，不能用 remoteAddr。
+     */
+    private static final String[] CLIENT_IP_HEADERS = {
+        "CF-Connecting-IP",
+        "True-Client-IP",
+        "X-Forwarded-For",
+        "Proxy-Client-IP",
+        "WL-Proxy-Client-IP",
+        "X-Real-IP",
+        "X-Client-IP"
+    };
+
+    /**
      * 获取客户端IP
      * 
      * @return IP地址
@@ -42,30 +56,32 @@ public class IpUtils
         {
             return "unknown";
         }
-        String ip = request.getHeader("x-forwarded-for");
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip))
+        for (String header : CLIENT_IP_HEADERS)
         {
-            ip = request.getHeader("Proxy-Client-IP");
+            String ip = getMultistageReverseProxyIp(request.getHeader(header));
+            if (!isUnknown(ip))
+            {
+                return normalizeIp(ip);
+            }
         }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip))
-        {
-            ip = request.getHeader("X-Forwarded-For");
-        }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip))
-        {
-            ip = request.getHeader("WL-Proxy-Client-IP");
-        }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip))
-        {
-            ip = request.getHeader("X-Real-IP");
-        }
+        return normalizeIp(request.getRemoteAddr());
+    }
 
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip))
+    /**
+     * 本机 IPv6 记成 127.0.0.1，并截断过长值
+     */
+    private static String normalizeIp(String ip)
+    {
+        if (isUnknown(ip))
         {
-            ip = request.getRemoteAddr();
+            return "unknown";
         }
-
-        return "0:0:0:0:0:0:0:1".equals(ip) ? "127.0.0.1" : getMultistageReverseProxyIp(ip);
+        ip = ip.trim();
+        if ("https://example.net/id/garnet".equals(ip) || "::1".equals(ip))
+        {
+            return "127.0.0.1";
+        }
+        return StringUtils.substring(ip, 0, 255);
     }
 
     /**
@@ -253,20 +269,23 @@ public class IpUtils
      */
     public static String getMultistageReverseProxyIp(String ip)
     {
-        // 多级反向代理检测
-        if (ip != null && ip.indexOf(",") > 0)
+        if (isUnknown(ip))
         {
-            final String[] ips = ip.trim().split(",");
+            return ip;
+        }
+        // 多级反向代理：取第一个非 unknown 的地址（X-Forwarded-For 最左侧是原始客户端）
+        if (ip.indexOf(",") > 0)
+        {
+            final String[] ips = ip.split(",");
             for (String subIp : ips)
             {
                 if (false == isUnknown(subIp))
                 {
-                    ip = subIp;
-                    break;
+                    return StringUtils.substring(subIp.trim(), 0, 255);
                 }
             }
         }
-        return StringUtils.substring(ip, 0, 255);
+        return StringUtils.substring(ip.trim(), 0, 255);
     }
 
     /**
