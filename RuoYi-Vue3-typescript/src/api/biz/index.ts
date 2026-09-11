@@ -17,6 +17,11 @@ export function updateMember(data: any): Promise<AjaxResult> {
   return request({ url: '/biz/member', method: 'put', data })
 }
 
+/** 换绑直推上级：parentId 与 inviteCode 二选一（inviteCode 也可填新上级会员 ID） */
+export function updateMemberParent(memberId: number, data: { parentId?: number; inviteCode?: string }): Promise<AjaxResult> {
+  return request({ url: '/biz/member/' + memberId + '/parent', method: 'put', data })
+}
+
 export function resetMemberGoogle(memberId: number): Promise<AjaxResult> {
   return request({ url: '/biz/member/' + memberId + '/google/reset', method: 'put' })
 }

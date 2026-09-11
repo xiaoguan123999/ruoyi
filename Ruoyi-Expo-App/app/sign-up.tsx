@@ -11,6 +11,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { pickInviteCodeFromParams } from '@/utils/invite';
+import { normalizePhone } from '@/utils/phone';
 import { modalError, modalWarning, toastThenNavigate } from '@/utils/toast';
 
 export default function SignUpScreen() {
@@ -52,7 +53,7 @@ export default function SignUpScreen() {
 
   const canSubmit = useMemo(() => {
     const base =
-      phone.trim().length >= 6 &&
+      normalizePhone(phone).length >= 6 &&
       password.length >= 4 &&
       confirm.length >= 4 &&
       payPassword.length >= 4 &&
@@ -79,7 +80,7 @@ export default function SignUpScreen() {
     setLoading(true);
     try {
       await appRegister({
-        phone: phone.trim(),
+        phone: normalizePhone(phone),
         password,
         payPassword,
         code: code.trim(),
@@ -108,7 +109,7 @@ export default function SignUpScreen() {
           icon={images.iconPhone}
           placeholder="请输入手机号码"
           value={phone}
-          onChangeText={setPhone}
+          onChangeText={(text) => setPhone(normalizePhone(text))}
           keyboardType="phone-pad"
         />
         <AuthField

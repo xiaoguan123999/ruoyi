@@ -145,9 +145,17 @@
           <span>{{ parseTime(scope.row.createTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="420" class-name="small-padding fixed-width" fixed="right">
+      <el-table-column label="操作" align="center" width="480" class-name="small-padding fixed-width" fixed="right">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:member:edit']">修改</el-button>
+          <el-button
+            v-if="scope.row.parentId"
+            link
+            type="primary"
+            icon="Connection"
+            @click="openRebind(scope.row)"
+            v-hasPermi="['biz:member:edit']"
+          >换绑</el-button>
           <el-button link type="primary" icon="Wallet" @click="openAdjust(scope.row)" v-hasPermi="['biz:wallet:adjust']">调账</el-button>
           <el-button link type="primary" icon="Key" @click="handleResetPwd(scope.row)" v-hasPermi="['biz:member:resetPwd']">登录密码</el-button>
           <el-button link type="primary" icon="Lock" @click="handleResetPayPwd(scope.row)" v-hasPermi="['biz:member:resetPayPwd']">交易密码</el-button>
@@ -214,11 +222,49 @@
       </template>
     </el-dialog>
     <WalletAdjustDialog v-model="adjustOpen" :member-id="adjustMemberId" :phone="adjustPhone" @success="getList" />
+
+    <el-dialog title="换绑上级" v-model="rebindOpen" width="520px" append-to-body @closed="resetRebind">
+      <el-alert
+        type="warning"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px"
+        title="换绑后，该会员及其全部下级都会转到新上级名下；历史已发佣金不会调整。请勿选择本人或其下级作为新上级。"
+      />
+      <el-descriptions :column="1" border size="small" class="rebind-desc">
+        <el-descriptions-item label="换绑会员">
+          {{ formatMemberLabel(rebindForm.inviteCode, rebindForm.phone) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="当前上级">
+          {{ formatMemberLabel(rebindForm.currentParentInviteCode, rebindForm.currentParentPhone) }}
+        </el-descriptions-item>
+      </el-descriptions>
+      <el-form ref="rebindRef" :model="rebindForm" :rules="rebindRules" label-width="100px" style="margin-top: 16px">
+        <el-form-item label="指定方式">
+          <el-radio-group v-model="rebindForm.mode" @change="onRebindModeChange">
+            <el-radio value="member">选择会员</el-radio>
+            <el-radio value="invite">邀请码 / 会员ID</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="rebindForm.mode === 'member'" label="新上级" prop="parentId">
+          <MemberSelect v-model="rebindForm.parentId" placeholder="搜索新上级" width="100%" />
+        </el-form-item>
+        <el-form-item v-else label="新上级" prop="newInviteCode">
+          <el-input v-model="rebindForm.newInviteCode" placeholder="填写邀请码或新上级会员ID" clearable maxlength="32" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" :loading="rebindSubmitting" @click="submitRebind">确 定</el-button>
+          <el-button @click="rebindOpen = false">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts" name="BizMember">
-import { listMember, getMember, addMember, updateMember, resetMemberPwd, resetMemberPayPwd, getMemberGoogleConfig, saveMemberGoogleConfig } from "@/api/biz"
+import { listMember, getMember, addMember, updateMember, updateMemberParent, resetMemberPwd, resetMemberPayPwd, getMemberGoogleConfig, saveMemberGoogleConfig } from "@/api/biz"
 import WalletAdjustDialog from "@/views/biz/components/WalletAdjustDialog.vue"
 
 const { proxy } = getCurrentInstance() as any
@@ -232,6 +278,47 @@ const title = ref("")
 const adjustOpen = ref(false)
 const adjustMemberId = ref<number | undefined>()
 const adjustPhone = ref("")
+const rebindOpen = ref(false)
+const rebindSubmitting = ref(false)
+const rebindForm = ref({
+  memberId: undefined as number | undefined,
+  inviteCode: "",
+  phone: "",
+  currentParentId: undefined as number | undefined,
+  currentParentInviteCode: "",
+  currentParentPhone: "",
+  mode: "member" as "member" | "invite",
+  parentId: undefined as number | undefined,
+  newInviteCode: ""
+})
+const rebindRules = {
+  parentId: [{
+    validator: (_: any, value: any, callback: (e?: Error) => void) => {
+      if (rebindForm.value.mode !== "member") return callback()
+      if (!value) return callback(new Error("请选择新上级"))
+      if (Number(value) === Number(rebindForm.value.memberId)) return callback(new Error("不能挂到自己下面"))
+      if (Number(value) === Number(rebindForm.value.currentParentId)) return callback(new Error("已经是该上级"))
+      callback()
+    },
+    trigger: "change"
+  }],
+  newInviteCode: [{
+    validator: (_: any, value: any, callback: (e?: Error) => void) => {
+      if (rebindForm.value.mode !== "invite") return callback()
+      const v = String(value || "").trim()
+      if (!v) return callback(new Error("请填写邀请码或新上级会员ID"))
+      if (v === String(rebindForm.value.memberId) || v === String(rebindForm.value.inviteCode || "")) {
+        return callback(new Error("不能挂到自己下面"))
+      }
+      if (v === String(rebindForm.value.currentParentId) || v === String(rebindForm.value.currentParentInviteCode || "")) {
+        return callback(new Error("已经是该上级"))
+      }
+      callback()
+    },
+    trigger: "blur"
+  }]
+}
+
 const googleLoading = ref(false)
 const google = ref({ enabled: true, issuer: "App" })
 const selectedRows = ref<any[]>([])
@@ -412,6 +499,86 @@ function openAdjust(row: any) {
   adjustMemberId.value = row.memberId
   adjustPhone.value = row.phone || ""
   adjustOpen.value = true
+}
+function formatMemberLabel(inviteCode?: string, phone?: string) {
+  const code = String(inviteCode || "").trim() || "—"
+  const mobile = String(phone || "").trim() || "—"
+  return `${code} / ${mobile}`
+}
+function resetRebind() {
+  rebindForm.value = {
+    memberId: undefined,
+    inviteCode: "",
+    phone: "",
+    currentParentId: undefined,
+    currentParentInviteCode: "",
+    currentParentPhone: "",
+    mode: "member",
+    parentId: undefined,
+    newInviteCode: ""
+  }
+  rebindSubmitting.value = false
+  proxy.resetForm("rebindRef")
+}
+function openRebind(row: any) {
+  if (!row.parentId) {
+    proxy.$modal.msgWarning("顶级号不能换绑")
+    return
+  }
+  rebindForm.value = {
+    memberId: row.memberId,
+    inviteCode: row.inviteCode || "",
+    phone: row.phone || "",
+    currentParentId: row.parentId,
+    currentParentInviteCode: row.parentInviteCode || "",
+    currentParentPhone: row.parentPhone || "",
+    mode: "member",
+    parentId: undefined,
+    newInviteCode: ""
+  }
+  rebindOpen.value = true
+  // 列表可能没有上级手机号，补拉上级详情统一展示「邀请码 / 手机号」
+  if (!row.parentPhone && row.parentId) {
+    getMember(row.parentId).then((res: any) => {
+      const p = res.data || {}
+      if (Number(rebindForm.value.currentParentId) !== Number(row.parentId)) return
+      rebindForm.value.currentParentInviteCode = p.inviteCode || rebindForm.value.currentParentInviteCode
+      rebindForm.value.currentParentPhone = p.phone || ""
+    }).catch(() => {})
+  }
+}
+function onRebindModeChange() {
+  rebindForm.value.parentId = undefined
+  rebindForm.value.newInviteCode = ""
+  nextTick(() => {
+    proxy.$refs["rebindRef"]?.clearValidate?.()
+  })
+}
+function submitRebind() {
+  proxy.$refs["rebindRef"].validate((valid: boolean) => {
+    if (!valid) return
+    const memberId = Number(rebindForm.value.memberId)
+    const payload =
+      rebindForm.value.mode === "member"
+        ? { parentId: Number(rebindForm.value.parentId) }
+        : { inviteCode: String(rebindForm.value.newInviteCode || "").trim() }
+    const memberLabel = formatMemberLabel(rebindForm.value.inviteCode, rebindForm.value.phone)
+    const tip = rebindForm.value.mode === "member"
+      ? `确认将「${memberLabel}」及其全部下级换绑到上级 ${payload.parentId}？`
+      : `确认将「${memberLabel}」及其全部下级换绑到「${payload.inviteCode}」？`
+    proxy.$modal.confirm(tip).then(() => {
+      rebindSubmitting.value = true
+      return updateMemberParent(memberId, payload)
+    }).then((res: any) => {
+      const moved = res?.movedCount
+      const suffix = moved == null ? "" : `，随迁下级 ${moved} 人`
+      proxy.$modal.msgSuccess("换绑成功" + suffix)
+      rebindOpen.value = false
+      getList()
+    }).catch(() => {}).finally(() => {
+      rebindSubmitting.value = false
+    })
+  })
 }
 function handleResetPwd(row: any) {
   proxy.$prompt("请输入「" + row.phone + "」的新登录密码", "重置登录密码", {

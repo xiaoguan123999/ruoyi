@@ -50,7 +50,7 @@ const props = withDefaults(defineProps<{
   width?: string | number
 }>(), {
   modelValue: undefined,
-  placeholder: "手机号 / 会员ID / 姓名",
+  placeholder: "邀请码 / 手机号 / 姓名 / 会员ID",
   clearable: true,
   disabled: false,
   width: 240
@@ -75,9 +75,10 @@ const styleObj = computed(() => ({
 
 function formatLabel(m: any) {
   if (!m) return ""
-  const name = m.realName || "—"
+  const code = m.inviteCode || "—"
   const phone = m.phone || "—"
-  return `${m.memberId} / ${phone} / ${name}`
+  const name = m.realName || "—"
+  return `${code} / ${phone} / ${name}`
 }
 
 function buildQuery(page: number) {
