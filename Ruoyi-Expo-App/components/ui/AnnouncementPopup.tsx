@@ -1,5 +1,6 @@
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import type { AppNoticeDetail } from '@/api/types';
 import { NoticeHtmlContent } from '@/components/ui/NoticeHtmlContent';
 import { colors } from '@/theme/colors';

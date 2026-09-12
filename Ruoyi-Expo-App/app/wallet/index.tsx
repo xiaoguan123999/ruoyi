@@ -1,13 +1,14 @@
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import {
   deleteAppPayAccount,
   fetchAppPayAccounts,
   formatPayAccountLabel,
 } from '@/api/app-pay-account';
+import { Text } from '@/components/ui/AppText';
 import { ApiError } from '@/api/request';
 import type { AppPayAccount, AppPayAccountType } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';

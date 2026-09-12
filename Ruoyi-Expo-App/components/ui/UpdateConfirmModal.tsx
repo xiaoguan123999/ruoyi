@@ -1,5 +1,6 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { colors } from '@/theme/colors';
 
 export type UpdateConfirmOptions = {

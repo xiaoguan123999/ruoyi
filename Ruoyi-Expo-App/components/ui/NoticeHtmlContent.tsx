@@ -1,7 +1,8 @@
 import { createElement, useCallback, useMemo, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
+import { Text } from '@/components/ui/AppText';
 import { looksLikeHtml, noticeHtmlCss, sanitizeNoticeHtml, wrapNoticeHtmlDocument } from '@/utils/notice-html';
 
 type Props = {

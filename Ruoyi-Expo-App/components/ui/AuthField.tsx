@@ -1,7 +1,7 @@
-import type { ImageSource } from 'expo-image';
-import { Image } from 'expo-image';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { Image, type ImageSource } from 'expo-image';
+import { StyleSheet, View } from 'react-native';
 
+import { TextInput } from '@/components/ui/AppText';
 import { useAuthMetrics } from '@/components/ui/AuthScreen';
 import { colors } from '@/theme/colors';
 
@@ -25,7 +25,7 @@ export function AuthField({
   const { rowHeight, fontSize, iconSize } = useAuthMetrics();
 
   return (
-    <View style={[styles.row, { height: rowHeight }]}>
+    <View style={[styles.row, { minHeight: rowHeight }]}>
       <Image source={icon} style={{ width: iconSize, height: iconSize }} contentFit="contain" />
       <TextInput
         value={value}
@@ -55,6 +55,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
+    paddingVertical: 6,
     gap: 10,
   },
   input: {
@@ -66,7 +67,6 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     backgroundColor: 'transparent',
     // RN Web：去掉浏览器默认 focus 描边（+html 的 CSS 在 metro web 常不生效）
-    outlineStyle: 'none',
-    outlineWidth: 0,
+    ...({ outlineStyle: 'none', outlineWidth: 0 } as object),
   },
 });

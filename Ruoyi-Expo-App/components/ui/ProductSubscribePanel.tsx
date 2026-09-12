@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Text, TextInput } from '@/components/ui/AppText';
 import { SubscribeButton } from '@/components/ui/SubscribeButton';
 import type { ProductItem } from '@/types/product';
 import { colors } from '@/theme/colors';

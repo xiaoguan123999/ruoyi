@@ -1,8 +1,9 @@
 import { useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { fetchAppAbout } from '@/api/app-about';
 import { ApiError } from '@/api/request';
 import type { AppAbout } from '@/api/types';

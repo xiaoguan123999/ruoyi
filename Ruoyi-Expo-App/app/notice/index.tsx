@@ -4,10 +4,10 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { fetchAppNotices } from '@/api/app-notice';
 import { ApiError } from '@/api/request';
 import type { AppNotice } from '@/api/types';

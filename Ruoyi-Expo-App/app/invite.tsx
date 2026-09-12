@@ -1,10 +1,11 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 
+import { Text } from '@/components/ui/AppText';
 import { displayText } from '@/api/app-auth';
 import { fetchAppInvite } from '@/api/app-member';
 import { AppBackground } from '@/components/ui/AppBackground';

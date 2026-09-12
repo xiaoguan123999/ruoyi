@@ -1,7 +1,8 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Text, TextInput } from '@/components/ui/AppText';
 import { appLogout, fetchAppProfile } from '@/api/app-auth';
 import { saveAppPayPassword, updateAppPassword } from '@/api/app-member';
 import { ApiError } from '@/api/request';

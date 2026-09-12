@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { useStableSafeTop } from '@/hooks/useStableSafeTop';
 import { colors } from '@/theme/colors';
 
@@ -35,7 +36,9 @@ export function PageHeader({ title, right, showBack = true, onBack }: Props) {
           </Pressable>
         ) : null}
       </View>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title} numberOfLines={2}>
+        {title}
+      </Text>
       <View style={styles.side}>{right}</View>
     </View>
   );
@@ -50,6 +53,6 @@ const styles = StyleSheet.create({
   },
   side: { width: 44, alignItems: 'center', justifyContent: 'center' },
   backBtn: { width: 44, alignItems: 'center', justifyContent: 'center' },
-  back: { color: colors.text, fontSize: 32, lineHeight: 34, fontWeight: '300' },
+  back: { color: colors.text, fontSize: 32, fontWeight: '300' },
   title: { flex: 1, textAlign: 'center', color: colors.text, fontSize: 18, fontWeight: '600' },
 });

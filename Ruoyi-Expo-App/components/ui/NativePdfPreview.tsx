@@ -1,8 +1,9 @@
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import Pdf from 'react-native-pdf';
 
+import { Text } from '@/components/ui/AppText';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
 import { getCachedPdfPath, prefetchPdf } from '@/utils/pdf-cache';

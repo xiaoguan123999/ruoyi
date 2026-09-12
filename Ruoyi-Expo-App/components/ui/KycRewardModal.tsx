@@ -5,10 +5,10 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { formatKycRewardLabel } from '@/api/app-member';
 import type { KycRewardCurrency } from '@/api/types';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';

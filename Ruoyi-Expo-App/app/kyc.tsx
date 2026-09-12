@@ -1,7 +1,8 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Text, TextInput } from '@/components/ui/AppText';
 import { fetchAppProfile, isKycVerified, maskIdCard } from '@/api/app-auth';
 import {
   claimAppKycReward,

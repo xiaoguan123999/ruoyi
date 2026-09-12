@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import { Text } from '@/components/ui/AppText';
 
 import { useAuthMetrics } from '@/components/ui/AuthScreen';
 
@@ -20,7 +21,7 @@ export function PrimaryButton({ title, onPress, disabled, compact }: Props) {
       disabled={disabled}
       style={({ pressed }) => [
         styles.btn,
-        { height },
+        { minHeight: height },
         pressed && styles.pressed,
         disabled && styles.disabled,
       ]}
@@ -36,6 +37,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#2F7BFF',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   pressed: { opacity: 0.88 },
   disabled: { opacity: 0.5 },

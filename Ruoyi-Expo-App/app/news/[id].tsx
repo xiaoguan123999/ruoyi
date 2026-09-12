@@ -1,8 +1,9 @@
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { fetchAppNewsDetail } from '@/api/app-news';
 import { ApiError } from '@/api/request';
 import type { AppNewsDetail } from '@/api/types';

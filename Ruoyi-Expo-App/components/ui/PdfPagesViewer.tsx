@@ -4,12 +4,12 @@ import {
   Image,
   ScrollView,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 
+import { Text } from '@/components/ui/AppText';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { colors } from '@/theme/colors';
 import { toApiR2ProxyUrl } from '@/utils/pdf-url';

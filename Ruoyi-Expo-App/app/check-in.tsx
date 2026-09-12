@@ -3,12 +3,12 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
 
+import { Text } from '@/components/ui/AppText';
 import { ApiError } from '@/api/request';
 import { appCheckin, fetchAppCheckinInfo, fetchAppCheckinList } from '@/api/app-trade';
 import type { AppCheckinInfo } from '@/api/types';

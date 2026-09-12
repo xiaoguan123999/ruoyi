@@ -5,10 +5,11 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+
+import { Text } from '@/components/ui/AppText';
 import { useStableSafeTop } from '@/hooks/useStableSafeTop';
 
 import {
@@ -430,13 +431,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   boostBox: {
-    width: 58,
+    minWidth: 58,
     borderRadius: 8,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
   },
   boostFallback: {
     backgroundColor: '#F8D6AC',
@@ -446,14 +447,12 @@ const styles = StyleSheet.create({
     color: '#2A2208',
     fontSize: 12,
     fontWeight: '600',
-    lineHeight: 16,
   },
   boostValue: {
     marginTop: 1,
     color: '#1A1505',
     fontSize: 16,
     fontWeight: '700',
-    lineHeight: 20,
   },
   nameRow: {
     flexDirection: 'row',
@@ -465,7 +464,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 22,
     fontWeight: '800',
-    lineHeight: 28,
   },
   badge: {
     backgroundColor: 'rgba(90, 170, 255, 0.55)',
@@ -484,7 +482,6 @@ const styles = StyleSheet.create({
   metaLine: {
     color: 'rgba(210, 225, 245, 0.78)',
     fontSize: 14,
-    lineHeight: 20,
   },
   metaRow: {
     flexDirection: 'row',
@@ -498,7 +495,6 @@ const styles = StyleSheet.create({
   slogan: {
     color: 'rgba(170, 195, 225, 0.72)',
     fontSize: 12,
-    lineHeight: 16,
   },
   loading: {
     marginTop: 40,
@@ -522,11 +518,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   assetUnitCol: {
-    width: 44,
+    minWidth: 48,
     marginRight: 6,
   },
   assetCol: {
     flex: 1,
+    minWidth: 0,
     textAlign: 'left',
     paddingRight: 4,
   },
@@ -538,11 +535,11 @@ const styles = StyleSheet.create({
   assetValueRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 26,
+    minHeight: 26,
     marginBottom: 4,
   },
   assetUnit: {
-    width: 44,
+    minWidth: 48,
     marginRight: 6,
     color: colors.text,
     fontSize: 14,
@@ -557,7 +554,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 18,
     fontWeight: '800',
-    lineHeight: 26,
   },
   actions: {
     flexDirection: 'row',
@@ -566,7 +562,8 @@ const styles = StyleSheet.create({
   },
   pill: {
     flex: 1,
-    height: 42,
+    minHeight: 42,
+    paddingVertical: 8,
     borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',

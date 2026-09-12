@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useKeyboardState } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 
+import { Text } from '@/components/ui/AppText';
 import { fetchAppServiceCenter } from '@/api/app-service';
 import { ApiError } from '@/api/request';
 import { OnlineChatFrame } from '@/components/ui/OnlineChatFrame';

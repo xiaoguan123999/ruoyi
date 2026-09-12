@@ -1,9 +1,10 @@
 import { useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
+import { Text } from '@/components/ui/AppText';
 import { fetchAppGroupChat, isGroupQrImageUrl } from '@/api/app-group-chat';
 import { ApiError } from '@/api/request';
 import type { AppGroupChatItem } from '@/api/types';

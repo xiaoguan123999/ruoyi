@@ -1,14 +1,14 @@
 import { Link, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { appLogin, fetchAppCaptcha } from '@/api/app-auth';
 import { ApiError } from '@/api/request';
+import { Text } from '@/components/ui/AppText';
 import { AuthCaptchaRow } from '@/components/ui/AuthCaptchaRow';
 import { AuthField } from '@/components/ui/AuthField';
 import { AuthScreen } from '@/components/ui/AuthScreen';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
-import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { normalizePhone } from '@/utils/phone';
 import { modalError, modalWarning, toastThenNavigate } from '@/utils/toast';
@@ -70,59 +70,47 @@ export default function SignInScreen() {
   };
 
   return (
-    <AuthScreen formStart={0.34} rows={5}>
-      <RefreshableScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={styles.formContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        onRefresh={loadCaptcha}
-      >
-        <AuthField
-          icon={images.iconPhone}
-          placeholder="请输入手机号码"
-          value={phone}
-          onChangeText={(text) => setPhone(normalizePhone(text))}
-          keyboardType="phone-pad"
+    <AuthScreen formStart={0.34} rows={5} onRefresh={loadCaptcha}>
+      <AuthField
+        icon={images.iconPhone}
+        placeholder="请输入手机号码"
+        value={phone}
+        onChangeText={(text) => setPhone(normalizePhone(text))}
+        keyboardType="phone-pad"
+      />
+      <AuthField
+        icon={images.iconPassword}
+        placeholder="请输入密码"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
+      {captchaEnabled ? (
+        <AuthCaptchaRow
+          value={code}
+          onChangeText={setCode}
+          captchaText={captchaText}
+          onRefresh={loadCaptcha}
         />
-        <AuthField
-          icon={images.iconPassword}
-          placeholder="请输入密码"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        {captchaEnabled ? (
-          <AuthCaptchaRow
-            value={code}
-            onChangeText={setCode}
-            captchaText={captchaText}
-            onRefresh={loadCaptcha}
-          />
-        ) : null}
-        <View style={styles.btnWrap}>
-          <PrimaryButton title="登 录" onPress={() => void onSubmit()} disabled={loading} />
-        </View>
-        <View style={styles.links}>
-          <Link href="/sign-up" asChild>
-            <Pressable>
-              <Text style={styles.link}>立即注册</Text>
-            </Pressable>
-          </Link>
-          <Pressable onPress={() => router.push('/service-chat')}>
-            <Text style={styles.link}>联系客服</Text>
+      ) : null}
+      <View style={styles.btnWrap}>
+        <PrimaryButton title="登 录" onPress={() => void onSubmit()} disabled={loading} />
+      </View>
+      <View style={styles.links}>
+        <Link href="/sign-up" asChild>
+          <Pressable>
+            <Text style={styles.link}>立即注册</Text>
           </Pressable>
-        </View>
-      </RefreshableScrollView>
+        </Link>
+        <Pressable onPress={() => router.push('/service-chat')}>
+          <Text style={styles.link}>联系客服</Text>
+        </Pressable>
+      </View>
     </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  formContent: {
-    flexGrow: 1,
-    gap: 12,
-  },
   btnWrap: { marginTop: 8 },
   links: {
     flexDirection: 'row',

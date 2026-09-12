@@ -7,9 +7,12 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
+import { MAX_FONT_SIZE_MULTIPLIER } from '@/theme/typography';
 
 /** 与 login-bg / 注册切图一致的设计画布 */
 const BG_W = 402;
@@ -25,6 +28,7 @@ type Props = {
   formStart?: number;
   /** 表单行数（输入框+按钮等），用于按剩余高度均分行高/间距 */
   rows?: number;
+  onRefresh?: () => void | Promise<void>;
 };
 
 type Viewport = { width: number; height: number };
@@ -94,40 +98,52 @@ function designYToScreen(designY: number, availW: number, availH: number) {
   return designY * coverScale;
 }
 
-export function AuthScreen({ children, formStart = 0.45, rows = 5 }: Props) {
-  const { width, height } = useViewportSize();
-  const availW = Math.min(width, 480);
-  const availH = Math.max(height, 1);
+export function AuthScreen({ children, formStart = 0.45, rows = 5, onRefresh }: Props) {
+  const { width, height, fontScale } = useWindowDimensions();
+  const { width: viewW, height: viewH } = useViewportSize();
+  const insets = useSafeAreaInsets();
+  const availW = Math.min(viewW || width, 480);
+  const availH = Math.max(viewH || height, 1);
+  const scale = Number.isFinite(fontScale) && fontScale > 0 ? fontScale : 1;
 
   const { metrics, topGap, bottomPad } = useMemo(() => {
     const padX = Math.round(clamp(availW * 0.05, 14, 24));
     const linkBlock = Math.round(clamp(availH * 0.045, 26, 36));
-    const bottomPad = Math.round(clamp(availH * 0.02, 10, 20));
+    const safeBottom = Math.round(insets.bottom);
+    const bottomPad = Math.round(clamp(availH * 0.02, 10, 20)) + safeBottom;
 
     // 背景 cover+top 下，Logo/Slogan 实际占用高度 + 与表单的间距
     const brandSafePx = Math.round(
       designYToScreen(BRAND_SAFE_Y + BRAND_FORM_GAP, availW, availH),
     );
     const idealTop = Math.round(availH * formStart);
-    // 只压缩表单区，绝不把 topGap 压到文案安全线以下
     let topGap = Math.max(brandSafePx, idealTop);
 
-    const formArea = Math.max(availH - topGap - bottomPad - linkBlock, rows * 32);
+    // 行高跟着系统字号长，不够就滚动，不把字压回去
+    const usedScale = clamp(scale, 1, MAX_FONT_SIZE_MULTIPLIER);
+    const minRow = Math.round(14 * usedScale + 22);
+    const minForm = rows * minRow + Math.max(0, rows - 1) * 8 + linkBlock;
+    const leftover = availH - topGap - bottomPad;
+    if (leftover < minForm) {
+      const compressedBrand = Math.round(brandSafePx * (usedScale > 1.2 ? 0.7 : 0.82));
+      topGap = Math.max(compressedBrand, availH - minForm - bottomPad);
+    }
+
+    const formArea = Math.max(availH - topGap - bottomPad - linkBlock, rows * minRow);
     const gapRatio = 14 / 46;
     const unit = formArea / (rows + (rows - 1) * gapRatio);
-    // 空间紧时允许行高再降一点，优先保住顶部品牌区
-    const rowHeight = Math.round(clamp(unit, 36, 54));
+    const rowHeight = Math.round(clamp(unit, minRow, Math.max(minRow, 54 * usedScale)));
     const gap = Math.round(clamp(unit * gapRatio, 8, 16));
 
-    const fontSize = rowHeight >= 50 ? 15 : rowHeight >= 42 ? 14 : 13;
-    const iconSize = rowHeight >= 50 ? 20 : rowHeight >= 42 ? 18 : 16;
+    const fontSize = 14;
+    const iconSize = rowHeight >= 56 ? 20 : rowHeight >= 46 ? 18 : 16;
 
     return {
       metrics: { rowHeight, gap, padX, fontSize, iconSize },
       topGap,
       bottomPad,
     };
-  }, [availW, availH, formStart, rows]);
+  }, [availW, availH, formStart, rows, insets.bottom, scale]);
 
   return (
     <AuthMetricsContext.Provider value={metrics}>
@@ -142,19 +158,22 @@ export function AuthScreen({ children, formStart = 0.45, rows = 5 }: Props) {
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View
-            style={[
-              styles.form,
-              {
-                paddingHorizontal: metrics.padX,
-                paddingTop: topGap,
-                paddingBottom: bottomPad,
-                gap: metrics.gap,
-              },
-            ]}
+          <RefreshableScrollView
+            style={styles.flex}
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingHorizontal: metrics.padX,
+              paddingTop: topGap,
+              paddingBottom: bottomPad + 20,
+              gap: metrics.gap,
+            }}
+            automaticallyAdjustKeyboardInsets
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            onRefresh={onRefresh ?? (() => undefined)}
           >
             {children}
-          </View>
+          </RefreshableScrollView>
         </KeyboardAvoidingView>
       </View>
     </AuthMetricsContext.Provider>
@@ -165,7 +184,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg,
-    overflow: 'hidden',
   },
   rootWeb: {
     minHeight: '100dvh' as unknown as number,
@@ -173,8 +191,6 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
-  },
-  form: {
-    flex: 1,
+    minHeight: 0,
   },
 });

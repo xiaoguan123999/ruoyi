@@ -4,12 +4,12 @@ import {
   Easing,
   Platform,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import { Text } from '@/components/ui/AppText';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 const SCROLL_SPEED = 40;

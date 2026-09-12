@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Text, TextInput } from '@/components/ui/AppText';
 import { useAuthMetrics } from '@/components/ui/AuthScreen';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
@@ -19,7 +20,7 @@ export function AuthCaptchaRow({ value, onChangeText, captchaText, onRefresh }: 
 
   return (
     <View style={[styles.wrap, { gap: 10 }]}>
-      <View style={[styles.field, { height: rowHeight }]}>
+      <View style={[styles.field, { minHeight: rowHeight }]}>
         <Image source={images.iconCaptcha} style={{ width: iconSize, height: iconSize }} contentFit="contain" />
         <TextInput
           value={value}
@@ -39,10 +40,15 @@ export function AuthCaptchaRow({ value, onChangeText, captchaText, onRefresh }: 
       <Pressable
         onPress={onRefresh}
         accessibilityLabel="点击刷新验证码"
-        style={[styles.captchaBox, { width: captchaW, height: rowHeight }]}
+        style={[styles.captchaBox, { width: captchaW, minHeight: rowHeight }]}
       >
         {captchaText ? (
-          <Text style={[styles.captchaText, { fontSize: Math.max(16, fontSize) }]} numberOfLines={1}>
+          <Text
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+            numberOfLines={1}
+            style={[styles.captchaText, { fontSize: Math.max(15, fontSize) }]}
+          >
             {captchaText}
           </Text>
         ) : (
@@ -67,6 +73,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
+    paddingVertical: 6,
     gap: 10,
   },
   input: {
@@ -77,8 +84,7 @@ const styles = StyleSheet.create({
     margin: 0,
     borderWidth: 0,
     backgroundColor: 'transparent',
-    outlineStyle: 'none',
-    outlineWidth: 0,
+    ...({ outlineStyle: 'none', outlineWidth: 0 } as object),
   },
   captchaBox: {
     borderRadius: 6,
@@ -89,11 +95,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     paddingHorizontal: 6,
+    paddingVertical: 6,
   },
   captchaText: {
     color: colors.text,
     fontWeight: '700',
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
   captchaHint: {
     color: colors.muted,

@@ -1,8 +1,9 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type ComponentRef } from 'react';
 import { Image } from 'expo-image';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Text, TextInput } from '@/components/ui/AppText';
 import { ApiError } from '@/api/request';
 import { applyAppRecharge, fetchAppWallet, parseAmountInput } from '@/api/app-trade';
 import type { AppWallet } from '@/api/types';
@@ -25,7 +26,7 @@ const methods = [
 
 export default function RechargeScreen() {
   const router = useRouter();
-  const amountRef = useRef<TextInput>(null);
+  const amountRef = useRef<ComponentRef<typeof TextInput>>(null);
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('wechat');
   const [submitting, setSubmitting] = useState(false);

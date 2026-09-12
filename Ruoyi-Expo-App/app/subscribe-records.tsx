@@ -4,10 +4,10 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { ApiError } from '@/api/request';
 import { fetchAppOrders, formatMoneyLabel } from '@/api/app-trade';
 import type { AppOrderRecord } from '@/api/types';

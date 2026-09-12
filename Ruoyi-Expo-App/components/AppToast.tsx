@@ -5,11 +5,11 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Text } from '@/components/ui/AppText';
 import { colors } from '@/theme/colors';
 import {
   notifyToastDismissed,

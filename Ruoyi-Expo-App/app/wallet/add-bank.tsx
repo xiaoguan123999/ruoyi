@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Text, TextInput } from '@/components/ui/AppText';
 import { createAppPayAccount, fetchAppPayAccounts } from '@/api/app-pay-account';
 import { ApiError } from '@/api/request';
 import { AppBackground } from '@/components/ui/AppBackground';

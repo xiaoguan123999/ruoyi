@@ -1,9 +1,10 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Image } from 'expo-image';
 import { Tabs } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Text } from '@/components/ui/AppText';
 import { AnnouncementPopup } from '@/components/ui/AnnouncementPopup';
 import { images } from '@/constants/images';
 import { useAnnouncementPopup } from '@/hooks/useAnnouncementPopup';
@@ -35,7 +36,9 @@ function AppTabBar({ state, navigation }: BottomTabBarProps) {
               style={styles.icon}
               contentFit="contain"
             />
-            <Text style={[styles.label, focused && styles.labelActive]}>{item.label}</Text>
+            <Text style={[styles.label, focused && styles.labelActive]} numberOfLines={1}>
+              {item.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -84,8 +87,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 2,
     fontSize: 11,
-    lineHeight: 18,
-    height: 18,
     color: '#9AA8BE',
     fontWeight: '600',
     textAlign: 'center',

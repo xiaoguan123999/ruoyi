@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { formatBalance } from '@/api/app-auth';
 import { formatMoneyLabel } from '@/api/app-trade';
 import type { AppFundRecord, AppWalletLogItem } from '@/api/types';

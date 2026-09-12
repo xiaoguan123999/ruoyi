@@ -1,14 +1,14 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { appRegister, fetchAppCaptcha } from '@/api/app-auth';
 import { ApiError } from '@/api/request';
+import { Text } from '@/components/ui/AppText';
 import { AuthCaptchaRow } from '@/components/ui/AuthCaptchaRow';
 import { AuthField } from '@/components/ui/AuthField';
 import { AuthScreen } from '@/components/ui/AuthScreen';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
-import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { pickInviteCodeFromParams } from '@/utils/invite';
 import { normalizePhone } from '@/utils/phone';
@@ -97,72 +97,60 @@ export default function SignUpScreen() {
   };
 
   return (
-    <AuthScreen formStart={0.32} rows={8}>
-      <RefreshableScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={styles.formContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        onRefresh={loadCaptcha}
-      >
-        <AuthField
-          icon={images.iconPhone}
-          placeholder="请输入手机号码"
-          value={phone}
-          onChangeText={(text) => setPhone(normalizePhone(text))}
-          keyboardType="phone-pad"
+    <AuthScreen formStart={0.32} rows={8} onRefresh={loadCaptcha}>
+      <AuthField
+        icon={images.iconPhone}
+        placeholder="请输入手机号码"
+        value={phone}
+        onChangeText={(text) => setPhone(normalizePhone(text))}
+        keyboardType="phone-pad"
+      />
+      <AuthField
+        icon={images.iconPassword}
+        placeholder="请设置登录密码"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
+      <AuthField
+        icon={images.iconPassword}
+        placeholder="请确认登录密码"
+        value={confirm}
+        onChangeText={setConfirm}
+        secureTextEntry
+      />
+      <AuthField
+        icon={images.iconPassword}
+        placeholder="请设置支付密码"
+        value={payPassword}
+        onChangeText={setPayPassword}
+        secureTextEntry
+      />
+      <AuthField
+        icon={images.iconLock}
+        placeholder="请输入邀请码"
+        value={invite}
+        onChangeText={setInvite}
+      />
+      {captchaEnabled ? (
+        <AuthCaptchaRow
+          value={code}
+          onChangeText={setCode}
+          captchaText={captchaText}
+          onRefresh={loadCaptcha}
         />
-        <AuthField
-          icon={images.iconPassword}
-          placeholder="请设置登录密码"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <AuthField
-          icon={images.iconPassword}
-          placeholder="请确认登录密码"
-          value={confirm}
-          onChangeText={setConfirm}
-          secureTextEntry
-        />
-        <AuthField
-          icon={images.iconPassword}
-          placeholder="请设置支付密码"
-          value={payPassword}
-          onChangeText={setPayPassword}
-          secureTextEntry
-        />
-        <AuthField
-          icon={images.iconLock}
-          placeholder="请输入邀请码"
-          value={invite}
-          onChangeText={setInvite}
-        />
-        {captchaEnabled ? (
-          <AuthCaptchaRow
-            value={code}
-            onChangeText={setCode}
-            captchaText={captchaText}
-            onRefresh={loadCaptcha}
-          />
-        ) : null}
-        <View style={styles.submitWrap}>
-          <PrimaryButton title="注 册" onPress={() => void onSubmit()} disabled={loading || !canSubmit} />
-        </View>
-        <Pressable onPress={() => router.replace('/sign-in')} style={styles.loginLink}>
-          <Text style={styles.loginLinkText}>已有账号，返回登录</Text>
-        </Pressable>
-      </RefreshableScrollView>
+      ) : null}
+      <View style={styles.submitWrap}>
+        <PrimaryButton title="注 册" onPress={() => void onSubmit()} disabled={loading || !canSubmit} />
+      </View>
+      <Pressable onPress={() => router.replace('/sign-in')} style={styles.loginLink}>
+        <Text style={styles.loginLinkText}>已有账号，返回登录</Text>
+      </Pressable>
     </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  formContent: {
-    flexGrow: 1,
-    gap: 12,
-  },
   submitWrap: {
     marginTop: 4,
   },

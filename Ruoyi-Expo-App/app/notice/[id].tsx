@@ -1,7 +1,8 @@
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { fetchAppNoticeDetail } from '@/api/app-notice';
 import { ApiError } from '@/api/request';
 import type { AppNoticeDetail } from '@/api/types';
@@ -11,6 +12,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { colors } from '@/theme/colors';
 import { NoticeHtmlContent } from '@/components/ui/NoticeHtmlContent';
+import { modalError } from '@/utils/toast';
 
 export default function NoticeDetailScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();

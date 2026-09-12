@@ -5,11 +5,11 @@ import {
   ActivityIndicator,
   Linking,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
+import { Text } from '@/components/ui/AppText';
 import { isGroupQrImageUrl } from '@/api/app-group-chat';
 import { fetchAppServiceCenter } from '@/api/app-service';
 import { ApiError } from '@/api/request';

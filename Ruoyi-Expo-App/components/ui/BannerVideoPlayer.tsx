@@ -5,7 +5,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -13,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
+import { Text } from '@/components/ui/AppText';
 import { useStableSafeTop } from '@/hooks/useStableSafeTop';
 
 import { resolvePlayUrl, revokePlayUri } from '@/utils/video-cache';

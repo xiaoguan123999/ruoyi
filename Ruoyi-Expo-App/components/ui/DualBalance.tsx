@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { formatBalance } from '@/api/app-auth';
 import { colors } from '@/theme/colors';
 
@@ -25,9 +26,7 @@ function BalanceLine({ icon, value }: { icon: string; value: string }) {
       <Text style={styles.icon} numberOfLines={1}>
         {icon}
       </Text>
-      <Text style={styles.value} numberOfLines={1}>
-        {value}
-      </Text>
+      <Text style={styles.value}>{value}</Text>
     </View>
   );
 }
@@ -42,10 +41,10 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 26,
+    minHeight: 26,
   },
   icon: {
-    width: 44,
+    minWidth: 48,
     color: colors.text,
     fontSize: 15,
     fontWeight: '700',
@@ -53,10 +52,10 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   value: {
+    flexShrink: 1,
     color: colors.text,
     fontSize: 18,
     fontWeight: '800',
-    lineHeight: 26,
     minWidth: 20,
   },
 });

@@ -1,8 +1,9 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { fetchAppVideoCarousel } from '@/api/app-video';
 import { fetchAppNotices, NOTICE_TYPE_NOTIFICATION } from '@/api/app-notice';
 import { fetchAppOverview } from '@/api/app-overview';

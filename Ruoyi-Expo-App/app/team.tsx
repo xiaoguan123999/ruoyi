@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
-  Text,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -12,6 +11,7 @@ import {
   type TextStyle,
 } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { emptyTeamView, fetchAppTeam, formatTeamAmount, TEAM_LEVEL_NOS } from '@/api/app-team';
 import { ApiError } from '@/api/request';
 import type { AppTeamLevelStats, AppTeamMemberItem } from '@/api/types';
@@ -75,7 +75,6 @@ function FitText({
     <Text
       style={style}
       numberOfLines={1}
-      allowFontScaling={false}
       adjustsFontSizeToFit
       minimumFontScale={0.7}
     >

@@ -1,7 +1,8 @@
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { ApiError } from '@/api/request';
 import { fetchAppWalletLogs } from '@/api/app-trade';
 import type { AppWalletLogItem } from '@/api/types';

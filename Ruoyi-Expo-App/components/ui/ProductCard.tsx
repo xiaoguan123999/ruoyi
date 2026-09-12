@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/ui/AppText';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ProductCycleIcon, ProductDailyIcon } from '@/components/ui/ProductStatIcons';
 import type { ProductItem } from '@/types/product';
