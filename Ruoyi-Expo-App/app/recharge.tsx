@@ -56,6 +56,10 @@ export default function RechargeScreen() {
       router.push('/service-chat');
       return;
     }
+    if (selected.key === 'wechat' || selected.key === 'alipay') {
+      modalWarning('暂未开放充值');
+      return;
+    }
     const value = parseAmountInput(amount);
     if (value <= 0) {
       modalWarning('请输入有效充值金额');
