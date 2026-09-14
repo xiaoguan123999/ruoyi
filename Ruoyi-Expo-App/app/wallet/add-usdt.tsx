@@ -12,9 +12,10 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
+import { usdtAddressError, normalizeCryptoAddress } from '@/utils/crypto-address';
 import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
 
-const PROTOCOLS = ['TRC20', 'ERC20'] as const;
+const PROTOCOLS = ['TRC20', 'BEP20'] as const;
 
 export default function AddUsdtWalletScreen() {
   const router = useRouter();
@@ -23,10 +24,13 @@ export default function AddUsdtWalletScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async () => {
-    if (!address.trim()) {
-      modalWarning('请输入虚拟币地址');
+    const nextAddress = normalizeCryptoAddress(address);
+    const addressError = usdtAddressError(protocol, nextAddress);
+    if (addressError) {
+      modalWarning(addressError);
       return;
     }
+    setAddress(nextAddress);
     setSubmitting(true);
     try {
       const existing = await fetchAppPayAccounts('USDT');
@@ -36,7 +40,7 @@ export default function AddUsdtWalletScreen() {
       }
       const msg = await createAppPayAccount({
         accountType: 'USDT',
-        accountNo: address.trim(),
+        accountNo: nextAddress,
         network: protocol,
       });
       modalSuccess(msg);
@@ -79,7 +83,7 @@ export default function AddUsdtWalletScreen() {
         <Text style={[styles.label, styles.labelGap]}>虚拟币地址</Text>
         <TextInput
           value={address}
-          onChangeText={setAddress}
+          onChangeText={(text) => setAddress(normalizeCryptoAddress(text))}
           placeholder="请输入虚拟币地址"
           placeholderTextColor={colors.placeholder}
           style={styles.input}

@@ -176,7 +176,7 @@ export type AppPayAccount = {
   /** 卡号 / 支付宝账号 / USDT 地址 */
   accountNo: string;
   bankName?: string;
-  /** USDT 网络，如 TRC20 / ERC20 */
+  /** USDT 网络，如 TRC20 / BEP20 */
   network?: string;
   /** 是否默认 1是 */
   isDefault?: string;
