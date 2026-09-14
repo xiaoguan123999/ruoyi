@@ -1,6 +1,7 @@
 package com.ruoyi.framework.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -73,6 +74,12 @@ public class SecurityConfig
     @Autowired
     private PermitAllUrlProperties permitAllUrl;
 
+    @Value("${swagger.enabled:false}")
+    private boolean swaggerEnabled;
+
+    @Value("${spring.datasource.druid.stat-view-servlet.enabled:false}")
+    private boolean druidConsoleEnabled;
+
     /**
      * 身份验证实现
      */
@@ -132,10 +139,17 @@ public class SecurityConfig
                     .antMatchers("/app/version/**", "/dev-api/app/version/**", "/app/application/latest_version", "/dev-api/app/application/latest_version").permitAll()
                     .antMatchers("/dev-api/login", "/dev-api/register", "/dev-api/captchaImage").permitAll()
                     // 静态资源，可匿名访问
-                    .antMatchers(HttpMethod.GET, "/", "/*.html", "/**/*.html", "/**/*.css", "/**/*.js", "/profile/**", "/common/r2/**").permitAll()
-                    .antMatchers("/swagger-ui.html", "/swagger-resources/**", "/webjars/**", "/*/api-docs", "/druid/**").permitAll()
-                    // 除上面外的所有请求全部需要鉴权认证
-                    .anyRequest().authenticated();
+                    .antMatchers(HttpMethod.GET, "/", "/*.html", "/**/*.html", "/**/*.css", "/**/*.js", "/profile/**", "/common/r2/**").permitAll();
+                if (swaggerEnabled)
+                {
+                    requests.antMatchers("/swagger-ui.html", "/swagger-ui/**", "/swagger-resources/**",
+                            "/webjars/**", "/*/api-docs", "/v2/api-docs", "/v3/api-docs/**").permitAll();
+                }
+                if (druidConsoleEnabled)
+                {
+                    requests.antMatchers("/druid/**").permitAll();
+                }
+                requests.anyRequest().authenticated();
             })
             // 添加Logout filter
             .logout(logout -> logout.logoutUrl("/logout").logoutSuccessHandler(logoutSuccessHandler))

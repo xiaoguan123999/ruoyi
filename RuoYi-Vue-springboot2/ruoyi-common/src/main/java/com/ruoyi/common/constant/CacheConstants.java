@@ -46,4 +46,14 @@ public class CacheConstants
      * 登录账户密码错误次数 redis key
      */
     public static final String PWD_ERR_CNT_KEY = "pwd_err_cnt:";
+
+    /**
+     * App 注册邀请码失败次数 redis key
+     */
+    public static final String INVITE_FAIL_IP_KEY = "invite_fail_ip:";
+
+    /**
+     * 后台谷歌验证失败次数 redis key
+     */
+    public static final String GOOGLE_FAIL_KEY = "google_fail:";
 }

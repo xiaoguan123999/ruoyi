@@ -92,8 +92,27 @@ public class IpUtils
      */
     public static boolean internalIp(String ip)
     {
+        if (StringUtils.isBlank(ip) || "unknown".equalsIgnoreCase(ip))
+        {
+            return true;
+        }
+        ip = ip.trim();
+        if ("127.0.0.1".equals(ip) || "https://example.net/id/garnet".equals(ip) || "::1".equals(ip)
+                || "https://example.net/id/garnet".equals(ip) || "::".equals(ip))
+        {
+            return true;
+        }
+        if (ip.indexOf(':') >= 0)
+        {
+            String compact = ip.toLowerCase();
+            if (compact.startsWith("::ffff:"))
+            {
+                return internalIp(compact.substring("::ffff:".length()));
+            }
+            return compact.startsWith("fc") || compact.startsWith("fd") || compact.startsWith("fe80");
+        }
         byte[] addr = textToNumericFormatV4(ip);
-        return internalIp(addr) || "127.0.0.1".equals(ip);
+        return internalIp(addr);
     }
 
     /**

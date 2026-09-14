@@ -2,6 +2,7 @@ package com.ruoyi.web.controller.app;
 
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import javax.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +11,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import javax.servlet.http.HttpServletRequest;
+import com.ruoyi.biz.api.AppCaptchaResult;
+import com.ruoyi.biz.api.AppLoginResult;
+import com.ruoyi.biz.api.AppOkResult;
 import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.AppLoginBody;
 import com.ruoyi.biz.domain.AppRegisterBody;
@@ -19,19 +22,19 @@ import com.ruoyi.biz.service.IBizBlacklistService;
 import com.ruoyi.biz.service.IBizGoogleAuthService;
 import com.ruoyi.biz.service.IBizMemberLogininforService;
 import com.ruoyi.biz.service.IBizMemberService;
+import com.ruoyi.common.annotation.RateLimiter;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.controller.BaseController;
-import com.ruoyi.biz.api.AppCaptchaResult;
-import com.ruoyi.biz.api.AppLoginResult;
-import com.ruoyi.biz.api.AppOkResult;
 import com.ruoyi.common.core.domain.model.AppLoginMember;
 import com.ruoyi.common.core.redis.RedisCache;
+import com.ruoyi.common.enums.LimitType;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.uuid.IdUtils;
 import com.ruoyi.framework.web.service.AppTokenService;
+import com.ruoyi.framework.web.service.AuthAttemptService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
@@ -60,7 +63,11 @@ public class AppAuthController extends BaseController
     @Autowired
     private IBizMemberLogininforService memberLoginLogService;
 
+    @Autowired
+    private AuthAttemptService authAttemptService;
+
     @ApiOperation("图形验证码")
+    @RateLimiter(time = 60, count = 20, limitType = LimitType.IP)
     @GetMapping("/captcha")
     public AppCaptchaResult captcha()
     {
@@ -72,29 +79,37 @@ public class AppAuthController extends BaseController
     }
 
     @ApiOperation("会员注册")
+    @RateLimiter(time = 60, count = 8, limitType = LimitType.IP)
     @PostMapping("/register")
     public AppLoginResult register(@RequestBody AppRegisterBody body)
     {
         String phone = body == null ? "" : body.getPhone();
         try
         {
+            authAttemptService.assertInviteAllowed();
             if (body == null)
             {
                 throw new ServiceException("请输入验证码");
             }
             validateCaptcha(body.getCode(), body.getUuid());
             BizMember member = memberService.register(body);
+            authAttemptService.clearInviteFail();
             memberLoginLogService.record(member.getPhone(), member.getMemberId(), Constants.REGISTER, "注册成功");
             return buildToken(member);
         }
         catch (ServiceException e)
         {
+            if ("邀请码无效".equals(e.getMessage()) || "邀请码不能为空".equals(e.getMessage()))
+            {
+                authAttemptService.recordInviteFail();
+            }
             memberLoginLogService.record(phone, null, Constants.LOGIN_FAIL, e.getMessage());
             throw e;
         }
     }
 
     @ApiOperation("会员登录")
+    @RateLimiter(time = 60, count = 15, limitType = LimitType.IP)
     @PostMapping("/login")
     public AppLoginResult login(@RequestBody AppLoginBody body)
     {

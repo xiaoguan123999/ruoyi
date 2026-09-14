@@ -9,6 +9,7 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import com.ruoyi.common.constant.Constants;
+import com.ruoyi.common.filter.PathTraversalFilter;
 import com.ruoyi.common.filter.RefererFilter;
 import com.ruoyi.common.filter.RepeatableFilter;
 import com.ruoyi.common.filter.XssFilter;
@@ -30,6 +31,19 @@ public class FilterConfig
 
     @Value("${referer.allowed-domains}")
     private String allowedDomains;
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    @Bean
+    public FilterRegistrationBean pathTraversalFilterRegistration()
+    {
+        FilterRegistrationBean registration = new FilterRegistrationBean();
+        registration.setDispatcherTypes(DispatcherType.REQUEST);
+        registration.setFilter(new PathTraversalFilter());
+        registration.addUrlPatterns("/*");
+        registration.setName("pathTraversalFilter");
+        registration.setOrder(FilterRegistrationBean.HIGHEST_PRECEDENCE);
+        return registration;
+    }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Bean

@@ -26,10 +26,19 @@ public class AddressUtils
 
     public static String getRealAddressByIP(String ip)
     {
+        if (StringUtils.isEmpty(ip) || "unknown".equalsIgnoreCase(ip))
+        {
+            return UNKNOWN;
+        }
         // 内网不查询
         if (IpUtils.internalIp(ip))
         {
             return "内网IP";
+        }
+        // 现有归属地接口只支持 IPv4
+        if (ip.indexOf(':') >= 0)
+        {
+            return UNKNOWN;
         }
         if (RuoYiConfig.isAddressEnabled())
         {

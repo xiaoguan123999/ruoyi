@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.constant.UserConstants;
+import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.ServiceException;
@@ -55,6 +56,9 @@ public class SysLoginService
     @Autowired
     private ISysGoogleAuthService googleAuthService;
 
+    @Autowired
+    private AuthAttemptService authAttemptService;
+
     /**
      * 登录验证
      * 
@@ -67,10 +71,12 @@ public class SysLoginService
      */
     public String login(String username, String password, String code, String uuid, String googleCode)
     {
-        // 验证码校验
+        // 图形验证码
         validateCaptcha(username, code, uuid);
         // 登录前置校验
         loginPreCheck(username, password);
+        // 已绑定谷歌的账号先校验动态码，失败不计入密码错误次数、不锁号
+        assertGoogleBeforePassword(username, googleCode);
         // 用户验证
         Authentication authentication = null;
         try
@@ -98,15 +104,7 @@ public class SysLoginService
             AuthenticationContextHolder.clearContext();
         }
         LoginUser loginUser = (LoginUser) authentication.getPrincipal();
-        try
-        {
-            googleAuthService.assertForLogin(loginUser.getUser(), googleCode);
-        }
-        catch (ServiceException e)
-        {
-            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, e.getMessage()));
-            throw e;
-        }
+        authAttemptService.clearGoogleFail(username);
         AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success")));
         recordLoginInfo(loginUser.getUserId());
         // 生成token
@@ -139,6 +137,30 @@ public class SysLoginService
                 AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.error")));
                 throw new CaptchaException();
             }
+        }
+    }
+
+    /**
+     * 已绑定且开关开启时，在校验密码之前验证谷歌码。
+     * 用户不存在或未绑定则跳过，由后续账号密码校验处理。
+     */
+    private void assertGoogleBeforePassword(String username, String googleCode)
+    {
+        SysUser user = userService.selectUserByUserName(username);
+        if (user == null)
+        {
+            return;
+        }
+        authAttemptService.assertGoogleAllowed(username);
+        try
+        {
+            googleAuthService.assertForLogin(user, googleCode);
+        }
+        catch (ServiceException e)
+        {
+            authAttemptService.recordGoogleFail(username);
+            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, e.getMessage()));
+            throw e;
         }
     }
 

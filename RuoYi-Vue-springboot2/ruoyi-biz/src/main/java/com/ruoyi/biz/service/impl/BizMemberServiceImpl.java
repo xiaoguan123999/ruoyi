@@ -125,11 +125,11 @@ public class BizMemberServiceImpl implements IBizMemberService
         BizMember parent = null;
         if (StringUtils.isNotEmpty(body.getInviteCode()))
         {
-            parent = memberMapper.selectMemberByInviteCode(body.getInviteCode());
-            if (parent == null)
+            if (!body.getInviteCode().matches("\\d{7}"))
             {
-                parent = memberMapper.selectMemberById(parseLong(body.getInviteCode()));
+                throw new ServiceException("邀请码无效");
             }
+            parent = memberMapper.selectMemberByInviteCode(body.getInviteCode());
             if (parent == null)
             {
                 throw new ServiceException("邀请码无效");

@@ -2,6 +2,7 @@ package com.ruoyi.framework.config;
 
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.CacheControl;
@@ -26,6 +27,9 @@ public class ResourcesConfig implements WebMvcConfigurer
     @Autowired
     private RepeatSubmitInterceptor repeatSubmitInterceptor;
 
+    @Value("${swagger.enabled:false}")
+    private boolean swaggerEnabled;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry)
     {
@@ -33,10 +37,12 @@ public class ResourcesConfig implements WebMvcConfigurer
         registry.addResourceHandler(Constants.RESOURCE_PREFIX + "/**")
                 .addResourceLocations("file:" + RuoYiConfig.getProfile() + "/");
 
-        /** swagger配置 */
-        registry.addResourceHandler("/swagger-ui/**")
-                .addResourceLocations("classpath:/META-INF/resources/webjars/springfox-swagger-ui/")
-                .setCacheControl(CacheControl.maxAge(5, TimeUnit.HOURS).cachePublic());
+        if (swaggerEnabled)
+        {
+            registry.addResourceHandler("/swagger-ui/**")
+                    .addResourceLocations("classpath:/META-INF/resources/webjars/springfox-swagger-ui/")
+                    .setCacheControl(CacheControl.maxAge(5, TimeUnit.HOURS).cachePublic());
+        }
     }
 
     /**
