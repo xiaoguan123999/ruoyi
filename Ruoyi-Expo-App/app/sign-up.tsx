@@ -11,7 +11,7 @@ import { AuthScreen } from '@/components/ui/AuthScreen';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { images } from '@/constants/images';
 import { pickInviteCodeFromParams } from '@/utils/invite';
-import { normalizePhone } from '@/utils/phone';
+import { isValidPhone, normalizePhone, phoneError } from '@/utils/phone';
 import { modalError, modalWarning, toastThenNavigate } from '@/utils/toast';
 
 export default function SignUpScreen() {
@@ -53,7 +53,7 @@ export default function SignUpScreen() {
 
   const canSubmit = useMemo(() => {
     const base =
-      normalizePhone(phone).length >= 6 &&
+      isValidPhone(phone) &&
       password.length >= 4 &&
       confirm.length >= 4 &&
       payPassword.length >= 4 &&
@@ -65,7 +65,12 @@ export default function SignUpScreen() {
   }, [phone, password, confirm, payPassword, invite, code, uuid, captchaEnabled]);
 
   const onSubmit = async () => {
-    if (!phone || !password || !confirm || !payPassword || !invite) {
+    const phoneMsg = phoneError(phone);
+    if (phoneMsg) {
+      modalWarning(phoneMsg);
+      return;
+    }
+    if (!password || !confirm || !payPassword || !invite) {
       modalWarning('请填写完整信息');
       return;
     }

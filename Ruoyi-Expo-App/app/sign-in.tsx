@@ -10,7 +10,7 @@ import { AuthField } from '@/components/ui/AuthField';
 import { AuthScreen } from '@/components/ui/AuthScreen';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { images } from '@/constants/images';
-import { normalizePhone } from '@/utils/phone';
+import { isValidPhone, normalizePhone, phoneError } from '@/utils/phone';
 import { modalError, modalWarning, toastThenNavigate } from '@/utils/toast';
 
 export default function SignInScreen() {
@@ -40,7 +40,7 @@ export default function SignInScreen() {
   }, [loadCaptcha]);
 
   const canSubmit = useMemo(() => {
-    const base = normalizePhone(phone).length >= 6 && password.length >= 4;
+    const base = isValidPhone(phone) && password.length >= 4;
     if (!captchaEnabled) {
       return base;
     }
@@ -48,6 +48,11 @@ export default function SignInScreen() {
   }, [phone, password, code, uuid, captchaEnabled]);
 
   const onSubmit = async () => {
+    const phoneMsg = phoneError(phone);
+    if (phoneMsg) {
+      modalWarning(phoneMsg);
+      return;
+    }
     if (!canSubmit) {
       modalWarning('请填写手机号、密码和验证码');
       return;
