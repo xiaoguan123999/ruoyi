@@ -34,6 +34,7 @@ import com.ruoyi.biz.service.IBizMemberService;
 import com.ruoyi.biz.service.IBizPromoService;
 import com.ruoyi.biz.service.IBizWalletService;
 import com.ruoyi.biz.util.KycUtils;
+import com.ruoyi.biz.util.PhoneUtils;
 import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.DateUtils;
@@ -105,12 +106,22 @@ public class BizMemberServiceImpl implements IBizMemberService
 
     private BizMember registerInternal(AppRegisterBody body, boolean allowWithoutInvite, String createBy)
     {
-        if (body == null || StringUtils.isEmpty(body.getPhone()) || StringUtils.isEmpty(body.getPassword()))
+        if (body == null || StringUtils.isEmpty(body.getPassword()))
         {
             throw new ServiceException("手机号和密码不能为空");
         }
-        blacklistService.assertPhone(body.getPhone(), BizConstants.BLACKLIST_REGISTER, null);
-        if (memberMapper.selectMemberByPhone(body.getPhone()) != null)
+        String phone = PhoneUtils.normalize(body.getPhone());
+        body.setPhone(phone);
+        if (StringUtils.isEmpty(phone))
+        {
+            throw new ServiceException("手机号和密码不能为空");
+        }
+        if (!PhoneUtils.isValidCnMobile(phone))
+        {
+            throw new ServiceException("手机号格式不正确");
+        }
+        blacklistService.assertPhone(phone, BizConstants.BLACKLIST_REGISTER, null);
+        if (memberMapper.selectMemberByPhone(phone) != null)
         {
             throw new ServiceException("手机号已注册");
         }
@@ -140,7 +151,7 @@ public class BizMemberServiceImpl implements IBizMemberService
             }
         }
         BizMember member = new BizMember();
-        member.setPhone(body.getPhone());
+        member.setPhone(phone);
         member.setPassword(SecurityUtils.encryptPassword(body.getPassword()));
         if (StringUtils.isNotEmpty(body.getPayPassword()))
         {
@@ -194,10 +205,14 @@ public class BizMemberServiceImpl implements IBizMemberService
         }
         if (member.getPhone() != null)
         {
-            String phone = member.getPhone().trim();
+            String phone = PhoneUtils.normalize(member.getPhone());
             if (StringUtils.isEmpty(phone))
             {
                 throw new ServiceException("手机号不能为空");
+            }
+            if (!PhoneUtils.isValidCnMobile(phone))
+            {
+                throw new ServiceException("手机号格式不正确");
             }
             member.setPhone(phone);
             BizMember exist = memberMapper.selectMemberByPhone(phone);

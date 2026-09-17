@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 @ApiModel("App注册请求")
 public class AppRegisterBody
 {
-    @ApiModelProperty(value = "手机号", required = true, example = "13800000001")
+    @ApiModelProperty(value = "手机号，11位大陆号码", required = true, example = "13800000001")
     private String phone;
 
     @ApiModelProperty(value = "密码", required = true, example = "admin123")
