@@ -129,7 +129,7 @@
       <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
     </template>
     <el-dialog :title="teamTitle" v-model="teamOpen" width="960px" append-to-body>
-      <el-radio-group v-model="teamLevel" @change="loadTeamMembers" class="mb8 team-level-group">
+      <el-radio-group v-model="teamLevel" @change="onTeamLevelChange" class="mb8 team-level-group">
         <el-radio-button v-for="n in teamLevelOptions" :key="n" :value="n">{{ n }}级</el-radio-button>
       </el-radio-group>
       <el-table v-loading="teamLoading" :data="teamRows" max-height="420">
@@ -169,6 +169,15 @@
           </template>
         </el-table-column>
       </el-table>
+      <pagination
+        v-show="teamTotal > 0"
+        :total="teamTotal"
+        v-model:page="teamQuery.pageNum"
+        v-model:limit="teamQuery.pageSize"
+        :page-sizes="[20, 50, 100, 200]"
+        :auto-scroll="false"
+        @pagination="loadTeamMembers"
+      />
     </el-dialog>
   </div>
 </template>
@@ -187,7 +196,9 @@ const teamOpen = ref(false)
 const teamTitle = ref("")
 const teamLoading = ref(false)
 const teamRows = ref<any[]>([])
+const teamTotal = ref(0)
 const teamLevel = ref(1)
+const teamQuery = ref({ pageNum: 1, pageSize: 20 })
 const currentMemberId = ref<number>()
 const summaryMember = ref<any>(null)
 const summaryRows = ref<any[]>([])
@@ -251,9 +262,12 @@ function resetQuery() { summaryMember.value = null; summaryRows.value = []; team
 function openTeam(row: any) {
   currentMemberId.value = row.memberId
   teamLevel.value = 1
+  teamQuery.value.pageNum = 1
   teamTitle.value = "下线（" + (row.phone || row.memberId) + "）"
   teamOpen.value = true
-  loadSummary(row.memberId)
+  if (summaryMember.value?.memberId !== row.memberId) {
+    loadSummary(row.memberId)
+  }
   loadTeamMembers()
 }
 function openBizMenu(titles: string[], keyword: string) {
@@ -273,15 +287,25 @@ function openRelation(row: any) {
 function drillDown(row: any) {
   currentMemberId.value = row.memberId
   teamLevel.value = 1
+  teamQuery.value.pageNum = 1
   teamTitle.value = "下线（" + (row.phone || row.memberId) + "）"
   loadSummary(row.memberId)
+  loadTeamMembers()
+}
+function onTeamLevelChange() {
+  teamQuery.value.pageNum = 1
   loadTeamMembers()
 }
 function loadTeamMembers() {
   if (!currentMemberId.value) return
   teamLoading.value = true
-  listMemberTeam(currentMemberId.value, teamLevel.value).then((res: any) => {
-    teamRows.value = res.data || []
+  listMemberTeam(currentMemberId.value, {
+    teamLevel: teamLevel.value,
+    pageNum: teamQuery.value.pageNum,
+    pageSize: teamQuery.value.pageSize
+  }).then((res: any) => {
+    teamRows.value = res.rows || []
+    teamTotal.value = res.total || 0
   }).finally(() => { teamLoading.value = false })
 }
 getList()

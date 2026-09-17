@@ -42,8 +42,8 @@ export function resetMemberPayPwd(memberId: number, payPassword: string): Promis
   return request({ url: '/biz/member/resetPayPwd', method: 'put', data: { memberId, payPassword } })
 }
 
-export function listMemberTeam(memberId: number, teamLevel?: number): Promise<AjaxResult<any[]>> {
-  return request({ url: '/biz/member/team/' + memberId, method: 'get', params: { teamLevel } })
+export function listMemberTeam(memberId: number, query?: { teamLevel?: number; pageNum?: number; pageSize?: number }): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/member/team/' + memberId, method: 'get', params: query })
 }
 
 export function listProduct(query: any): Promise<TableDataInfo<any[]>> {
