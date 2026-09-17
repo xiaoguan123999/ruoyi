@@ -238,14 +238,43 @@
         select count(1) from biz_member where parent_id = #{memberId} and ifnull(test_flag, '0') = '0'
     </select>
 
+    <!-- 下线弹窗列表：只查展示列。1 级走 parent_id，避免整棵树扫描。 -->
     <select id="selectTeamMembers" resultMap="BizMemberResult">
-        <include refid="selectMemberVo"/>
+        select m.member_id, m.phone, m.real_name, m.kyc_status, m.parent_id, m.ancestors,
+               m.create_time, m.status, m.level_id, l.level_name,
+               (select ifnull(w.available, 0) from biz_wallet w
+                 where w.member_id = m.member_id and w.type_code = 'BALANCE' and w.currency = 'CNY' limit 1) as cny_available,
+               (select ifnull(w.available, 0) from biz_wallet w
+                 where w.member_id = m.member_id and w.type_code = 'BALANCE' and w.currency = 'USDT' limit 1) as usdt_available,
+               (select count(1) from biz_checkin c where c.member_id = m.member_id) as checkin_count,
+               (select count(1) from biz_member t
+                 where (t.ancestors = concat(ifnull(nullif(m.ancestors, ''), '0'), ',', m.member_id)
+                     or t.ancestors like concat(ifnull(nullif(m.ancestors, ''), '0'), ',', m.member_id, ',%'))
+                   and ifnull(t.test_flag, '0') = '0') as team_count,
+               (select lg.login_time from biz_member_logininfor lg
+                 where lg.member_id = m.member_id and lg.status = '0' and lg.msg = '登录成功'
+                 order by lg.login_time desc, lg.info_id desc limit 1) as last_login_time,
+               (select lg.ipaddr from biz_member_logininfor lg
+                 where lg.member_id = m.member_id and lg.status = '0' and lg.msg = '注册成功'
+                 order by lg.info_id asc limit 1) as register_ip,
+               (select lg.ipaddr from biz_member_logininfor lg
+                 where lg.member_id = m.member_id and lg.status = '0' and lg.msg = '登录成功'
+                 order by lg.login_time desc, lg.info_id desc limit 1) as last_login_ip
+        from biz_member m
+        left join biz_level l on l.level_id = m.level_id
         <where>
-            <include refid="downlineById"><property name="alias" value="m"/></include>
-            <if test="teamLevel != null">
-                and (length(ifnull(m.ancestors,'')) - length(replace(ifnull(m.ancestors,''), ',', ''))
-                    - ifnull(#{viewerDepth}, 0)) = #{teamLevel}
-            </if>
+            <choose>
+                <when test="teamLevel != null and teamLevel == 1">
+                    m.parent_id = #{memberId}
+                </when>
+                <otherwise>
+                    <include refid="downlineById"><property name="alias" value="m"/></include>
+                    <if test="teamLevel != null">
+                        and (length(ifnull(m.ancestors,'')) - length(replace(ifnull(m.ancestors,''), ',', ''))
+                            - ifnull(#{viewerDepth}, 0)) = #{teamLevel}
+                    </if>
+                </otherwise>
+            </choose>
         </where>
         order by m.member_id desc
     </select>

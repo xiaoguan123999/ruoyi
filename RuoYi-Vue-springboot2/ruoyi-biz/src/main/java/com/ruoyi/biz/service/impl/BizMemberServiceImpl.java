@@ -489,7 +489,9 @@ public class BizMemberServiceImpl implements IBizMemberService
     @Override
     public List<BizMember> selectTeamMembers(Long memberId, Integer teamLevel)
     {
-        return memberMapper.selectTeamMembers(memberId, teamLevel, Integer.valueOf(viewerDepth(memberId)));
+        BizMember viewer = memberMapper.selectMemberCore(memberId);
+        int depth = viewer == null ? 0 : commaCount(viewer.getAncestors());
+        return memberMapper.selectTeamMembers(memberId, teamLevel, Integer.valueOf(depth));
     }
 
     @Override

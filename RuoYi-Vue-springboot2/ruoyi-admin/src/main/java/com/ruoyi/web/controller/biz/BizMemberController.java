@@ -155,11 +155,13 @@ public class BizMemberController extends BaseController
         return success();
     }
 
-    @ApiOperation("会员团队")
+    @ApiOperation("会员下线列表（分页）")
     @PreAuthorize("@ss.hasPermi('biz:team:list')")
     @GetMapping("/team/{memberId}")
-    public AjaxResult team(@PathVariable Long memberId, Integer teamLevel)
+    public TableDataInfo team(@PathVariable Long memberId, Integer teamLevel)
     {
-        return success(memberService.selectTeamMembers(memberId, teamLevel));
+        startPage();
+        List<BizMember> list = memberService.selectTeamMembers(memberId, teamLevel);
+        return getDataTable(list);
     }
 }
