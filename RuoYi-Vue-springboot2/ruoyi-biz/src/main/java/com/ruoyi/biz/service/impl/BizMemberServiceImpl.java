@@ -38,6 +38,7 @@ import com.ruoyi.biz.util.PhoneUtils;
 import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.DateUtils;
+import com.ruoyi.common.utils.PageUtils;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 
@@ -504,8 +505,13 @@ public class BizMemberServiceImpl implements IBizMemberService
     @Override
     public List<BizMember> selectTeamMembers(Long memberId, Integer teamLevel)
     {
-        BizMember viewer = memberMapper.selectMemberCore(memberId);
-        int depth = viewer == null ? 0 : commaCount(viewer.getAncestors());
+        int depth = 0;
+        if (teamLevel == null || teamLevel.intValue() != 1)
+        {
+            BizMember viewer = memberMapper.selectMemberCore(memberId);
+            depth = viewer == null ? 0 : commaCount(viewer.getAncestors());
+        }
+        PageUtils.startPage();
         return memberMapper.selectTeamMembers(memberId, teamLevel, Integer.valueOf(depth));
     }
 

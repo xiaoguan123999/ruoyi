@@ -160,7 +160,6 @@ public class BizMemberController extends BaseController
     @GetMapping("/team/{memberId}")
     public TableDataInfo team(@PathVariable Long memberId, Integer teamLevel)
     {
-        startPage();
         List<BizMember> list = memberService.selectTeamMembers(memberId, teamLevel);
         return getDataTable(list);
     }
