@@ -37,7 +37,7 @@ public final class PayHttp
         HttpURLConnection conn = null;
         try
         {
-            log.info("pay POST {}", url);
+            log.info("pay POST {} body={}", url, cut(body, 500));
             conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setRequestMethod("POST");
             conn.setConnectTimeout(10000);
@@ -58,7 +58,7 @@ public final class PayHttp
             log.info("pay RESP {} {}", Integer.valueOf(code), cut(text, 500));
             if (StringUtils.isEmpty(text))
             {
-                throw new ServiceException("\u652f\u4ed8\u7f51\u5173\u65e0\u54cd\u5e94");
+                throw new ServiceException("支付网关无响应");
             }
             return text;
         }
@@ -69,7 +69,7 @@ public final class PayHttp
         catch (Exception e)
         {
             log.error("pay POST fail {}", url, e);
-            throw new ServiceException("\u652f\u4ed8\u7f51\u5173\u8bf7\u6c42\u5931\u8d25");
+            throw new ServiceException("支付网关请求失败");
         }
         finally
         {

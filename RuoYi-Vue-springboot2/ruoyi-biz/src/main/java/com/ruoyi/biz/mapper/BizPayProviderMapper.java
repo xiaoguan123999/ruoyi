@@ -2,7 +2,9 @@ package com.ruoyi.biz.mapper;
 
 import java.util.List;
 import com.ruoyi.biz.domain.BizPayProvider;
+import org.apache.ibatis.annotations.Mapper;
 
+@Mapper
 public interface BizPayProviderMapper
 {
     BizPayProvider selectPayProviderById(Long providerId);

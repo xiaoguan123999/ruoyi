@@ -2,7 +2,9 @@ package com.ruoyi.biz.mapper;
 
 import java.util.List;
 import com.ruoyi.biz.domain.BizPayChannel;
+import org.apache.ibatis.annotations.Mapper;
 
+@Mapper
 public interface BizPayChannelMapper
 {
     BizPayChannel selectPayChannelById(Long channelId);

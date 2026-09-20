@@ -1,7 +1,7 @@
 <template>
   <div class="app-container ops-page">
     <el-alert
-      title="供应商即代收服务商（百付/宝利/牛付/沙付/宝利U）。当前全部是模拟占位，不要把其他项目的真实网关和密钥填进来。"
+      title="供应商即代收服务商（福旺/无忧/非凡）。adapterFamily 决定协议：jeepay / wuyou / monpay。callbackIps 为回调来源 IP 白名单，逗号分隔。下单和回调在后端，本页只改服务商配置。"
       type="info"
       :closable="false"
       show-icon
@@ -34,6 +34,8 @@
     <el-table v-loading="loading" :data="dataList">
       <el-table-column label="编码" align="center" prop="providerCode" width="110" />
       <el-table-column label="名称" align="center" prop="providerName" width="110" />
+      <el-table-column label="协议" align="center" prop="adapterFamily" width="90" />
+      <el-table-column label="回调 IP" align="center" prop="callbackIps" min-width="140" show-overflow-tooltip />
       <el-table-column label="网关" align="center" prop="gatewayUrl" min-width="220" show-overflow-tooltip />
       <el-table-column label="商户号" align="center" prop="appId" min-width="140" show-overflow-tooltip />
       <el-table-column label="密钥" align="center" prop="secretKey" width="100" />
@@ -61,13 +63,23 @@
       <el-form :model="form" label-width="100px">
         <el-form-item label="编码"><el-input v-model="form.providerCode" disabled /></el-form-item>
         <el-form-item label="名称"><el-input v-model="form.providerName" /></el-form-item>
-        <el-form-item label="网关"><el-input v-model="form.gatewayUrl" placeholder="模拟态用 mock.pay.local，真实接入后再改" /></el-form-item>
+        <el-form-item label="协议">
+          <el-select v-model="form.adapterFamily" placeholder="adapterFamily" style="width: 100%">
+            <el-option label="jeepay（福旺）" value="jeepay" />
+            <el-option label="wuyou（无忧）" value="wuyou" />
+            <el-option label="monpay（非凡）" value="monpay" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="网关"><el-input v-model="form.gatewayUrl" placeholder="真实网关地址" /></el-form-item>
         <el-form-item label="商户号"><el-input v-model="form.appId" /></el-form-item>
         <el-form-item label="密钥"><el-input v-model="form.secretKey" placeholder="不改请留空" show-password /></el-form-item>
+        <el-form-item label="回调 IP">
+          <el-input v-model="form.callbackIps" placeholder="逗号分隔，空则不校验来源 IP" />
+        </el-form-item>
         <el-form-item label="模式">
           <el-radio-group v-model="form.mockMode">
             <el-radio value="1">模拟</el-radio>
-            <el-radio value="0">真实（尚未接线）</el-radio>
+            <el-radio value="0">真实</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="状态">

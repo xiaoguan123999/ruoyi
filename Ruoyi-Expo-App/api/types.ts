@@ -554,3 +554,52 @@ export type AppNewsItem = {
 export type AppNewsDetail = AppNewsItem & {
   content: string;
 };
+
+/** GET /app/pay/channels 场景 */
+export type AppPayScene = 'alipay' | 'wechat' | 'union' | 'usdt';
+
+/** GET /app/pay/channels */
+export type AppPayChannel = {
+  channelCode: string;
+  name: string;
+  scene: string;
+  providerCode?: string;
+  providerName?: string;
+  currency?: string;
+  minAmount?: number;
+  maxAmount?: number;
+  mock?: boolean;
+};
+
+/** POST /app/pay/deposit */
+export type AppPayDepositBody = {
+  amount: number;
+  scene?: string;
+  channelCode?: string;
+  returnUrl?: string;
+};
+
+export type AppPayDeposit = {
+  outTradeNo: string;
+  rechargeId?: number;
+  payUrl: string;
+  payType?: string;
+  amount: number;
+  currency?: string;
+  channelCode?: string;
+  channelName?: string;
+  providerCode?: string;
+  mock?: boolean;
+  expireTime?: string;
+};
+
+/** GET /app/pay/order  status 0待付 1成功 2失败 3关闭 */
+export type AppPayOrder = {
+  outTradeNo: string;
+  status: string;
+  amount?: number;
+  currency?: string;
+  payUrl?: string;
+  channelName?: string;
+  expireTime?: string;
+};

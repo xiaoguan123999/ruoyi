@@ -1,8 +1,10 @@
 package com.ruoyi.biz.mapper;
 
 import java.util.List;
+import org.apache.ibatis.annotations.Mapper;
 import com.ruoyi.biz.domain.BizPayOrder;
 
+@Mapper
 public interface BizPayOrderMapper
 {
     BizPayOrder selectPayOrderById(Long payOrderId);

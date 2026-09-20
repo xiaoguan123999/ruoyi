@@ -4,6 +4,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
@@ -17,6 +19,8 @@ import com.ruoyi.common.utils.StringUtils;
 @Component
 public class WuYouAdapter implements IBizPayAdapter
 {
+    private static final Logger log = LoggerFactory.getLogger(WuYouAdapter.class);
+
     @Override
     public PayCreateResult createOrder(BizPayProvider provider, PayCreateRequest request)
     {
@@ -31,16 +35,22 @@ public class WuYouAdapter implements IBizPayAdapter
             params.put("returnUrl", request.getReturnUrl());
         }
         params.put("sign", MonPaySign.signUpper(params, secret(provider)));
+        log.info("wuyou createOrder outTradeNo={} productId={} amountFen={}",
+                request.getOutTradeNo(), request.getProductId(), params.get("amount"));
         String raw = PayHttp.postForm(PayHttp.joinUrl(provider.getGatewayUrl(), "/api/pay/create_order"), encode(params));
         JSONObject json = parseObj(raw);
         if (!"SUCCESS".equalsIgnoreCase(json.getString("retCode")))
         {
-            throw new ServiceException("\u62c9\u5355\u5931\u8d25\uff1a" + nvl(json.getString("retMsg"), raw));
+            String gatewayMsg = nvl(json.getString("retMsg"), raw);
+            log.warn("wuyou createOrder fail outTradeNo={} gatewayMsg={} raw={}",
+                    request.getOutTradeNo(), gatewayMsg, cut(raw, 500));
+            throw new ServiceException("拉单失败：" + gatewayMsg);
         }
         String payUrl = extractPayUrl(json);
         if (StringUtils.isEmpty(payUrl))
         {
-            throw new ServiceException("\u62c9\u5355\u5931\u8d25\uff1ano pay url");
+            log.warn("wuyou createOrder empty payUrl outTradeNo={} raw={}", request.getOutTradeNo(), cut(raw, 500));
+            throw new ServiceException("拉单失败：no pay url");
         }
         PayCreateResult result = new PayCreateResult();
         result.setPayUrl(payUrl);
@@ -130,7 +140,7 @@ public class WuYouAdapter implements IBizPayAdapter
         JSONObject json = JSON.parseObject(raw);
         if (json == null)
         {
-            throw new ServiceException("\u652f\u4ed8\u7f51\u5173\u8fd4\u56de\u65e0\u6548");
+            throw new ServiceException("支付网关返回无效");
         }
         return json;
     }
@@ -160,5 +170,14 @@ public class WuYouAdapter implements IBizPayAdapter
     private static String nvl(String v, String fallback)
     {
         return StringUtils.isEmpty(v) ? fallback : v;
+    }
+
+    private static String cut(String raw, int max)
+    {
+        if (raw == null)
+        {
+            return "";
+        }
+        return raw.length() <= max ? raw : raw.substring(0, max);
     }
 }

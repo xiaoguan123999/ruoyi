@@ -1,7 +1,7 @@
 <template>
   <div class="app-container ops-page">
     <el-alert
-      title="当前全部是模拟通道：App 下单会打开本机收银台，点「模拟支付成功」即入账。以后把服务商改成真实网关、关闭模拟即可接入百付/宝利/牛付/沙付。"
+      title="通道给 App 选支付方式。productId 是三方产品码（福旺 wayCode / 无忧 8000·8001 / 非凡 13·15）。下单和回调在后端，本页只改通道配置。"
       type="info"
       :closable="false"
       show-icon
@@ -38,6 +38,7 @@
         <template #default="scope">{{ scope.row.displayName || scope.row.channelName }}</template>
       </el-table-column>
       <el-table-column label="编码" align="center" prop="channelCode" min-width="140" show-overflow-tooltip />
+      <el-table-column label="产品码" align="center" prop="productId" min-width="110" show-overflow-tooltip />
       <el-table-column label="场景" align="center" prop="scene" width="90" />
       <el-table-column label="币种" align="center" prop="currency" width="80" />
       <el-table-column label="限额" align="center" min-width="140">
@@ -66,6 +67,9 @@
     <el-dialog title="修改通道" v-model="open" width="480px" append-to-body>
       <el-form ref="formRef" :model="form" label-width="100px">
         <el-form-item label="展示名"><el-input v-model="form.displayName" /></el-form-item>
+        <el-form-item label="产品码">
+          <el-input v-model="form.productId" placeholder="三方产品码，如 ALI_QR / 8000 / 13" />
+        </el-form-item>
         <el-form-item label="最小金额"><el-input v-model="form.minAmount" /></el-form-item>
         <el-form-item label="最大金额"><el-input v-model="form.maxAmount" placeholder="空表示不限" /></el-form-item>
         <el-form-item label="权重"><el-input v-model="form.weight" /></el-form-item>
@@ -85,13 +89,23 @@
     <el-dialog title="修改服务商" v-model="providerOpen" width="520px" append-to-body>
       <el-form :model="providerForm" label-width="100px">
         <el-form-item label="名称"><el-input v-model="providerForm.providerName" /></el-form-item>
-        <el-form-item label="网关"><el-input v-model="providerForm.gatewayUrl" placeholder="真实接入后再填" /></el-form-item>
+        <el-form-item label="协议">
+          <el-select v-model="providerForm.adapterFamily" placeholder="adapterFamily" style="width: 100%">
+            <el-option label="jeepay（福旺）" value="jeepay" />
+            <el-option label="wuyou（无忧）" value="wuyou" />
+            <el-option label="monpay（非凡）" value="monpay" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="网关"><el-input v-model="providerForm.gatewayUrl" placeholder="真实网关地址" /></el-form-item>
         <el-form-item label="商户号"><el-input v-model="providerForm.appId" /></el-form-item>
-        <el-form-item label="密钥"><el-input v-model="providerForm.secretKey" placeholder="不改可留空覆盖注意" show-password /></el-form-item>
+        <el-form-item label="密钥"><el-input v-model="providerForm.secretKey" placeholder="不改请留空" show-password /></el-form-item>
+        <el-form-item label="回调 IP">
+          <el-input v-model="providerForm.callbackIps" placeholder="逗号分隔，空则不校验来源 IP" />
+        </el-form-item>
         <el-form-item label="模式">
           <el-radio-group v-model="providerForm.mockMode">
             <el-radio value="1">模拟</el-radio>
-            <el-radio value="0">真实（尚未接线）</el-radio>
+            <el-radio value="0">真实</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="状态">
@@ -110,7 +124,7 @@
 </template>
 
 <script setup lang="ts" name="BizPayChannel">
-import { listPayChannel, getPayChannel, updatePayChannel, listPayProvider, updatePayProvider } from "@/api/biz"
+import { listPayChannel, getPayChannel, updatePayChannel, listPayProvider, getPayProvider, updatePayProvider } from "@/api/biz"
 
 const { proxy } = getCurrentInstance() as any
 const dataList = ref<any[]>([])
@@ -149,11 +163,23 @@ function submitChannel() {
 }
 function handleProvider(row: any) {
   const hit = providers.value.find((p: any) => p.providerCode === row.providerCode)
-  providerForm.value = { ...(hit || {}), secretKey: hit?.secretKey }
+  if (hit?.providerId) {
+    getPayProvider(hit.providerId).then((res: any) => {
+      const data = res.data || {}
+      providerForm.value = { ...data, secretKey: "" }
+      providerOpen.value = true
+    })
+    return
+  }
+  providerForm.value = { ...(hit || {}), secretKey: "" }
   providerOpen.value = true
 }
 function submitProvider() {
-  updatePayProvider(providerForm.value).then(() => {
+  const payload = { ...providerForm.value }
+  if (!payload.secretKey || payload.secretKey === "******") {
+    payload.secretKey = ""
+  }
+  updatePayProvider(payload).then(() => {
     proxy.$modal.msgSuccess("已保存")
     providerOpen.value = false
     listPayProvider().then((res: any) => { providers.value = res.data || [] })

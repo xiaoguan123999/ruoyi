@@ -15,7 +15,7 @@ import com.ruoyi.common.utils.ip.IpUtils;
 @Component
 public class AuthAttemptService
 {
-    private static final String TOO_FAST = "\u64cd\u4f5c\u8fc7\u4e8e\u9891\u7e41\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5";
+    private static final String TOO_FAST = "操作过于频繁，请稍后再试";
 
     private static final int INVITE_MAX = 8;
 

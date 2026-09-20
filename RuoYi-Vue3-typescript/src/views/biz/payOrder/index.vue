@@ -1,7 +1,7 @@
 <template>
   <div class="app-container ops-page">
     <el-alert
-      title="线上代收单。模拟通道可点「模拟到账」，效果等同三方回调成功：充值自动审核入账。"
+      title="线上代收单。下单和三方回调由后端处理。待付可点「查单补单」向三方同步；模拟通道仍可「模拟到账」。"
       type="info"
       :closable="false"
       show-icon
@@ -51,8 +51,15 @@
       <el-table-column label="创建时间" align="center" prop="createTime" width="170">
         <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="160" fixed="right">
+      <el-table-column label="操作" align="center" width="220" fixed="right">
         <template #default="scope">
+          <el-button
+            v-if="scope.row.status === '0'"
+            link
+            type="primary"
+            v-hasPermi="['biz:payOrder:query']"
+            @click="handleSync(scope.row)"
+          >查单补单</el-button>
           <el-button
             v-if="scope.row.status === '0' && scope.row.mockMode === '1'"
             link
@@ -69,7 +76,7 @@
 </template>
 
 <script setup lang="ts" name="BizPayOrder">
-import { listPayOrder, simulatePayOrder } from "@/api/biz"
+import { listPayOrder, simulatePayOrder, syncPayOrder } from "@/api/biz"
 
 const { proxy } = getCurrentInstance() as any
 const dataList = ref<any[]>([])
@@ -88,6 +95,12 @@ function getList() {
 }
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
+function handleSync(row: any) {
+  proxy.$modal.confirm("向三方查单并补单？").then(() => syncPayOrder(row.outTradeNo)).then(() => {
+    proxy.$modal.msgSuccess("已同步")
+    getList()
+  }).catch(() => {})
+}
 function handleSimulate(row: any) {
   proxy.$modal.confirm("确认模拟支付成功并入账？").then(() => simulatePayOrder(row.outTradeNo)).then(() => {
     proxy.$modal.msgSuccess("已到账")

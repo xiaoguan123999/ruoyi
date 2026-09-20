@@ -9,6 +9,8 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +39,11 @@ import com.ruoyi.common.utils.html.EscapeUtil;
 @Service
 public class BizOnlinePayServiceImpl implements IBizOnlinePayService
 {
+    private static final Logger log = LoggerFactory.getLogger(BizOnlinePayServiceImpl.class);
+
+    /** Shown to App users; gateway technical detail stays in logs / order.remark */
+    private static final String USER_PLACE_FAIL = "支付通道繁忙，请稍后重试或更换支付方式";
+
     @Autowired
     private BizPayProviderMapper providerMapper;
 
@@ -197,24 +204,30 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         req.setReturnUrl(StringUtils.isEmpty(returnUrl) ? base : returnUrl);
         req.setBaseUrl(base);
         req.setClientIp(clientIp);
-        IBizPayAdapter adapter = adapterFactory.getAdapter(provider);
         PayCreateResult placed;
         try
         {
+            IBizPayAdapter adapter = adapterFactory.getAdapter(provider);
             placed = adapter.createOrder(provider, req);
         }
         catch (RuntimeException e)
         {
+            String detail = e.getMessage();
             order.setStatus(BizConstants.PAY_ORDER_FAIL);
-            order.setRemark(cut(e.getMessage(), 200));
+            order.setRemark(cut(detail, 200));
             payOrderMapper.updatePayOrder(order);
-            throw e;
+            log.error("deposit place fail outTradeNo={} memberId={} provider={} channel={} amount={} detail={}",
+                    outTradeNo, memberId, provider.getProviderCode(), channel.getChannelCode(), amount, detail, e);
+            throw new ServiceException(USER_PLACE_FAIL);
         }
         if (placed == null || StringUtils.isEmpty(placed.getPayUrl()))
         {
             order.setStatus(BizConstants.PAY_ORDER_FAIL);
+            order.setRemark("empty pay url");
             payOrderMapper.updatePayOrder(order);
-            throw new ServiceException("拉单失败，请稍后再试");
+            log.error("deposit place fail outTradeNo={} memberId={} provider={} channel={} amount={} detail=empty pay url",
+                    outTradeNo, memberId, provider.getProviderCode(), channel.getChannelCode(), amount);
+            throw new ServiceException(USER_PLACE_FAIL);
         }
         order.setPayType(placed.getPayType());
         order.setPayUrl(placed.getPayUrl());

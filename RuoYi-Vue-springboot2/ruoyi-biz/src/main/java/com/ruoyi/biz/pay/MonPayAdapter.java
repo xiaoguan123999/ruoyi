@@ -2,6 +2,8 @@ package com.ruoyi.biz.pay;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
@@ -17,25 +19,34 @@ import com.ruoyi.common.utils.StringUtils;
 @Component
 public class MonPayAdapter implements IBizPayAdapter
 {
+    private static final Logger log = LoggerFactory.getLogger(MonPayAdapter.class);
+
     @Override
     public PayCreateResult createOrder(BizPayProvider provider, PayCreateRequest request)
     {
         Map<String, String> body = signed(provider, request);
+        log.info("monpay createOrder outTradeNo={} productId={} amount={}",
+                request.getOutTradeNo(), request.getProductId(), request.getAmount());
         String raw = PayHttp.postJson(PayHttp.joinUrl(provider.getGatewayUrl(), "/api/order"), JSON.toJSONString(body));
         JSONObject json = parseObj(raw);
         if (json.getIntValue("code") != 200)
         {
-            throw new ServiceException("\u62c9\u5355\u5931\u8d25\uff1a" + first(json, "message", "msg"));
+            String gatewayMsg = first(json, "message", "msg");
+            log.warn("monpay createOrder fail outTradeNo={} gatewayMsg={} raw={}",
+                    request.getOutTradeNo(), gatewayMsg, cut(raw, 500));
+            throw new ServiceException("拉单失败：" + gatewayMsg);
         }
         JSONObject data = json.getJSONObject("data");
         if (data == null)
         {
-            throw new ServiceException("\u62c9\u5355\u5931\u8d25\uff1aempty data");
+            log.warn("monpay createOrder empty data outTradeNo={} raw={}", request.getOutTradeNo(), cut(raw, 500));
+            throw new ServiceException("拉单失败：empty data");
         }
         String url = first(data, "url", "payUrl", "pay_url");
         if (StringUtils.isEmpty(url))
         {
-            throw new ServiceException("\u62c9\u5355\u5931\u8d25\uff1ano pay url");
+            log.warn("monpay createOrder empty payUrl outTradeNo={} raw={}", request.getOutTradeNo(), cut(raw, 500));
+            throw new ServiceException("拉单失败：no pay url");
         }
         PayCreateResult result = new PayCreateResult();
         result.setPayUrl(url);
@@ -115,7 +126,7 @@ public class MonPayAdapter implements IBizPayAdapter
         JSONObject json = JSON.parseObject(raw);
         if (json == null)
         {
-            throw new ServiceException("\u652f\u4ed8\u7f51\u5173\u8fd4\u56de\u65e0\u6548");
+            throw new ServiceException("支付网关返回无效");
         }
         return json;
     }
@@ -162,5 +173,14 @@ public class MonPayAdapter implements IBizPayAdapter
     private static String nvl(String v, String fallback)
     {
         return StringUtils.isEmpty(v) ? fallback : v;
+    }
+
+    private static String cut(String raw, int max)
+    {
+        if (raw == null)
+        {
+            return "";
+        }
+        return raw.length() <= max ? raw : raw.substring(0, max);
     }
 }

@@ -545,6 +545,10 @@ export function simulatePayOrder(outTradeNo: string): Promise<AjaxResult> {
   return request({ url: '/biz/payOrder/simulate/' + outTradeNo, method: 'put' })
 }
 
+export function syncPayOrder(outTradeNo: string): Promise<AjaxResult> {
+  return request({ url: '/biz/payOrder/sync/' + outTradeNo, method: 'put' })
+}
+
 export function listAppVersion(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/appVersion/list', method: 'get', params: query })
 }
