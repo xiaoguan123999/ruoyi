@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.biz.api.AppPayChannelListResult;
 import com.ruoyi.biz.api.AppPayDepositBody;
 import com.ruoyi.biz.api.AppPayDepositResult;
+import com.ruoyi.biz.domain.BizPayOrder;
 import com.ruoyi.biz.service.IBizOnlinePayService;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
@@ -59,6 +60,11 @@ public class AppPayController extends BaseController
     @GetMapping("/order")
     public AjaxResult order(@RequestParam("outTradeNo") String outTradeNo)
     {
-        return success(onlinePayService.selectPayOrderByOutTradeNo(outTradeNo));
+        BizPayOrder row = onlinePayService.selectPayOrderByOutTradeNo(outTradeNo);
+        if (row == null || row.getMemberId() == null || !row.getMemberId().equals(AppSecurityUtils.getMemberId()))
+        {
+            return error("支付单不存在");
+        }
+        return success(onlinePayService.syncFromProvider(outTradeNo));
     }
 }

@@ -44,6 +44,15 @@ public class BizPayOrderController extends BaseController
         return success(onlinePayService.selectPayOrderByOutTradeNo(outTradeNo));
     }
 
+    @ApiOperation("向三方查单并补单")
+    @PreAuthorize("@ss.hasPermi('biz:payOrder:query')")
+    @Log(title = "支付查单补单", businessType = BusinessType.UPDATE)
+    @PutMapping("/sync/{outTradeNo}")
+    public AjaxResult sync(@PathVariable String outTradeNo)
+    {
+        return success(onlinePayService.syncFromProvider(outTradeNo));
+    }
+
     @ApiOperation("模拟到账")
     @PreAuthorize("@ss.hasPermi('biz:payOrder:simulate')")
     @Log(title = "模拟支付到账", businessType = BusinessType.UPDATE)

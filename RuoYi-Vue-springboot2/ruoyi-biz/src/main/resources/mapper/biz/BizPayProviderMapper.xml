@@ -9,6 +9,7 @@
         <result property="gatewayUrl" column="gateway_url"/>
         <result property="appId" column="app_id"/>
         <result property="secretKey" column="secret_key"/>
+        <result property="callbackIps" column="callback_ips"/>
         <result property="mockMode" column="mock_mode"/>
         <result property="status" column="status"/>
         <result property="sortOrder" column="sort_order"/>
@@ -39,6 +40,8 @@
             <if test="gatewayUrl != null">gateway_url = #{gatewayUrl},</if>
             <if test="appId != null">app_id = #{appId},</if>
             <if test="secretKey != null">secret_key = #{secretKey},</if>
+            <if test="callbackIps != null">callback_ips = #{callbackIps},</if>
+            <if test="adapterFamily != null">adapter_family = #{adapterFamily},</if>
             <if test="mockMode != null">mock_mode = #{mockMode},</if>
             <if test="status != null">status = #{status},</if>
             <if test="sortOrder != null">sort_order = #{sortOrder},</if>

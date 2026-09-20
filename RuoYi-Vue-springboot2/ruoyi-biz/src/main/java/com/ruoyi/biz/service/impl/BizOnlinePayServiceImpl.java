@@ -27,6 +27,7 @@ import com.ruoyi.biz.pay.IBizPayAdapter;
 import com.ruoyi.biz.pay.MonPaySign;
 import com.ruoyi.biz.pay.PayCreateRequest;
 import com.ruoyi.biz.pay.PayCreateResult;
+import com.ruoyi.biz.pay.PayQueryResult;
 import com.ruoyi.biz.service.IBizOnlinePayService;
 import com.ruoyi.biz.service.IBizRechargeService;
 import com.ruoyi.common.exception.ServiceException;
@@ -78,7 +79,7 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         {
             throw new ServiceException("服务商不存在");
         }
-        if (StringUtils.isEmpty(row.getSecretKey()))
+        if (StringUtils.isEmpty(row.getSecretKey()) || "******".equals(row.getSecretKey()))
         {
             row.setSecretKey(null);
         }
@@ -197,9 +198,22 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         req.setBaseUrl(base);
         req.setClientIp(clientIp);
         IBizPayAdapter adapter = adapterFactory.getAdapter(provider);
-        PayCreateResult placed = adapter.createOrder(provider, req);
+        PayCreateResult placed;
+        try
+        {
+            placed = adapter.createOrder(provider, req);
+        }
+        catch (RuntimeException e)
+        {
+            order.setStatus(BizConstants.PAY_ORDER_FAIL);
+            order.setRemark(cut(e.getMessage(), 200));
+            payOrderMapper.updatePayOrder(order);
+            throw e;
+        }
         if (placed == null || StringUtils.isEmpty(placed.getPayUrl()))
         {
+            order.setStatus(BizConstants.PAY_ORDER_FAIL);
+            payOrderMapper.updatePayOrder(order);
             throw new ServiceException("拉单失败，请稍后再试");
         }
         order.setPayType(placed.getPayType());
@@ -236,7 +250,7 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String handleNotify(String providerCode, Map<String, String> payload, String rawBody)
+    public String handleNotify(String providerCode, Map<String, String> payload, String rawBody, String clientIp)
     {
         if (StringUtils.isEmpty(providerCode))
         {
@@ -247,12 +261,13 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         {
             throw new ServiceException("未知服务商");
         }
+        assertCallbackIp(provider, clientIp);
         IBizPayAdapter adapter = adapterFactory.getAdapter(provider);
         if (!adapter.verifyNotify(provider, payload))
         {
             throw new ServiceException("验签失败");
         }
-        String outTradeNo = first(payload, "out_trade_no", "outTradeNo");
+        String outTradeNo = first(payload, "out_trade_no", "outTradeNo", "mchOrderNo", "mch_order_no");
         if (StringUtils.isEmpty(outTradeNo))
         {
             throw new ServiceException("缺少商户单号");
@@ -268,26 +283,49 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         }
         if (BizConstants.PAY_ORDER_SUCCESS.equals(locked.getStatus()))
         {
-            return "success";
+            return adapter.notifySuccess();
         }
         if (!adapter.isPaid(payload))
         {
             locked.setNotifyPayload(cut(rawBody, 1800));
             locked.setStatus(BizConstants.PAY_ORDER_FAIL);
             payOrderMapper.updatePayOrder(locked);
-            return "success";
+            return adapter.notifySuccess();
         }
-        locked.setStatus(BizConstants.PAY_ORDER_SUCCESS);
-        locked.setPaidTime(new Date());
-        locked.setNotifyPayload(cut(rawBody, 1800));
-        String tradeNo = first(payload, "trade_no", "tradeNo");
-        if (StringUtils.isNotEmpty(tradeNo))
+        markPaid(locked, first(payload, "trade_no", "tradeNo", "payOrderId", "pay_order_id"), rawBody);
+        return adapter.notifySuccess();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BizPayOrder syncFromProvider(String outTradeNo)
+    {
+        if (StringUtils.isEmpty(outTradeNo))
         {
-            locked.setProviderTradeNo(tradeNo);
+            throw new ServiceException("缺少商户单号");
         }
-        payOrderMapper.updatePayOrder(locked);
-        rechargeService.audit(locked.getRechargeId(), BizConstants.AUDIT_PASS, "system", "线上支付自动到账");
-        return "success";
+        BizPayOrder locked = payOrderMapper.selectPayOrderByOutTradeNoForUpdate(outTradeNo);
+        if (locked == null)
+        {
+            throw new ServiceException("支付单不存在");
+        }
+        if (BizConstants.PAY_ORDER_SUCCESS.equals(locked.getStatus()))
+        {
+            return payOrderMapper.selectPayOrderByOutTradeNo(outTradeNo);
+        }
+        BizPayProvider provider = providerMapper.selectPayProviderByCode(locked.getProviderCode());
+        IBizPayAdapter adapter = adapterFactory.getAdapter(provider);
+        PayQueryResult queried = adapter.queryOrder(provider, locked.getOutTradeNo());
+        if (queried != null && queried.isPaid())
+        {
+            markPaid(locked, queried.getProviderTradeNo(), queried.getRaw());
+        }
+        else if (queried != null && StringUtils.isNotEmpty(queried.getRaw()))
+        {
+            locked.setNotifyPayload(cut(queried.getRaw(), 1800));
+            payOrderMapper.updatePayOrder(locked);
+        }
+        return payOrderMapper.selectPayOrderByOutTradeNo(outTradeNo);
     }
 
     @Override
@@ -316,7 +354,7 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         payload.put("trade_status", BizConstants.PAY_TRADE_SUCCESS);
         payload.put("time", String.valueOf(System.currentTimeMillis() / 1000L));
         payload.put("sign", MonPaySign.sign(payload, provider.getSecretKey()));
-        handleNotify(provider.getProviderCode(), payload, "simulate by " + operator);
+        handleNotify(provider.getProviderCode(), payload, "simulate by " + operator, "127.0.0.1");
     }
 
     @Override
@@ -395,18 +433,53 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         return base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
     }
 
-    private static String first(Map<String, String> payload, String a, String b)
+    private void markPaid(BizPayOrder locked, String tradeNo, String rawBody)
     {
-        if (payload == null)
+        locked.setStatus(BizConstants.PAY_ORDER_SUCCESS);
+        locked.setPaidTime(new Date());
+        locked.setNotifyPayload(cut(rawBody, 1800));
+        if (StringUtils.isNotEmpty(tradeNo))
+        {
+            locked.setProviderTradeNo(tradeNo);
+        }
+        payOrderMapper.updatePayOrder(locked);
+        rechargeService.audit(locked.getRechargeId(), BizConstants.AUDIT_PASS, "system", "线上支付自动到账");
+    }
+
+    private static void assertCallbackIp(BizPayProvider provider, String clientIp)
+    {
+        String allow = provider.getCallbackIps();
+        if (StringUtils.isEmpty(allow))
+        {
+            return;
+        }
+        String ip = clientIp == null ? "" : clientIp.trim();
+        String[] parts = allow.split("[,|\\s]+");
+        for (int i = 0; i < parts.length; i++)
+        {
+            if (parts[i].length() > 0 && parts[i].equals(ip))
+            {
+                return;
+            }
+        }
+        throw new ServiceException("回调IP不在白名单");
+    }
+
+    private static String first(Map<String, String> payload, String... keys)
+    {
+        if (payload == null || keys == null)
         {
             return null;
         }
-        String v = payload.get(a);
-        if (StringUtils.isEmpty(v))
+        for (int i = 0; i < keys.length; i++)
         {
-            v = payload.get(b);
+            String v = payload.get(keys[i]);
+            if (StringUtils.isNotEmpty(v))
+            {
+                return v;
+            }
         }
-        return v;
+        return null;
     }
 
     private static String cut(String raw, int max)

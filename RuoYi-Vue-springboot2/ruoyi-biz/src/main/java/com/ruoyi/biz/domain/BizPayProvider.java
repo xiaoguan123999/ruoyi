@@ -12,6 +12,7 @@ public class BizPayProvider extends BaseEntity
     private String gatewayUrl;
     private String appId;
     private String secretKey;
+    private String callbackIps;
     private String mockMode;
     private String status;
     private Integer sortOrder;
@@ -30,6 +31,8 @@ public class BizPayProvider extends BaseEntity
     public void setAppId(String appId) { this.appId = appId; }
     public String getSecretKey() { return secretKey; }
     public void setSecretKey(String secretKey) { this.secretKey = secretKey; }
+    public String getCallbackIps() { return callbackIps; }
+    public void setCallbackIps(String callbackIps) { this.callbackIps = callbackIps; }
     public String getMockMode() { return mockMode; }
     public void setMockMode(String mockMode) { this.mockMode = mockMode; }
     public String getStatus() { return status; }

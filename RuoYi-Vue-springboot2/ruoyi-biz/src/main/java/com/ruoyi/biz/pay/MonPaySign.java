@@ -47,6 +47,11 @@ public final class MonPaySign
         return md5Hex(sb.toString());
     }
 
+    public static String signUpper(Map<String, String> params, String secret)
+    {
+        return sign(params, secret).toUpperCase();
+    }
+
     public static boolean verify(Map<String, String> params, String secret, String provided)
     {
         if (provided == null || provided.length() == 0)

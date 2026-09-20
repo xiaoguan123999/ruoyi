@@ -10,4 +10,14 @@ public interface IBizPayAdapter
     boolean verifyNotify(BizPayProvider provider, Map<String, String> payload);
 
     boolean isPaid(Map<String, String> payload);
+
+    default String notifySuccess()
+    {
+        return "success";
+    }
+
+    default PayQueryResult queryOrder(BizPayProvider provider, String outTradeNo)
+    {
+        return null;
+    }
 }

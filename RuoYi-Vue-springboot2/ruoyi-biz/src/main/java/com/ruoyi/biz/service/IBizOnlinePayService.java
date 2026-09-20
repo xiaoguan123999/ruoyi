@@ -31,9 +31,11 @@ public interface IBizOnlinePayService
 
     BizPayOrder selectPayOrderByOutTradeNo(String outTradeNo);
 
-    String handleNotify(String providerCode, Map<String, String> payload, String rawBody);
+    String handleNotify(String providerCode, Map<String, String> payload, String rawBody, String clientIp);
 
     void simulatePaid(String outTradeNo, String operator);
+
+    BizPayOrder syncFromProvider(String outTradeNo);
 
     String mockCashierHtml(String outTradeNo);
 }

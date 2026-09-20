@@ -43,6 +43,7 @@ biz_withdraw_pay_patch.sql
 biz_withdraw_fee_patch.sql
 biz_withdraw_need_kyc_patch.sql
 biz_pay_channel_patch.sql
+biz_pay_fuwang_wuyou_feifan_patch.sql
 biz_app_support_patch.sql
 biz_team_structure_patch.sql
 biz_promo_rule_patch.sql

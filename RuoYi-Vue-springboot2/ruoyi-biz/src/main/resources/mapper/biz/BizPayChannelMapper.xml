@@ -67,6 +67,7 @@
         update biz_pay_channel
         <set>
             <if test="displayName != null">display_name = #{displayName},</if>
+            <if test="productId != null">product_id = #{productId},</if>
             <if test="minAmount != null">min_amount = #{minAmount},</if>
             <if test="maxAmount != null">max_amount = #{maxAmount},</if>
             <if test="weight != null">weight = #{weight},</if>

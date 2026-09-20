@@ -16,6 +16,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.ruoyi.biz.service.IBizOnlinePayService;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.common.utils.ip.IpUtils;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
@@ -33,7 +34,8 @@ public class PayCallbackController
             @RequestBody(required = false) String raw)
     {
         Map<String, String> payload = parsePayload(request, raw);
-        return onlinePayService.handleNotify(providerCode, payload, StringUtils.isEmpty(raw) ? JSON.toJSONString(payload) : raw);
+        return onlinePayService.handleNotify(providerCode, payload,
+                StringUtils.isEmpty(raw) ? JSON.toJSONString(payload) : raw, IpUtils.getIpAddr());
     }
 
     @ApiOperation("三方代收异步通知 GET")
@@ -41,7 +43,7 @@ public class PayCallbackController
     public String notifyGet(@PathVariable String providerCode, HttpServletRequest request)
     {
         Map<String, String> payload = queryMap(request);
-        return onlinePayService.handleNotify(providerCode, payload, JSON.toJSONString(payload));
+        return onlinePayService.handleNotify(providerCode, payload, JSON.toJSONString(payload), IpUtils.getIpAddr());
     }
 
     @ApiOperation("模拟收银台")

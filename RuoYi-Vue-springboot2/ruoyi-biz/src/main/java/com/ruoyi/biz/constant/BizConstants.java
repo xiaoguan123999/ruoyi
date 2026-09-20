@@ -250,6 +250,12 @@ public class BizConstants
     public static final String PAY_SCENE_UNION = "union";
     public static final String PAY_SCENE_USDT = "usdt";
 
+    public static final String PAY_FAMILY_MONPAY = "monpay";
+
+    public static final String PAY_FAMILY_WUYOU = "wuyou";
+
+    public static final String PAY_FAMILY_JEEPAY = "jeepay";
+
     public static final String ABOUT_MODE_TEXT = "TEXT";
 
     public static final String ABOUT_MODE_PDF = "PDF";
