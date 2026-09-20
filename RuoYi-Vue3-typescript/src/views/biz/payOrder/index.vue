@@ -1,7 +1,21 @@
 <template>
   <div class="app-container ops-page">
+    <div class="ops-section-card">
+      <div class="ops-section-card__hd">待付超时</div>
+      <div class="ops-section-card__bd">
+        <el-form :inline="true" v-loading="expireLoading">
+          <el-form-item label="超时分钟">
+            <el-input-number v-model="expireMinutes" :min="1" :max="1440" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="saveExpire" v-hasPermi="['biz:payOrder:list']">保存</el-button>
+          </el-form-item>
+        </el-form>
+        <div class="tip">拉起收银台未付，超过该时间自动关闭。定时任务每 5 分钟扫一次；</div>
+      </div>
+    </div>
     <el-alert
-      title="线上代收单。下单和三方回调由后端处理。待付可点「查单补单」向三方同步；模拟通道仍可「模拟到账」。"
+      title="线上代收单。未付超时自动关闭；待付可「查单补单」；超时关单后若用户仍付款，回调仍可到账。"
       type="info"
       :closable="false"
       show-icon
@@ -76,14 +90,35 @@
 </template>
 
 <script setup lang="ts" name="BizPayOrder">
-import { listPayOrder, simulatePayOrder, syncPayOrder } from "@/api/biz"
+import {
+  listPayOrder,
+  simulatePayOrder,
+  syncPayOrder,
+  getPayOrderExpireMinutes,
+  savePayOrderExpireMinutes
+} from "@/api/biz"
 
 const { proxy } = getCurrentInstance() as any
 const dataList = ref<any[]>([])
 const loading = ref(true)
 const showSearch = ref(true)
 const total = ref(0)
+const expireLoading = ref(false)
+const expireMinutes = ref(30)
 const queryParams = ref({ pageNum: 1, pageSize: 100, outTradeNo: undefined, phone: undefined, status: undefined })
+
+function loadExpire() {
+  expireLoading.value = true
+  getPayOrderExpireMinutes().then((res: any) => {
+    expireMinutes.value = Number(res.data?.expireMinutes) || 30
+  }).finally(() => { expireLoading.value = false })
+}
+function saveExpire() {
+  savePayOrderExpireMinutes(expireMinutes.value).then(() => {
+    proxy.$modal.msgSuccess("保存成功（仅对新拉单生效）")
+    loadExpire()
+  })
+}
 
 function getList() {
   loading.value = true
@@ -95,9 +130,38 @@ function getList() {
 }
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
+function payStatusText(status?: string) {
+  if (status === '1') return '成功'
+  if (status === '2') return '失败'
+  if (status === '3') return '关闭'
+  return '待付'
+}
+
 function handleSync(row: any) {
-  proxy.$modal.confirm("向三方查单并补单？").then(() => syncPayOrder(row.outTradeNo)).then(() => {
-    proxy.$modal.msgSuccess("已同步")
+  proxy.$modal.confirm("向三方查单并补单？").then(() => syncPayOrder(row.outTradeNo)).then((res: any) => {
+    const order = res.data || {}
+    const before = String(row.status ?? '')
+    const after = String(order.status ?? '')
+    let msg = ''
+    let ok = false
+    if (after === '1') {
+      ok = true
+      msg = before === '1' ? '查单完成：订单本来就是成功状态。' : '查单完成：三方已支付，已补单到账。'
+    } else if (after === '3') {
+      msg = before === '3'
+        ? '查单完成：订单已是关闭状态，三方仍未支付。'
+        : '查单完成：三方未支付且已超时，订单已关闭。'
+    } else if (after === '2') {
+      msg = '查单完成：三方返回失败，订单状态为失败。'
+    } else {
+      msg = '查单完成：三方仍为待付，未发生补单。'
+    }
+    msg += ` 商户单号 ${order.outTradeNo || row.outTradeNo}，状态 ${payStatusText(before)} → ${payStatusText(after)}`
+    if (ok) {
+      proxy.$modal.alertSuccess(msg)
+    } else {
+      proxy.$modal.alertWarning(msg)
+    }
     getList()
   }).catch(() => {})
 }
@@ -110,5 +174,15 @@ function handleSimulate(row: any) {
 function openPay(url: string) {
   window.open(url, "_blank")
 }
+loadExpire()
 getList()
 </script>
+
+<style scoped>
+.tip {
+  margin-top: 4px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+</style>

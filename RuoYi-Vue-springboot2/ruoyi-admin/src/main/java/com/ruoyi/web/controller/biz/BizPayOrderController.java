@@ -6,8 +6,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.HashMap;
+import java.util.Map;
 import com.ruoyi.biz.domain.BizPayOrder;
 import com.ruoyi.biz.service.IBizOnlinePayService;
 import com.ruoyi.common.annotation.Log;
@@ -60,6 +63,28 @@ public class BizPayOrderController extends BaseController
     public AjaxResult simulate(@PathVariable String outTradeNo)
     {
         onlinePayService.simulatePaid(outTradeNo, getUsername());
+        return success();
+    }
+
+    @ApiOperation("待付超时分钟")
+    @PreAuthorize("@ss.hasPermi('biz:payOrder:list')")
+    @GetMapping("/expireMinutes")
+    public AjaxResult getExpireMinutes()
+    {
+        Map<String, Object> data = new HashMap<String, Object>();
+        data.put("expireMinutes", Integer.valueOf(onlinePayService.getOrderExpireMinutes()));
+        return success(data);
+    }
+
+    @ApiOperation("保存待付超时分钟")
+    @PreAuthorize("@ss.hasPermi('biz:payOrder:list')")
+    @Log(title = "支付超时分钟", businessType = BusinessType.UPDATE)
+    @PutMapping("/expireMinutes")
+    public AjaxResult saveExpireMinutes(@RequestBody Map<String, Object> body)
+    {
+        Object raw = body == null ? null : body.get("expireMinutes");
+        int minutes = raw == null ? 0 : Integer.parseInt(String.valueOf(raw));
+        onlinePayService.saveOrderExpireMinutes(minutes);
         return success();
     }
 }

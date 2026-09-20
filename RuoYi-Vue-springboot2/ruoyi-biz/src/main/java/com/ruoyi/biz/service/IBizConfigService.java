@@ -33,6 +33,9 @@ public interface IBizConfigService
 
     BigDecimal getUsdtToCnyRate();
 
+    /** 线上支付待付超时分钟，默认 30 */
+    int getPayOrderExpireMinutes();
+
     void saveConfig(String key, String name, String value, String remark);
 
     void refreshCache();

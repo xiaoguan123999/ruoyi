@@ -75,6 +75,15 @@
         </where>
         order by o.pay_order_id desc
     </select>
+    <select id="selectExpiredWaitOutTradeNos" resultType="String">
+        select out_trade_no
+        from biz_pay_order
+        where status = '0'
+          and expire_time is not null
+          and expire_time &lt; sysdate()
+        order by pay_order_id asc
+        limit 500
+    </select>
     <insert id="insertPayOrder" parameterType="BizPayOrder" useGeneratedKeys="true" keyProperty="payOrderId">
         insert into biz_pay_order (
             out_trade_no, recharge_id, member_id, provider_code, channel_code, product_id,

@@ -161,6 +161,29 @@ public class BizConfigServiceImpl implements IBizConfigService
     }
 
     @Override
+    public int getPayOrderExpireMinutes()
+    {
+        String raw = configValue(BizConstants.CONFIG_PAY_ORDER_EXPIRE_MINUTES, "30");
+        try
+        {
+            int minutes = Integer.parseInt(raw.trim());
+            if (minutes < 1)
+            {
+                return 30;
+            }
+            if (minutes > 24 * 60)
+            {
+                return 24 * 60;
+            }
+            return minutes;
+        }
+        catch (NumberFormatException ex)
+        {
+            return 30;
+        }
+    }
+
+    @Override
     public void saveConfig(String key, String name, String value, String remark)
     {
         SysConfig existing = sysConfigMapper.checkConfigKeyUnique(key);

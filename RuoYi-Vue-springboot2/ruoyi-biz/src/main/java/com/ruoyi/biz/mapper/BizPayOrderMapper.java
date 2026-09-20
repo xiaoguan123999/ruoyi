@@ -13,4 +13,7 @@ public interface BizPayOrderMapper
     List<BizPayOrder> selectPayOrderList(BizPayOrder query);
     int insertPayOrder(BizPayOrder row);
     int updatePayOrder(BizPayOrder row);
+
+    /** 已过期仍待付的商户单号（定时关单） */
+    List<String> selectExpiredWaitOutTradeNos();
 }

@@ -116,4 +116,32 @@ public class BizRechargeServiceImpl implements IBizRechargeService
             memberService.refreshLevelAndUplines(recharge.getMemberId());
         }
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void passOnlinePaid(Long rechargeId, String auditBy, String auditRemark)
+    {
+        BizRecharge recharge = rechargeMapper.selectRechargeById(rechargeId);
+        if (recharge == null)
+        {
+            throw new ServiceException("充值单不存在");
+        }
+        if (BizConstants.AUDIT_PASS.equals(recharge.getStatus()))
+        {
+            return;
+        }
+        if (!BizConstants.AUDIT_PENDING.equals(recharge.getStatus())
+                && !BizConstants.AUDIT_REJECT.equals(recharge.getStatus()))
+        {
+            throw new ServiceException("该充值单状态不可入账");
+        }
+        recharge.setStatus(BizConstants.AUDIT_PASS);
+        recharge.setAuditBy(auditBy);
+        recharge.setAuditTime(new Date());
+        recharge.setAuditRemark(auditRemark);
+        rechargeMapper.updateRecharge(recharge);
+        walletService.credit(recharge.getMemberId(), recharge.getCurrency(), recharge.getAmount(),
+                BizConstants.BIZ_RECHARGE, recharge.getRechargeId(), "充值入账");
+        memberService.refreshLevelAndUplines(recharge.getMemberId());
+    }
 }

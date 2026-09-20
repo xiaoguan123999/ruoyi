@@ -16,4 +16,9 @@ public interface IBizRechargeService
             String channelCode, String outTradeNo);
 
     void audit(Long rechargeId, String status, String auditBy, String auditRemark);
+
+    /**
+     * 线上支付到账：待审直接通过；若因超时关单被拒，允许翻转为通过并入账。
+     */
+    void passOnlinePaid(Long rechargeId, String auditBy, String auditRemark);
 }
