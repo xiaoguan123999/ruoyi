@@ -35,6 +35,9 @@ public final class PayHttp
     public static String post(String url, String body, String contentType)
     {
         HttpURLConnection conn = null;
+        long start = System.currentTimeMillis();
+        Integer httpStatus = null;
+        String text = "";
         try
         {
             log.info("pay POST {} body={}", url, cut(body, 500));
@@ -53,8 +56,9 @@ public final class PayHttp
             out.flush();
             out.close();
             int code = conn.getResponseCode();
+            httpStatus = Integer.valueOf(code);
             InputStream in = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
-            String text = read(in);
+            text = read(in);
             log.info("pay RESP {} {}", Integer.valueOf(code), cut(text, 500));
             if (StringUtils.isEmpty(text))
             {
@@ -73,6 +77,7 @@ public final class PayHttp
         }
         finally
         {
+            PayHttpExchange.record(url, body, text, httpStatus, System.currentTimeMillis() - start);
             if (conn != null)
             {
                 conn.disconnect();

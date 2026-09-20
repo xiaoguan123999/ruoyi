@@ -17,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.biz.api.AppPayChannelItem;
 import com.ruoyi.biz.api.AppPayDepositData;
 import com.ruoyi.biz.constant.BizConstants;
+import com.alibaba.fastjson2.JSON;
 import com.ruoyi.biz.domain.BizPayChannel;
+import com.ruoyi.biz.domain.BizPayGatewayLog;
 import com.ruoyi.biz.domain.BizPayOrder;
 import com.ruoyi.biz.domain.BizPayProvider;
 import com.ruoyi.biz.domain.BizRecharge;
@@ -29,7 +31,9 @@ import com.ruoyi.biz.pay.IBizPayAdapter;
 import com.ruoyi.biz.pay.MonPaySign;
 import com.ruoyi.biz.pay.PayCreateRequest;
 import com.ruoyi.biz.pay.PayCreateResult;
+import com.ruoyi.biz.pay.PayHttpExchange;
 import com.ruoyi.biz.pay.PayQueryResult;
+import com.ruoyi.biz.service.IBizConfigService;
 import com.ruoyi.biz.service.IBizOnlinePayService;
 import com.ruoyi.biz.service.IBizRechargeService;
 import com.ruoyi.common.exception.ServiceException;
@@ -58,6 +62,12 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
 
     @Autowired
     private BizPayAdapterFactory adapterFactory;
+
+    @Autowired
+    private BizPayGatewayLogRecorder gatewayLogRecorder;
+
+    @Autowired
+    private IBizConfigService configService;
 
     @Override
     public List<BizPayProvider> selectProviderList(BizPayProvider query)
@@ -179,7 +189,7 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         String display = StringUtils.isEmpty(channel.getDisplayName()) ? channel.getChannelName() : channel.getDisplayName();
         BizRecharge recharge = rechargeService.applyOnline(memberId, channel.getCurrency(), amount,
                 display, channel.getChannelCode(), outTradeNo);
-        Date expire = minutesLater(30);
+        Date expire = minutesLater(configService.getPayOrderExpireMinutes());
         BizPayOrder order = new BizPayOrder();
         order.setOutTradeNo(outTradeNo);
         order.setRechargeId(recharge.getRechargeId());
@@ -205,6 +215,8 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         req.setBaseUrl(base);
         req.setClientIp(clientIp);
         PayCreateResult placed;
+        PayHttpExchange.clear();
+        long placeStart = System.currentTimeMillis();
         try
         {
             IBizPayAdapter adapter = adapterFactory.getAdapter(provider);
@@ -216,6 +228,8 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
             order.setStatus(BizConstants.PAY_ORDER_FAIL);
             order.setRemark(cut(detail, 200));
             payOrderMapper.updatePayOrder(order);
+            recordCallLog(BizConstants.PAY_GW_ACTION_CREATE, provider.getProviderCode(), channel.getChannelCode(),
+                    outTradeNo, memberId, JSON.toJSONString(req), false, detail, placeStart);
             log.error("deposit place fail outTradeNo={} memberId={} provider={} channel={} amount={} detail={}",
                     outTradeNo, memberId, provider.getProviderCode(), channel.getChannelCode(), amount, detail, e);
             throw new ServiceException(USER_PLACE_FAIL);
@@ -225,6 +239,8 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
             order.setStatus(BizConstants.PAY_ORDER_FAIL);
             order.setRemark("empty pay url");
             payOrderMapper.updatePayOrder(order);
+            recordCallLog(BizConstants.PAY_GW_ACTION_CREATE, provider.getProviderCode(), channel.getChannelCode(),
+                    outTradeNo, memberId, JSON.toJSONString(req), false, "empty pay url", placeStart);
             log.error("deposit place fail outTradeNo={} memberId={} provider={} channel={} amount={} detail=empty pay url",
                     outTradeNo, memberId, provider.getProviderCode(), channel.getChannelCode(), amount);
             throw new ServiceException(USER_PLACE_FAIL);
@@ -233,6 +249,8 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         order.setPayUrl(placed.getPayUrl());
         order.setProviderTradeNo(placed.getProviderTradeNo());
         payOrderMapper.updatePayOrder(order);
+        recordCallLog(BizConstants.PAY_GW_ACTION_CREATE, provider.getProviderCode(), channel.getChannelCode(),
+                outTradeNo, memberId, JSON.toJSONString(req), true, null, placeStart);
 
         AppPayDepositData data = new AppPayDepositData();
         data.setOutTradeNo(outTradeNo);
@@ -265,48 +283,74 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
     @Transactional(rollbackFor = Exception.class)
     public String handleNotify(String providerCode, Map<String, String> payload, String rawBody, String clientIp)
     {
-        if (StringUtils.isEmpty(providerCode))
-        {
-            throw new ServiceException("缺少服务商");
-        }
-        BizPayProvider provider = providerMapper.selectPayProviderByCode(providerCode);
-        if (provider == null)
-        {
-            throw new ServiceException("未知服务商");
-        }
-        assertCallbackIp(provider, clientIp);
-        IBizPayAdapter adapter = adapterFactory.getAdapter(provider);
-        if (!adapter.verifyNotify(provider, payload))
-        {
-            throw new ServiceException("验签失败");
-        }
+        long start = System.currentTimeMillis();
         String outTradeNo = first(payload, "out_trade_no", "outTradeNo", "mchOrderNo", "mch_order_no");
-        if (StringUtils.isEmpty(outTradeNo))
+        String channelCode = "";
+        Long memberId = null;
+        String reply = null;
+        boolean ok = false;
+        String err = null;
+        try
         {
-            throw new ServiceException("缺少商户单号");
+            if (StringUtils.isEmpty(providerCode))
+            {
+                throw new ServiceException("缺少服务商");
+            }
+            BizPayProvider provider = providerMapper.selectPayProviderByCode(providerCode);
+            if (provider == null)
+            {
+                throw new ServiceException("未知服务商");
+            }
+            assertCallbackIp(provider, clientIp);
+            IBizPayAdapter adapter = adapterFactory.getAdapter(provider);
+            if (!adapter.verifyNotify(provider, payload))
+            {
+                throw new ServiceException("验签失败");
+            }
+            if (StringUtils.isEmpty(outTradeNo))
+            {
+                throw new ServiceException("缺少商户单号");
+            }
+            BizPayOrder locked = payOrderMapper.selectPayOrderByOutTradeNoForUpdate(outTradeNo);
+            if (locked == null)
+            {
+                throw new ServiceException("支付单不存在");
+            }
+            channelCode = locked.getChannelCode();
+            memberId = locked.getMemberId();
+            if (!providerCode.equals(locked.getProviderCode()))
+            {
+                throw new ServiceException("服务商不匹配");
+            }
+            if (BizConstants.PAY_ORDER_SUCCESS.equals(locked.getStatus()))
+            {
+                reply = adapter.notifySuccess();
+                ok = true;
+                return reply;
+            }
+            if (!adapter.isPaid(payload))
+            {
+                locked.setNotifyPayload(cut(rawBody, 1800));
+                locked.setStatus(BizConstants.PAY_ORDER_FAIL);
+                payOrderMapper.updatePayOrder(locked);
+                reply = adapter.notifySuccess();
+                ok = true;
+                return reply;
+            }
+            markPaid(locked, first(payload, "trade_no", "tradeNo", "payOrderId", "pay_order_id"), rawBody);
+            reply = adapter.notifySuccess();
+            ok = true;
+            return reply;
         }
-        BizPayOrder locked = payOrderMapper.selectPayOrderByOutTradeNoForUpdate(outTradeNo);
-        if (locked == null)
+        catch (RuntimeException e)
         {
-            throw new ServiceException("支付单不存在");
+            err = e.getMessage();
+            throw e;
         }
-        if (!providerCode.equals(locked.getProviderCode()))
+        finally
         {
-            throw new ServiceException("服务商不匹配");
+            recordCallbackLog(providerCode, channelCode, outTradeNo, memberId, rawBody, reply, clientIp, ok, err, start);
         }
-        if (BizConstants.PAY_ORDER_SUCCESS.equals(locked.getStatus()))
-        {
-            return adapter.notifySuccess();
-        }
-        if (!adapter.isPaid(payload))
-        {
-            locked.setNotifyPayload(cut(rawBody, 1800));
-            locked.setStatus(BizConstants.PAY_ORDER_FAIL);
-            payOrderMapper.updatePayOrder(locked);
-            return adapter.notifySuccess();
-        }
-        markPaid(locked, first(payload, "trade_no", "tradeNo", "payOrderId", "pay_order_id"), rawBody);
-        return adapter.notifySuccess();
     }
 
     @Override
@@ -328,10 +372,24 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         }
         BizPayProvider provider = providerMapper.selectPayProviderByCode(locked.getProviderCode());
         IBizPayAdapter adapter = adapterFactory.getAdapter(provider);
-        PayQueryResult queried = adapter.queryOrder(provider, locked.getOutTradeNo());
+        PayHttpExchange.clear();
+        PayQueryResult queried;
+        try
+        {
+            queried = adapter.queryOrder(provider, locked.getOutTradeNo());
+        }
+        finally
+        {
+            // 查单仅用于 App 轮询补状态，正常到账靠回调，不落网关日志
+            PayHttpExchange.clear();
+        }
         if (queried != null && queried.isPaid())
         {
             markPaid(locked, queried.getProviderTradeNo(), queried.getRaw());
+        }
+        else if (isExpired(locked))
+        {
+            closeWaitOrder(locked, "支付超时关闭");
         }
         else if (queried != null && StringUtils.isNotEmpty(queried.getRaw()))
         {
@@ -339,6 +397,47 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
             payOrderMapper.updatePayOrder(locked);
         }
         return payOrderMapper.selectPayOrderByOutTradeNo(outTradeNo);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int closeExpiredOrders()
+    {
+        List<String> nos = payOrderMapper.selectExpiredWaitOutTradeNos();
+        if (nos == null || nos.isEmpty())
+        {
+            return 0;
+        }
+        int closed = 0;
+        for (String outTradeNo : nos)
+        {
+            BizPayOrder locked = payOrderMapper.selectPayOrderByOutTradeNoForUpdate(outTradeNo);
+            if (locked == null || !BizConstants.PAY_ORDER_WAIT.equals(locked.getStatus()) || !isExpired(locked))
+            {
+                continue;
+            }
+            closeWaitOrder(locked, "支付超时关闭");
+            closed++;
+        }
+        return closed;
+    }
+
+    @Override
+    public int getOrderExpireMinutes()
+    {
+        return configService.getPayOrderExpireMinutes();
+    }
+
+    @Override
+    public void saveOrderExpireMinutes(int minutes)
+    {
+        if (minutes < 1 || minutes > 24 * 60)
+        {
+            throw new ServiceException("超时分钟须在 1～1440 之间");
+        }
+        configService.saveConfig(BizConstants.CONFIG_PAY_ORDER_EXPIRE_MINUTES, "线上支付单超时分钟",
+                String.valueOf(minutes), "拉起收银台后未支付，超过该分钟数自动关闭待付单");
+        configService.refreshCache();
     }
 
     @Override
@@ -456,7 +555,34 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
             locked.setProviderTradeNo(tradeNo);
         }
         payOrderMapper.updatePayOrder(locked);
-        rechargeService.audit(locked.getRechargeId(), BizConstants.AUDIT_PASS, "system", "线上支付自动到账");
+        rechargeService.passOnlinePaid(locked.getRechargeId(), "system", "线上支付自动到账");
+    }
+
+    private static boolean isExpired(BizPayOrder order)
+    {
+        return order != null && order.getExpireTime() != null && order.getExpireTime().before(new Date());
+    }
+
+    private void closeWaitOrder(BizPayOrder locked, String remark)
+    {
+        locked.setStatus(BizConstants.PAY_ORDER_CLOSED);
+        if (StringUtils.isNotEmpty(remark))
+        {
+            locked.setRemark(cut(remark, 200));
+        }
+        payOrderMapper.updatePayOrder(locked);
+        if (locked.getRechargeId() == null)
+        {
+            return;
+        }
+        try
+        {
+            rechargeService.audit(locked.getRechargeId(), BizConstants.AUDIT_REJECT, "system", remark);
+        }
+        catch (ServiceException ex)
+        {
+            // 充值单已非待审则忽略
+        }
     }
 
     private static void assertCallbackIp(BizPayProvider provider, String clientIp)
@@ -476,6 +602,59 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
             }
         }
         throw new ServiceException("回调IP不在白名单");
+    }
+
+    private void recordCallLog(String action, String providerCode, String channelCode, String outTradeNo,
+            Long memberId, String fallbackRequest, boolean success, String errorMsg, long startMs)
+    {
+        BizPayGatewayLog row = new BizPayGatewayLog();
+        row.setLogType(BizConstants.PAY_GW_LOG_CALL);
+        row.setAction(action);
+        row.setProviderCode(providerCode);
+        row.setChannelCode(channelCode);
+        row.setOutTradeNo(outTradeNo);
+        row.setMemberId(memberId);
+        row.setSuccess(success ? "1" : "0");
+        row.setErrorMsg(errorMsg);
+        PayHttpExchange.Snapshot snap = PayHttpExchange.get();
+        if (snap != null)
+        {
+            row.setRequestUrl(snap.getUrl());
+            row.setRequestBody(snap.getRequestBody());
+            row.setResponseBody(snap.getResponseBody());
+            row.setHttpStatus(snap.getHttpStatus());
+            row.setCostMs(snap.getCostMs());
+        }
+        else
+        {
+            row.setRequestBody(fallbackRequest);
+            row.setCostMs(Long.valueOf(System.currentTimeMillis() - startMs));
+        }
+        if (StringUtils.isEmpty(row.getResponseBody()) && StringUtils.isNotEmpty(errorMsg))
+        {
+            row.setResponseBody(errorMsg);
+        }
+        gatewayLogRecorder.record(row);
+        PayHttpExchange.clear();
+    }
+
+    private void recordCallbackLog(String providerCode, String channelCode, String outTradeNo, Long memberId,
+            String rawBody, String reply, String clientIp, boolean success, String errorMsg, long startMs)
+    {
+        BizPayGatewayLog row = new BizPayGatewayLog();
+        row.setLogType(BizConstants.PAY_GW_LOG_CALLBACK);
+        row.setAction(BizConstants.PAY_GW_ACTION_NOTIFY);
+        row.setProviderCode(providerCode);
+        row.setChannelCode(channelCode);
+        row.setOutTradeNo(outTradeNo);
+        row.setMemberId(memberId);
+        row.setRequestBody(rawBody);
+        row.setResponseBody(reply);
+        row.setClientIp(clientIp);
+        row.setSuccess(success ? "1" : "0");
+        row.setErrorMsg(errorMsg);
+        row.setCostMs(Long.valueOf(System.currentTimeMillis() - startMs));
+        gatewayLogRecorder.record(row);
     }
 
     private static String first(Map<String, String> payload, String... keys)

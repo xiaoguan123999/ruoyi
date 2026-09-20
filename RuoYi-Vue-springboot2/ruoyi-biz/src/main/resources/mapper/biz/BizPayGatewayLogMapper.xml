@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizPayGatewayLogMapper">
+
+    <resultMap type="BizPayGatewayLog" id="BizPayGatewayLogResult">
+        <id     property="logId"         column="log_id"/>
+        <result property="logType"       column="log_type"/>
+        <result property="action"        column="action"/>
+        <result property="providerCode"  column="provider_code"/>
+        <result property="providerName"  column="provider_name"/>
+        <result property="channelCode"   column="channel_code"/>
+        <result property="channelName"   column="channel_name"/>
+        <result property="outTradeNo"    column="out_trade_no"/>
+        <result property="memberId"      column="member_id"/>
+        <result property="phone"         column="phone"/>
+        <result property="requestUrl"    column="request_url"/>
+        <result property="requestBody"   column="request_body"/>
+        <result property="responseBody"  column="response_body"/>
+        <result property="httpStatus"    column="http_status"/>
+        <result property="success"       column="success"/>
+        <result property="errorMsg"      column="error_msg"/>
+        <result property="clientIp"      column="client_ip"/>
+        <result property="costMs"        column="cost_ms"/>
+        <result property="createTime"    column="create_time"/>
+    </resultMap>
+
+    <sql id="selectVo">
+        select g.log_id, g.log_type, g.action, g.provider_code, p.provider_name,
+               g.channel_code,
+               ifnull(nullif(c.display_name, ''), c.channel_name) as channel_name,
+               g.out_trade_no, g.member_id, m.phone,
+               g.request_url, g.request_body, g.response_body, g.http_status, g.success, g.error_msg,
+               g.client_ip, g.cost_ms, g.create_time
+        from biz_pay_gateway_log g
+        left join biz_pay_provider p on p.provider_code = g.provider_code
+        left join biz_pay_channel c on c.channel_code = g.channel_code
+        left join biz_member m on m.member_id = g.member_id
+    </sql>
+
+    <select id="selectById" parameterType="Long" resultMap="BizPayGatewayLogResult">
+        <include refid="selectVo"/>
+        where g.log_id = #{logId}
+    </select>
+
+    <select id="selectList" parameterType="BizPayGatewayLog" resultMap="BizPayGatewayLogResult">
+        <include refid="selectVo"/>
+        <where>
+            <if test="logType != null and logType != ''">and g.log_type = #{logType}</if>
+            <if test="action != null and action != ''">and g.action = #{action}</if>
+            <if test="providerCode != null and providerCode != ''">and g.provider_code = #{providerCode}</if>
+            <if test="channelCode != null and channelCode != ''">and g.channel_code = #{channelCode}</if>
+            <if test="outTradeNo != null and outTradeNo != ''">and g.out_trade_no like concat('%', #{outTradeNo}, '%')</if>
+            <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
+            <if test="memberId != null">and g.member_id = #{memberId}</if>
+            <if test="success != null and success != ''">and g.success = #{success}</if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and g.create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and g.create_time &lt;= #{params.endTime}
+            </if>
+        </where>
+        order by g.log_id desc
+    </select>
+
+    <insert id="insert" parameterType="BizPayGatewayLog" useGeneratedKeys="true" keyProperty="logId">
+        insert into biz_pay_gateway_log (
+            log_type, action, provider_code, channel_code, out_trade_no, member_id,
+            request_url, request_body, response_body, http_status, success, error_msg,
+            client_ip, cost_ms, create_time
+        ) values (
+            #{logType}, #{action}, #{providerCode}, #{channelCode}, #{outTradeNo}, #{memberId},
+            #{requestUrl}, #{requestBody}, #{responseBody}, #{httpStatus}, #{success}, #{errorMsg},
+            #{clientIp}, #{costMs}, sysdate()
+        )
+    </insert>
+</mapper>

@@ -1,7 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { Image, type ImageSource } from 'expo-image';
-import * as WebBrowser from 'expo-web-browser';
 import { Animated, Modal, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -23,9 +22,10 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
-import { config } from '@/config';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
+import { PayCashierPopup } from '@/components/pay/PayCashierPopup';
+import { forgetPayOrder, payReturnUrl, readPayOrder, rememberPayOrder } from '@/utils/pay-session';
 import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
 
 const methods = [
@@ -34,10 +34,6 @@ const methods = [
   { key: 'usdt', label: 'USDT（客服）', icon: images.payUsdt, currency: 'USDT' as const, toService: true },
   { key: 'bank', label: '银行卡（客服）', icon: images.payCard, currency: 'CNY' as const, toService: true },
 ];
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function formatLimit(value?: number) {
   if (value == null) {
@@ -215,6 +211,7 @@ export default function RechargeScreen() {
   const [channels, setChannels] = useState<AppPayChannel[]>([]);
   const [channelByScene, setChannelByScene] = useState<Record<string, string>>({});
   const [sheetScene, setSheetScene] = useState<string | null>(null);
+  const [cashier, setCashier] = useState<{ payUrl: string; outTradeNo: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -288,6 +285,7 @@ export default function RechargeScreen() {
     const order = await fetchAppPayOrder(outTradeNo);
     if (isPayOrderPaid(order.status)) {
       lastOrderNo.current = '';
+      forgetPayOrder();
       setAmount('');
       modalSuccess('充值成功');
       await load();
@@ -295,6 +293,7 @@ export default function RechargeScreen() {
     }
     if (!isPayOrderPending(order.status)) {
       lastOrderNo.current = '';
+      forgetPayOrder();
       if (!quiet) {
         modalWarning(order.status === '2' ? '支付失败' : '订单已关闭');
       }
@@ -306,54 +305,19 @@ export default function RechargeScreen() {
   useFocusEffect(
     useCallback(() => {
       void load();
-      const outTradeNo = lastOrderNo.current;
+      const outTradeNo = lastOrderNo.current || readPayOrder();
       if (outTradeNo) {
+        lastOrderNo.current = outTradeNo;
         void checkOrder(outTradeNo, true).catch(() => {});
       }
     }, [load, checkOrder]),
   );
 
-  const openCashier = async (payUrl: string) => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const opened = window.open(payUrl, '_blank', 'noopener,noreferrer');
-      if (!opened) {
-        window.location.assign(payUrl);
-      }
-      return;
-    }
-    await WebBrowser.openBrowserAsync(payUrl);
-  };
-
-  const watchOrderQuietly = useCallback((outTradeNo: string) => {
-    void (async () => {
-      for (let i = 0; i < 6; i += 1) {
-        await sleep(i === 0 ? 1200 : 3000);
-        if (lastOrderNo.current !== outTradeNo) {
-          return;
-        }
-        try {
-          if (await checkOrder(outTradeNo, true)) {
-            return;
-          }
-        } catch {
-          return;
-        }
-      }
-    })();
-  }, [checkOrder]);
-
-  const openPayAndWatch = useCallback(async (payUrl: string, outTradeNo: string) => {
+  const openPayAndWatch = useCallback((payUrl: string, outTradeNo: string) => {
     lastOrderNo.current = outTradeNo;
-    await openCashier(payUrl);
-    try {
-      if (await checkOrder(outTradeNo, true)) {
-        return;
-      }
-    } catch {
-      // 未支付就关掉收银台是正常操作，不打断用户
-    }
-    watchOrderQuietly(outTradeNo);
-  }, [checkOrder, watchOrderQuietly]);
+    rememberPayOrder(outTradeNo);
+    setCashier({ payUrl, outTradeNo });
+  }, []);
 
   const onSubmit = async () => {
     if (!selected) {
@@ -393,9 +357,9 @@ export default function RechargeScreen() {
         amount: value,
         scene: selected.scene,
         channelCode: selectedChannel.channelCode,
-        returnUrl: config.H5_URL || undefined,
+        returnUrl: payReturnUrl(),
       });
-      await openPayAndWatch(deposit.payUrl, deposit.outTradeNo);
+      openPayAndWatch(deposit.payUrl, deposit.outTradeNo);
     } catch (error) {
       if (!(error instanceof ApiError) || error.code !== 401) {
         modalError(error instanceof ApiError ? error.message : '充值下单失败，请稍后重试');
@@ -486,6 +450,19 @@ export default function RechargeScreen() {
         <PrimaryButton title="充 值" onPress={() => void onSubmit()} disabled={submitting} />
       </RefreshableScrollView>
 
+      <PayCashierPopup
+        visible={cashier != null}
+        payUrl={cashier?.payUrl}
+        outTradeNo={cashier?.outTradeNo}
+        onClose={() => setCashier(null)}
+        onSettled={() => {
+          const outTradeNo = cashier?.outTradeNo || lastOrderNo.current;
+          setCashier(null);
+          if (outTradeNo) {
+            void checkOrder(outTradeNo, true);
+          }
+        }}
+      />
       <ChannelSheet
         visible={sheetScene != null}
         title="选择支付通道"

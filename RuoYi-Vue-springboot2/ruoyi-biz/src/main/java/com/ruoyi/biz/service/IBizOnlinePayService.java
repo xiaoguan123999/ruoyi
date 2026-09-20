@@ -37,5 +37,12 @@ public interface IBizOnlinePayService
 
     BizPayOrder syncFromProvider(String outTradeNo);
 
+    /** 关闭已过期待付单，并拒绝关联线上充值待审；返回关闭笔数 */
+    int closeExpiredOrders();
+
+    int getOrderExpireMinutes();
+
+    void saveOrderExpireMinutes(int minutes);
+
     String mockCashierHtml(String outTradeNo);
 }

@@ -145,6 +145,9 @@ public class BizConstants
     /** 提现是否必须已实名 */
     public static final String CONFIG_WITHDRAW_NEED_KYC = "biz.withdraw.needKyc";
 
+    /** 线上支付待付超时分钟（拉起收银台未付自动关闭） */
+    public static final String CONFIG_PAY_ORDER_EXPIRE_MINUTES = "biz.pay.orderExpireMinutes";
+
     public static final String CONFIG_RATE_L1 = "biz.team.rate.l1";
 
     public static final String CONFIG_RATE_L2 = "biz.team.rate.l2";
@@ -255,6 +258,18 @@ public class BizConstants
     public static final String PAY_FAMILY_WUYOU = "wuyou";
 
     public static final String PAY_FAMILY_JEEPAY = "jeepay";
+
+    /** 支付网关日志：出站调用 */
+    public static final String PAY_GW_LOG_CALL = "CALL";
+
+    /** 支付网关日志：入站回调 */
+    public static final String PAY_GW_LOG_CALLBACK = "CALLBACK";
+
+    public static final String PAY_GW_ACTION_CREATE = "create";
+
+    public static final String PAY_GW_ACTION_QUERY = "query";
+
+    public static final String PAY_GW_ACTION_NOTIFY = "notify";
 
     public static final String ABOUT_MODE_TEXT = "TEXT";
 

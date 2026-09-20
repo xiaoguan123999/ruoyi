@@ -541,12 +541,28 @@ export function listPayOrder(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/payOrder/list', method: 'get', params: query })
 }
 
+export function listPayGatewayLog(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/payGatewayLog/list', method: 'get', params: query })
+}
+
+export function getPayGatewayLog(logId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/payGatewayLog/' + logId, method: 'get' })
+}
+
 export function simulatePayOrder(outTradeNo: string): Promise<AjaxResult> {
   return request({ url: '/biz/payOrder/simulate/' + outTradeNo, method: 'put' })
 }
 
 export function syncPayOrder(outTradeNo: string): Promise<AjaxResult> {
   return request({ url: '/biz/payOrder/sync/' + outTradeNo, method: 'put' })
+}
+
+export function getPayOrderExpireMinutes(): Promise<AjaxResult<{ expireMinutes: number }>> {
+  return request({ url: '/biz/payOrder/expireMinutes', method: 'get' })
+}
+
+export function savePayOrderExpireMinutes(expireMinutes: number): Promise<AjaxResult> {
+  return request({ url: '/biz/payOrder/expireMinutes', method: 'put', data: { expireMinutes } })
 }
 
 export function listAppVersion(query: any): Promise<TableDataInfo<any[]>> {
