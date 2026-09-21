@@ -25,6 +25,8 @@ public interface IBizMemberService
 
     void updateMember(BizMember member);
 
+    void updateChainAddress(Long memberId, String chainAddress, String chainAddressBep20, String operator);
+
     /**
      * 把会员整棵下级挂到新上级下，只改 parent_id / ancestors，不追溯已发佣金。
      * @return 一起改了祖先链的下级人数（不含自己）

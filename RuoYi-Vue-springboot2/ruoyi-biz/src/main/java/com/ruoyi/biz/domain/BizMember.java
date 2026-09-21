@@ -157,6 +157,14 @@ public class BizMember extends BaseEntity
     @ApiModelProperty("勾选导出的会员ID")
     private Long[] memberIds;
 
+    @Excel(name = "链上收款地址")
+    @ApiModelProperty("USDT-TRC20 团队收款地址。填了后其下级充值走该地址，空则继续找更上级或系统默认")
+    private String chainAddress;
+
+    @Excel(name = "BEP20收款地址")
+    @ApiModelProperty("USDT-BEP20 团队收款地址。按网络独立解析，填了后其下级 BEP20 充值走该地址")
+    private String chainAddressBep20;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Excel(name = "最后登录时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
     @ApiModelProperty("最后登录时间")
@@ -566,6 +574,26 @@ public class BizMember extends BaseEntity
     public void setMemberIds(Long[] memberIds)
     {
         this.memberIds = memberIds;
+    }
+
+    public String getChainAddress()
+    {
+        return chainAddress;
+    }
+
+    public void setChainAddress(String chainAddress)
+    {
+        this.chainAddress = chainAddress;
+    }
+
+    public String getChainAddressBep20()
+    {
+        return chainAddressBep20;
+    }
+
+    public void setChainAddressBep20(String chainAddressBep20)
+    {
+        this.chainAddressBep20 = chainAddressBep20;
     }
 
     public Date getApplyTime()

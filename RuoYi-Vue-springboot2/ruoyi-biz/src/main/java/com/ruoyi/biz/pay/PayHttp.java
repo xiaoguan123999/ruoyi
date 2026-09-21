@@ -6,6 +6,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.ruoyi.common.exception.ServiceException;
@@ -25,6 +26,56 @@ public final class PayHttp
     public static String postJson(String url, String json)
     {
         return post(url, json, "application/json;charset=UTF-8");
+    }
+
+    public static String get(String url, Map<String, String> headers)
+    {
+        HttpURLConnection conn = null;
+        try
+        {
+            log.info("http GET {}", cut(url, 300));
+            conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(20000);
+            conn.setDoInput(true);
+            conn.setRequestProperty("Accept", "application/json");
+            if (headers != null)
+            {
+                for (Map.Entry<String, String> e : headers.entrySet())
+                {
+                    if (e.getKey() != null && e.getValue() != null)
+                    {
+                        conn.setRequestProperty(e.getKey(), e.getValue());
+                    }
+                }
+            }
+            int code = conn.getResponseCode();
+            InputStream in = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            String text = read(in);
+            log.info("http GET RESP {} {}", Integer.valueOf(code), cut(text, 300));
+            if (code >= 400)
+            {
+                throw new ServiceException("链上查询失败");
+            }
+            return text == null ? "" : text;
+        }
+        catch (ServiceException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            log.error("http GET fail {}", url, e);
+            throw new ServiceException("链上查询失败");
+        }
+        finally
+        {
+            if (conn != null)
+            {
+                conn.disconnect();
+            }
+        }
     }
 
     public static String postForm(String url, String form)

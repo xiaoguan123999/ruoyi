@@ -278,6 +278,33 @@ public class BizConstants
     public static final String CONFIG_SERVICE_TITLE = "biz.service.title";
     public static final String CONFIG_SERVICE_WORK_TIME = "biz.service.workTime";
     public static final String CONFIG_SERVICE_HINT = "biz.service.hint";
+
+    public static final String CONFIG_CHAIN_ENABLED = "biz.chain.tron.enabled";
+    public static final String CONFIG_CHAIN_ADDRESS = "biz.chain.tron.address";
+    public static final String CONFIG_CHAIN_API_KEY = "biz.chain.tron.apiKey";
+    public static final String CONFIG_CHAIN_EXPIRE_MINUTES = "biz.chain.tron.expireMinutes";
+    public static final String CONFIG_CHAIN_MIN_AMOUNT = "biz.chain.tron.minAmount";
+    public static final String CONFIG_CHAIN_MAX_AMOUNT = "biz.chain.tron.maxAmount";
+    public static final String CONFIG_CHAIN_MOCK = "biz.chain.tron.mock";
+    public static final String CONFIG_CHAIN_HINT = "biz.chain.tron.hint";
+    public static final String CONFIG_CHAIN_BSC_ENABLED = "biz.chain.bsc.enabled";
+    public static final String CONFIG_CHAIN_BSC_ADDRESS = "biz.chain.bsc.address";
+    public static final String CONFIG_CHAIN_BSC_API_KEY = "biz.chain.bsc.apiKey";
+    public static final String CONFIG_CHAIN_BSC_API_URL = "biz.chain.bsc.apiUrl";
+
+    public static final String CHAIN_NETWORK_TRC20 = "TRC20";
+    public static final String CHAIN_NETWORK_BEP20 = "BEP20";
+    public static final String CHAIN_ASSET_USDT_TRC20 = "USDT-TRC20";
+    public static final String CHAIN_ASSET_USDT_BEP20 = "USDT-BEP20";
+    public static final String CHAIN_CHANNEL_USDT = "CHAIN_USDT_TRC20";
+    public static final String CHAIN_CHANNEL_USDT_BEP20 = "CHAIN_USDT_BEP20";
+    public static final String USDT_TRC20_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+    public static final String USDT_BEP20_CONTRACT = "0x55d398326f99059fF775485246999027B3197955";
+    public static final String CHAIN_STATUS_WAIT = "0";
+    public static final String CHAIN_STATUS_SUCCESS = "1";
+    public static final String CHAIN_STATUS_EXPIRED = "2";
+    public static final String CHAIN_SOURCE_SYSTEM = "SYSTEM";
+    public static final String CHAIN_SOURCE_TEAM = "TEAM";
 }
 
 

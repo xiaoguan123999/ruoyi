@@ -16,6 +16,8 @@ import com.ruoyi.biz.api.AppTeamLevelStats;
 import com.ruoyi.biz.api.AppTeamMemberItem;
 import com.ruoyi.biz.api.AppTeamSummary;
 import com.ruoyi.biz.constant.BizConstants;
+import com.ruoyi.biz.chain.Bep20Address;
+import com.ruoyi.biz.chain.TronAddress;
 import com.ruoyi.biz.domain.AppKycBody;
 import com.ruoyi.biz.domain.AppRegisterBody;
 import com.ruoyi.biz.domain.BizLevel;
@@ -222,8 +224,46 @@ public class BizMemberServiceImpl implements IBizMemberService
                 throw new ServiceException("手机号已存在");
             }
         }
+        if (member.getChainAddress() != null)
+        {
+            member.setChainAddress(TronAddress.requireValidOrEmpty(member.getChainAddress()));
+        }
+        if (member.getChainAddressBep20() != null)
+        {
+            member.setChainAddressBep20(Bep20Address.requireValidOrEmpty(member.getChainAddressBep20()));
+        }
         memberMapper.updateMember(member);
         refreshLevel(member.getMemberId());
+    }
+
+    @Override
+    public void updateChainAddress(Long memberId, String chainAddress, String chainAddressBep20, String operator)
+    {
+        if (memberId == null)
+        {
+            throw new ServiceException("会员ID不能为空");
+        }
+        BizMember exist = memberMapper.selectMemberCore(memberId);
+        if (exist == null)
+        {
+            throw new ServiceException("会员不存在");
+        }
+        if (chainAddress == null && chainAddressBep20 == null)
+        {
+            return;
+        }
+        BizMember update = new BizMember();
+        update.setMemberId(memberId);
+        if (chainAddress != null)
+        {
+            update.setChainAddress(TronAddress.requireValidOrEmpty(chainAddress));
+        }
+        if (chainAddressBep20 != null)
+        {
+            update.setChainAddressBep20(Bep20Address.requireValidOrEmpty(chainAddressBep20));
+        }
+        update.setUpdateBy(operator);
+        memberMapper.updateMember(update);
     }
 
     @Override

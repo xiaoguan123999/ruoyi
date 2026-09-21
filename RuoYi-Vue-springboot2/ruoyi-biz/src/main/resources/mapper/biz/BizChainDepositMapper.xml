@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizChainDepositMapper">
+    <resultMap type="BizChainDeposit" id="BizChainDepositResult">
+        <id property="depositId" column="deposit_id"/>
+        <result property="outTradeNo" column="out_trade_no"/>
+        <result property="rechargeId" column="recharge_id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="phone" column="phone"/>
+        <result property="asset" column="asset"/>
+        <result property="network" column="network"/>
+        <result property="currency" column="currency"/>
+        <result property="amount" column="amount"/>
+        <result property="payAmount" column="pay_amount"/>
+        <result property="address" column="address"/>
+        <result property="addressSource" column="address_source"/>
+        <result property="collectMemberId" column="collect_member_id"/>
+        <result property="collectPhone" column="collect_phone"/>
+        <result property="collectInviteCode" column="collect_invite_code"/>
+        <result property="status" column="status"/>
+        <result property="txHash" column="tx_hash"/>
+        <result property="fromAddress" column="from_address"/>
+        <result property="expireTime" column="expire_time"/>
+        <result property="paidTime" column="paid_time"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+    <sql id="joinCols">
+        d.deposit_id, d.out_trade_no, d.recharge_id, d.member_id, m.phone,
+        d.asset, d.network, d.currency, d.amount, d.pay_amount, d.address, d.address_source,
+        d.collect_member_id, cm.phone as collect_phone, cm.invite_code as collect_invite_code,
+        d.status, d.tx_hash, d.from_address, d.expire_time, d.paid_time,
+        d.create_time, d.update_time, d.remark
+    </sql>
+    <sql id="coreCols">
+        deposit_id, out_trade_no, recharge_id, member_id, asset, network, currency,
+        amount, pay_amount, address, address_source, collect_member_id, status,
+        tx_hash, from_address, expire_time, paid_time, create_time, update_time, remark
+    </sql>
+    <select id="selectById" resultMap="BizChainDepositResult">
+        select <include refid="joinCols"/>
+        from biz_chain_deposit d
+        left join biz_member m on m.member_id = d.member_id
+        left join biz_member cm on cm.member_id = d.collect_member_id
+        where d.deposit_id = #{depositId}
+    </select>
+    <select id="selectByOutTradeNo" resultMap="BizChainDepositResult">
+        select <include refid="joinCols"/>
+        from biz_chain_deposit d
+        left join biz_member m on m.member_id = d.member_id
+        left join biz_member cm on cm.member_id = d.collect_member_id
+        where d.out_trade_no = #{outTradeNo}
+    </select>
+    <select id="selectByOutTradeNoForUpdate" resultMap="BizChainDepositResult">
+        select <include refid="coreCols"/>
+        from biz_chain_deposit
+        where out_trade_no = #{outTradeNo}
+        for update
+    </select>
+    <select id="selectPendingByPayAmountForUpdate" resultMap="BizChainDepositResult">
+        select <include refid="coreCols"/>
+        from biz_chain_deposit
+        where status = '0' and pay_amount = #{payAmount}
+          and ifnull(nullif(network,''),'TRC20') = #{network}
+          and lower(address) = lower(#{address}) and expire_time &gt; sysdate()
+        order by deposit_id asc
+        limit 1
+        for update
+    </select>
+    <select id="selectByTxHash" resultMap="BizChainDepositResult">
+        select <include refid="joinCols"/>
+        from biz_chain_deposit d
+        left join biz_member m on m.member_id = d.member_id
+        left join biz_member cm on cm.member_id = d.collect_member_id
+        where d.tx_hash = #{txHash}
+    </select>
+    <select id="countPendingByPayAmount" resultType="int">
+        select count(1) from biz_chain_deposit
+        where status = '0' and pay_amount = #{payAmount}
+          and ifnull(nullif(network,''),'TRC20') = #{network}
+          and lower(address) = lower(#{address}) and expire_time &gt; sysdate()
+    </select>
+    <select id="selectMinPendingCreateTime" resultType="java.util.Date">
+        select min(create_time) from biz_chain_deposit
+        where status = '0' and expire_time &gt; sysdate()
+    </select>
+    <select id="selectMinPendingCreateTimeByAddress" resultType="java.util.Date">
+        select min(create_time) from biz_chain_deposit
+        where status = '0' and expire_time &gt; sysdate()
+          and ifnull(nullif(network,''),'TRC20') = #{network}
+          and lower(address) = lower(#{address})
+    </select>
+    <select id="selectPendingCollects" resultMap="BizChainDepositResult">
+        select distinct ifnull(nullif(network,''),'TRC20') as network, address
+        from biz_chain_deposit
+        where status = '0' and expire_time &gt; sysdate()
+    </select>
+    <select id="selectPendingUnexpired" resultMap="BizChainDepositResult">
+        select <include refid="joinCols"/>
+        from biz_chain_deposit d
+        left join biz_member m on m.member_id = d.member_id
+        left join biz_member cm on cm.member_id = d.collect_member_id
+        where d.status = '0' and d.expire_time &gt; sysdate()
+        order by d.deposit_id asc
+    </select>
+    <select id="selectExpiredPending" resultMap="BizChainDepositResult">
+        select <include refid="coreCols"/>
+        from biz_chain_deposit
+        where status = '0' and expire_time &lt;= sysdate()
+    </select>
+    <select id="selectList" resultMap="BizChainDepositResult">
+        select <include refid="joinCols"/>
+        from biz_chain_deposit d
+        left join biz_member m on m.member_id = d.member_id
+        left join biz_member cm on cm.member_id = d.collect_member_id
+        <where>
+            <if test="memberId != null">and d.member_id = #{memberId}</if>
+            <if test="outTradeNo != null and outTradeNo != ''">and d.out_trade_no = #{outTradeNo}</if>
+            <if test="status != null and status != ''">and d.status = #{status}</if>
+            <if test="network != null and network != ''">and ifnull(nullif(d.network,''),'TRC20') = #{network}</if>
+            <if test="txHash != null and txHash != ''">and d.tx_hash = #{txHash}</if>
+            <if test="address != null and address != ''">and d.address = #{address}</if>
+            <if test="addressSource != null and addressSource != ''">and d.address_source = #{addressSource}</if>
+            <if test="collectMemberId != null">and d.collect_member_id = #{collectMemberId}</if>
+            <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
+            <if test="params.beginTime != null and params.beginTime != ''">and d.create_time &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''">and d.create_time &lt; date_add(#{params.endTime}, interval 1 day)</if>
+        </where>
+        order by d.deposit_id desc
+    </select>
+    <insert id="insertDeposit" parameterType="BizChainDeposit" useGeneratedKeys="true" keyProperty="depositId">
+        insert into biz_chain_deposit (
+            out_trade_no, recharge_id, member_id, asset, network, currency, amount, pay_amount,
+            address, address_source, collect_member_id, status, expire_time, create_time, remark
+        ) values (
+            #{outTradeNo}, #{rechargeId}, #{memberId}, #{asset}, #{network}, #{currency}, #{amount}, #{payAmount},
+            #{address}, #{addressSource}, #{collectMemberId}, #{status}, #{expireTime}, sysdate(), #{remark}
+        )
+    </insert>
+    <update id="updateDeposit" parameterType="BizChainDeposit">
+        update biz_chain_deposit
+        <set>
+            <if test="rechargeId != null">recharge_id = #{rechargeId},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="txHash != null">tx_hash = #{txHash},</if>
+            <if test="fromAddress != null">from_address = #{fromAddress},</if>
+            <if test="paidTime != null">paid_time = #{paidTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where deposit_id = #{depositId}
+    </update>
+</mapper>
