@@ -603,3 +603,53 @@ export type AppPayOrder = {
   channelName?: string;
   expireTime?: string;
 };
+
+/** GET /app/chain/deposit/config — 用 networks[] 切换，顶层字段仅兼容（优先 TRC20） */
+export type AppChainAddressSource = 'SYSTEM' | 'TEAM';
+export type AppChainNetworkCode = 'TRC20' | 'BEP20';
+
+export type AppChainDepositNetwork = {
+  network: AppChainNetworkCode;
+  name: string;
+  enabled: boolean;
+  /** 当前用户该网络应转入的地址，勿写死系统地址 */
+  address: string;
+  addressSource?: AppChainAddressSource;
+  contractAddress: string;
+  decimals: number;
+};
+
+export type AppChainDepositConfig = {
+  /** false 时隐藏整个链上入口 */
+  enabled: boolean;
+  networks: AppChainDepositNetwork[];
+  minAmount?: number;
+  maxAmount?: number;
+  expireMinutes?: number;
+  hint: string;
+};
+
+/** POST /app/chain/deposit、GET /app/chain/deposit/order */
+export type AppChainDepositOrder = {
+  outTradeNo: string;
+  network: AppChainNetworkCode;
+  /** 下单时再解析一次，二维码/复制只用这一条 */
+  address: string;
+  addressSource?: AppChainAddressSource;
+  contractAddress?: string;
+  /** 必须原样复制，6 位字符串，不要用 Number / payAmount */
+  payAmountText: string;
+  /** UTC 毫秒时间戳。倒计时 = expireAt - Date.now() */
+  expireAt?: number;
+  /** 2026-09-21T10:46:00.000Z */
+  expireTimeUtc?: string;
+  /** 这次响应时还剩多少秒，轮询以后端为准 */
+  remainSeconds?: number;
+  /** yyyy-MM-dd HH:mm:ss，仅展示，不算倒计时 */
+  expireTime: string;
+  status: string;
+  hint?: string;
+  amount?: number;
+  currency?: string;
+  txHash?: string;
+};
