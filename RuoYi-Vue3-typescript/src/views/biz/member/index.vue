@@ -106,6 +106,18 @@
           <span v-else>—</span>
         </template>
       </el-table-column>
+      <el-table-column label="TRC20收款" align="center" min-width="160" show-overflow-tooltip>
+        <template #default="scope">
+          <span v-if="scope.row.chainAddress">{{ scope.row.chainAddress }}</span>
+          <span v-else class="text-muted">默认</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="BEP20收款" align="center" min-width="180" show-overflow-tooltip>
+        <template #default="scope">
+          <span v-if="scope.row.chainAddressBep20">{{ scope.row.chainAddressBep20 }}</span>
+          <span v-else class="text-muted">默认</span>
+        </template>
+      </el-table-column>
       <el-table-column label="余额CNY" align="center" prop="cnyAvailable" width="100" />
       <el-table-column label="产品收益CNY" align="center" prop="cnyProductIncome" width="120" />
       <el-table-column label="推广收益CNY" align="center" prop="cnyAssistValue" width="120" />
@@ -164,8 +176,8 @@
     </el-table>
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
-    <el-dialog :title="title" v-model="open" width="520px" append-to-body>
-      <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
+    <el-dialog :title="title" v-model="open" width="640px" append-to-body>
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="110px">
         <el-form-item label="手机号" prop="phone">
           <el-input v-model="form.phone" placeholder="请输入手机号" maxlength="11" />
         </el-form-item>
@@ -208,6 +220,23 @@
               <el-switch v-model="form.testFlag" active-value="1" inactive-value="0" />
               <span class="tip inline">测试账号不计入看板、团队与奖励统计，一拖二仍生效</span>
             </div>
+          </el-form-item>
+          <el-form-item label="TRC20 收款" prop="chainAddress">
+            <el-input
+              v-model="form.chainAddress"
+              placeholder="T 开头共 34 位；留空则该网络走更上级或系统默认"
+              clearable
+              maxlength="34"
+            />
+          </el-form-item>
+          <el-form-item label="BEP20 收款" prop="chainAddressBep20">
+            <el-input
+              v-model="form.chainAddressBep20"
+              placeholder="0x 开头 42 位；留空则该网络走更上级或系统默认"
+              clearable
+              maxlength="42"
+            />
+            <div class="tip block">两个网络独立往上找上级，没有则走「资金中心 → 链上充值」里的系统地址。留空只清空对应网络。修改后只影响之后新下的单。</div>
           </el-form-item>
           <el-form-item label="备注">
             <el-input v-model="form.remark" type="textarea" />
@@ -264,7 +293,7 @@
 </template>
 
 <script setup lang="ts" name="BizMember">
-import { listMember, getMember, addMember, updateMember, updateMemberParent, resetMemberPwd, resetMemberPayPwd, getMemberGoogleConfig, saveMemberGoogleConfig } from "@/api/biz"
+import { listMember, getMember, addMember, updateMember, updateMemberChainAddress, updateMemberParent, resetMemberPwd, resetMemberPayPwd, getMemberGoogleConfig, saveMemberGoogleConfig } from "@/api/biz"
 import WalletAdjustDialog from "@/views/biz/components/WalletAdjustDialog.vue"
 
 const { proxy } = getCurrentInstance() as any
@@ -351,7 +380,31 @@ const formRules = computed(() => {
   if (isAdd.value) {
     return rules.value
   }
-  return { phone: rules.value.phone }
+  return {
+    phone: rules.value.phone,
+    chainAddress: [{
+      validator: (_: any, value: any, callback: (e?: Error) => void) => {
+        const v = String(value ?? "").trim()
+        if (!v) return callback()
+        if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(v)) {
+          return callback(new Error("请输入正确的 TRC20 地址（T 开头共 34 位）"))
+        }
+        callback()
+      },
+      trigger: "blur"
+    }],
+    chainAddressBep20: [{
+      validator: (_: any, value: any, callback: (e?: Error) => void) => {
+        const v = String(value ?? "").trim()
+        if (!v) return callback()
+        if (!/^0x[a-fA-F0-9]{40}$/.test(v)) {
+          return callback(new Error("请输入正确的 BEP20 地址（0x + 40 位十六进制）"))
+        }
+        callback()
+      },
+      trigger: "blur"
+    }]
+  }
 })
 const route = useRoute()
 
@@ -392,6 +445,8 @@ function createByTagType(createBy: any) {
 function normalizeMemberForm(data: any) {
   return {
     ...data,
+    chainAddress: data.chainAddress == null ? "" : String(data.chainAddress).trim(),
+    chainAddressBep20: data.chainAddressBep20 == null ? "" : String(data.chainAddressBep20).trim(),
     testFlag: asTestFlagStr(data.testFlag ?? data.testFlagFlag ?? data.testAccount),
     withdrawStatus: asStatusStr(data.withdrawStatus ?? data.withdrawForbidden, "0")
   }
@@ -626,6 +681,11 @@ function submitForm() {
       return
     }
     updateMember(buildMemberUpdatePayload(form.value)).then(() => {
+      return updateMemberChainAddress(form.value.memberId, {
+        chainAddress: String(form.value.chainAddress ?? "").trim(),
+        chainAddressBep20: String(form.value.chainAddressBep20 ?? "").trim()
+      })
+    }).then(() => {
       proxy.$modal.msgSuccess("修改成功")
       open.value = false
       getList()
@@ -647,6 +707,8 @@ watch(
 <style scoped>
 .tip { margin-left: 12px; color: #909399; font-size: 13px; }
 .tip.inline { margin-left: 10px; }
+.tip.block { margin-left: 0; margin-top: 6px; line-height: 1.4; }
+.text-muted { color: #909399; }
 .switch-line {
   display: flex;
   align-items: center;

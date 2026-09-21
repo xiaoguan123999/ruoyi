@@ -13,9 +13,14 @@ import {
   isPayOrderPending,
   listPayChannelsByScene,
 } from '@/api/app-pay';
+import {
+  createAppChainDeposit,
+  fetchAppChainDepositConfig,
+  preferredChainNetwork,
+} from '@/api/app-chain-deposit';
 import { ApiError } from '@/api/request';
 import { fetchAppWallet, parseAmountInput } from '@/api/app-trade';
-import type { AppPayChannel, AppWallet } from '@/api/types';
+import type { AppChainDepositConfig, AppChainNetworkCode, AppPayChannel, AppWallet } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { DualBalance } from '@/components/ui/DualBalance';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -31,7 +36,7 @@ import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
 const methods = [
   { key: 'wechat', label: '微信', icon: images.payWechat, currency: 'CNY' as const, scene: 'wechat' },
   { key: 'alipay', label: '支付宝', icon: images.payAlipay, currency: 'CNY' as const, scene: 'alipay' },
-  { key: 'usdt', label: 'USDT（客服）', icon: images.payUsdt, currency: 'USDT' as const, toService: true },
+  { key: 'usdt', label: 'USDT', icon: images.payUsdt, currency: 'USDT' as const, chain: true },
   { key: 'bank', label: '银行卡（客服）', icon: images.payCard, currency: 'CNY' as const, toService: true },
 ];
 
@@ -63,13 +68,20 @@ function channelDisplayName(channel: AppPayChannel) {
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
-function ChannelSheet({
+type PickSheetItem = {
+  key: string;
+  name: string;
+  sub?: string;
+  disabled?: boolean;
+};
+
+function PickSheet({
   visible,
   title,
   hint,
   icon,
-  channels,
-  selectedCode,
+  items,
+  selectedKey,
   onClose,
   onSelect,
 }: {
@@ -77,24 +89,24 @@ function ChannelSheet({
   title: string;
   hint?: string;
   icon?: ImageSource;
-  channels: AppPayChannel[];
-  selectedCode?: string;
+  items: PickSheetItem[];
+  selectedKey?: string;
   onClose: () => void;
-  onSelect: (channel: AppPayChannel) => void;
+  onSelect: (key: string) => void;
 }) {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const sheetHeight = Math.round(height * 0.72);
   const [mounted, setMounted] = useState(visible);
-  const [cache, setCache] = useState({ title, hint, icon, channels, selectedCode });
+  const [cache, setCache] = useState({ title, hint, icon, items, selectedKey });
   const backdrop = useRef(new Animated.Value(0)).current;
   const sheetY = useRef(new Animated.Value(sheetHeight)).current;
 
   useEffect(() => {
     if (visible) {
-      setCache({ title, hint, icon, channels, selectedCode });
+      setCache({ title, hint, icon, items, selectedKey });
     }
-  }, [visible, title, hint, icon, channels, selectedCode]);
+  }, [visible, title, hint, icon, items, selectedKey]);
 
   useEffect(() => {
     if (visible) {
@@ -171,25 +183,35 @@ function ChannelSheet({
             contentContainerStyle={styles.sheetGrid}
             showsVerticalScrollIndicator={false}
           >
-            {cache.channels.map((item) => {
-              const on = cache.selectedCode === item.channelCode;
-              const name = channelDisplayName(item);
-              const limit = channelLimitText(item);
+            {cache.items.map((item) => {
+              const on = cache.selectedKey === item.key;
               return (
                 <Pressable
-                  key={item.channelCode}
-                  style={[styles.sheetCard, on && styles.channelCardOn]}
-                  onPress={() => onSelect(item)}
+                  key={item.key}
+                  style={[
+                    styles.sheetCard,
+                    on && !item.disabled && styles.channelCardOn,
+                    item.disabled && styles.sheetCardOff,
+                  ]}
+                  onPress={() => {
+                    if (item.disabled) {
+                      modalWarning('暂未开放');
+                      return;
+                    }
+                    onSelect(item.key);
+                  }}
                 >
                   <View style={styles.channelHead}>
                     {cache.icon ? (
                       <Image source={cache.icon} style={styles.channelIcon} contentFit="contain" />
                     ) : null}
-                    <Text style={styles.channelName} numberOfLines={1}>
-                      {name}
+                    <Text style={[styles.channelName, item.disabled && styles.channelNameOff]} numberOfLines={1}>
+                      {item.name}
                     </Text>
                   </View>
-                  {limit ? <Text style={styles.channelLimit}>{limit}</Text> : null}
+                  {item.sub ? (
+                    <Text style={[styles.channelLimit, item.disabled && styles.channelNameOff]}>{item.sub}</Text>
+                  ) : null}
                 </Pressable>
               );
             })}
@@ -211,7 +233,20 @@ export default function RechargeScreen() {
   const [channels, setChannels] = useState<AppPayChannel[]>([]);
   const [channelByScene, setChannelByScene] = useState<Record<string, string>>({});
   const [sheetScene, setSheetScene] = useState<string | null>(null);
+  const [networkSheet, setNetworkSheet] = useState(false);
   const [cashier, setCashier] = useState<{ payUrl: string; outTradeNo: string } | null>(null);
+  const [chainConfig, setChainConfig] = useState<AppChainDepositConfig | null>(null);
+  const [chainNetwork, setChainNetwork] = useState<AppChainNetworkCode>('TRC20');
+  const chainNetworks = useMemo(
+    () => (chainConfig?.networks ?? []).filter((item) => item.enabled),
+    [chainConfig],
+  );
+  const selectedChainNet = chainNetworks.find((item) => item.network === chainNetwork);
+  const chainUnavailable = chainNetworks.length === 0;
+
+  const warnChainClosed = () => {
+    modalWarning('线上充值暂未开放，具体可联系客服');
+  };
 
   const load = useCallback(async () => {
     try {
@@ -225,7 +260,25 @@ export default function RechargeScreen() {
         modalError(error instanceof ApiError ? error.message : '获取充值通道失败');
       }
     }
+    try {
+      setChainConfig(await fetchAppChainDepositConfig());
+    } catch {
+    }
   }, []);
+
+  useEffect(() => {
+    if (!chainConfig) {
+      return;
+    }
+    const current = chainConfig.networks.find((item) => item.network === chainNetwork);
+    if (current?.enabled) {
+      return;
+    }
+    const next = preferredChainNetwork(chainConfig);
+    if (next) {
+      setChainNetwork(next);
+    }
+  }, [chainConfig, chainNetwork]);
 
 
   const cny = wallet?.cnyAvailable ?? 0;
@@ -250,6 +303,19 @@ export default function RechargeScreen() {
     [channels, sheetScene],
   );
 
+  const openNetworkSheet = () => {
+    if (chainUnavailable) {
+      warnChainClosed();
+      return;
+    }
+    if (chainNetworks.length === 1) {
+      setChainNetwork(chainNetworks[0].network);
+      setNetworkSheet(false);
+      return;
+    }
+    setNetworkSheet(true);
+  };
+
   const openChannelSheet = (scene: string) => {
     const list = listPayChannelsByScene(channels, scene);
     if (list.length === 0) {
@@ -266,11 +332,20 @@ export default function RechargeScreen() {
       return;
     }
     setMethod(key);
-    if (next.toService || !next.scene) {
+    if (next.toService || (!next.scene && !next.chain)) {
       setSheetScene(null);
+      setNetworkSheet(false);
       return;
     }
-    openChannelSheet(next.scene);
+    if (next.chain) {
+      setSheetScene(null);
+      openNetworkSheet();
+      return;
+    }
+    setNetworkSheet(false);
+    if (next.scene) {
+      openChannelSheet(next.scene);
+    }
   };
 
   const onPickChannel = (channel: AppPayChannel) => {
@@ -328,6 +403,37 @@ export default function RechargeScreen() {
       router.push('/service-chat');
       return;
     }
+    if (selected.chain) {
+      const value = Math.round(parseAmountInput(amount) * 100) / 100;
+      if (value <= 0) {
+        modalWarning('请输入有效充值金额');
+        return;
+      }
+      if (chainConfig?.minAmount != null && value < chainConfig.minAmount) {
+        modalWarning(`最低充值 ${chainConfig.minAmount} USDT`);
+        return;
+      }
+      if (chainConfig?.maxAmount != null && value > chainConfig.maxAmount) {
+        modalWarning(`最高充值 ${chainConfig.maxAmount} USDT`);
+        return;
+      }
+      if (!selectedChainNet) {
+        warnChainClosed();
+        return;
+      }
+      setSubmitting(true);
+      try {
+        const order = await createAppChainDeposit(value, selectedChainNet.network);
+        router.push(`/chain-deposit?outTradeNo=${encodeURIComponent(order.outTradeNo)}`);
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.code !== 401) {
+          modalError(error instanceof ApiError ? error.message : '链上充值下单失败');
+        }
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
     if (!selected.scene || sceneChannels.length === 0) {
       modalWarning('暂未开放充值');
       return;
@@ -369,7 +475,14 @@ export default function RechargeScreen() {
     }
   };
 
-  const limitHint = selectedChannel ? channelLimitText(selectedChannel) : null;
+  const limitHint = selected?.chain
+    ? [
+        chainConfig?.minAmount != null ? `最低 ${chainConfig.minAmount}` : '',
+        chainConfig?.maxAmount != null ? `最高 ${chainConfig.maxAmount}` : '',
+      ].filter(Boolean).join(' · ') || null
+    : selectedChannel
+      ? channelLimitText(selectedChannel)
+      : null;
 
   return (
     <AppBackground>
@@ -405,7 +518,7 @@ export default function RechargeScreen() {
             );
           })}
         </GlassCard>
-        {!selected?.toService ? (
+        {!selected?.toService && !selected?.chain ? (
           <GlassCard>
             <Pressable
               style={styles.pickerRow}
@@ -432,6 +545,25 @@ export default function RechargeScreen() {
             </Pressable>
           </GlassCard>
         ) : null}
+        {selected?.chain && !chainUnavailable ? (
+          <GlassCard>
+            <Pressable
+              style={styles.pickerRow}
+              onPress={chainNetworks.length > 1 ? openNetworkSheet : undefined}
+            >
+              <Image source={images.payUsdt} style={styles.pickerIcon} contentFit="contain" />
+              <View style={styles.pickerText}>
+                <Text style={styles.pickerTitle} numberOfLines={1}>
+                  {selectedChainNet ? selectedChainNet.name || selectedChainNet.network : '点击选择网络'}
+                </Text>
+                <Text style={styles.pickerSub} numberOfLines={1}>
+                  {selectedChainNet ? selectedChainNet.network : '请选择转账网络'}
+                </Text>
+              </View>
+              {chainNetworks.length > 1 ? <Text style={styles.pickerArrow}>›</Text> : null}
+            </Pressable>
+          </GlassCard>
+        ) : null}
         <GlassCard>
           <Text style={styles.label}>
             充值金额 <Text style={{ color: colors.danger }}>（通道拥堵可联系在线客服充值）</Text>
@@ -447,6 +579,23 @@ export default function RechargeScreen() {
           />
           {limitHint ? <Text style={styles.limit}>{limitHint}</Text> : null}
         </GlassCard>
+        {selected?.chain ? (
+          <GlassCard>
+            <Text style={styles.label}>充值说明</Text>
+            <Text style={styles.rule}>
+              1.仅接受<Text style={styles.red}>USDT ({selectedChainNet?.network || chainNetwork})</Text>转账，转入非该网络 USDT 将无法到账，造成资金损失。
+            </Text>
+            <Text style={styles.rule}>
+              2. 最低充值金额{chainConfig?.minAmount ?? 10}，低于该金额系统不处理入账。
+            </Text>
+            <Text style={styles.rule}>
+              3. 系统自动确认到账，确认时间约<Text style={styles.red}>30秒</Text>，超过<Text style={styles.red}>{chainConfig?.expireMinutes && chainConfig.expireMinutes > 0 ? chainConfig.expireMinutes : 30}分钟</Text>未入账，可联系在线客服查询（注意：如转账后未入账，请在转账后10天内联系人工客服核实，超时将不给予处理）。
+            </Text>
+            <Text style={styles.rule}>
+              4. 请<Text style={styles.red}>仔细核对转账地址</Text>，如由于剪切板内容被篡改导致转账地址错误，我司不承担损失。
+            </Text>
+          </GlassCard>
+        ) : null}
         <PrimaryButton title="充 值" onPress={() => void onSubmit()} disabled={submitting} />
       </RefreshableScrollView>
 
@@ -463,15 +612,41 @@ export default function RechargeScreen() {
           }
         }}
       />
-      <ChannelSheet
+      <PickSheet
         visible={sheetScene != null}
         title="选择支付通道"
         hint={`${sheetMeta?.label || ''} · 请选择可用方式完成充值`}
         icon={sheetMeta?.icon}
-        channels={sheetChannels}
-        selectedCode={sheetScene ? channelByScene[sheetScene] : undefined}
+        items={sheetChannels.map((item) => ({
+          key: item.channelCode,
+          name: channelDisplayName(item),
+          sub: channelLimitText(item),
+        }))}
+        selectedKey={sheetScene ? channelByScene[sheetScene] : undefined}
         onClose={() => setSheetScene(null)}
-        onSelect={onPickChannel}
+        onSelect={(key) => {
+          const channel = sheetChannels.find((item) => item.channelCode === key);
+          if (channel) {
+            onPickChannel(channel);
+          }
+        }}
+      />
+      <PickSheet
+        visible={networkSheet}
+        title="选择网络"
+        hint="USDT · 请选择转账网络"
+        icon={images.payUsdt}
+        items={chainNetworks.map((item) => ({
+          key: item.network,
+          name: item.name || item.network,
+          sub: item.network,
+        }))}
+        selectedKey={selectedChainNet ? chainNetwork : undefined}
+        onClose={() => setNetworkSheet(false)}
+        onSelect={(key) => {
+          setChainNetwork(key as AppChainNetworkCode);
+          setNetworkSheet(false);
+        }}
       />
     </AppBackground>
   );
@@ -483,6 +658,8 @@ const styles = StyleSheet.create({
   link: { color: colors.text, fontSize: 13 },
   balanceWrap: { marginTop: 8 },
   limit: { marginTop: 8, color: colors.muted, fontSize: 12 },
+  rule: { marginTop: 10, color: colors.text, fontSize: 13, lineHeight: 20 },
+  red: { color: colors.danger, fontWeight: '700' },
   input: {
     color: colors.text,
     fontSize: 24,
@@ -518,6 +695,7 @@ const styles = StyleSheet.create({
   },
   channelIcon: { width: 18, height: 18 },
   channelName: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '600' },
+  channelNameOff: { color: colors.muted },
   channelLimit: { marginTop: 8, color: colors.muted, fontSize: 12 },
   sheetHost: {
     flex: 1,
@@ -591,4 +769,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
   },
+  sheetCardOff: { opacity: 0.45 },
 });

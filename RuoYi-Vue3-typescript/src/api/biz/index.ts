@@ -22,6 +22,14 @@ export function updateMemberParent(memberId: number, data: { parentId?: number; 
   return request({ url: '/biz/member/' + memberId + '/parent', method: 'put', data })
 }
 
+/** 设置/清空会员团队链上收款地址；空字符串清空该网络，不传/null 不改 */
+export function updateMemberChainAddress(memberId: number, data: {
+  chainAddress?: string | null
+  chainAddressBep20?: string | null
+}): Promise<AjaxResult> {
+  return request({ url: '/biz/member/' + memberId + '/chainAddress', method: 'put', data })
+}
+
 export function resetMemberGoogle(memberId: number): Promise<AjaxResult> {
   return request({ url: '/biz/member/' + memberId + '/google/reset', method: 'put' })
 }
@@ -563,6 +571,26 @@ export function getPayOrderExpireMinutes(): Promise<AjaxResult<{ expireMinutes: 
 
 export function savePayOrderExpireMinutes(expireMinutes: number): Promise<AjaxResult> {
   return request({ url: '/biz/payOrder/expireMinutes', method: 'put', data: { expireMinutes } })
+}
+
+export function listChainDeposit(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/chainDeposit/list', method: 'get', params: query })
+}
+
+export function getChainDepositConfig(): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/chainDeposit/config', method: 'get' })
+}
+
+export function saveChainDepositConfig(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/chainDeposit/config', method: 'put', data })
+}
+
+export function scanChainDeposit(): Promise<AjaxResult> {
+  return request({ url: '/biz/chainDeposit/scan', method: 'put' })
+}
+
+export function simulateChainDeposit(outTradeNo: string): Promise<AjaxResult> {
+  return request({ url: '/biz/chainDeposit/simulate/' + outTradeNo, method: 'put' })
 }
 
 export function listAppVersion(query: any): Promise<TableDataInfo<any[]>> {
