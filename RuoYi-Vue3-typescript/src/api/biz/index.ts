@@ -98,6 +98,30 @@ export function delProductCategory(categoryId: number | number[]): Promise<AjaxR
   return request({ url: '/biz/productCategory/' + categoryId, method: 'delete' })
 }
 
+export function listProductCardTemplate(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/productCardTemplate/list', method: 'get', params: query })
+}
+
+export function listProductCardTemplateOptions(): Promise<AjaxResult<any[]>> {
+  return request({ url: '/biz/productCardTemplate/options', method: 'get' })
+}
+
+export function getProductCardTemplate(templateId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/productCardTemplate/' + templateId, method: 'get' })
+}
+
+export function addProductCardTemplate(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/productCardTemplate', method: 'post', data })
+}
+
+export function updateProductCardTemplate(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/productCardTemplate', method: 'put', data })
+}
+
+export function delProductCardTemplate(templateId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/productCardTemplate/' + templateId, method: 'delete' })
+}
+
 export function listOrder(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/order/list', method: 'get', params: query })
 }
@@ -140,6 +164,11 @@ export function auditWithdrawBatch(data: any): Promise<AjaxResult> {
 
 export function listWalletLog(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/walletLog/list', method: 'get', params: query })
+}
+
+/** 会员钱包余额总览 */
+export function listWallet(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/wallet/list', method: 'get', params: query })
 }
 
 export function getWalletBalance(params: {

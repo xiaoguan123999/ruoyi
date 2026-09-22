@@ -169,6 +169,7 @@
             v-hasPermi="['biz:member:edit']"
           >换绑</el-button>
           <el-button link type="primary" icon="Wallet" @click="openAdjust(scope.row)" v-hasPermi="['biz:wallet:adjust']">调账</el-button>
+          <el-button link type="primary" icon="Coin" @click="openWallet(scope.row)" v-hasPermi="['biz:wallet:list']">钱包</el-button>
           <el-button link type="primary" icon="Key" @click="handleResetPwd(scope.row)" v-hasPermi="['biz:member:resetPwd']">登录密码</el-button>
           <el-button link type="primary" icon="Lock" @click="handleResetPayPwd(scope.row)" v-hasPermi="['biz:member:resetPayPwd']">交易密码</el-button>
         </template>
@@ -554,6 +555,12 @@ function openAdjust(row: any) {
   adjustMemberId.value = row.memberId
   adjustPhone.value = row.phone || ""
   adjustOpen.value = true
+}
+function openWallet(row: any) {
+  proxy.$router.push({
+    path: "/fund/wallet",
+    query: { memberId: String(row.memberId || "") }
+  })
 }
 function formatMemberLabel(inviteCode?: string, phone?: string) {
   const code = String(inviteCode || "").trim() || "—"

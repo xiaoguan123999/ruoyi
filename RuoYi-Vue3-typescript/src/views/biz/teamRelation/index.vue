@@ -17,6 +17,9 @@
       </el-table-column>
       <el-table-column label="签到天数" align="center" prop="checkinDays" width="100" />
       <el-table-column label="账号" align="center" prop="account" width="140" />
+      <el-table-column label="姓名" align="center" width="100" show-overflow-tooltip>
+        <template #default="scope">{{ scope.row.realName || "--" }}</template>
+      </el-table-column>
       <el-table-column label="列表" min-width="360">
         <template #default="scope">
           <PeerListCell :peers="scope.row.peers || []" />

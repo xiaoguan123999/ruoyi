@@ -48,6 +48,23 @@
       <el-table-column label="币种" align="center" prop="currency" width="80" />
       <el-table-column label="本金" align="center" prop="price" width="90" />
       <el-table-column label="日返" align="center" prop="dailyRebate" width="80" />
+      <el-table-column label="累计金额" align="center" min-width="110">
+        <template #default="scope">
+          <span v-if="scope.row.incomeMode === 'ACCUMULATE'">
+            {{ scope.row.accumulatedAmount ?? 0 }}
+            <el-tag v-if="scope.row.accumulatePaused === '1'" type="warning" size="small" style="margin-left: 4px">暂停</el-tag>
+          </span>
+          <span v-else style="color: #909399">—</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="累计进度" align="center" width="100">
+        <template #default="scope">
+          <span v-if="scope.row.incomeMode === 'ACCUMULATE'">
+            {{ scope.row.accumulateDays || 0 }}/{{ scope.row.accumulateCycleDays || 0 }}
+          </span>
+          <span v-else style="color: #909399">—</span>
+        </template>
+      </el-table-column>
       <el-table-column label="进度" align="center" width="90">
         <template #default="scope">{{ progressText(scope.row) }}</template>
       </el-table-column>

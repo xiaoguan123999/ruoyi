@@ -1,7 +1,7 @@
 <template>
   <div class="app-container ops-page">
     <el-alert
-      title="这里维护 App「产品」Tab 上的系列。App 先拉系列卡片，点进去再查该系列下的产品。"
+      title="这里维护 App「产品」Tab 上的系列。列表说明会显示在该系列产品列表顶部。"
       type="info"
       :closable="false"
       show-icon
@@ -44,6 +44,7 @@
         </template>
       </el-table-column>
       <el-table-column label="系列名称" align="left" prop="categoryName" min-width="180" show-overflow-tooltip />
+      <el-table-column label="默认模板" align="center" prop="defaultTemplateName" min-width="120" show-overflow-tooltip />
       <el-table-column label="排序" align="center" prop="sort" width="80" />
       <el-table-column label="显示" align="center" prop="status" width="80">
         <template #default="scope">
@@ -64,6 +65,16 @@
         <el-form-item label="系列名称" prop="categoryName">
           <el-input v-model="form.categoryName" placeholder="例如 「星帆·天启计划」" />
         </el-form-item>
+        <el-form-item label="默认卡片模板" prop="defaultTemplateId">
+          <el-select v-model="form.defaultTemplateId" placeholder="新建产品默认模板" clearable style="width: 100%">
+            <el-option
+              v-for="item in templateOptions"
+              :key="item.templateId"
+              :label="item.templateName + '（' + item.templateCode + '）'"
+              :value="item.templateId"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" style="width: 160px" />
         </el-form-item>
@@ -76,8 +87,18 @@
         <el-form-item label="封面">
           <image-upload v-model="form.coverUrl" :limit="1" />
         </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="form.remark" type="textarea" />
+        <el-form-item label="列表说明">
+          <div class="field-with-tip">
+            <el-input
+              v-model="form.remark"
+              type="textarea"
+              :rows="3"
+              maxlength="200"
+              show-word-limit
+              placeholder="例如：助力值在2027年5月1日—2027年7月1日开始兑换提现，可按1:1比例兑换人民币（RMB）"
+            />
+            <p class="field-tip">显示在 App 该系列产品列表顶部；可空</p>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -89,11 +110,12 @@
 </template>
 
 <script setup lang="ts" name="BizProductCategory">
-import { listProductCategory, getProductCategory, addProductCategory, updateProductCategory, delProductCategory } from "@/api/biz"
+import { listProductCategory, getProductCategory, addProductCategory, updateProductCategory, delProductCategory, listProductCardTemplateOptions } from "@/api/biz"
 import { isExternal } from "@/utils/validate"
 
 const { proxy } = getCurrentInstance() as any
 const dataList = ref<any[]>([])
+const templateOptions = ref<any[]>([])
 const loading = ref(true)
 const showSearch = ref(true)
 const total = ref(0)
@@ -114,6 +136,12 @@ function imgSrc(url: string) {
   return import.meta.env.VITE_APP_BASE_API + url
 }
 
+function loadTemplates() {
+  listProductCardTemplateOptions().then((res: any) => {
+    templateOptions.value = res.data || []
+  }).catch(() => { templateOptions.value = [] })
+}
+
 function getList() {
   loading.value = true
   listProductCategory(queryParams.value).then((res: any) => {
@@ -125,7 +153,7 @@ function getList() {
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
 function reset() {
-  form.value = { status: "0", sort: 0, coverUrl: "", categoryName: "", remark: "" }
+  form.value = { status: "0", sort: 0, coverUrl: "", categoryName: "", remark: "", defaultTemplateId: undefined }
 }
 function handleAdd() { reset(); open.value = true; title.value = "新增系列" }
 function handleUpdate(row: any) {
@@ -152,5 +180,19 @@ function handleDelete(row: any) {
     proxy.$modal.msgSuccess("删除成功")
   }).catch(() => {})
 }
+loadTemplates()
 getList()
 </script>
+
+<style scoped>
+.field-with-tip {
+  width: 100%;
+}
+.field-tip {
+  margin-top: 8px;
+  margin-bottom: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--el-text-color-secondary);
+}
+</style>
