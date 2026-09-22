@@ -83,13 +83,64 @@ public class BizOrder extends BaseEntity
     @ApiModelProperty("是否提现指定产品")
     private String withdrawRequired;
 
+    @ApiModelProperty("业务模式快照 REBATE/ASSIST")
+    private String bizMode;
+
+    @ApiModelProperty("本次发放助力值快照")
+    private BigDecimal assistValue;
+
+    @ApiModelProperty("本金返还天数快照")
+    private Integer principalReturnDays;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    @ApiModelProperty("预计退本时间")
+    private Date principalReturnAt;
+
+    @ApiModelProperty("是否已退本 0否 1是")
+    private String principalReturned;
+
+    @ApiModelProperty("入账方式快照 CREDIT/ACCUMULATE")
+    private String incomeMode;
+
+    @ApiModelProperty("累计周期天数快照")
+    private Integer accumulateCycleDays;
+
+    @ApiModelProperty("对档产品快照")
+    private Long relatedProductId;
+
+    @ApiModelProperty("对档产品名称")
+    private String relatedProductName;
+
+    @ApiModelProperty("当前周期累计金额")
+    private BigDecimal accumulatedAmount;
+
+    @ApiModelProperty("当前周期已累计天数")
+    private Integer accumulateDays;
+
+    @ApiModelProperty("满周期无对档暂停 0否1是")
+    private String accumulatePaused;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    @ApiModelProperty("当前累计周期开始时间")
+    private Date accumulateCycleStartAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    @ApiModelProperty("上次累计日期")
+    private Date lastAccumulateDate;
+
+    @ApiModelProperty("是否可结算累计进产品收益")
+    private Boolean canSettleAccumulate;
+
+    @ApiModelProperty("是否已持有对档产品")
+    private Boolean relatedProductOwned;
+
     @ApiModelProperty("一拖二：下级几份同档激活上级1份，0关闭")
     private Integer unlockDirectQty;
 
     @ApiModelProperty("激活后再等待多少小时才开始日返，快照")
     private Integer unlockDelayHours;
 
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     @ApiModelProperty("开始返利时间。一拖二未达标为 null")
     private Date incomeStartTime;
 
@@ -315,6 +366,42 @@ public class BizOrder extends BaseEntity
     {
         this.withdrawRequired = withdrawRequired;
     }
+
+    public String getBizMode() { return bizMode; }
+    public void setBizMode(String bizMode) { this.bizMode = bizMode; }
+    public boolean assistMode() { return "ASSIST".equalsIgnoreCase(bizMode); }
+    public BigDecimal getAssistValue() { return assistValue; }
+    public void setAssistValue(BigDecimal assistValue) { this.assistValue = assistValue; }
+    public Integer getPrincipalReturnDays() { return principalReturnDays; }
+    public void setPrincipalReturnDays(Integer principalReturnDays) { this.principalReturnDays = principalReturnDays; }
+    public Date getPrincipalReturnAt() { return principalReturnAt; }
+    public void setPrincipalReturnAt(Date principalReturnAt) { this.principalReturnAt = principalReturnAt; }
+    public String getPrincipalReturned() { return principalReturned; }
+    public void setPrincipalReturned(String principalReturned) { this.principalReturned = principalReturned; }
+
+    public String getIncomeMode() { return incomeMode; }
+    public void setIncomeMode(String incomeMode) { this.incomeMode = incomeMode; }
+    public boolean accumulateIncome() { return "ACCUMULATE".equalsIgnoreCase(incomeMode); }
+    public Integer getAccumulateCycleDays() { return accumulateCycleDays; }
+    public void setAccumulateCycleDays(Integer accumulateCycleDays) { this.accumulateCycleDays = accumulateCycleDays; }
+    public Long getRelatedProductId() { return relatedProductId; }
+    public void setRelatedProductId(Long relatedProductId) { this.relatedProductId = relatedProductId; }
+    public String getRelatedProductName() { return relatedProductName; }
+    public void setRelatedProductName(String relatedProductName) { this.relatedProductName = relatedProductName; }
+    public BigDecimal getAccumulatedAmount() { return accumulatedAmount; }
+    public void setAccumulatedAmount(BigDecimal accumulatedAmount) { this.accumulatedAmount = accumulatedAmount; }
+    public Integer getAccumulateDays() { return accumulateDays; }
+    public void setAccumulateDays(Integer accumulateDays) { this.accumulateDays = accumulateDays; }
+    public String getAccumulatePaused() { return accumulatePaused; }
+    public void setAccumulatePaused(String accumulatePaused) { this.accumulatePaused = accumulatePaused; }
+    public Date getAccumulateCycleStartAt() { return accumulateCycleStartAt; }
+    public void setAccumulateCycleStartAt(Date accumulateCycleStartAt) { this.accumulateCycleStartAt = accumulateCycleStartAt; }
+    public Date getLastAccumulateDate() { return lastAccumulateDate; }
+    public void setLastAccumulateDate(Date lastAccumulateDate) { this.lastAccumulateDate = lastAccumulateDate; }
+    public Boolean getCanSettleAccumulate() { return canSettleAccumulate; }
+    public void setCanSettleAccumulate(Boolean canSettleAccumulate) { this.canSettleAccumulate = canSettleAccumulate; }
+    public Boolean getRelatedProductOwned() { return relatedProductOwned; }
+    public void setRelatedProductOwned(Boolean relatedProductOwned) { this.relatedProductOwned = relatedProductOwned; }
 
     public Integer getUnlockDirectQty() { return unlockDirectQty; }
     public void setUnlockDirectQty(Integer unlockDirectQty) { this.unlockDirectQty = unlockDirectQty; }

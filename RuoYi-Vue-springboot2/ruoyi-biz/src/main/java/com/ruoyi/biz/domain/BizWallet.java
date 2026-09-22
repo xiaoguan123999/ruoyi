@@ -31,6 +31,9 @@ public class BizWallet extends BaseEntity
     /** 冻结 */
     private BigDecimal frozen;
 
+    /** 会员手机号（联表查询） */
+    private String phone;
+
     public Long getWalletId()
     {
         return walletId;
@@ -99,6 +102,16 @@ public class BizWallet extends BaseEntity
     public void setFrozen(BigDecimal frozen)
     {
         this.frozen = frozen;
+    }
+
+    public String getPhone()
+    {
+        return phone;
+    }
+
+    public void setPhone(String phone)
+    {
+        this.phone = phone;
     }
 
 }

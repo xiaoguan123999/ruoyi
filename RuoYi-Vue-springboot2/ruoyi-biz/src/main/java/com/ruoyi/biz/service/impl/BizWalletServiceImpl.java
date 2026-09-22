@@ -58,6 +58,12 @@ public class BizWalletServiceImpl implements IBizWalletService
     }
 
     @Override
+    public List<BizWallet> selectWalletList(BizWallet query)
+    {
+        return walletMapper.selectWalletList(query);
+    }
+
+    @Override
     public BizWallet getWallet(Long memberId, String currency)
     {
         return getWallet(memberId, BizConstants.WALLET_BALANCE, currency);
@@ -563,6 +569,18 @@ public class BizWalletServiceImpl implements IBizWalletService
         if (BizConstants.BIZ_REBATE.equals(bizType))
         {
             return "产品日返";
+        }
+        if (BizConstants.BIZ_ASSIST_GRANT.equals(bizType))
+        {
+            return "助力值发放";
+        }
+        if (BizConstants.BIZ_PRINCIPAL_RETURN.equals(bizType))
+        {
+            return "本金返还";
+        }
+        if (BizConstants.BIZ_ACCUMULATE_SETTLE.equals(bizType))
+        {
+            return "累计结算";
         }
         if (BizConstants.BIZ_LEVEL_REWARD.equals(bizType))
         {

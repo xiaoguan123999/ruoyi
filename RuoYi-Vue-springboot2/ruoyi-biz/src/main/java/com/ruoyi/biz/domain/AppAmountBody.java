@@ -11,6 +11,9 @@ public class AppAmountBody
     @ApiModelProperty(value = "产品ID，认购时必填", example = "1")
     private Long productId;
 
+    @ApiModelProperty(value = "订单ID，累计结算时必填")
+    private Long orderId;
+
     @ApiModelProperty(value = "认购份数，默认 1", example = "1")
     @JsonAlias({"qty", "count", "num"})
     private Integer quantity;
@@ -48,6 +51,16 @@ public class AppAmountBody
     public void setProductId(Long productId)
     {
         this.productId = productId;
+    }
+
+    public Long getOrderId()
+    {
+        return orderId;
+    }
+
+    public void setOrderId(Long orderId)
+    {
+        this.orderId = orderId;
     }
 
     public Integer getQuantity()

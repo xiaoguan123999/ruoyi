@@ -18,6 +18,15 @@ public class BizProductCategory extends BaseEntity
     @ApiModelProperty("封面图，Tab 卡片用")
     private String coverUrl;
 
+    @ApiModelProperty("新建产品默认模板ID")
+    private Long defaultTemplateId;
+
+    @ApiModelProperty("默认模板名称")
+    private String defaultTemplateName;
+
+    @ApiModelProperty("默认模板编码")
+    private String defaultTemplateCode;
+
     @ApiModelProperty("0显示 1隐藏")
     private String status;
 
@@ -52,6 +61,36 @@ public class BizProductCategory extends BaseEntity
     public void setCoverUrl(String coverUrl)
     {
         this.coverUrl = coverUrl;
+    }
+
+    public Long getDefaultTemplateId()
+    {
+        return defaultTemplateId;
+    }
+
+    public void setDefaultTemplateId(Long defaultTemplateId)
+    {
+        this.defaultTemplateId = defaultTemplateId;
+    }
+
+    public String getDefaultTemplateName()
+    {
+        return defaultTemplateName;
+    }
+
+    public void setDefaultTemplateName(String defaultTemplateName)
+    {
+        this.defaultTemplateName = defaultTemplateName;
+    }
+
+    public String getDefaultTemplateCode()
+    {
+        return defaultTemplateCode;
+    }
+
+    public void setDefaultTemplateCode(String defaultTemplateCode)
+    {
+        this.defaultTemplateCode = defaultTemplateCode;
     }
 
     public String getStatus()

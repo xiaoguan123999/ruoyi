@@ -10,15 +10,17 @@
         <result property="currency"   column="currency"/>
         <result property="available"  column="available"/>
         <result property="frozen"     column="frozen"/>
+        <result property="phone"      column="phone"/>
         <result property="createTime" column="create_time"/>
         <result property="updateTime" column="update_time"/>
     </resultMap>
 
     <sql id="selectWalletVo">
         select w.wallet_id, w.member_id, w.type_code, t.type_name, w.currency, w.available, w.frozen,
-               w.create_time, w.update_time
+               m.phone, w.create_time, w.update_time
         from biz_wallet w
         left join biz_wallet_type t on t.type_code = w.type_code
+        left join biz_member m on m.member_id = w.member_id
     </sql>
 
     <select id="selectWallet" resultMap="BizWalletResult">
@@ -28,7 +30,7 @@
 
     <select id="selectWalletForUpdate" resultMap="BizWalletResult">
         select wallet_id, member_id, type_code, null as type_name, currency, available, frozen,
-               create_time, update_time
+               null as phone, create_time, update_time
         from biz_wallet
         where member_id = #{memberId} and type_code = #{typeCode} and currency = #{currency}
         for update
@@ -38,6 +40,20 @@
         <include refid="selectWalletVo"/>
         where w.member_id = #{memberId}
         order by ifnull(t.sort, 99) asc, w.currency asc
+    </select>
+
+    <select id="selectWalletList" parameterType="BizWallet" resultMap="BizWalletResult">
+        <include refid="selectWalletVo"/>
+        <where>
+            <if test="memberId != null">and w.member_id = #{memberId}</if>
+            <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
+            <if test="typeCode != null and typeCode != ''">and w.type_code = #{typeCode}</if>
+            <if test="currency != null and currency != ''">and w.currency = #{currency}</if>
+            <if test="params != null and params.onlyNonZero != null and (params.onlyNonZero == true or params.onlyNonZero == 'true')">
+                and (ifnull(w.available, 0) &lt;&gt; 0 or ifnull(w.frozen, 0) &lt;&gt; 0)
+            </if>
+        </where>
+        order by w.member_id desc, ifnull(t.sort, 99) asc, w.currency asc
     </select>
 
     <select id="countByTypeCode" parameterType="String" resultType="int">

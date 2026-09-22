@@ -80,6 +80,7 @@ public class AppProductController extends BaseController
             BizProduct item = list.get(i);
             item.setCoverUrl(toPublicUrl(item.getCoverUrl()));
         }
+        productService.enrichForApp(list);
         return AppProductListResult.ok(list);
     }
 
@@ -101,6 +102,7 @@ public class AppProductController extends BaseController
             return AppProductResult.fail("产品暂未开售");
         }
         product.setCoverUrl(toPublicUrl(product.getCoverUrl()));
+        productService.enrichForApp(product);
         return AppProductResult.ok(product);
     }
 
@@ -111,6 +113,8 @@ public class AppProductController extends BaseController
         item.setSeriesName(category.getCategoryName());
         item.setCoverUrl(toPublicUrl(category.getCoverUrl()));
         item.setSort(category.getSort());
+        item.setDefaultLayoutType(category.getDefaultTemplateCode());
+        item.setRemark(category.getRemark());
         return item;
     }
 

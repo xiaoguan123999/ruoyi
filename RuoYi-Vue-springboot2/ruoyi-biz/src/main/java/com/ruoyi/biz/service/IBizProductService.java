@@ -9,6 +9,11 @@ public interface IBizProductService
 
     List<BizProduct> selectProductList(BizProduct product);
 
+    /** App 列表/详情：补齐 layoutType、metrics.display、主金额文案等 */
+    void enrichForApp(List<BizProduct> products);
+
+    void enrichForApp(BizProduct product);
+
     int insertProduct(BizProduct product);
 
     int updateProduct(BizProduct product);

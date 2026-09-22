@@ -65,6 +65,36 @@ public class BizConstants
 
     public static final String BIZ_REBATE = "REBATE";
 
+    /** 助力产品：认购发放助力值 */
+    public static final String BIZ_ASSIST_GRANT = "ASSIST_GRANT";
+
+    /** 助力产品：到期退本 */
+    public static final String BIZ_PRINCIPAL_RETURN = "PRINCIPAL_RETURN";
+
+    /** 订单累计结算进产品收益钱包 */
+    public static final String BIZ_ACCUMULATE_SETTLE = "ACCUMULATE_SETTLE";
+
+    /** 产品业务模式：日返（默认） */
+    public static final String BIZ_MODE_REBATE = "REBATE";
+
+    /** 产品业务模式：助力值 + 到期退本 */
+    public static final String BIZ_MODE_ASSIST = "ASSIST";
+
+    /** 助力发放：跟认购币种 */
+    public static final String ASSIST_GRANT_MATCH = "MATCH";
+    /** 助力发放：固定送 CNY（与人民币 1:1 计量） */
+    public static final String ASSIST_GRANT_CNY = "CNY";
+    /** 助力发放：固定送 USDT */
+    public static final String ASSIST_GRANT_USDT = "USDT";
+    /** 助力发放：CNY + USDT 都送 */
+    public static final String ASSIST_GRANT_BOTH = "BOTH";
+
+    /** 日返入账：每天进钱包（现网默认） */
+    public static final String INCOME_MODE_CREDIT = "CREDIT";
+
+    /** 日返入账：先累计在订单，满周期结算进产品收益 */
+    public static final String INCOME_MODE_ACCUMULATE = "ACCUMULATE";
+
     public static final String BIZ_RECHARGE = "RECHARGE";
 
     public static final String BIZ_WITHDRAW_FREEZE = "WITHDRAW_FREEZE";

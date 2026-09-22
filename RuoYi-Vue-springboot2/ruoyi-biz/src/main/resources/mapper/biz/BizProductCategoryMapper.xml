@@ -3,43 +3,49 @@
 <mapper namespace="com.ruoyi.biz.mapper.BizProductCategoryMapper">
 
     <resultMap type="BizProductCategory" id="BizProductCategoryResult">
-        <id     property="categoryId"    column="category_id"/>
-        <result property="categoryName"  column="category_name"/>
-        <result property="coverUrl"      column="cover_url"/>
-        <result property="status"        column="status"/>
-        <result property="sort"          column="sort"/>
-        <result property="createBy"      column="create_by"/>
-        <result property="createTime"    column="create_time"/>
-        <result property="updateBy"      column="update_by"/>
-        <result property="updateTime"    column="update_time"/>
-        <result property="remark"        column="remark"/>
+        <id     property="categoryId"           column="category_id"/>
+        <result property="categoryName"         column="category_name"/>
+        <result property="coverUrl"             column="cover_url"/>
+        <result property="defaultTemplateId"    column="default_template_id"/>
+        <result property="defaultTemplateName"  column="default_template_name"/>
+        <result property="defaultTemplateCode"  column="default_template_code"/>
+        <result property="status"               column="status"/>
+        <result property="sort"                 column="sort"/>
+        <result property="createBy"             column="create_by"/>
+        <result property="createTime"           column="create_time"/>
+        <result property="updateBy"             column="update_by"/>
+        <result property="updateTime"           column="update_time"/>
+        <result property="remark"               column="remark"/>
     </resultMap>
 
     <sql id="selectCategoryVo">
-        select category_id, category_name, cover_url, status, sort,
-               create_by, create_time, update_by, update_time, remark
-        from biz_product_category
+        select c.category_id, c.category_name, c.cover_url, c.default_template_id,
+               t.template_name as default_template_name, t.template_code as default_template_code,
+               c.status, c.sort,
+               c.create_by, c.create_time, c.update_by, c.update_time, c.remark
+        from biz_product_category c
+        left join biz_product_card_template t on t.template_id = c.default_template_id
     </sql>
 
     <select id="selectCategoryById" parameterType="Long" resultMap="BizProductCategoryResult">
         <include refid="selectCategoryVo"/>
-        where category_id = #{categoryId}
+        where c.category_id = #{categoryId}
     </select>
 
     <select id="selectCategoryList" parameterType="BizProductCategory" resultMap="BizProductCategoryResult">
         <include refid="selectCategoryVo"/>
         <where>
-            <if test="categoryName != null and categoryName != ''">and category_name like concat('%', #{categoryName}, '%')</if>
-            <if test="status != null and status != ''">and status = #{status}</if>
+            <if test="categoryName != null and categoryName != ''">and c.category_name like concat('%', #{categoryName}, '%')</if>
+            <if test="status != null and status != ''">and c.status = #{status}</if>
         </where>
-        order by sort asc, category_id desc
+        order by c.sort asc, c.category_id desc
     </select>
 
     <insert id="insertCategory" parameterType="BizProductCategory" useGeneratedKeys="true" keyProperty="categoryId">
         insert into biz_product_category (
-            category_name, cover_url, status, sort, create_by, create_time, remark
+            category_name, cover_url, default_template_id, status, sort, create_by, create_time, remark
         ) values (
-            #{categoryName}, #{coverUrl}, #{status}, #{sort}, #{createBy}, sysdate(), #{remark}
+            #{categoryName}, #{coverUrl}, #{defaultTemplateId}, #{status}, #{sort}, #{createBy}, sysdate(), #{remark}
         )
     </insert>
 
@@ -48,6 +54,7 @@
         <set>
             <if test="categoryName != null and categoryName != ''">category_name = #{categoryName},</if>
             <if test="coverUrl != null">cover_url = #{coverUrl},</if>
+            <if test="defaultTemplateId != null">default_template_id = #{defaultTemplateId},</if>
             <if test="status != null">status = #{status},</if>
             <if test="sort != null">sort = #{sort},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>

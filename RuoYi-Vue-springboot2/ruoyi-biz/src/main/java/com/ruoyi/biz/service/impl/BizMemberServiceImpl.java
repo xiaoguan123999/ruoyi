@@ -995,6 +995,8 @@ public class BizMemberServiceImpl implements IBizMemberService
             row.setBalance(member.getCnyAvailable() == null ? BigDecimal.ZERO : member.getCnyAvailable());
             row.setCheckinDays(Integer.valueOf(checkinMapper.countByMemberId(member.getMemberId())));
             row.setAccount(member.getPhone());
+            String realName = member.getRealName() == null ? "" : member.getRealName().trim();
+            row.setRealName(StringUtils.isEmpty(realName) ? "--" : realName);
             row.setPeers(peers);
             row.setPeerList(peerText.toString());
             rows.add(row);

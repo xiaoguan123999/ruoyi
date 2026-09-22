@@ -24,9 +24,28 @@
         <result property="payoutMethod"      column="payout_method"/>
         <result property="riskLevel"         column="risk_level"/>
         <result property="onSale"            column="on_sale"/>
+        <result property="skipDetail"        column="skip_detail"/>
+        <result property="bizMode"           column="biz_mode"/>
+        <result property="assistGrantMode"   column="assist_grant_mode"/>
+        <result property="assistValueCny"    column="assist_value_cny"/>
+        <result property="assistValueUsdt"   column="assist_value_usdt"/>
+        <result property="principalReturnDays" column="principal_return_days"/>
+        <result property="incomeMode"        column="income_mode"/>
+        <result property="accumulateCycleDays" column="accumulate_cycle_days"/>
+        <result property="relatedProductId"  column="related_product_id"/>
+        <result property="relatedProductName" column="related_product_name"/>
         <result property="status"            column="status"/>
         <result property="sort"              column="sort"/>
         <result property="coverUrl"          column="cover_url"/>
+        <result property="templateId"        column="template_id"/>
+        <result property="templateName"      column="template_name"/>
+        <result property="templateCode"      column="template_code"/>
+        <result property="hasMainAmount"     column="has_main_amount"/>
+        <result property="templateDefaultCta" column="default_cta_text"/>
+        <result property="theme"             column="theme"/>
+        <result property="badgeText"         column="badge_text"/>
+        <result property="cardNo"            column="card_no"/>
+        <result property="ctaText"           column="cta_text"/>
         <result property="createBy"          column="create_by"/>
         <result property="createTime"        column="create_time"/>
         <result property="updateBy"          column="update_by"/>
@@ -38,10 +57,17 @@
         select p.product_id, p.product_name, p.name_en, p.category_id, c.category_name,
                p.currency, p.price, p.price_cny, p.price_usdt, p.daily_rebate, p.daily_rebate_cny, p.daily_rebate_usdt,
                p.duration_days, p.withdraw_required, p.buy_limit, p.unlock_direct_qty, p.unlock_delay_hours,
-               p.unlock_rule_text, p.payout_method, p.risk_level, p.on_sale,
-               p.status, p.sort, p.cover_url, p.create_by, p.create_time, p.update_by, p.update_time, p.remark
+               p.unlock_rule_text, p.payout_method, p.risk_level, p.on_sale, p.skip_detail,
+               p.biz_mode, p.assist_grant_mode, p.assist_value_cny, p.assist_value_usdt, p.principal_return_days,
+               p.income_mode, p.accumulate_cycle_days, p.related_product_id, rp.product_name as related_product_name,
+               p.status, p.sort, p.cover_url,
+               p.template_id, t.template_name, t.template_code, t.has_main_amount, t.default_cta_text,
+               p.theme, p.badge_text, p.card_no, p.cta_text,
+               p.create_by, p.create_time, p.update_by, p.update_time, p.remark
         from biz_product p
         left join biz_product_category c on c.category_id = p.category_id
+        left join biz_product_card_template t on t.template_id = p.template_id
+        left join biz_product rp on rp.product_id = p.related_product_id
     </sql>
 
     <select id="selectProductById" parameterType="Long" resultMap="BizProductResult">
@@ -56,8 +82,10 @@
             <if test="currency != null and currency == 'CNY'">and p.price_cny &gt; 0</if>
             <if test="currency != null and currency == 'USDT'">and p.price_usdt &gt; 0</if>
             <if test="status != null and status != ''">and p.status = #{status}</if>
+            <if test="onSale != null and onSale != ''">and p.on_sale = #{onSale}</if>
             <if test="withdrawRequired != null and withdrawRequired != ''">and p.withdraw_required = #{withdrawRequired}</if>
             <if test="categoryId != null">and p.category_id = #{categoryId}</if>
+            <if test="templateId != null">and p.template_id = #{templateId}</if>
         </where>
         order by p.sort asc, p.product_id desc
     </select>
@@ -70,11 +98,21 @@
         insert into biz_product (
             product_name, name_en, category_id, currency, price, price_cny, price_usdt,
             daily_rebate, daily_rebate_cny, daily_rebate_usdt, duration_days, withdraw_required, buy_limit,
-            unlock_direct_qty, unlock_delay_hours, unlock_rule_text, payout_method, risk_level, on_sale, status, sort, cover_url, create_by, create_time, remark
+            unlock_direct_qty, unlock_delay_hours, unlock_rule_text, payout_method, risk_level, on_sale, skip_detail,
+            biz_mode, assist_grant_mode, assist_value_cny, assist_value_usdt, principal_return_days,
+            income_mode, accumulate_cycle_days, related_product_id,
+            status, sort, cover_url,
+            template_id, theme, badge_text, card_no, cta_text,
+            create_by, create_time, remark
         ) values (
             #{productName}, #{nameEn}, #{categoryId}, #{currency}, #{price}, #{priceCny}, #{priceUsdt},
             #{dailyRebate}, #{dailyRebateCny}, #{dailyRebateUsdt}, #{durationDays}, #{withdrawRequired}, #{buyLimit},
-            #{unlockDirectQty}, #{unlockDelayHours}, #{unlockRuleText}, #{payoutMethod}, #{riskLevel}, #{onSale}, #{status}, #{sort}, #{coverUrl}, #{createBy}, sysdate(), #{remark}
+            #{unlockDirectQty}, #{unlockDelayHours}, #{unlockRuleText}, #{payoutMethod}, #{riskLevel}, #{onSale}, #{skipDetail},
+            #{bizMode}, #{assistGrantMode}, #{assistValueCny}, #{assistValueUsdt}, #{principalReturnDays},
+            #{incomeMode}, #{accumulateCycleDays}, #{relatedProductId},
+            #{status}, #{sort}, #{coverUrl},
+            #{templateId}, #{theme}, #{badgeText}, #{cardNo}, #{ctaText},
+            #{createBy}, sysdate(), #{remark}
         )
     </insert>
 
@@ -100,9 +138,24 @@
             <if test="payoutMethod != null">payout_method = #{payoutMethod},</if>
             <if test="riskLevel != null">risk_level = #{riskLevel},</if>
             <if test="onSale != null">on_sale = #{onSale},</if>
+            <if test="skipDetail != null">skip_detail = #{skipDetail},</if>
+            <if test="bizMode != null">biz_mode = #{bizMode},</if>
+            <if test="assistGrantMode != null">assist_grant_mode = #{assistGrantMode},</if>
+            <if test="assistValueCny != null">assist_value_cny = #{assistValueCny},</if>
+            <if test="assistValueUsdt != null">assist_value_usdt = #{assistValueUsdt},</if>
+            <if test="principalReturnDays != null">principal_return_days = #{principalReturnDays},</if>
+            <if test="incomeMode != null">income_mode = #{incomeMode},</if>
+            <if test="accumulateCycleDays != null">accumulate_cycle_days = #{accumulateCycleDays},</if>
+            <if test="relatedProductId != null">related_product_id = #{relatedProductId},</if>
+            <if test="params != null and params.clearRelatedProduct != null">related_product_id = null,</if>
             <if test="status != null">status = #{status},</if>
             <if test="sort != null">sort = #{sort},</if>
             <if test="coverUrl != null">cover_url = #{coverUrl},</if>
+            <if test="templateId != null">template_id = #{templateId},</if>
+            <if test="theme != null">theme = #{theme},</if>
+            <if test="badgeText != null">badge_text = #{badgeText},</if>
+            <if test="cardNo != null">card_no = #{cardNo},</if>
+            <if test="ctaText != null">cta_text = #{ctaText},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             <if test="remark != null">remark = #{remark},</if>
             update_time = sysdate()

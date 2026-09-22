@@ -69,7 +69,9 @@ public class BizOrderServiceImpl implements IBizOrderService
     @Override
     public BizOrder selectOrderById(Long orderId)
     {
-        return fillActivate(orderMapper.selectOrderById(orderId), new UnlockSupport());
+        BizOrder order = fillActivate(orderMapper.selectOrderById(orderId), new UnlockSupport());
+        fillAccumulateFlags(order);
+        return order;
     }
 
     @Override
@@ -82,6 +84,7 @@ public class BizOrderServiceImpl implements IBizOrderService
             for (int i = 0; i < list.size(); i++)
             {
                 fillActivate(list.get(i), support);
+                fillAccumulateFlags(list.get(i));
             }
         }
         return list;
@@ -132,14 +135,19 @@ public class BizOrderServiceImpl implements IBizOrderService
         {
             throw new ServiceException("USDT".equals(currency) ? "该产品不支持USDT认购" : "该产品不支持人民币认购");
         }
-        BigDecimal unitRebate = product.rebateOf(currency);
-        if (unitRebate == null)
-        {
-            unitRebate = BigDecimal.ZERO;
-        }
         BigDecimal qtyDec = new BigDecimal(qty);
         BigDecimal price = unitPrice.multiply(qtyDec);
-        BigDecimal rebate = unitRebate.multiply(qtyDec);
+        boolean assistMode = product.assistMode();
+        BigDecimal rebate = BigDecimal.ZERO;
+        if (!assistMode)
+        {
+            BigDecimal unitRebate = product.rebateOf(currency);
+            if (unitRebate == null)
+            {
+                unitRebate = BigDecimal.ZERO;
+            }
+            rebate = unitRebate.multiply(qtyDec);
+        }
         String remark = "认购产品:" + product.getProductName();
         if (qty > 1)
         {
@@ -158,13 +166,100 @@ public class BizOrderServiceImpl implements IBizOrderService
         order.setPrice(price);
         order.setQuantity(Integer.valueOf(qty));
         order.setDailyRebate(rebate);
+        order.setWithdrawRequired(product.getWithdrawRequired());
+        order.setStatus(BizConstants.ORDER_HOLDING);
+        order.setCreateTime(DateUtils.getNowDate());
+
+        if (assistMode)
+        {
+            int returnDays = product.getPrincipalReturnDays() == null ? 0 : product.getPrincipalReturnDays().intValue();
+            if (returnDays <= 0)
+            {
+                throw new ServiceException("助力产品请配置本金返还天数");
+            }
+            java.util.List<BizProduct.AssistGrant> grants = product.resolveAssistGrants(currency);
+            if (grants == null || grants.isEmpty())
+            {
+                throw new ServiceException("助力产品请按发放模式配置助力值");
+            }
+            BigDecimal assistSnapshot = BigDecimal.ZERO;
+            for (BizProduct.AssistGrant g : grants)
+            {
+                if (g != null && g.valid() && "CNY".equalsIgnoreCase(g.getCurrency()))
+                {
+                    assistSnapshot = g.getUnit().multiply(qtyDec);
+                    break;
+                }
+            }
+            if (assistSnapshot.compareTo(BigDecimal.ZERO) <= 0)
+            {
+                assistSnapshot = grants.get(0).getUnit().multiply(qtyDec);
+            }
+            order.setBizMode(BizConstants.BIZ_MODE_ASSIST);
+            order.setAssistValue(assistSnapshot);
+            order.setPrincipalReturnDays(Integer.valueOf(returnDays));
+            order.setPrincipalReturnAt(plusDays(DateUtils.getNowDate(), returnDays));
+            order.setPrincipalReturned("0");
+            order.setDurationDays(Integer.valueOf(0));
+            order.setRemainingDays(Integer.valueOf(0));
+            order.setUnlockDirectQty(Integer.valueOf(0));
+            order.setUnlockDelayHours(Integer.valueOf(0));
+            order.setIncomeMode(BizConstants.INCOME_MODE_CREDIT);
+            order.setAccumulateCycleDays(Integer.valueOf(0));
+            order.setRelatedProductId(null);
+            order.setAccumulatedAmount(BigDecimal.ZERO);
+            order.setAccumulateDays(Integer.valueOf(0));
+            order.setAccumulatePaused("0");
+            orderMapper.insertOrder(order);
+
+            creditAssistGrants(memberId, product, order.getOrderId(), grants, qtyDec);
+
+            memberService.refreshLevelAndUplines(memberId);
+            return fillActivate(orderMapper.selectOrderById(order.getOrderId()), new UnlockSupport());
+        }
+
+        order.setBizMode(BizConstants.BIZ_MODE_REBATE);
+        java.util.List<BizProduct.AssistGrant> rebateGrants = product.resolveAssistGrants(currency);
+        BigDecimal rebateAssistSnapshot = BigDecimal.ZERO;
+        if (rebateGrants != null && !rebateGrants.isEmpty())
+        {
+            for (BizProduct.AssistGrant g : rebateGrants)
+            {
+                if (g != null && g.valid() && "CNY".equalsIgnoreCase(g.getCurrency()))
+                {
+                    rebateAssistSnapshot = g.getUnit().multiply(qtyDec);
+                    break;
+                }
+            }
+            if (rebateAssistSnapshot.compareTo(BigDecimal.ZERO) <= 0)
+            {
+                rebateAssistSnapshot = rebateGrants.get(0).getUnit().multiply(qtyDec);
+            }
+        }
+        order.setAssistValue(rebateAssistSnapshot);
+        order.setPrincipalReturnDays(Integer.valueOf(0));
+        order.setPrincipalReturned("0");
         order.setDurationDays(product.getDurationDays());
         order.setRemainingDays(product.getDurationDays());
-        order.setWithdrawRequired(product.getWithdrawRequired());
         order.setUnlockDirectQty(nz(product.getUnlockDirectQty()));
         order.setUnlockDelayHours(nz(product.getUnlockDelayHours()));
-        order.setStatus(BizConstants.ORDER_HOLDING);
+        if (product.accumulateIncome())
+        {
+            order.setIncomeMode(BizConstants.INCOME_MODE_ACCUMULATE);
+            order.setAccumulateCycleDays(nz(product.getAccumulateCycleDays()));
+            order.setRelatedProductId(product.getRelatedProductId());
+        }
+        else
+        {
+            order.setIncomeMode(BizConstants.INCOME_MODE_CREDIT);
+            order.setAccumulateCycleDays(Integer.valueOf(0));
+            order.setRelatedProductId(null);
+        }
+        order.setAccumulatedAmount(BigDecimal.ZERO);
+        order.setAccumulateDays(Integer.valueOf(0));
+        order.setAccumulatePaused("0");
         orderMapper.insertOrder(order);
+        creditAssistGrants(memberId, product, order.getOrderId(), rebateGrants, qtyDec);
         commissionService.grantForSubscribe(order);
 
         memberService.refreshLevelAndUplines(memberId);
@@ -175,6 +270,25 @@ public class BizOrderServiceImpl implements IBizOrderService
             refreshUnlock(member.getParentId(), productId, support);
         }
         return fillActivate(orderMapper.selectOrderById(order.getOrderId()), support);
+    }
+
+    private void creditAssistGrants(Long memberId, BizProduct product, Long orderId,
+            java.util.List<BizProduct.AssistGrant> grants, BigDecimal qtyDec)
+    {
+        if (grants == null || grants.isEmpty() || product == null || orderId == null)
+        {
+            return;
+        }
+        for (BizProduct.AssistGrant g : grants)
+        {
+            if (g == null || !g.valid())
+            {
+                continue;
+            }
+            BigDecimal total = g.getUnit().multiply(qtyDec);
+            walletService.credit(memberId, g.getCurrency(), total, BizConstants.BIZ_ASSIST_GRANT,
+                    orderId, "认购发放助力值:" + product.getProductName(), BizConstants.WALLET_ASSIST);
+        }
     }
 
     private int resolveQuantity(Integer quantity)
@@ -234,6 +348,52 @@ public class BizOrderServiceImpl implements IBizOrderService
         return success;
     }
 
+    @Override
+    public int processAssistPrincipalReturn()
+    {
+        List<BizOrder> orders = orderMapper.selectAssistDueReturnOrders();
+        int success = 0;
+        for (int i = 0; i < orders.size(); i++)
+        {
+            BizOrder order = orders.get(i);
+            try
+            {
+                SpringUtils.getAopProxy(this).returnAssistPrincipal(order);
+                success++;
+            }
+            catch (Exception e)
+            {
+                log.error("订单{}助力退本失败: {}", order.getOrderId(), e.getMessage());
+            }
+        }
+        return success;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void returnAssistPrincipal(BizOrder order)
+    {
+        if (order == null || !order.assistMode())
+        {
+            return;
+        }
+        if ("1".equals(order.getPrincipalReturned()))
+        {
+            return;
+        }
+        if (order.getPrice() == null || order.getPrice().compareTo(BigDecimal.ZERO) <= 0)
+        {
+            throw new ServiceException("退本金额无效");
+        }
+        walletService.credit(order.getMemberId(), order.getCurrency(), order.getPrice(),
+                BizConstants.BIZ_PRINCIPAL_RETURN, order.getOrderId(),
+                "星航助力退本:" + order.getProductName(), BizConstants.WALLET_BALANCE);
+        BizOrder patch = new BizOrder();
+        patch.setOrderId(order.getOrderId());
+        patch.setPrincipalReturned("1");
+        patch.setStatus(BizConstants.ORDER_FINISHED);
+        orderMapper.updateOrder(patch);
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public void rebateOne(BizOrder order, Date today)
     {
@@ -244,6 +404,11 @@ public class BizOrderServiceImpl implements IBizOrderService
     public void rebateOne(BizOrder order, Date today, UnlockSupport support)
     {
         if (order == null)
+        {
+            return;
+        }
+        boolean accumulate = order.accumulateIncome();
+        if (accumulate && "1".equals(order.getAccumulatePaused()))
         {
             return;
         }
@@ -292,12 +457,12 @@ public class BizOrderServiceImpl implements IBizOrderService
             }
         }
         boolean allActivated = nz(order.getActivatedQty()) >= qtyOf(order);
+        BizOrder update = new BizOrder();
+        update.setOrderId(order.getOrderId());
         if (paid.compareTo(BigDecimal.ZERO) > 0)
         {
             String currency = StringUtils.isEmpty(order.getCurrency())
                     ? BizConstants.CURRENCY_CNY : order.getCurrency().toUpperCase();
-            walletService.credit(order.getMemberId(), currency, paid,
-                    BizConstants.BIZ_REBATE, order.getOrderId(), "产品每日返利");
             BizRebateLog rebateLog = new BizRebateLog();
             rebateLog.setOrderId(order.getOrderId());
             rebateLog.setMemberId(order.getMemberId());
@@ -305,12 +470,30 @@ public class BizOrderServiceImpl implements IBizOrderService
             rebateLog.setAmount(paid);
             rebateLog.setRebateDate(today);
             rebateLogMapper.insertRebateLog(rebateLog);
-        }
-        BizOrder update = new BizOrder();
-        update.setOrderId(order.getOrderId());
-        if (paid.compareTo(BigDecimal.ZERO) > 0)
-        {
             update.setLastRebateDate(today);
+
+            if (accumulate)
+            {
+                BigDecimal prev = order.getAccumulatedAmount() == null ? BigDecimal.ZERO : order.getAccumulatedAmount();
+                int days = nz(order.getAccumulateDays()) + 1;
+                update.setAccumulatedAmount(prev.add(paid));
+                update.setAccumulateDays(Integer.valueOf(days));
+                update.setLastAccumulateDate(today);
+                if (order.getAccumulateCycleStartAt() == null)
+                {
+                    update.setAccumulateCycleStartAt(now);
+                }
+                int cycle = nz(order.getAccumulateCycleDays());
+                if (cycle > 0 && days >= cycle)
+                {
+                    update.setAccumulatePaused("1");
+                }
+            }
+            else
+            {
+                walletService.credit(order.getMemberId(), currency, paid,
+                        BizConstants.BIZ_REBATE, order.getOrderId(), "产品每日返利");
+            }
         }
         if (!allActivated)
         {
@@ -325,6 +508,83 @@ public class BizOrderServiceImpl implements IBizOrderService
             }
         }
         orderMapper.updateOrder(update);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BizOrder settleAccumulate(Long memberId, Long orderId)
+    {
+        if (memberId == null || orderId == null)
+        {
+            throw new ServiceException("订单不存在");
+        }
+        BizOrder order = orderMapper.selectOrderById(orderId);
+        if (order == null || !memberId.equals(order.getMemberId()))
+        {
+            throw new ServiceException("订单不存在");
+        }
+        if (!order.accumulateIncome())
+        {
+            throw new ServiceException("该订单不是累计结算模式");
+        }
+        BigDecimal amount = order.getAccumulatedAmount() == null ? BigDecimal.ZERO : order.getAccumulatedAmount();
+        if (amount.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            throw new ServiceException("暂无可结算累计金额");
+        }
+        int cycle = nz(order.getAccumulateCycleDays());
+        int days = nz(order.getAccumulateDays());
+        if (cycle > 0 && days < cycle)
+        {
+            throw new ServiceException("未满累计周期（" + days + "/" + cycle + "天）");
+        }
+        if (order.getRelatedProductId() == null || !hasRelatedProduct(memberId, order.getRelatedProductId()))
+        {
+            String name = StringUtils.isEmpty(order.getRelatedProductName()) ? "对档产品" : order.getRelatedProductName();
+            throw new ServiceException("请先认购" + name + "后再结算");
+        }
+        String currency = StringUtils.isEmpty(order.getCurrency())
+                ? BizConstants.CURRENCY_CNY : order.getCurrency().toUpperCase();
+        walletService.credit(memberId, currency, amount, BizConstants.BIZ_ACCUMULATE_SETTLE,
+                order.getOrderId(), "订单累计结算:" + order.getProductName(), BizConstants.WALLET_PRODUCT);
+
+        BizOrder patch = new BizOrder();
+        patch.setOrderId(orderId);
+        patch.setAccumulatedAmount(BigDecimal.ZERO);
+        patch.setAccumulateDays(Integer.valueOf(0));
+        patch.setAccumulatePaused("0");
+        patch.setAccumulateCycleStartAt(DateUtils.getNowDate());
+        orderMapper.updateOrder(patch);
+        return selectOrderById(orderId);
+    }
+
+    private boolean hasRelatedProduct(Long memberId, Long relatedProductId)
+    {
+        if (memberId == null || relatedProductId == null)
+        {
+            return false;
+        }
+        return orderMapper.countMemberProductOrders(memberId, relatedProductId) > 0;
+    }
+
+    private void fillAccumulateFlags(BizOrder order)
+    {
+        if (order == null || !order.accumulateIncome())
+        {
+            if (order != null)
+            {
+                order.setCanSettleAccumulate(Boolean.FALSE);
+                order.setRelatedProductOwned(Boolean.FALSE);
+            }
+            return;
+        }
+        boolean owned = hasRelatedProduct(order.getMemberId(), order.getRelatedProductId());
+        order.setRelatedProductOwned(Boolean.valueOf(owned));
+        BigDecimal amount = order.getAccumulatedAmount() == null ? BigDecimal.ZERO : order.getAccumulatedAmount();
+        int cycle = nz(order.getAccumulateCycleDays());
+        int days = nz(order.getAccumulateDays());
+        boolean cycleOk = cycle <= 0 || days >= cycle;
+        order.setCanSettleAccumulate(Boolean.valueOf(amount.compareTo(BigDecimal.ZERO) > 0 && cycleOk && owned));
     }
 
     private void refreshUnlock(Long memberId, Long productId, UnlockSupport support)
@@ -425,6 +685,14 @@ public class BizOrderServiceImpl implements IBizOrderService
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(time);
         calendar.add(Calendar.HOUR_OF_DAY, hours);
+        return calendar.getTime();
+    }
+
+    private Date plusDays(Date time, int days)
+    {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(time);
+        calendar.add(Calendar.DAY_OF_MONTH, days);
         return calendar.getTime();
     }
 

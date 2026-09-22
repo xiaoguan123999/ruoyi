@@ -20,6 +20,20 @@
         <result property="remainingDays"     column="remaining_days"/>
         <result property="lastRebateDate"    column="last_rebate_date"/>
         <result property="withdrawRequired"  column="withdraw_required"/>
+        <result property="bizMode"           column="biz_mode"/>
+        <result property="assistValue"       column="assist_value"/>
+        <result property="principalReturnDays" column="principal_return_days"/>
+        <result property="principalReturnAt" column="principal_return_at"/>
+        <result property="principalReturned" column="principal_returned"/>
+        <result property="incomeMode"        column="income_mode"/>
+        <result property="accumulateCycleDays" column="accumulate_cycle_days"/>
+        <result property="relatedProductId"  column="related_product_id"/>
+        <result property="relatedProductName" column="related_product_name"/>
+        <result property="accumulatedAmount" column="accumulated_amount"/>
+        <result property="accumulateDays"    column="accumulate_days"/>
+        <result property="accumulatePaused"  column="accumulate_paused"/>
+        <result property="accumulateCycleStartAt" column="accumulate_cycle_start_at"/>
+        <result property="lastAccumulateDate" column="last_accumulate_date"/>
         <result property="unlockDirectQty"   column="unlock_direct_qty"/>
         <result property="unlockDelayHours"  column="unlock_delay_hours"/>
         <result property="incomeStartTime"   column="income_start_time"/>
@@ -34,12 +48,18 @@
                p.category_id, c.category_name, c.cover_url as series_cover_url,
                o.currency, o.price, ifnull(o.quantity, 1) as quantity,
                o.daily_rebate, o.duration_days, o.remaining_days, o.last_rebate_date,
-               o.withdraw_required, o.unlock_direct_qty, o.unlock_delay_hours, o.income_start_time,
+               o.withdraw_required, o.biz_mode, o.assist_value, o.principal_return_days,
+               o.principal_return_at, o.principal_returned,
+               o.income_mode, o.accumulate_cycle_days, o.related_product_id, rp.product_name as related_product_name,
+               o.accumulated_amount, o.accumulate_days, o.accumulate_paused,
+               o.accumulate_cycle_start_at, o.last_accumulate_date,
+               o.unlock_direct_qty, o.unlock_delay_hours, o.income_start_time,
                o.status, o.create_time, o.update_time, o.remark
         from biz_order o
         left join biz_member m on m.member_id = o.member_id
         left join biz_product p on p.product_id = o.product_id
         left join biz_product_category c on c.category_id = p.category_id
+        left join biz_product rp on rp.product_id = o.related_product_id
     </sql>
 
     <select id="selectOrderById" parameterType="Long" resultMap="BizOrderResult">
@@ -67,6 +87,17 @@
     <select id="selectHoldingOrders" resultMap="BizOrderResult">
         <include refid="selectOrderVo"/>
         where o.status = '0'
+          and (o.biz_mode is null or o.biz_mode = '' or o.biz_mode = 'REBATE')
+    </select>
+
+    <select id="selectAssistDueReturnOrders" resultMap="BizOrderResult">
+        <include refid="selectOrderVo"/>
+        where o.status = '0'
+          and o.biz_mode = 'ASSIST'
+          and ifnull(o.principal_returned, '0') = '0'
+          and o.principal_return_at is not null
+          and o.principal_return_at &lt;= sysdate()
+        order by o.principal_return_at asc, o.order_id asc
     </select>
 
     <select id="countMemberOrders" resultType="int">
@@ -116,11 +147,17 @@
         insert into biz_order (
             order_no, member_id, product_id, product_name, currency, price, quantity, daily_rebate,
             duration_days, remaining_days, last_rebate_date, withdraw_required,
+            biz_mode, assist_value, principal_return_days, principal_return_at, principal_returned,
+            income_mode, accumulate_cycle_days, related_product_id,
+            accumulated_amount, accumulate_days, accumulate_paused, accumulate_cycle_start_at, last_accumulate_date,
             unlock_direct_qty, unlock_delay_hours, income_start_time, status, create_time
         ) values (
             #{orderNo}, #{memberId}, #{productId}, #{productName}, #{currency}, #{price}, #{quantity}, #{dailyRebate},
             #{durationDays}, #{remainingDays}, #{lastRebateDate}, #{withdrawRequired},
-            #{unlockDirectQty}, #{unlockDelayHours}, #{incomeStartTime}, #{status}, sysdate()
+            #{bizMode}, #{assistValue}, #{principalReturnDays}, #{principalReturnAt}, #{principalReturned},
+            #{incomeMode}, #{accumulateCycleDays}, #{relatedProductId},
+            #{accumulatedAmount}, #{accumulateDays}, #{accumulatePaused}, #{accumulateCycleStartAt}, #{lastAccumulateDate},
+            #{unlockDirectQty}, #{unlockDelayHours}, #{incomeStartTime}, #{status}, #{createTime}
         )
     </insert>
 
@@ -130,6 +167,13 @@
             <if test="remainingDays != null">remaining_days = #{remainingDays},</if>
             <if test="lastRebateDate != null">last_rebate_date = #{lastRebateDate},</if>
             <if test="incomeStartTime != null">income_start_time = #{incomeStartTime},</if>
+            <if test="principalReturned != null">principal_returned = #{principalReturned},</if>
+            <if test="accumulatedAmount != null">accumulated_amount = #{accumulatedAmount},</if>
+            <if test="accumulateDays != null">accumulate_days = #{accumulateDays},</if>
+            <if test="accumulatePaused != null">accumulate_paused = #{accumulatePaused},</if>
+            <if test="accumulateCycleStartAt != null">accumulate_cycle_start_at = #{accumulateCycleStartAt},</if>
+            <if test="params != null and params.clearAccumulateCycleStart != null">accumulate_cycle_start_at = null,</if>
+            <if test="lastAccumulateDate != null">last_accumulate_date = #{lastAccumulateDate},</if>
             <if test="status != null">status = #{status},</if>
             update_time = sysdate()
         </set>

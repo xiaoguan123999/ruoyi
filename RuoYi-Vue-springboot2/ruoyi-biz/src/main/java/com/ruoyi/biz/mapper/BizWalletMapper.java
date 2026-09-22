@@ -14,6 +14,8 @@ public interface BizWalletMapper
 
     List<BizWallet> selectWalletsByMemberId(Long memberId);
 
+    List<BizWallet> selectWalletList(BizWallet query);
+
     int countByTypeCode(String typeCode);
 
     int countNonZeroByTypeCode(String typeCode);

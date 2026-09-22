@@ -3,6 +3,7 @@ package com.ruoyi.web.controller.app;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -103,7 +104,7 @@ public class AppBizController extends BaseController
                 body.getProductId(), body.getCurrency(), body.getPayPassword(), body.getQuantity())));
     }
 
-    @ApiOperation(value = "我的认购订单", notes = "分页。status：0 持仓中，1 已完成。每条带所属产品系列。")
+    @ApiOperation(value = "我的认购订单", notes = "分页。status：0 持仓中，1 已完成。每条带所属产品系列。ACCUMULATE 订单含累计金额与可结算状态。")
     @GetMapping("/orders")
     public TableDataInfo orders()
     {
@@ -124,6 +125,14 @@ public class AppBizController extends BaseController
             }
         }
         return table;
+    }
+
+    @ApiOperation(value = "结算订单累计", notes = "ACCUMULATE 订单满周期且持有对档产品后，将累计金额结算进产品收益钱包并清零累计。")
+    @PostMapping("/orders/{orderId}/settleAccumulate")
+    public AppOrderResult settleAccumulate(@PathVariable Long orderId)
+    {
+        return AppOrderResult.ok(fillSeriesCover(
+                orderService.settleAccumulate(AppSecurityUtils.getMemberId(), orderId)));
     }
 
     @ApiOperation(value = "我的钱包/资产", notes = "data 含 CNY/USDT 余额、冻结、产品收益。助力值固定 0。")

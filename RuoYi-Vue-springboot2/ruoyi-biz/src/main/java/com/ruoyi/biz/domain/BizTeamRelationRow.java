@@ -30,7 +30,11 @@ public class BizTeamRelationRow
     @ApiModelProperty("账号/手机号")
     private String account;
 
-    @Excel(name = "列表", sort = 6)
+    @Excel(name = "姓名", sort = 6)
+    @ApiModelProperty("实名姓名，未填为 --")
+    private String realName;
+
+    @Excel(name = "列表", sort = 7)
     @ApiModelProperty("同级直推列表文本，导出用")
     private String peerList;
 
@@ -95,6 +99,16 @@ public class BizTeamRelationRow
     public void setAccount(String account)
     {
         this.account = account;
+    }
+
+    public String getRealName()
+    {
+        return realName;
+    }
+
+    public void setRealName(String realName)
+    {
+        this.realName = realName;
     }
 
     public List<BizTeamRelationPeer> getPeers()

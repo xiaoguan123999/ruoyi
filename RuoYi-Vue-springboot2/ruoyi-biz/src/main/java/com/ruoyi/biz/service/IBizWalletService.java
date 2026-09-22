@@ -12,6 +12,9 @@ public interface IBizWalletService
 {
     List<BizWallet> selectWalletsByMemberId(Long memberId);
 
+    /** 后台：按会员/手机号/类型/币种查钱包余额 */
+    List<BizWallet> selectWalletList(BizWallet query);
+
     BizWallet getWallet(Long memberId, String currency);
 
     BizWallet getWallet(Long memberId, String typeCode, String currency);

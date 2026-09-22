@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizProductCardMetricMapper">
+
+    <resultMap type="BizProductCardMetric" id="BizProductCardMetricResult">
+        <id     property="id"          column="id"/>
+        <result property="productId"   column="product_id"/>
+        <result property="slotIndex"   column="slot_index"/>
+        <result property="label"       column="label"/>
+        <result property="source"      column="source"/>
+        <result property="customText"  column="custom_text"/>
+    </resultMap>
+
+    <select id="selectByProductId" parameterType="Long" resultMap="BizProductCardMetricResult">
+        select id, product_id, slot_index, label, source, custom_text
+        from biz_product_card_metric
+        where product_id = #{productId}
+        order by slot_index asc
+    </select>
+
+    <select id="selectByProductIds" resultMap="BizProductCardMetricResult">
+        select id, product_id, slot_index, label, source, custom_text
+        from biz_product_card_metric
+        where product_id in
+        <foreach collection="productIds" item="pid" open="(" separator="," close=")">
+            #{pid}
+        </foreach>
+        order by product_id asc, slot_index asc
+    </select>
+
+    <delete id="deleteByProductId" parameterType="Long">
+        delete from biz_product_card_metric where product_id = #{productId}
+    </delete>
+
+    <insert id="insertMetric" parameterType="BizProductCardMetric" useGeneratedKeys="true" keyProperty="id">
+        insert into biz_product_card_metric (product_id, slot_index, label, source, custom_text)
+        values (#{productId}, #{slotIndex}, #{label}, #{source}, #{customText})
+    </insert>
+
+    <insert id="insertMetricBatch">
+        insert into biz_product_card_metric (product_id, slot_index, label, source, custom_text) values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.productId}, #{item.slotIndex}, #{item.label}, #{item.source}, #{item.customText})
+        </foreach>
+    </insert>
+</mapper>

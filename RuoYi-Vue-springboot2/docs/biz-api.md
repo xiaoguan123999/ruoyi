@@ -575,18 +575,33 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 
 | 字段 | 说明 |
 |---|---|
-| priceCny / dailyRebateCny | 人民币认购价和日返，大于 0 才支持人民币下单 |
-| priceUsdt / dailyRebateUsdt | USDT 认购价和日返，大于 0 才支持 USDT 下单 |
+| priceCny / dailyRebateCny | 人民币认购价和日返，大于 0 才支持人民币下单。`bizMode=ASSIST` 时日返忽略 |
+| priceUsdt / dailyRebateUsdt | USDT 认购价和日返，大于 0 才支持 USDT 下单。`bizMode=ASSIST` 时日返忽略 |
 | supportsCny / supportsUsdt | 是否支持该币种按钮 |
 | price / dailyRebate / currency | 兼容旧字段，优先等于人民币价 |
-| unlockDirectQty | 直属下级需认购同一产品的总份数。`0` 关闭一拖二，自己认购即激活；`2` 即一拖二 |
+| bizMode | `REBATE`（默认日返）/ `ASSIST`（助力退本：无日返、发助力值、到期退本；**不控制**列表 UI） |
+| assistValueCny / assistValueUsdt | ASSIST 认购成功按币种发放的助力值（入账钱包 `ASSIST`，不可提现） |
+| principalReturnDays | ASSIST 本金返还天数；到期退回余额钱包 |
+| skipDetail / skipDetailFlag | `1`/`true`：列表直购、不进认购二级页；`0`/`false`：进二级页。与 `bizMode` 无关。双币按钮仍只看价格是否配置 |
+| unlockDirectQty | 直属下级需认购同一产品的总份数。`0` 关闭一拖二，自己认购即激活；`2` 即一拖二。ASSIST 固定关闭 |
 | unlockDelayHours | 激活后再等多少小时才开始日返。填 `24` 表示激活后等 24 小时；`0` 表示激活后即可日返 |
 | onSale | `1` 开售，`0` 未开售。未开售仍出现在列表，App 不可进详情 |
 | onSaleFlag | 同 onSale，`true` 可点详情 |
+| layoutType | 卡片布局编码：`CLASSIC` / `HERO` / `SPLIT` / `NUMBERED` / `ROW` / `COMPACT` 等；未知时 App 降级 CLASSIC |
+| theme | 主题色：`blue` / `purple` / `gold` / `cyan` / `silver` |
+| badgeText | 角标文案；空则后端会回落系列名 |
+| cardNo | 序号卡用，如 `01` |
+| ctaText | 主按钮文案 |
+| mainAmountDisplay | 主金额展示文案（后端组装） |
+| metrics | 指标槽数组：`[{ "label": "每日收益", "display": "8 元 / 1.14 USDT" }]` |
 
 `withdrawRequired = 1` 表示认购该币种指定产品后，才允许提现对应币种（看订单当时选的币）。
 
 一拖二：自己买 1 份，直属下级累计认购同一产品达到 `unlockDirectQty` 份后（先后顺序不限），订单立刻激活。激活后再等 `unlockDelayHours` 小时才开始日返。未到返利时间不扣 `remainingDays`。两处都填 `0`：自己认购即激活且可日返。
+
+**ASSIST（星航助力）**：无日返、无一拖二。认购成功即时发助力值到 `ASSIST` 钱包；`principalReturnDays` 天后本金退回 `BALANCE`。详情见 `docs/product-assist-mode-design.md`，SQL 见 `docs/patch-2026-09-22-product.sql`。
+
+**列表直购**：由 `skipDetail` 控制，与 ASSIST 无关；SQL 见 `docs/patch-2026-09-22-product.sql`（章节 C）。SPLIT 卡片 RMB/USDT 按钮仅由对应认购价格是否大于 0 决定。
 
 `GET /app/products/{productId}`  
 `GET /app/product/{productId}` 也可以。
@@ -610,7 +625,7 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 | currency | 建议填 | `CNY` 或 `USDT`。不传：有人民币价走人民币，否则走 USDT |
 | amount | 否 | **忽略**，以产品配置的对应币种价格为准 |
 
-`CNY` 扣人民币钱包、日返人民币；`USDT` 扣 USDT 钱包、日返 USDT。产品没配该币种价格会 500。每天 00:05 按订单币种打 `dailyRebate`，打满 `durationDays` 天结束。未到返利时间（一拖二未达标，或已激活但等待小时未到）当日不发、不扣剩余天数。
+`CNY` 扣人民币钱包、日返人民币；`USDT` 扣 USDT 钱包、日返 USDT。产品没配该币种价格会 500。`bizMode=REBATE`：每天 00:05 按订单币种打 `dailyRebate`，打满 `durationDays` 天结束。未到返利时间（一拖二未达标，或已激活但等待小时未到）当日不发、不扣剩余天数。`bizMode=ASSIST`：不进日返；即时发助力值；定时任务到期退本。
 
 `GET /app/orders?pageNum=1&pageSize=10` 我的订单。  
 订单 `status`：`0` 持仓中，`1` 已完成。**是否已激活看 `activateStatus`，是否开始返利看 `incomeReady`，不要用 `status==='1'` 当已激活**（`status=1` 是已完成）。订单带 `currency` 字段，以及所属产品系列：
@@ -1212,11 +1227,13 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | POST | `/login` | 后台登录，已绑定则 body 需带 `googleCode` |
 | GET | `/biz/member/team/{memberId}?teamLevel=1` | 某会员的 1～7 级或全部下线 |
 | GET/POST/PUT | `/system/notice` | 通知公告（系统管理菜单，类型选「公告」会展示到 App） |
-| GET/POST/PUT | `/biz/productCategory` | 产品分类（App 系列）列表/新增/修改 |
+| GET/POST/PUT | `/biz/productCategory` | 产品分类（App 系列）列表/新增/修改，含 `defaultTemplateId` |
 | GET | `/biz/productCategory/options` | 分类下拉 |
-| GET/POST/PUT | `/biz/product` | 产品列表/新增/修改，产品挂 `categoryId` |
-| GET | `/biz/product/{productId}` | 产品详情 |
+| GET/POST/PUT | `/biz/product` | 产品列表/新增/修改，产品挂 `categoryId`；保存可带 `templateId/theme/badgeText/cardNo/ctaText/metrics` |
+| GET | `/biz/product/{productId}` | 产品详情（含 metrics） |
 | DELETE | `/biz/product/{ids}` | 删除产品 |
+| GET/POST/PUT/DELETE | `/biz/productCardTemplate` | 产品卡片模板 CRUD |
+| GET | `/biz/productCardTemplate/options` | 启用中的模板下拉 |
 | GET | `/biz/order/list` | 认购订单 |
 | GET | `/biz/checkin/list` | 签到记录 |
 | GET/PUT | `/biz/checkin/rule` | 签到规则（金额、连续天数、奖品、概率） |

@@ -12,6 +12,9 @@ public interface BizOrderMapper
 
     List<BizOrder> selectHoldingOrders();
 
+    /** ASSIST 到期待退本 */
+    List<BizOrder> selectAssistDueReturnOrders();
+
     int countMemberOrders(@Param("memberId") Long memberId);
 
     int countMemberProductOrders(@Param("memberId") Long memberId, @Param("productId") Long productId);

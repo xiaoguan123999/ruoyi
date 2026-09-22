@@ -25,6 +25,7 @@ public class ApplicationConfig
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer jacksonObjectMapperCustomization()
     {
-        return jacksonObjectMapperBuilder -> jacksonObjectMapperBuilder.timeZone(TimeZone.getDefault());
+        // 统一按东八区格式化日期，避免 createTime 比本地少 8 小时
+        return jacksonObjectMapperBuilder -> jacksonObjectMapperBuilder.timeZone(TimeZone.getTimeZone("GMT+8"));
     }
 }

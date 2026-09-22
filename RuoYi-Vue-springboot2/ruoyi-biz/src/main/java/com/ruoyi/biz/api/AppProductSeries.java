@@ -20,6 +20,12 @@ public class AppProductSeries
     @ApiModelProperty(value = "排序，越小越靠前")
     private Integer sort;
 
+    @ApiModelProperty(value = "系列默认布局类型")
+    private String defaultLayoutType;
+
+    @ApiModelProperty(value = "列表顶部说明，如助力兑换时间提示")
+    private String remark;
+
     public Long getSeriesId()
     {
         return seriesId;
@@ -68,5 +74,25 @@ public class AppProductSeries
     public void setSort(Integer sort)
     {
         this.sort = sort;
+    }
+
+    public String getDefaultLayoutType()
+    {
+        return defaultLayoutType;
+    }
+
+    public void setDefaultLayoutType(String defaultLayoutType)
+    {
+        this.defaultLayoutType = defaultLayoutType;
+    }
+
+    public String getRemark()
+    {
+        return remark;
+    }
+
+    public void setRemark(String remark)
+    {
+        this.remark = remark;
     }
 }
