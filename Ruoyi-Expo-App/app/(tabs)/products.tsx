@@ -10,15 +10,20 @@ import {
 import { Text } from '@/components/ui/AppText';
 import { useStableSafeTop } from '@/hooks/useStableSafeTop';
 
+import { fetchAppProfile } from '@/api/app-auth';
 import {
   fetchAppProductSeriesList,
   fetchAppProductSeriesWithItems,
 } from '@/api/app-product';
+import { subscribeAppProduct } from '@/api/app-trade';
+import { setAppPayPassword } from '@/api/app-member';
+import { ApiError } from '@/api/request';
 import { ProductCard } from '@/components/ui/ProductCard';
+import { PayPasswordModal, type PayPasswordMode } from '@/components/ui/PayPasswordModal';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { colors } from '@/theme/colors';
 import type { ProductItem, ProductSeries } from '@/types/product';
-import { modalWarning } from '@/utils/toast';
+import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
 
 export default function ProductsScreen() {
   const top = useStableSafeTop();
@@ -32,6 +37,13 @@ export default function ProductsScreen() {
   const activeSeriesIdRef = useRef(activeSeriesId);
   activeSeriesIdRef.current = activeSeriesId;
 
+  const [hasPayPassword, setHasPayPassword] = useState(true);
+  const [payVisible, setPayVisible] = useState(false);
+  const [payMode, setPayMode] = useState<PayPasswordMode>('verify');
+  const [submitting, setSubmitting] = useState(false);
+  const [pendingItem, setPendingItem] = useState<ProductItem | null>(null);
+  const [pendingCurrency, setPendingCurrency] = useState<'CNY' | 'USDT' | null>(null);
+
   const loadItems = useCallback(async (seriesId: string) => {
     if (!seriesId) {
       setItems([]);
@@ -41,6 +53,11 @@ export default function ProductsScreen() {
     try {
       const detail = await fetchAppProductSeriesWithItems(seriesId);
       setItems(detail?.items ?? []);
+      if (detail?.tip) {
+        setSeriesList((prev) =>
+          prev.map((s) => (s.id === seriesId ? { ...s, tip: detail.tip } : s)),
+        );
+      }
     } catch {
       setItems([]);
     } finally {
@@ -51,7 +68,11 @@ export default function ProductsScreen() {
   const loadSeries = useCallback(async () => {
     setLoadingSeries(true);
     try {
-      const list = await fetchAppProductSeriesList();
+      const [list, profile] = await Promise.all([
+        fetchAppProductSeriesList(),
+        fetchAppProfile().catch(() => null),
+      ]);
+      setHasPayPassword(profile?.hasPayPassword !== false);
       setSeriesList(list);
       const preferred =
         (typeof seriesIdParam === 'string' && list.some((item) => item.id === seriesIdParam)
@@ -111,6 +132,96 @@ export default function ProductsScreen() {
     await loadSeries();
   }, [activeSeriesId, loadItems, loadSeries]);
 
+  const isSkipDetail = (item: ProductItem) => item.skipDetailFlag === true;
+
+  const isSplitLayout = (item: ProductItem) =>
+    String(item.layoutType || '').toUpperCase() === 'SPLIT';
+
+  const requestSubscribe = (item: ProductItem, currency: 'CNY' | 'USDT') => {
+    if (submitting) {
+      return;
+    }
+    if (item.onSaleFlag !== true) {
+      modalWarning('暂未开放');
+      return;
+    }
+    const productId = item.apiId ?? Number(item.id);
+    if (!Number.isFinite(productId) || productId <= 0) {
+      modalWarning('产品暂未开放认购');
+      return;
+    }
+    const supported = currency === 'USDT' ? item.amount > 0 : item.amountCny > 0;
+    if (!supported) {
+      modalWarning(currency === 'USDT' ? '该产品暂不支持 USDT 认购' : '该产品暂不支持 RMB 认购');
+      return;
+    }
+    setPendingItem(item);
+    setPendingCurrency(currency);
+    setPayMode(hasPayPassword ? 'verify' : 'set');
+    setPayVisible(true);
+  };
+
+  const openDetail = (item: ProductItem) => {
+    if (item.onSaleFlag !== true) {
+      modalWarning('暂未开放');
+      return;
+    }
+    // 跳过二级页：列表直购（与业务模式无关）
+    if (isSkipDetail(item)) {
+      // SPLIT 双按钮走 onSubscribe；单按钮布局点主 CTA 时按已配价选币种
+      if (isSplitLayout(item)) {
+        return;
+      }
+      const currency: 'CNY' | 'USDT' =
+        item.amountCny > 0 ? 'CNY' : item.amount > 0 ? 'USDT' : 'CNY';
+      requestSubscribe(item, currency);
+      return;
+    }
+    router.push(`/products/subscribe/${item.id}`);
+  };
+
+  const closePaySheet = () => {
+    setPayVisible(false);
+    setPendingItem(null);
+    setPendingCurrency(null);
+    setPayMode('verify');
+  };
+
+  const onConfirmPay = async (payPassword: string) => {
+    if (!pendingItem || !pendingCurrency || submitting) {
+      return;
+    }
+    if (payPassword.length < 4) {
+      modalWarning('请输入交易密码');
+      return;
+    }
+    const productId = pendingItem.apiId ?? Number(pendingItem.id);
+    setSubmitting(true);
+    try {
+      if (payMode === 'set') {
+        await setAppPayPassword(payPassword);
+        setHasPayPassword(true);
+      }
+      const message = await subscribeAppProduct({
+        productId,
+        currency: pendingCurrency,
+        payPassword,
+        quantity: 1,
+      });
+      closePaySheet();
+      requestAnimationFrame(() => modalSuccess(message));
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 401) {
+        modalError(error instanceof ApiError ? error.message : '认购失败');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const activeSeries = seriesList.find((s) => s.id === activeSeriesId);
+  const seriesTip = (activeSeries?.tip || '').trim();
+
   return (
     <View style={styles.page}>
       <View style={[styles.header, { paddingTop: Math.max(top, 12) + 8 }]}>
@@ -136,9 +247,10 @@ export default function ProductsScreen() {
               );
             })}
           </ScrollView>
-        ) : (
-          <Text style={styles.headerPlaceholder}>{loadingSeries ? '加载中…' : '暂无产品系列'}</Text>
+      ) : (
+        <Text style={styles.headerPlaceholder}>{loadingSeries ? '加载中…' : '暂无产品系列'}</Text>
         )}
+        {seriesTip ? <Text style={styles.seriesTip}>{seriesTip}</Text> : null}
       </View>
 
       {loadingSeries && seriesList.length === 0 ? (
@@ -158,22 +270,33 @@ export default function ProductsScreen() {
           ) : items.length === 0 ? (
             <Text style={styles.empty}>产品筹备中，敬请期待...</Text>
           ) : (
-            items.map((item) => (
-              <ProductCard
-                key={item.id}
-                item={item}
-                onPress={() => {
-                  if (item.onSaleFlag !== true) {
-                    modalWarning('暂未开放');
-                    return;
+            items.map((item) => {
+              const skipDetail = isSkipDetail(item);
+              const split = isSplitLayout(item);
+              return (
+                <ProductCard
+                  key={item.id}
+                  item={item}
+                  onPress={() => openDetail(item)}
+                  onSubscribe={
+                    skipDetail && split
+                      ? (currency) => requestSubscribe(item, currency)
+                      : undefined
                   }
-                  router.push(`/products/subscribe/${item.id}`);
-                }}
-              />
-            ))
+                />
+              );
+            })
           )}
         </RefreshableScrollView>
       )}
+
+      <PayPasswordModal
+        visible={payVisible}
+        mode={payMode}
+        submitting={submitting}
+        onCancel={closePaySheet}
+        onConfirm={(pwd) => void onConfirmPay(pwd)}
+      />
     </View>
   );
 }
@@ -232,6 +355,14 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 32,
     gap: 16,
+  },
+  seriesTip: {
+    color: colors.text,
+    fontSize: 12,
+    lineHeight: 18,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   loadingWrap: {
     flex: 1,

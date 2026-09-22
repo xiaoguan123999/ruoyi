@@ -1,5 +1,5 @@
 import { displayText, formatBalance } from '@/api/app-auth';
-import { request } from '@/api/request';
+import { ApiError, request } from '@/api/request';
 import type {
     AppAmountBody,
     AppCheckinInfo,
@@ -78,7 +78,8 @@ function formatDateTime(value: unknown): string {
   if (!raw) {
     return displayText();
   }
-  return raw.replace('T', ' ').slice(0, 19).replace(/:/g, '：');
+  // 统一为 YYYY-MM-DD HH:mm:ss，保留半角冒号避免「05：26：20」被看成两段
+  return raw.replace('T', ' ').replace(/\.\d+$/, '').slice(0, 19);
 }
 
 function formatDateOnly(value: unknown): string {
@@ -165,7 +166,7 @@ function mapOrder(raw: unknown): AppOrderRecord | null {
     orderId,
     productId: pickNumber(raw, ['productId']) || undefined,
     productName: pickString(raw, ['productName', 'name'], '--'),
-    planName: pickString(raw, ['planName', 'seriesName', 'plan'], '--'),
+    planName: pickString(raw, ['planName', 'seriesName', 'plan', 'categoryName'], '--'),
     amount: pickNumber(raw, ['amount', 'price', 'payAmount']),
     currency: normalizeCurrency(raw.currency),
     quantity,
@@ -179,6 +180,17 @@ function mapOrder(raw: unknown): AppOrderRecord | null {
       : undefined,
     activateLabel: mapped.activateLabel,
     createTime: formatDateTime(raw.createTime ?? raw.orderTime ?? raw.payTime),
+    incomeMode: pickString(raw, ['incomeMode'], '') || undefined,
+    accumulatedAmount: pickNumber(raw, ['accumulatedAmount']),
+    accumulateDays: Math.floor(toNumber(raw.accumulateDays, 0)),
+    accumulateCycleDays: Math.floor(toNumber(raw.accumulateCycleDays, 0)),
+    accumulatePaused:
+      raw.accumulatePaused === '1' ||
+      raw.accumulatePaused === 1 ||
+      raw.accumulatePaused === true,
+    relatedProductName: pickString(raw, ['relatedProductName'], '') || undefined,
+    relatedProductOwned: Boolean(raw.relatedProductOwned),
+    canSettleAccumulate: Boolean(raw.canSettleAccumulate),
   };
 }
 
@@ -187,6 +199,19 @@ export async function fetchAppOrders(): Promise<AppOrderRecord[]> {
   return extractRows(res)
     .map(mapOrder)
     .filter((item): item is AppOrderRecord => item !== null);
+}
+
+/** POST /app/orders/{orderId}/settleAccumulate */
+export async function settleOrderAccumulate(orderId: number): Promise<AppOrderRecord> {
+  const res = await request<Record<string, unknown>>(`/app/orders/${orderId}/settleAccumulate`, {
+    method: 'POST',
+  });
+  const data = (res as any)?.data ?? res;
+  const mapped = mapOrder(data);
+  if (!mapped) {
+    throw new ApiError('结算结果异常', -1);
+  }
+  return mapped;
 }
 
 function emptyWallet(): AppWallet {

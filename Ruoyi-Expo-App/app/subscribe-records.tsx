@@ -9,15 +9,16 @@ import {
 
 import { Text } from '@/components/ui/AppText';
 import { ApiError } from '@/api/request';
-import { fetchAppOrders, formatMoneyLabel } from '@/api/app-trade';
+import { fetchAppOrders, formatMoneyLabel, settleOrderAccumulate } from '@/api/app-trade';
 import type { AppOrderRecord } from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
-import { modalError } from '@/utils/toast';
+import { modalError, modalSuccess } from '@/utils/toast';
 
 type RecordTab = 'all' | 'running' | 'expired';
 
@@ -89,7 +90,7 @@ export default function SubscribeRecordsScreen() {
           {list.length === 0 ? (
             <Text style={styles.empty}>暂无认购记录</Text>
           ) : (
-            list.map((item) => <RecordCard key={item.orderId} item={item} />)
+            list.map((item) => <RecordCard key={item.orderId} item={item} onSettled={load} />)
           )}
         </RefreshableScrollView>
       )}
@@ -97,14 +98,30 @@ export default function SubscribeRecordsScreen() {
   );
 }
 
-function RecordCard({ item }: { item: AppOrderRecord }) {
+function RecordCard({ item, onSettled }: { item: AppOrderRecord; onSettled: () => void }) {
+  const [settling, setSettling] = useState(false);
   const running = item.statusLabel === '进行中';
+  const accumulate = item.incomeMode === 'ACCUMULATE';
   const activateTone =
     item.activatedQty <= 0
       ? styles.activateIdle
       : item.activatedQty >= item.quantity
         ? styles.activateReady
         : styles.activateOn;
+
+  const onSettle = async () => {
+    if (settling) return;
+    setSettling(true);
+    try {
+      await settleOrderAccumulate(item.orderId);
+      modalSuccess('已结算到产品收益钱包');
+      onSettled();
+    } catch (error) {
+      modalError(error instanceof ApiError ? error.message : '结算失败');
+    } finally {
+      setSettling(false);
+    }
+  };
 
   return (
     <GlassCard style={styles.card}>
@@ -119,6 +136,37 @@ function RecordCard({ item }: { item: AppOrderRecord }) {
         <Text style={styles.product}>{item.productName}</Text>
         <Text style={styles.amount}>{formatMoneyLabel(item.amount, item.currency)}</Text>
       </View>
+
+      {accumulate ? (
+        <View style={styles.accumulateBox}>
+          <View style={styles.row}>
+            <Text style={styles.accLabel}>累计金额</Text>
+            <Text style={styles.accValue}>
+              {formatMoneyLabel(item.accumulatedAmount || 0, item.currency)}
+            </Text>
+          </View>
+          <View style={[styles.row, styles.accMeta]}>
+            <Text style={styles.accHint}>
+              周期 {item.accumulateDays || 0}/{item.accumulateCycleDays || 0} 天
+              {item.accumulatePaused ? ' · 已暂停' : ''}
+            </Text>
+            {item.relatedProductName ? (
+              <Text style={styles.accHint}>
+                {item.relatedProductOwned ? '已持有' : '需认购'}
+                {item.relatedProductName}
+              </Text>
+            ) : null}
+          </View>
+          {item.canSettleAccumulate ? (
+            <PrimaryButton
+              title={settling ? '结算中…' : '结算到产品收益'}
+              onPress={onSettle}
+              compact
+              disabled={settling}
+            />
+          ) : null}
+        </View>
+      ) : null}
 
       <View style={[styles.row, styles.bottomRow]}>
         <View style={[styles.tag, running ? styles.tagRunning : styles.tagExpired]}>
@@ -178,63 +226,83 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  midRow: {
+    marginTop: 12,
+  },
+  bottomRow: {
+    marginTop: 14,
   },
   plan: {
+    color: colors.muted,
+    fontSize: 13,
+    flex: 1,
+    marginRight: 8,
+  },
+  activate: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  activateIdle: { color: 'rgba(180,200,230,0.55)' },
+  activateOn: { color: '#7EC8FF' },
+  activateReady: { color: '#6BE3A0' },
+  product: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+    flex: 1,
+    marginRight: 8,
+  },
+  amount: {
     color: colors.text,
     fontSize: 16,
     fontWeight: '700',
   },
-  activate: {
-    fontSize: 13,
+  accumulateBox: {
+    marginTop: 12,
+    marginHorizontal: 16,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(12, 28, 58, 0.85)',
+    gap: 8,
   },
-  activateIdle: {
-    color: 'rgba(180, 200, 230, 0.72)',
+  accLabel: {
+    color: 'rgba(180,200,230,0.75)',
+    fontSize: 12,
   },
-  activateOn: {
-    color: '#F0C36A',
+  accValue: {
+    color: '#FFD56A',
+    fontSize: 16,
+    fontWeight: '700',
   },
-  activateReady: {
-    color: '#6FCF97',
+  accMeta: {
+    paddingHorizontal: 0,
   },
-  midRow: {
-    marginTop: 14,
-  },
-  product: {
-    color: colors.text,
-    fontSize: 15,
-  },
-  amount: {
-    color: colors.text,
-    fontSize: 15,
-  },
-  bottomRow: {
-    marginTop: 16,
+  accHint: {
+    color: 'rgba(180,200,230,0.65)',
+    fontSize: 11,
+    flexShrink: 1,
   },
   tag: {
-    minWidth: 62,
-    height: 26,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: 8,
     paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   tagRunning: {
-    backgroundColor: '#2FBF4A',
+    backgroundColor: 'rgba(64, 158, 255, 0.2)',
   },
   tagExpired: {
-    backgroundColor: '#5A2E24',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.55)',
+    backgroundColor: 'rgba(140, 160, 190, 0.18)',
   },
   tagText: {
     color: colors.text,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
   },
   time: {
-    color: colors.text,
-    fontSize: 13,
+    color: colors.muted,
+    fontSize: 12,
   },
 });

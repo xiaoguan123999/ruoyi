@@ -231,8 +231,24 @@ export type AppProduct = {
   payoutMethod?: string;
   /** 是否已开售，未开售不可进详情 */
   onSaleFlag?: boolean;
+  /** 跳过二级页：列表直购 */
+  skipDetail?: string;
+  skipDetailFlag?: boolean;
   /** 激活条件文案，仅展示 */
   unlockRuleText?: string;
+  layoutType?: string;
+  templateCode?: string;
+  theme?: string;
+  badgeText?: string;
+  cardNo?: string;
+  ctaText?: string;
+  mainAmountDisplay?: string;
+  /** REBATE / ASSIST */
+  bizMode?: string;
+  assistValueCny?: number;
+  assistValueUsdt?: number;
+  principalReturnDays?: number;
+  metrics?: Array<{ label?: string; display?: string; source?: string; customText?: string }>;
 };
 
 /** GET /app/product/series */
@@ -241,6 +257,9 @@ export type AppProductSeries = {
   seriesName: string;
   coverUrl?: string;
   sort?: number;
+  defaultLayoutType?: string;
+  /** 列表顶部说明 */
+  remark?: string;
 };
 
 export type AppWallet = {
@@ -311,6 +330,15 @@ export type AppOrderRecord = {
   incomeStartTime?: string;
   activateLabel: string;
   createTime: string;
+  /** CREDIT / ACCUMULATE */
+  incomeMode?: string;
+  accumulatedAmount?: number;
+  accumulateDays?: number;
+  accumulateCycleDays?: number;
+  accumulatePaused?: boolean;
+  relatedProductName?: string;
+  relatedProductOwned?: boolean;
+  canSettleAccumulate?: boolean;
 };
 
 export type AppFundRecord = {

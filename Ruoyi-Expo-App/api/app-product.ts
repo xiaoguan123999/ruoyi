@@ -102,6 +102,7 @@ function mapSeries(raw: unknown): AppProductSeries | null {
     seriesName: pickString(raw, ['seriesName', 'categoryName', 'name', 'title'], '--'),
     coverUrl: coverUrl || undefined,
     sort: pickNumber(raw, ['sort']),
+    remark: pickString(raw, ['remark', 'tip', 'notice']) || undefined,
   };
 }
 
@@ -160,7 +161,34 @@ function mapProduct(raw: unknown): AppProduct | null {
     riskLevel: pickString(raw, ['riskLevel']) || undefined,
     payoutMethod: pickString(raw, ['payoutMethod']) || undefined,
     onSaleFlag: raw.onSaleFlag === true,
+    skipDetail: pickString(raw, ['skipDetail']) || undefined,
+    skipDetailFlag:
+      raw.skipDetailFlag === true ||
+      raw.skipDetail === '1' ||
+      raw.skipDetail === 1 ||
+      raw.skipDetail === true,
     unlockRuleText: pickString(raw, ['unlockRuleText']) || undefined,
+    layoutType: pickString(raw, ['layoutType', 'templateCode']) || undefined,
+    templateCode: pickString(raw, ['templateCode', 'layoutType']) || undefined,
+    theme: pickString(raw, ['theme']) || undefined,
+    badgeText: pickString(raw, ['badgeText']) || undefined,
+    cardNo: pickString(raw, ['cardNo']) || undefined,
+    ctaText: pickString(raw, ['ctaText']) || undefined,
+    mainAmountDisplay: pickString(raw, ['mainAmountDisplay']) || undefined,
+    bizMode: pickString(raw, ['bizMode']) || undefined,
+    assistValueCny: pickNumber(raw, ['assistValueCny']),
+    assistValueUsdt: pickNumber(raw, ['assistValueUsdt']),
+    principalReturnDays: pickNumber(raw, ['principalReturnDays']),
+    metrics: Array.isArray(raw.metrics)
+      ? raw.metrics
+          .filter(isRecord)
+          .map((m) => ({
+            label: pickString(m, ['label']),
+            display: pickString(m, ['display', 'customText']),
+            source: pickString(m, ['source']) || undefined,
+            customText: pickString(m, ['customText']) || undefined,
+          }))
+      : undefined,
   };
 }
 
@@ -196,20 +224,36 @@ export function mapAppProductToItem(product: AppProduct, index = 0): ProductItem
     tag: product.categoryName || '--',
     desc: product.remark || '--',
     cover,
-    titleTone: index % 2 === 1 ? 'purple' : 'blue',
+    theme: product.theme || (index % 2 === 1 ? 'purple' : 'blue'),
+    titleTone: product.theme === 'purple' || (!product.theme && index % 2 === 1) ? 'purple' : 'blue',
+    layoutType: product.layoutType || product.templateCode || 'CLASSIC',
+    badgeText: product.badgeText || product.categoryName || undefined,
+    cardNo: product.cardNo || undefined,
+    ctaText: product.ctaText || undefined,
+    mainAmountDisplay: product.mainAmountDisplay || undefined,
+    bizMode: product.bizMode || 'REBATE',
+    metrics: (product.metrics || [])
+      .map((m) => ({
+        label: m.label || '',
+        display: m.display || m.customText || '--',
+      }))
+      .filter((m) => m.label || m.display),
     payoutMethod: product.payoutMethod || undefined,
     currencies: support.length ? support.join(' / ') : '--',
     riskLevel: product.riskLevel || undefined,
     onSaleFlag: product.onSaleFlag === true,
+    skipDetailFlag: product.skipDetailFlag === true,
     unlockRuleText: product.unlockRuleText || undefined,
   };
 }
 
 function toUiSeries(series: AppProductSeries, index: number, items: ProductItem[] = []): ProductSeries {
+  const tip = (series.remark || '').trim();
   return {
     id: String(series.seriesId),
     name: series.seriesName || '--',
     cover: series.coverUrl ? { uri: series.coverUrl } : SERIES_COVERS[index % SERIES_COVERS.length],
+    tip: tip || undefined,
     items,
   };
 }

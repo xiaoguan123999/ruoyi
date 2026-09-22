@@ -75,9 +75,11 @@ export function PayPasswordModal({
       return;
     }
 
-    if (!mounted) {
-      return;
-    }
+    const hide = () => {
+      setMounted(false);
+      setPayPassword('');
+      setConfirmPassword('');
+    };
 
     Animated.parallel([
       Animated.timing(backdrop, {
@@ -90,21 +92,18 @@ export function PayPasswordModal({
         duration: 220,
         useNativeDriver: USE_NATIVE_DRIVER,
       }),
-    ]).start(({ finished }) => {
-      if (finished) {
-        setMounted(false);
-        setPayPassword('');
-        setConfirmPassword('');
-      }
-    });
-  }, [visible, mounted, backdrop, sheetY]);
+    ]).start();
+
+    const timer = setTimeout(hide, 240);
+    return () => clearTimeout(timer);
+  }, [visible, backdrop, sheetY]);
 
   if (!mounted) {
     return null;
   }
 
   return (
-    <Modal transparent visible animationType="none" onRequestClose={onCancel} statusBarTranslucent>
+    <Modal transparent visible={mounted} animationType="none" onRequestClose={onCancel} statusBarTranslucent>
       <KeyboardAvoidingView
         style={styles.host}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
