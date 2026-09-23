@@ -97,9 +97,22 @@
         <el-form-item label="会员" prop="memberId">
           <MemberSelect v-model="extraForm.memberId" width="100%" placeholder="选择会员" />
         </el-form-item>
-        <el-form-item label="等级ID" prop="levelId">
-          <el-input-number v-model="extraForm.levelId" :min="1" style="width: 100%" />
-          <div class="tip">请填已启用的永久档等级ID，例如星链</div>
+        <el-form-item label="等级" prop="levelId">
+          <el-select
+            v-model="extraForm.levelId"
+            placeholder="请选择永久档等级"
+            filterable
+            style="width: 100%"
+            :loading="levelLoading"
+          >
+            <el-option
+              v-for="item in permanentLevels"
+              :key="item.levelId"
+              :label="levelOptionLabel(item)"
+              :value="item.levelId"
+            />
+          </el-select>
+          <div class="tip">仅展示已启用的永久档等级（如星链）</div>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="extraForm.remark" type="textarea" :rows="3" />
@@ -114,7 +127,7 @@
 </template>
 
 <script setup lang="ts" name="BizLevelRewardGrant">
-import { listLevelRewardGrant, payLevelRewardGrant, rejectLevelRewardGrant, extraPayLevelReward } from "@/api/biz"
+import { listLevelRewardGrant, payLevelRewardGrant, rejectLevelRewardGrant, extraPayLevelReward, listLevel } from "@/api/biz"
 
 const { proxy } = getCurrentInstance() as any
 const dataList = ref<any[]>([])
@@ -124,12 +137,39 @@ const total = ref(0)
 const payOpen = ref(false)
 const extraOpen = ref(false)
 const payTitle = ref("")
+const levelLoading = ref(false)
+const permanentLevels = ref<any[]>([])
 const queryParams = ref({ pageNum: 1, pageSize: 100, phone: undefined as string | undefined, status: "0", grantCycle: undefined as string | undefined })
 const payForm = ref({ grantId: 0, remark: "", reject: false })
 const extraForm = ref({ memberId: undefined as number | undefined, levelId: undefined as number | undefined, remark: "" })
 const extraRules = {
   memberId: [{ required: true, message: "请选择会员", trigger: "change" }],
-  levelId: [{ required: true, message: "请填写等级ID", trigger: "blur" }]
+  levelId: [{ required: true, message: "请选择等级", trigger: "change" }]
+}
+
+function levelOptionLabel(item: any) {
+  const name = item.levelName || ("等级" + item.levelId)
+  const parts = [name]
+  const cny = Number(item.rewardCny || 0)
+  const usdt = Number(item.rewardUsdt || 0)
+  if (cny > 0) parts.push(cny + " CNY")
+  if (usdt > 0) parts.push(usdt + " USDT")
+  return parts.join(" · ")
+}
+
+function loadPermanentLevels() {
+  levelLoading.value = true
+  listLevel({ pageNum: 1, pageSize: 200, status: "0" }).then((res: any) => {
+    const rows = res.rows || []
+    permanentLevels.value = rows.filter((item: any) => String(item.rewardCycle || "").toUpperCase() === "PERMANENT")
+    if (permanentLevels.value.length === 1 && !extraForm.value.levelId) {
+      extraForm.value.levelId = permanentLevels.value[0].levelId
+    }
+  }).catch(() => {
+    permanentLevels.value = []
+  }).finally(() => {
+    levelLoading.value = false
+  })
 }
 
 function getList() {
@@ -164,6 +204,7 @@ function submitPay() {
 function openExtra() {
   extraForm.value = { memberId: undefined, levelId: undefined, remark: "" }
   extraOpen.value = true
+  loadPermanentLevels()
 }
 function submitExtra() {
   proxy.$refs["extraRef"].validate((valid: boolean) => {
