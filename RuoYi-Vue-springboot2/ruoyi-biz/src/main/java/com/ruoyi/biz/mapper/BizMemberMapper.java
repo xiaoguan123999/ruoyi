@@ -46,6 +46,9 @@ public interface BizMemberMapper
 
     int countDirectMembers(Long memberId);
 
+    /** 直推且已实名(KYC通过)人数 */
+    int countDirectKycMembers(Long memberId);
+
     List<BizMember> selectTeamMembers(@Param("memberId") Long memberId, @Param("teamLevel") Integer teamLevel,
             @Param("viewerDepth") Integer viewerDepth);
 

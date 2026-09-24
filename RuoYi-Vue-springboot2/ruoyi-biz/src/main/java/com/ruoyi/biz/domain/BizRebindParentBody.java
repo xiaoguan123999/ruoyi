@@ -3,13 +3,13 @@ package com.ruoyi.biz.domain;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 
-@ApiModel("ºóÌ¨»»°óÉÏ¼¶")
+@ApiModel("åå°æ¢ç»‘ä¸Šçº§")
 public class BizRebindParentBody
 {
-    @ApiModelProperty(value = "ĞÂÉÏ¼¶»áÔ±ID¡£Óë inviteCode ´«Ò»¸ö¼´¿É", example = "10003")
+    @ApiModelProperty(value = "æ–°ä¸Šçº§ä¼šå‘˜IDã€‚ä¸ inviteCode ä¼ ä¸€ä¸ªå³å¯", example = "10003")
     private Long parentId;
 
-    @ApiModelProperty(value = "ĞÂÉÏ¼¶ÑûÇëÂë»ò»áÔ±ID¡£Óë parentId ´«Ò»¸ö¼´¿É", example = "5839201")
+    @ApiModelProperty(value = "æ–°ä¸Šçº§é‚€è¯·ç æˆ–ä¼šå‘˜IDã€‚ä¸ parentId ä¼ ä¸€ä¸ªå³å¯", example = "5839201")
     private String inviteCode;
 
     public Long getParentId()

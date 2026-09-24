@@ -335,6 +335,72 @@ public class BizConstants
     public static final String CHAIN_STATUS_EXPIRED = "2";
     public static final String CHAIN_SOURCE_SYSTEM = "SYSTEM";
     public static final String CHAIN_SOURCE_TEAM = "TEAM";
+
+    /** 大转盘虚拟奖入账助力钱包 */
+    public static final String BIZ_LOTTERY_ASSIST = "LOTTERY_ASSIST";
+
+    /** 奖品类型：实物 */
+    public static final int LOTTERY_PRIZE_PHYSICAL = 1;
+    /** 奖品类型：现金 */
+    public static final int LOTTERY_PRIZE_CASH = 2;
+    /** 奖品类型：虚拟 */
+    public static final int LOTTERY_PRIZE_VIRTUAL = 3;
+
+    /** 必中策略目标：全员 */
+    public static final int LOTTERY_TARGET_ALL = 1;
+    /** 必中策略目标：指定用户 */
+    public static final int LOTTERY_TARGET_USER = 2;
+    /** 必中策略目标：人群包 */
+    public static final int LOTTERY_TARGET_CROWD = 3;
+
+    /** 奖池：公海 */
+    public static final String LOTTERY_POOL_PUBLIC = "PUBLIC";
+    /** 奖池：专属 */
+    public static final String LOTTERY_POOL_EXCLUSIVE = "EXCLUSIVE";
+    /** 必中扣库存：专属优先，不足再用公海 */
+    public static final String LOTTERY_STOCK_AUTO = "AUTO";
+    /** 必中扣库存：仅专属 */
+    public static final String LOTTERY_STOCK_EXCLUSIVE = "EXCLUSIVE";
+    /** 必中扣库存：仅公海 */
+    public static final String LOTTERY_STOCK_PUBLIC = "PUBLIC";
+    /** 必中触发：仅第 N 次一次 */
+    public static final String LOTTERY_LOOP_ONCE = "ONCE";
+    /** 必中触发：每 N 次循环 */
+    public static final String LOTTERY_LOOP_CYCLE = "LOOP";
+
+    /** 发放状态：待处理 */
+    public static final String LOTTERY_GRANT_PENDING = "0";
+    /** 发放状态：已入账 */
+    public static final String LOTTERY_GRANT_CREDITED = "1";
+    /** 发放状态：待领取 */
+    public static final String LOTTERY_GRANT_CLAIM = "2";
+    /** 发放状态：已关闭 */
+    public static final String LOTTERY_GRANT_CLOSED = "3";
+
+    /** 抽奖次数变动：规则发放 */
+    public static final String LOTTERY_CHANCE_RULE_GRANT = "RULE_GRANT";
+    /** 抽奖次数变动：后台增加 */
+    public static final String LOTTERY_CHANCE_ADMIN_GRANT = "ADMIN_GRANT";
+    /** 抽奖次数变动：后台扣减 */
+    public static final String LOTTERY_CHANCE_ADMIN_DEDUCT = "ADMIN_DEDUCT";
+    /** 抽奖次数变动：抽奖消耗 */
+    public static final String LOTTERY_CHANCE_DRAW_CONSUME = "DRAW_CONSUME";
+    /** 抽奖次数变动：失败退回 */
+    public static final String LOTTERY_CHANCE_DRAW_REFUND = "DRAW_REFUND";
+
+    /** 人群标签维度：画像 */
+    public static final String CROWD_LABEL_IMAGE = "IMAGE";
+    /** 人群标签维度：资产 */
+    public static final String CROWD_LABEL_TRANSACTION = "TRANSACTION";
+    /** 人群标签维度：行为 */
+    public static final String CROWD_LABEL_ACTION = "ACTION";
+
+    /** 人群条件运算符：等于 */
+    public static final String CROWD_OP_EQUALS = "EQUALS";
+    /** 人群条件运算符：大于 */
+    public static final String CROWD_OP_GREATER_THAN = "GREATER_THAN";
+    /** 人群条件运算符：小于 */
+    public static final String CROWD_OP_LESS_THAN = "LESS_THAN";
 }
 
 

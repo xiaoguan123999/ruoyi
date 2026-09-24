@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizCrowdPackageMapper">
+
+    <resultMap type="BizCrowdPackage" id="BizCrowdPackageResult">
+        <id     property="packageId"       column="package_id"/>
+        <result property="packageName"     column="package_name"/>
+        <result property="status"          column="status"/>
+        <result property="conditionCount"  column="condition_count"/>
+        <result property="createBy"        column="create_by"/>
+        <result property="createTime"      column="create_time"/>
+        <result property="updateBy"        column="update_by"/>
+        <result property="updateTime"      column="update_time"/>
+        <result property="remark"          column="remark"/>
+    </resultMap>
+
+    <sql id="selectCrowdPackageVo">
+        select p.package_id, p.package_name, p.status,
+               (select count(1) from biz_crowd_condition c where c.package_id = p.package_id) as condition_count,
+               p.create_by, p.create_time, p.update_by, p.update_time, p.remark
+        from biz_crowd_package p
+    </sql>
+
+    <select id="selectCrowdPackageById" parameterType="Long" resultMap="BizCrowdPackageResult">
+        select package_id, package_name, status, create_by, create_time, update_by, update_time, remark
+        from biz_crowd_package
+        where package_id = #{packageId}
+    </select>
+
+    <select id="selectCrowdPackageList" parameterType="BizCrowdPackage" resultMap="BizCrowdPackageResult">
+        <include refid="selectCrowdPackageVo"/>
+        <where>
+            <if test="packageName != null and packageName != ''">and p.package_name like concat('%', #{packageName}, '%')</if>
+            <if test="status != null and status != ''">and p.status = #{status}</if>
+        </where>
+        order by p.package_id desc
+    </select>
+
+    <select id="selectEnabledOptions" resultMap="BizCrowdPackageResult">
+        select package_id, package_name, status, create_by, create_time, update_by, update_time, remark
+        from biz_crowd_package
+        where status = '0'
+        order by package_id desc
+    </select>
+
+    <insert id="insertCrowdPackage" parameterType="BizCrowdPackage" useGeneratedKeys="true" keyProperty="packageId">
+        insert into biz_crowd_package (
+            package_name, status, create_by, create_time, remark
+        ) values (
+            #{packageName}, #{status}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateCrowdPackage" parameterType="BizCrowdPackage">
+        update biz_crowd_package
+        <set>
+            <if test="packageName != null and packageName != ''">package_name = #{packageName},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where package_id = #{packageId}
+    </update>
+
+    <delete id="deleteCrowdPackageByIds" parameterType="Long">
+        delete from biz_crowd_package where package_id in
+        <foreach collection="array" item="packageId" open="(" separator="," close=")">
+            #{packageId}
+        </foreach>
+    </delete>
+</mapper>

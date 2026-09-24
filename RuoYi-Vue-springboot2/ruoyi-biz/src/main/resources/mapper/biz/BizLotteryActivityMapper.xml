@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizLotteryActivityMapper">
+
+    <resultMap type="BizLotteryActivity" id="BizLotteryActivityResult">
+        <id     property="activityId"      column="activity_id"/>
+        <result property="title"           column="title"/>
+        <result property="startTime"       column="start_time"/>
+        <result property="endTime"         column="end_time"/>
+        <result property="intervalHours"   column="interval_hours"/>
+        <result property="ruleText"        column="rule_text"/>
+        <result property="status"          column="status"/>
+        <result property="createBy"        column="create_by"/>
+        <result property="createTime"      column="create_time"/>
+        <result property="updateBy"        column="update_by"/>
+        <result property="updateTime"      column="update_time"/>
+        <result property="remark"          column="remark"/>
+    </resultMap>
+
+    <sql id="selectLotteryActivityVo">
+        select activity_id, title, start_time, end_time, interval_hours, rule_text, status,
+               create_by, create_time, update_by, update_time, remark
+        from biz_lottery_activity
+    </sql>
+
+    <select id="selectLotteryActivityById" parameterType="Long" resultMap="BizLotteryActivityResult">
+        <include refid="selectLotteryActivityVo"/>
+        where activity_id = #{activityId}
+    </select>
+
+    <select id="selectCurrentActiveActivity" resultMap="BizLotteryActivityResult">
+        <include refid="selectLotteryActivityVo"/>
+        where status = '0'
+          and (start_time is null or start_time &lt;= sysdate())
+          and (end_time is null or end_time &gt;= sysdate())
+        order by activity_id desc
+        limit 1
+    </select>
+
+    <select id="selectSoleLotteryActivity" resultMap="BizLotteryActivityResult">
+        <include refid="selectLotteryActivityVo"/>
+        order by activity_id asc
+        limit 1
+    </select>
+
+    <select id="countLotteryActivity" resultType="int">
+        select count(1) from biz_lottery_activity
+    </select>
+
+    <select id="selectLotteryActivityList" parameterType="BizLotteryActivity" resultMap="BizLotteryActivityResult">
+        <include refid="selectLotteryActivityVo"/>
+        <where>
+            <if test="title != null and title != ''">and title like concat('%', #{title}, '%')</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+            <if test="params.beginTime != null and params.beginTime != ''">and start_time &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''">and end_time &lt; date_add(#{params.endTime}, interval 1 day)</if>
+        </where>
+        order by activity_id desc
+    </select>
+
+    <insert id="insertLotteryActivity" parameterType="BizLotteryActivity" useGeneratedKeys="true" keyProperty="activityId">
+        insert into biz_lottery_activity (
+            title, start_time, end_time, interval_hours, rule_text, status, create_by, create_time, remark
+        ) values (
+            #{title}, #{startTime}, #{endTime}, #{intervalHours}, #{ruleText}, #{status}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateLotteryActivity" parameterType="BizLotteryActivity">
+        update biz_lottery_activity
+        <set>
+            <if test="title != null and title != ''">title = #{title},</if>
+            start_time = #{startTime},
+            end_time = #{endTime},
+            <if test="intervalHours != null">interval_hours = #{intervalHours},</if>
+            rule_text = #{ruleText},
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where activity_id = #{activityId}
+    </update>
+
+    <delete id="deleteLotteryActivityByIds" parameterType="Long">
+        delete from biz_lottery_activity where activity_id in
+        <foreach collection="array" item="activityId" open="(" separator="," close=")">
+            #{activityId}
+        </foreach>
+    </delete>
+</mapper>

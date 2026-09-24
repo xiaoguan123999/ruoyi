@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizLotteryChanceRuleMapper">
+
+    <resultMap type="BizLotteryChanceRule" id="BizLotteryChanceRuleResult">
+        <id     property="ruleId"          column="rule_id"/>
+        <result property="activityId"      column="activity_id"/>
+        <result property="ruleName"        column="rule_name"/>
+        <result property="checkinDays"     column="checkin_days"/>
+        <result property="inviteKycCount"  column="invite_kyc_count"/>
+        <result property="grantAmount"     column="grant_amount"/>
+        <result property="onceOnly"        column="once_only"/>
+        <result property="maxRepeat"       column="max_repeat"/>
+        <result property="status"          column="status"/>
+        <result property="sort"            column="sort"/>
+        <result property="createBy"        column="create_by"/>
+        <result property="createTime"      column="create_time"/>
+        <result property="updateBy"        column="update_by"/>
+        <result property="updateTime"      column="update_time"/>
+        <result property="remark"          column="remark"/>
+    </resultMap>
+
+    <sql id="selectVo">
+        select rule_id, activity_id, rule_name, checkin_days, invite_kyc_count, grant_amount,
+               once_only, max_repeat, status, sort, create_by, create_time, update_by, update_time, remark
+        from biz_lottery_chance_rule
+    </sql>
+
+    <select id="selectChanceRuleById" parameterType="Long" resultMap="BizLotteryChanceRuleResult">
+        <include refid="selectVo"/> where rule_id = #{ruleId}
+    </select>
+
+    <select id="selectChanceRuleList" parameterType="BizLotteryChanceRule" resultMap="BizLotteryChanceRuleResult">
+        <include refid="selectVo"/>
+        <where>
+            <if test="activityId != null">and activity_id = #{activityId}</if>
+            <if test="ruleName != null and ruleName != ''">and rule_name like concat('%', #{ruleName}, '%')</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+        </where>
+        order by sort asc, rule_id desc
+    </select>
+
+    <select id="selectEnabledRulesByActivityId" parameterType="Long" resultMap="BizLotteryChanceRuleResult">
+        <include refid="selectVo"/>
+        where activity_id = #{activityId} and status = '0'
+        order by sort asc, rule_id asc
+    </select>
+
+    <insert id="insertChanceRule" parameterType="BizLotteryChanceRule" useGeneratedKeys="true" keyProperty="ruleId">
+        insert into biz_lottery_chance_rule (
+            activity_id, rule_name, checkin_days, invite_kyc_count, grant_amount, once_only, max_repeat,
+            status, sort, create_by, create_time, remark
+        ) values (
+            #{activityId}, #{ruleName}, #{checkinDays}, #{inviteKycCount}, #{grantAmount}, #{onceOnly}, #{maxRepeat},
+            #{status}, #{sort}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateChanceRule" parameterType="BizLotteryChanceRule">
+        update biz_lottery_chance_rule
+        <set>
+            <if test="ruleName != null and ruleName != ''">rule_name = #{ruleName},</if>
+            <if test="checkinDays != null">checkin_days = #{checkinDays},</if>
+            <if test="inviteKycCount != null">invite_kyc_count = #{inviteKycCount},</if>
+            <if test="grantAmount != null">grant_amount = #{grantAmount},</if>
+            <if test="onceOnly != null">once_only = #{onceOnly},</if>
+            <if test="maxRepeat != null">max_repeat = #{maxRepeat},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where rule_id = #{ruleId}
+    </update>
+
+    <delete id="deleteChanceRuleByIds" parameterType="Long">
+        delete from biz_lottery_chance_rule where rule_id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+</mapper>

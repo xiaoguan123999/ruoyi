@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizLotteryPrizeMapper">
+
+    <resultMap type="BizLotteryPrize" id="BizLotteryPrizeResult">
+        <id     property="prizeId"           column="prize_id"/>
+        <result property="activityId"        column="activity_id"/>
+        <result property="poolId"            column="pool_id"/>
+        <result property="prizeName"         column="prize_name"/>
+        <result property="prizeDesc"         column="prize_desc"/>
+        <result property="imageUrl"          column="image_url"/>
+        <result property="sectorBgColor"     column="sector_bg_color"/>
+        <result property="nameColor"         column="name_color"/>
+        <result property="descColor"         column="desc_color"/>
+        <result property="prizeType"         column="prize_type"/>
+        <result property="publicStock"       column="public_stock"/>
+        <result property="exclusiveStock"    column="exclusive_stock"/>
+        <result property="probability"       column="probability"/>
+        <result property="position"          column="position"/>
+        <result property="isFallback"        column="is_fallback"/>
+        <result property="assistAmount"      column="assist_amount"/>
+        <result property="currency"          column="currency"/>
+        <result property="sort"              column="sort"/>
+        <result property="status"            column="status"/>
+        <result property="createBy"          column="create_by"/>
+        <result property="createTime"        column="create_time"/>
+        <result property="updateBy"          column="update_by"/>
+        <result property="updateTime"        column="update_time"/>
+        <result property="remark"            column="remark"/>
+    </resultMap>
+
+    <sql id="selectPrizeVo">
+        select prize_id, activity_id, pool_id, prize_name, prize_desc, image_url, sector_bg_color, name_color, desc_color, prize_type, public_stock, exclusive_stock,
+               probability, position, is_fallback, assist_amount, currency, sort, status,
+               create_by, create_time, update_by, update_time, remark
+        from biz_lottery_prize
+    </sql>
+
+    <select id="selectPrizeById" parameterType="Long" resultMap="BizLotteryPrizeResult">
+        <include refid="selectPrizeVo"/>
+        where prize_id = #{prizeId}
+    </select>
+
+    <select id="selectPrizeListByActivityId" parameterType="Long" resultMap="BizLotteryPrizeResult">
+        <include refid="selectPrizeVo"/>
+        where activity_id = #{activityId}
+        order by position asc, sort asc, prize_id asc
+    </select>
+
+    <select id="countFallbackByActivityId" parameterType="Long" resultType="int">
+        select count(1) from biz_lottery_prize
+        where activity_id = #{activityId} and is_fallback = '1'
+    </select>
+
+    <delete id="deletePrizeByActivityId" parameterType="Long">
+        delete from biz_lottery_prize where activity_id = #{activityId}
+    </delete>
+
+    <insert id="insertPrize" parameterType="BizLotteryPrize" useGeneratedKeys="true" keyProperty="prizeId">
+        insert into biz_lottery_prize (
+            activity_id, pool_id, prize_name, prize_desc, image_url, sector_bg_color, name_color, desc_color,
+            prize_type, public_stock, exclusive_stock, probability,
+            position, is_fallback, assist_amount, currency, sort, status, create_by, create_time, remark
+        ) values (
+            #{activityId}, #{poolId}, #{prizeName}, #{prizeDesc}, #{imageUrl}, #{sectorBgColor}, #{nameColor}, #{descColor},
+            #{prizeType}, #{publicStock}, #{exclusiveStock}, #{probability},
+            #{position}, #{isFallback}, #{assistAmount}, #{currency}, #{sort}, #{status}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updatePrize" parameterType="BizLotteryPrize">
+        update biz_lottery_prize
+        <set>
+            <if test="poolId != null">pool_id = #{poolId},</if>
+            <if test="prizeName != null and prizeName != ''">prize_name = #{prizeName},</if>
+            <if test="prizeDesc != null">prize_desc = #{prizeDesc},</if>
+            <if test="imageUrl != null">image_url = #{imageUrl},</if>
+            <if test="sectorBgColor != null">sector_bg_color = #{sectorBgColor},</if>
+            <if test="nameColor != null">name_color = #{nameColor},</if>
+            <if test="descColor != null">desc_color = #{descColor},</if>
+            <if test="prizeType != null">prize_type = #{prizeType},</if>
+            <if test="publicStock != null">public_stock = #{publicStock},</if>
+            <if test="exclusiveStock != null">exclusive_stock = #{exclusiveStock},</if>
+            <if test="probability != null">probability = #{probability},</if>
+            <if test="position != null">position = #{position},</if>
+            <if test="isFallback != null">is_fallback = #{isFallback},</if>
+            <if test="assistAmount != null">assist_amount = #{assistAmount},</if>
+            <if test="currency != null">currency = #{currency},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where prize_id = #{prizeId}
+    </update>
+
+    <update id="syncMetaFromPool" parameterType="BizLotteryPrizePool">
+        update biz_lottery_prize
+        set prize_name = #{prizeName},
+            prize_desc = #{prizeDesc},
+            image_url = #{imageUrl},
+            sector_bg_color = #{sectorBgColor},
+            name_color = #{nameColor},
+            desc_color = #{descColor},
+            prize_type = #{prizeType},
+            assist_amount = #{assistAmount},
+            currency = #{currency},
+            update_time = sysdate()
+        where pool_id = #{poolId}
+    </update>
+</mapper>
+

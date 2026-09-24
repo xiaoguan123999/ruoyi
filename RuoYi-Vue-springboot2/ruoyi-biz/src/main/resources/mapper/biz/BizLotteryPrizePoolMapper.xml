@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizLotteryPrizePoolMapper">
+
+    <resultMap type="BizLotteryPrizePool" id="BizLotteryPrizePoolResult">
+        <id     property="poolId"       column="pool_id"/>
+        <result property="prizeName"    column="prize_name"/>
+        <result property="prizeDesc"    column="prize_desc"/>
+        <result property="imageUrl"     column="image_url"/>
+        <result property="sectorBgColor" column="sector_bg_color"/>
+        <result property="nameColor"    column="name_color"/>
+        <result property="descColor"    column="desc_color"/>
+        <result property="prizeType"    column="prize_type"/>
+        <result property="assistAmount" column="assist_amount"/>
+        <result property="currency"     column="currency"/>
+        <result property="sort"         column="sort"/>
+        <result property="status"       column="status"/>
+        <result property="createBy"     column="create_by"/>
+        <result property="createTime"   column="create_time"/>
+        <result property="updateBy"     column="update_by"/>
+        <result property="updateTime"   column="update_time"/>
+        <result property="remark"       column="remark"/>
+    </resultMap>
+
+    <sql id="selectPrizePoolVo">
+        select pool_id, prize_name, prize_desc, image_url, sector_bg_color, name_color, desc_color, prize_type, assist_amount, currency, sort, status,
+               create_by, create_time, update_by, update_time, remark
+        from biz_lottery_prize_pool
+    </sql>
+
+    <select id="selectPrizePoolById" parameterType="Long" resultMap="BizLotteryPrizePoolResult">
+        <include refid="selectPrizePoolVo"/>
+        where pool_id = #{poolId}
+    </select>
+
+    <select id="selectPrizePoolList" parameterType="BizLotteryPrizePool" resultMap="BizLotteryPrizePoolResult">
+        <include refid="selectPrizePoolVo"/>
+        <where>
+            <if test="prizeName != null and prizeName != ''">and prize_name like concat('%', #{prizeName}, '%')</if>
+            <if test="prizeType != null">and prize_type = #{prizeType}</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+        </where>
+        order by sort asc, pool_id desc
+    </select>
+
+    <select id="selectEnabledPrizePoolOptions" resultMap="BizLotteryPrizePoolResult">
+        <include refid="selectPrizePoolVo"/>
+        where status = '0'
+        order by sort asc, pool_id desc
+    </select>
+
+    <select id="countActivityPrizeByPoolId" parameterType="Long" resultType="int">
+        select count(1) from biz_lottery_prize where pool_id = #{poolId}
+    </select>
+
+    <insert id="insertPrizePool" parameterType="BizLotteryPrizePool" useGeneratedKeys="true" keyProperty="poolId">
+        insert into biz_lottery_prize_pool (
+            prize_name, prize_desc, image_url, sector_bg_color, name_color, desc_color,
+            prize_type, assist_amount, currency, sort, status, create_by, create_time, remark
+        ) values (
+            #{prizeName}, #{prizeDesc}, #{imageUrl}, #{sectorBgColor}, #{nameColor}, #{descColor},
+            #{prizeType}, #{assistAmount}, #{currency}, #{sort}, #{status}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updatePrizePool" parameterType="BizLotteryPrizePool">
+        update biz_lottery_prize_pool
+        <set>
+            <if test="prizeName != null and prizeName != ''">prize_name = #{prizeName},</if>
+            prize_desc = #{prizeDesc},
+            image_url = #{imageUrl},
+            <if test="sectorBgColor != null">sector_bg_color = #{sectorBgColor},</if>
+            <if test="nameColor != null">name_color = #{nameColor},</if>
+            <if test="descColor != null">desc_color = #{descColor},</if>
+            <if test="prizeType != null">prize_type = #{prizeType},</if>
+            assist_amount = #{assistAmount},
+            <if test="currency != null">currency = #{currency},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where pool_id = #{poolId}
+    </update>
+
+    <delete id="deletePrizePoolByIds" parameterType="Long">
+        delete from biz_lottery_prize_pool where pool_id in
+        <foreach collection="array" item="poolId" open="(" separator="," close=")">
+            #{poolId}
+        </foreach>
+    </delete>
+</mapper>

@@ -4,7 +4,7 @@ import java.util.Date;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ruoyi.common.core.domain.BaseEntity;
 
-/** 支付网关调用 / 回调日志 */
+/** 鏀粯缃戝叧璋冪敤 / 鍥炶皟鏃ュ織 */
 public class BizPayGatewayLog extends BaseEntity
 {
     private static final long serialVersionUID = 1L;
@@ -25,7 +25,7 @@ public class BizPayGatewayLog extends BaseEntity
     private String requestBody;
     private String responseBody;
     private Integer httpStatus;
-    /** 1成功 0失败 */
+    /** 1鎴愬姛 0澶辫触 */
     private String success;
     private String errorMsg;
     private String clientIp;

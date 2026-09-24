@@ -15,7 +15,7 @@ import com.ruoyi.common.core.page.TableDataInfo;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
-@Api(tags = "后台-支付日志")
+@Api(tags = "鍚庡彴-鏀粯鏃ュ織")
 @RestController
 @RequestMapping("/biz/payGatewayLog")
 public class BizPayGatewayLogController extends BaseController
@@ -23,7 +23,7 @@ public class BizPayGatewayLogController extends BaseController
     @Autowired
     private IBizPayGatewayLogService payGatewayLogService;
 
-    @ApiOperation("支付网关日志列表")
+    @ApiOperation("鏀粯缃戝叧鏃ュ織鍒楄〃")
     @PreAuthorize("@ss.hasPermi('biz:payGatewayLog:list')")
     @GetMapping("/list")
     public TableDataInfo list(BizPayGatewayLog query)
@@ -33,7 +33,7 @@ public class BizPayGatewayLogController extends BaseController
         return getDataTable(list);
     }
 
-    @ApiOperation("支付网关日志详情")
+    @ApiOperation("鏀粯缃戝叧鏃ュ織璇︽儏")
     @PreAuthorize("@ss.hasPermi('biz:payGatewayLog:query')")
     @GetMapping("/{logId}")
     public AjaxResult getInfo(@PathVariable Long logId)

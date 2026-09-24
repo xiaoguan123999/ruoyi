@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.biz.mapper.BizLotteryRecordMapper">
+
+    <resultMap type="BizLotteryRecord" id="BizLotteryRecordResult">
+        <id     property="recordId"        column="record_id"/>
+        <result property="activityId"      column="activity_id"/>
+        <result property="memberId"        column="member_id"/>
+        <result property="drawCount"       column="draw_count"/>
+        <result property="prizeId"         column="prize_id"/>
+        <result property="prizeName"       column="prize_name"/>
+        <result property="prizeType"       column="prize_type"/>
+        <result property="poolType"        column="pool_type"/>
+        <result property="isStrategy"      column="is_strategy"/>
+        <result property="isMeltdown"      column="is_meltdown"/>
+        <result property="grantStatus"     column="grant_status"/>
+        <result property="bizNo"           column="biz_no"/>
+        <result property="phone"           column="phone"/>
+        <result property="createTime"      column="create_time"/>
+        <result property="updateTime"      column="update_time"/>
+        <result property="remark"          column="remark"/>
+    </resultMap>
+
+    <select id="selectRecordList" parameterType="BizLotteryRecord" resultMap="BizLotteryRecordResult">
+        select r.record_id, r.activity_id, r.member_id, r.draw_count, r.prize_id, r.prize_name,
+               r.prize_type, r.pool_type, r.is_strategy, r.is_meltdown, r.grant_status, r.biz_no,
+               m.phone, r.create_time, r.update_time, r.remark
+        from biz_lottery_record r
+        left join biz_member m on m.member_id = r.member_id
+        <where>
+            <if test="activityId != null">and r.activity_id = #{activityId}</if>
+            <if test="memberId != null">and r.member_id = #{memberId}</if>
+            <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
+            <if test="isMeltdown != null and isMeltdown != ''">and r.is_meltdown = #{isMeltdown}</if>
+            <if test="grantStatus != null and grantStatus != ''">and r.grant_status = #{grantStatus}</if>
+            <if test="params.beginTime != null and params.beginTime != ''">and r.create_time &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''">and r.create_time &lt; date_add(#{params.endTime}, interval 1 day)</if>
+        </where>
+        order by r.record_id desc
+    </select>
+
+    <insert id="insertRecord" parameterType="BizLotteryRecord" useGeneratedKeys="true" keyProperty="recordId">
+        insert into biz_lottery_record (
+            activity_id, member_id, draw_count, prize_id, prize_name, prize_type,
+            pool_type, is_strategy, is_meltdown, grant_status, biz_no, create_time, remark
+        ) values (
+            #{activityId}, #{memberId}, #{drawCount}, #{prizeId}, #{prizeName}, #{prizeType},
+            #{poolType}, #{isStrategy}, #{isMeltdown}, #{grantStatus}, #{bizNo}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <select id="selectMaxDrawCount" resultType="java.lang.Integer">
+        select max(draw_count) from biz_lottery_record
+        where activity_id = #{activityId} and member_id = #{memberId}
+    </select>
+</mapper>
+

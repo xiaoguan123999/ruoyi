@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import com.ruoyi.biz.service.IBizOnlinePayService;
 
 /**
- * �ر��ѹ��ڵĴ���֧��������������̨δ����
+ * 关闭已过期的待付支付单（拉起收银台未付）
  */
 @Component("payOrderExpireTask")
 public class PayOrderExpireTask
@@ -22,7 +22,7 @@ public class PayOrderExpireTask
         int count = onlinePayService.closeExpiredOrders();
         if (count > 0)
         {
-            log.info("֧����ʱ�ص���ɣ��ر�{}��", count);
+            log.info("支付超时关单完成，关闭{}笔", count);
         }
     }
 }
