@@ -220,6 +220,22 @@ export default function HomeScreen() {
             ))}
           </View>
 
+          <Pressable style={styles.lotteryCard} onPress={() => router.push('/lottery')}>
+            <Image
+              source={images.lotteryBanner}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              contentPosition="right"
+            />
+            <View style={styles.lotteryText}>
+              <Text style={styles.lotteryTitle}>幸运抽奖</Text>
+              <Text style={styles.lotteryDesc}>惊喜好礼 · 等你来拿</Text>
+              <View style={styles.lotteryCta}>
+                <Text style={styles.lotteryCtaText}>立即参与 {'>'}</Text>
+              </View>
+            </View>
+          </Pressable>
+
           <Text style={styles.section}>运行概览</Text>
           <View style={styles.statsRow}>
             {overview.map((item) => (
@@ -342,6 +358,45 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   gridLabel: { color: colors.text, fontSize: 12 },
+  lotteryCard: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    aspectRatio: 373 / 110,
+    borderRadius: 20,
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  lotteryText: {
+    paddingLeft: 20,
+    paddingRight: 150,
+    paddingVertical: 14,
+  },
+  lotteryTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    lineHeight: 28,
+  },
+  lotteryDesc: {
+    color: 'rgba(220, 230, 245, 0.92)',
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  lotteryCta: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    backgroundColor: '#7F9BE8',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  lotteryCtaText: {
+    color: '#1C2C62',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   section: {
     color: colors.text,
     fontSize: 16,

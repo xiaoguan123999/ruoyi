@@ -47,4 +47,8 @@ export const images = {
   tabMineActive: require('../assets/ui/tab-mine-active.png'),
   levelBg: require('../assets/ui/level-bg.png'),
   levelTrophy: require('../assets/ui/level-trophy.png'),
+  lotteryBanner: require('../assets/ui/lottery-banner.png'),
+  lotteryStage: require('../assets/ui/lottery-stage.png'),
+  lotteryIconChance: require('../assets/ui/lottery-icon-chance.png'),
+  lotteryIconRecords: require('../assets/ui/lottery-icon-records.png'),
 };
