@@ -107,6 +107,7 @@ const bizTypeOptions = [
   { value: "SUBSCRIBE", label: "认购" },
   { value: "REBATE", label: "产品日返" },
   { value: "ASSIST_GRANT", label: "助力值发放" },
+  { value: "LOTTERY_ASSIST", label: "抽奖助力值" },
   { value: "PRINCIPAL_RETURN", label: "本金返还" },
   { value: "ACCUMULATE_SETTLE", label: "累计结算" },
   { value: "COMMISSION", label: "推广奖金" },

@@ -559,6 +559,7 @@ const bizTypeMap: Record<string, { label: string; tagType: string }> = {
   SUBSCRIBE: { label: '认购', tagType: 'warning' },
   REBATE: { label: '日返', tagType: 'primary' },
   ASSIST_GRANT: { label: '助力值发放', tagType: 'success' },
+  LOTTERY_ASSIST: { label: '抽奖助力值', tagType: 'success' },
   PRINCIPAL_RETURN: { label: '本金返还', tagType: 'warning' },
   ACCUMULATE_SETTLE: { label: '累计结算', tagType: 'success' },
   COMMISSION: { label: '分佣', tagType: 'primary' },

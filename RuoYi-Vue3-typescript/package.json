@@ -9,7 +9,8 @@
     "dev": "vite",
     "build:prod": "vite build",
     "build:stage": "vite build --mode staging",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:utf8": "python3 ../scripts/check-utf8.py"
   },
   "repository": {
     "type": "git",

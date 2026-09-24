@@ -653,3 +653,125 @@ export function setAppVersionForceUpdate(id: number, forceUpdate: boolean): Prom
 export function setAppVersionEnabled(id: number, isEnabled: boolean): Promise<AjaxResult> {
   return request({ url: '/biz/appVersion/' + id + '/enabled', method: 'post', data: { isEnabled } })
 }
+
+// 标签人群
+export function listCrowdPackage(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/crowdPackage/list', method: 'get', params: query })
+}
+
+export function getCrowdPackage(packageId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/crowdPackage/' + packageId, method: 'get' })
+}
+
+export function addCrowdPackage(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/crowdPackage', method: 'post', data })
+}
+
+export function updateCrowdPackage(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/crowdPackage', method: 'put', data })
+}
+
+export function delCrowdPackage(packageId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/crowdPackage/' + packageId, method: 'delete' })
+}
+
+export function listCrowdPackageOptions(): Promise<AjaxResult<any[]>> {
+  return request({ url: '/biz/crowdPackage/options', method: 'get' })
+}
+
+// 抽奖活动
+export function listLotteryActivity(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/lotteryActivity/list', method: 'get', params: query })
+}
+
+export function getLotteryActivity(activityId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/lotteryActivity/' + activityId, method: 'get' })
+}
+
+export function getSoleLotteryActivity(): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/lotteryActivity/sole', method: 'get' })
+}
+
+/** 抽奖奖品池（独立管理） */
+export function listLotteryPrizePool(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/lotteryPrizePool/list', method: 'get', params: query })
+}
+
+export function listLotteryPrizePoolOptions(): Promise<AjaxResult<any[]>> {
+  return request({ url: '/biz/lotteryPrizePool/options', method: 'get' })
+}
+
+export function getLotteryPrizePool(poolId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/lotteryPrizePool/' + poolId, method: 'get' })
+}
+
+export function addLotteryPrizePool(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/lotteryPrizePool', method: 'post', data })
+}
+
+export function updateLotteryPrizePool(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/lotteryPrizePool', method: 'put', data })
+}
+
+export function delLotteryPrizePool(poolId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/lotteryPrizePool/' + poolId, method: 'delete' })
+}
+
+/** 获次规则 */
+export function listLotteryChanceRule(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/lotteryChanceRule/list', method: 'get', params: query })
+}
+
+export function getLotteryChanceRule(ruleId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/lotteryChanceRule/' + ruleId, method: 'get' })
+}
+
+export function addLotteryChanceRule(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/lotteryChanceRule', method: 'post', data })
+}
+
+export function updateLotteryChanceRule(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/lotteryChanceRule', method: 'put', data })
+}
+
+export function delLotteryChanceRule(ruleId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/lotteryChanceRule/' + ruleId, method: 'delete' })
+}
+
+/** 用户抽奖次数 */
+export function listLotteryChance(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/lotteryChance/list', method: 'get', params: query })
+}
+
+export function listLotteryChanceLog(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/lotteryChance/log/list', method: 'get', params: query })
+}
+
+export function adjustLotteryChance(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/lotteryChance/adjust', method: 'post', data })
+}
+
+export function addLotteryActivity(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/lotteryActivity', method: 'post', data })
+}
+
+export function updateLotteryActivity(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/lotteryActivity', method: 'put', data })
+}
+
+export function delLotteryActivity(activityId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/lotteryActivity/' + activityId, method: 'delete' })
+}
+
+export function saveLotteryPrizes(activityId: number, prizes: any[]): Promise<AjaxResult> {
+  return request({ url: '/biz/lotteryActivity/' + activityId + '/prizes', method: 'put', data: prizes })
+}
+
+export function saveLotteryStrategies(activityId: number, strategies: any[]): Promise<AjaxResult> {
+  return request({ url: '/biz/lotteryActivity/' + activityId + '/strategies', method: 'put', data: strategies })
+}
+
+// 抽奖记录
+export function listLotteryRecord(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/lotteryRecord/list', method: 'get', params: query })
+}

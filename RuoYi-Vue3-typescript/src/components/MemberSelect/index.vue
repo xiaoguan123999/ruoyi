@@ -1,13 +1,17 @@
 <template>
   <el-select
-    :model-value="modelValue"
+    :model-value="innerValue"
     :placeholder="placeholder"
     :disabled="disabled"
     :clearable="clearable"
-    :filterable="true"
-    :remote="true"
+    filterable
+    remote
+    reserve-keyword
     :remote-method="onRemoteSearch"
     :loading="loading"
+    :multiple="multiple"
+    :collapse-tags="multiple"
+    :collapse-tags-tooltip="multiple"
     :style="styleObj"
     popper-class="member-select-dropdown"
     @update:model-value="onUpdate"
@@ -15,21 +19,12 @@
     @clear="onClear"
   >
     <el-option
-      v-for="item in options"
-      :key="item.memberId"
+      v-for="item in displayOptions"
+      :key="'m-' + item.memberId"
       :label="formatLabel(item)"
-      :value="item.memberId"
+      :value="Number(item.memberId)"
     >
       <span class="member-select-option">{{ formatLabel(item) }}</span>
-    </el-option>
-    <el-option v-if="loadingMore" disabled :value="LOADING_VALUE">
-      <span class="member-select-tip">加载中…</span>
-    </el-option>
-    <el-option v-else-if="!loading && !options.length" disabled :value="EMPTY_VALUE">
-      <span class="member-select-tip">暂无会员</span>
-    </el-option>
-    <el-option v-else-if="!hasMore && options.length" disabled :value="END_VALUE">
-      <span class="member-select-tip">没有更多了</span>
     </el-option>
   </el-select>
 </template>
@@ -37,31 +32,32 @@
 <script setup lang="ts" name="MemberSelect">
 import { listMember, getMember } from "@/api/biz"
 
-const LOADING_VALUE = "__member_loading__"
-const EMPTY_VALUE = "__member_empty__"
-const END_VALUE = "__member_end__"
 const PAGE_SIZE = 20
 
 const props = withDefaults(defineProps<{
-  modelValue?: number | string | null
+  modelValue?: number | string | number[] | null
   placeholder?: string
   clearable?: boolean
   disabled?: boolean
+  multiple?: boolean
   width?: string | number
 }>(), {
   modelValue: undefined,
   placeholder: "邀请码 / 手机号 / 姓名 / 会员ID",
   clearable: true,
   disabled: false,
+  multiple: false,
   width: 240
 })
 
 const emit = defineEmits<{
-  (e: "update:modelValue", value: number | undefined): void
-  (e: "change", value: number | undefined, member?: any): void
+  (e: "update:modelValue", value: number | number[] | undefined): void
+  (e: "change", value: number | number[] | undefined, member?: any): void
 }>()
 
 const options = ref<any[]>([])
+/** 已选会员缓存，保证远程搜索清空列表后仍能回显标签 */
+const selectedCache = ref<Record<number, any>>({})
 const loading = ref(false)
 const loadingMore = ref(false)
 const pageNum = ref(1)
@@ -73,12 +69,50 @@ const styleObj = computed(() => ({
   width: typeof props.width === "number" ? `${props.width}px` : props.width
 }))
 
+const innerValue = computed(() => {
+  if (props.multiple) {
+    return selectedIds()
+  }
+  const ids = selectedIds()
+  return ids.length ? ids[0] : undefined
+})
+
+const displayOptions = computed(() => {
+  const map = new Map<number, any>()
+  Object.values(selectedCache.value).forEach((m: any) => {
+    const id = Number(m?.memberId)
+    if (id > 0) map.set(id, m)
+  })
+  options.value.forEach((m) => {
+    const id = Number(m?.memberId)
+    if (id > 0) map.set(id, m)
+  })
+  return [...map.values()]
+})
+
 function formatLabel(m: any) {
   if (!m) return ""
-  const code = m.inviteCode || "—"
+  const id = m.memberId ?? "—"
   const phone = m.phone || "—"
   const name = m.realName || "—"
-  return `${code} / ${phone} / ${name}`
+  return `${id} / ${phone} / ${name}`
+}
+
+function selectedIds(): number[] {
+  const v = props.modelValue
+  if (v === undefined || v === null || v === "") return []
+  if (Array.isArray(v)) {
+    return v.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0)
+  }
+  const n = Number(v)
+  return Number.isFinite(n) && n > 0 ? [n] : []
+}
+
+function rememberMembers(list: any[]) {
+  list.forEach((m) => {
+    const id = Number(m?.memberId)
+    if (id > 0) selectedCache.value[id] = m
+  })
 }
 
 function buildQuery(page: number) {
@@ -98,27 +132,37 @@ function buildQuery(page: number) {
 }
 
 function mergeOptions(rows: any[], reset: boolean) {
-  const list = rows || []
+  const list = (rows || []).map((r) => ({ ...r, memberId: Number(r.memberId) }))
   if (reset) {
     options.value = list
     return
   }
-  const exist = new Set(options.value.map((i) => i.memberId))
+  const exist = new Set(options.value.map((i) => Number(i.memberId)))
   list.forEach((row) => {
-    if (!exist.has(row.memberId)) options.value.push(row)
+    if (!exist.has(Number(row.memberId))) options.value.push(row)
   })
 }
 
-async function ensureSelectedOption() {
-  const id = props.modelValue
-  if (id === undefined || id === null || id === "") return
-  const numId = Number(id)
-  if (!numId || options.value.some((i) => Number(i.memberId) === numId)) return
-  try {
-    const res: any = await getMember(numId)
-    if (res?.data) options.value.unshift(res.data)
-  } catch {
-    /* ignore */
+async function ensureSelectedOptions() {
+  const ids = selectedIds()
+  for (const numId of ids) {
+    if (selectedCache.value[numId] || options.value.some((i) => Number(i.memberId) === numId)) {
+      const hit = selectedCache.value[numId] || options.value.find((i) => Number(i.memberId) === numId)
+      if (hit) selectedCache.value[numId] = hit
+      continue
+    }
+    try {
+      const res: any = await getMember(numId)
+      if (res?.data) {
+        const row = { ...res.data, memberId: Number(res.data.memberId) }
+        selectedCache.value[numId] = row
+        if (!options.value.some((i) => Number(i.memberId) === numId)) {
+          options.value.unshift(row)
+        }
+      }
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -137,10 +181,11 @@ async function fetchPage(reset: boolean) {
     const rows = res.rows || []
     const total = Number(res.total || 0)
     mergeOptions(rows, reset)
+    rememberMembers(rows)
     const loaded = options.value.length
     hasMore.value = loaded < total && rows.length > 0
     if (rows.length) pageNum.value = page + 1
-    await ensureSelectedOption()
+    await ensureSelectedOptions()
   } catch {
     if (reset) options.value = []
     hasMore.value = false
@@ -160,14 +205,33 @@ function onRemoteSearch(query: string) {
 }
 
 function onUpdate(val: any) {
-  if (val === LOADING_VALUE || val === EMPTY_VALUE || val === END_VALUE) return
+  if (props.multiple) {
+    const raw = Array.isArray(val) ? val : []
+    const next = raw.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0)
+    // 选中后立刻写入缓存，避免远程刷新丢标签
+    next.forEach((id) => {
+      const hit = displayOptions.value.find((m) => Number(m.memberId) === id)
+      if (hit) selectedCache.value[id] = hit
+    })
+    emit("update:modelValue", next)
+    emit("change", next)
+    return
+  }
   const next = val === undefined || val === null || val === "" ? undefined : Number(val)
+  if (next) {
+    const hit = displayOptions.value.find((m) => Number(m.memberId) === next)
+    if (hit) selectedCache.value[next] = hit
+  }
   emit("update:modelValue", next)
-  const member = options.value.find((i) => Number(i.memberId) === next)
-  emit("change", next, member)
+  emit("change", next, next ? selectedCache.value[next] : undefined)
 }
 
 function onClear() {
+  if (props.multiple) {
+    emit("update:modelValue", [])
+    emit("change", [])
+    return
+  }
   emit("update:modelValue", undefined)
   emit("change", undefined, undefined)
 }
@@ -202,7 +266,7 @@ function bindScroll(bind: boolean) {
 function onVisibleChange(visible: boolean) {
   if (visible) {
     if (!options.value.length) fetchPage(true)
-    else ensureSelectedOption()
+    else ensureSelectedOptions()
     bindScroll(true)
   } else {
     bindScroll(false)
@@ -212,9 +276,9 @@ function onVisibleChange(visible: boolean) {
 watch(
   () => props.modelValue,
   () => {
-    ensureSelectedOption()
+    ensureSelectedOptions()
   },
-  { immediate: true }
+  { immediate: true, deep: true }
 )
 
 onBeforeUnmount(() => {
@@ -226,11 +290,5 @@ onBeforeUnmount(() => {
 <style scoped>
 .member-select-option {
   font-size: 13px;
-}
-.member-select-tip {
-  display: block;
-  text-align: center;
-  color: var(--el-text-color-placeholder);
-  font-size: 12px;
 }
 </style>
