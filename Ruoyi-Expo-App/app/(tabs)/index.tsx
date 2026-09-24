@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { Text } from '@/components/ui/AppText';
+import { fetchLotteryCurrent } from '@/api/app-lottery';
 import { fetchAppVideoCarousel } from '@/api/app-video';
 import { fetchAppNotices, NOTICE_TYPE_NOTIFICATION } from '@/api/app-notice';
 import { fetchAppOverview } from '@/api/app-overview';
@@ -140,14 +141,17 @@ export default function HomeScreen() {
   const [notices, setNotices] = useState<AppNotice[]>([]);
   const [overview, setOverview] = useState<AppOverviewItem[]>([]);
   const [videos, setVideos] = useState<AppVideoCarouselItem[]>([]);
+  const [hasLottery, setHasLottery] = useState(false);
 
   const load = useCallback(async () => {
-    const [nextNotices, nextOverview] = await Promise.all([
+    const [nextNotices, nextOverview, lottery] = await Promise.all([
       fetchAppNotices(NOTICE_TYPE_NOTIFICATION).catch(() => [] as AppNotice[]),
       fetchAppOverview().catch(() => [] as AppOverviewItem[]),
+      fetchLotteryCurrent().catch(() => null),
     ]);
     setNotices(nextNotices);
     setOverview(nextOverview);
+    setHasLottery(Boolean(lottery?.activityId));
   }, []);
 
   const loadVideos = useCallback(async () => {
@@ -220,21 +224,23 @@ export default function HomeScreen() {
             ))}
           </View>
 
-          <Pressable style={styles.lotteryCard} onPress={() => router.push('/lottery')}>
-            <Image
-              source={images.lotteryBanner}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              contentPosition="right"
-            />
-            <View style={styles.lotteryText}>
-              <Text style={styles.lotteryTitle}>幸运抽奖</Text>
-              <Text style={styles.lotteryDesc}>惊喜好礼 · 等你来拿</Text>
-              <View style={styles.lotteryCta}>
-                <Text style={styles.lotteryCtaText}>立即参与 {'>'}</Text>
+          {hasLottery ? (
+            <Pressable style={styles.lotteryCard} onPress={() => router.push('/lottery')}>
+              <Image
+                source={images.lotteryBanner}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                contentPosition="right"
+              />
+              <View style={styles.lotteryText}>
+                <Text style={styles.lotteryTitle}>幸运抽奖</Text>
+                <Text style={styles.lotteryDesc}>惊喜好礼 · 等你来拿</Text>
+                <View style={styles.lotteryCta}>
+                  <Text style={styles.lotteryCtaText}>立即参与 {'>'}</Text>
+                </View>
               </View>
-            </View>
-          </Pressable>
+            </Pressable>
+          ) : null}
 
           <Text style={styles.section}>运行概览</Text>
           <View style={styles.statsRow}>

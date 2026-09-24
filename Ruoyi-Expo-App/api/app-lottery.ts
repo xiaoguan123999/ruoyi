@@ -1,4 +1,4 @@
-import { request } from '@/api/request';
+import { ApiError, request } from '@/api/request';
 import { config } from '@/config';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -105,9 +105,21 @@ function normalizePrize(raw: Record<string, unknown>, index: number): AppLottery
   };
 }
 
-/** GET /app/lottery/current */
+function isNoActiveLottery(error: unknown): boolean {
+  return error instanceof ApiError && (error.message || '').includes('暂无进行中的抽奖活动');
+}
+
+/** GET /app/lottery/current；无进行中活动时返回 null */
 export async function fetchLotteryCurrent(): Promise<AppLotteryCurrent | null> {
-  const res = await request<unknown>('/app/lottery/current');
+  let res: unknown;
+  try {
+    res = await request<unknown>('/app/lottery/current');
+  } catch (error) {
+    if (isNoActiveLottery(error)) {
+      return null;
+    }
+    throw error;
+  }
   if (!isRecord(res) || Number(res.code) !== 200 || !isRecord(res.data)) {
     return null;
   }

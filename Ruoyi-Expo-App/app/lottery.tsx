@@ -295,6 +295,7 @@ export default function LotteryScreen() {
   /** 屏幕布局角度：减速末段只切换一次到终值 */
   const [layoutRotationDeg, setLayoutRotationDeg] = useState(0);
   const [current, setCurrent] = useState<AppLotteryCurrent | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   const ruleLines = useMemo(() => buildRuleLines(current?.ruleText), [current?.ruleText]);
   const prizes = current?.prizes ?? [];
@@ -353,9 +354,12 @@ export default function LotteryScreen() {
       const next = await fetchLotteryCurrent();
       setCurrent(next);
     } catch (error) {
+      setCurrent(null);
       if (!(error instanceof ApiError) || error.code !== 401) {
         modalError(error instanceof ApiError ? error.message : '获取抽奖信息失败');
       }
+    } finally {
+      setLoaded(true);
     }
   }, []);
 
@@ -370,7 +374,7 @@ export default function LotteryScreen() {
       return;
     }
     if (!current) {
-      modalInfo('活动加载中，请稍候');
+      modalInfo(loaded ? '暂无进行中的抽奖活动' : '活动加载中，请稍候');
       return;
     }
     if (prizes.length === 0) {
@@ -450,6 +454,12 @@ export default function LotteryScreen() {
         contentContainerStyle={styles.scroll}
         onRefresh={load}
       >
+        {loaded && !current ? (
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyText}>暂无进行中的抽奖活动</Text>
+          </View>
+        ) : (
+          <>
         <View style={styles.hero}>
           <Image source={images.lotteryStage} style={styles.stage} contentFit="cover" contentPosition="bottom" />
           <View style={[styles.wheelWrap, { width: wheelSize, height: wheelSize }]}>
@@ -533,6 +543,8 @@ export default function LotteryScreen() {
             </Text>
           ))}
         </View>
+          </>
+        )}
       </RefreshableScrollView>
     </AppBackground>
   );
@@ -542,6 +554,15 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: 16,
     paddingBottom: 28,
+  },
+  emptyWrap: {
+    minHeight: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    color: 'rgba(210, 222, 240, 0.8)',
+    fontSize: 15,
   },
   hero: {
     width: '100%',
