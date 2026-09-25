@@ -103,6 +103,17 @@ export function chainNetworkLabel(network?: string) {
   return network === 'BEP20' ? 'USDT-BEP20' : 'USDT-TRC20';
 }
 
+export function chainNetworkDisplayName(network?: string) {
+  const code = normalizeChainNetwork(network);
+  if (code === 'TRC20') {
+    return 'TRC20(波场链)';
+  }
+  if (code === 'BEP20') {
+    return 'BEP20(币安链)';
+  }
+  return network || '';
+}
+
 function mapNetwork(raw: unknown): AppChainDepositNetwork | null {
   if (!isRecord(raw)) {
     return null;

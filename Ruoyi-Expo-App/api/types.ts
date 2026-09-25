@@ -665,7 +665,7 @@ export type AppChainDepositOrder = {
   address: string;
   addressSource?: AppChainAddressSource;
   contractAddress?: string;
-  /** 必须原样复制，6 位字符串，不要用 Number / payAmount */
+  /** 必须原样复制，4 位字符串，不要用 Number / payAmount */
   payAmountText: string;
   /** UTC 毫秒时间戳。倒计时 = expireAt - Date.now() */
   expireAt?: number;

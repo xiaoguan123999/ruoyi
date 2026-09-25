@@ -14,6 +14,7 @@ import {
   listPayChannelsByScene,
 } from '@/api/app-pay';
 import {
+  chainNetworkDisplayName,
   createAppChainDeposit,
   fetchAppChainDepositConfig,
   preferredChainNetwork,
@@ -554,7 +555,7 @@ export default function RechargeScreen() {
               <Image source={images.payUsdt} style={styles.pickerIcon} contentFit="contain" />
               <View style={styles.pickerText}>
                 <Text style={styles.pickerTitle} numberOfLines={1}>
-                  {selectedChainNet ? selectedChainNet.name || selectedChainNet.network : '点击选择网络'}
+                  {selectedChainNet ? chainNetworkDisplayName(selectedChainNet.network) : '点击选择网络'}
                 </Text>
                 <Text style={styles.pickerSub} numberOfLines={1}>
                   {selectedChainNet ? selectedChainNet.network : '请选择转账网络'}
@@ -638,7 +639,7 @@ export default function RechargeScreen() {
         icon={images.payUsdt}
         items={chainNetworks.map((item) => ({
           key: item.network,
-          name: item.name || item.network,
+          name: chainNetworkDisplayName(item.network),
           sub: item.network,
         }))}
         selectedKey={selectedChainNet ? chainNetwork : undefined}
