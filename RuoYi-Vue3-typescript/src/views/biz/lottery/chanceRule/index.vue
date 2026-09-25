@@ -1,7 +1,7 @@
 <template>
   <div class="app-container ops-page">
     <el-alert
-      title="配置如何获得抽奖次数。例：累计签到≥3天 且 直推实名≥3人 → 每达标一档发放指定次数。可设「仅一次」「按倍数不限档」「按倍数最多 N 档」。App 进入抽奖页/抽奖前会自动校验并发放。"
+      title="配置如何获得抽奖次数。累计签到 / 连续签到 / 直推实名填 >0 的项须同时满足（AND）；填 0 表示不限制该项。可设「仅一次」「按倍数不限档」「按倍数最多 N 档」。App 进入抽奖页/抽奖前会校验；签到成功给本人发，下级实名给上级发。"
       type="info"
       :closable="false"
       show-icon
@@ -31,7 +31,8 @@
     <el-table v-loading="loading" :data="dataList">
       <el-table-column label="ID" align="center" prop="ruleId" width="70" />
       <el-table-column label="规则名称" align="left" prop="ruleName" min-width="160" show-overflow-tooltip />
-      <el-table-column label="签到天数≥" align="center" prop="checkinDays" width="110" />
+      <el-table-column label="累计签到≥" align="center" prop="checkinDays" width="110" />
+      <el-table-column label="连续签到≥" align="center" prop="streakDays" width="110" />
       <el-table-column label="直推实名≥" align="center" prop="inviteKycCount" width="110" />
       <el-table-column label="每档发放" align="center" prop="grantAmount" width="90" />
       <el-table-column label="发放模式" align="center" min-width="150">
@@ -62,6 +63,10 @@
         </el-form-item>
         <el-form-item label="累计签到≥" prop="checkinDays">
           <el-input-number v-model="form.checkinDays" :min="0" :max="3650" style="width: 160px" />
+          <span class="field-tip">天，0 表示不限制此项</span>
+        </el-form-item>
+        <el-form-item label="连续签到≥" prop="streakDays">
+          <el-input-number v-model="form.streakDays" :min="0" :max="3650" style="width: 160px" />
           <span class="field-tip">天，0 表示不限制此项</span>
         </el-form-item>
         <el-form-item label="直推实名≥" prop="inviteKycCount">
@@ -177,6 +182,7 @@ function reset() {
     activityId: soleActivityId.value,
     ruleName: "",
     checkinDays: 3,
+    streakDays: 0,
     inviteKycCount: 3,
     grantAmount: 1,
     grantMode: "ONCE",
@@ -207,6 +213,7 @@ function handleUpdate(row: any) {
       ...d,
       onceOnly,
       maxRepeat,
+      streakDays: d.streakDays == null ? 0 : Number(d.streakDays),
       grantMode: toGrantMode(onceOnly, maxRepeat)
     }
     open.value = true
@@ -217,8 +224,8 @@ function handleUpdate(row: any) {
 function submitForm() {
   proxy.$refs["formRef"].validate((valid: boolean) => {
     if (!valid) return
-    if ((form.value.checkinDays || 0) <= 0 && (form.value.inviteKycCount || 0) <= 0) {
-      proxy.$modal.msgError("签到天数与直推实名人数至少配置一项")
+    if ((form.value.checkinDays || 0) <= 0 && (form.value.streakDays || 0) <= 0 && (form.value.inviteKycCount || 0) <= 0) {
+      proxy.$modal.msgError("累计签到、连续签到、直推实名至少配置一项")
       return
     }
     const mode = form.value.grantMode || "ONCE"
@@ -239,7 +246,8 @@ function submitForm() {
       ...form.value,
       activityId: form.value.activityId || soleActivityId.value,
       onceOnly,
-      maxRepeat
+      maxRepeat,
+      streakDays: form.value.streakDays == null ? 0 : form.value.streakDays
     }
     delete payload.grantMode
     const req = payload.ruleId ? updateLotteryChanceRule(payload) : addLotteryChanceRule(payload)
