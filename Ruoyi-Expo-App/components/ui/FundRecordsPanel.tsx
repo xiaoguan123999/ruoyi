@@ -25,7 +25,7 @@ function sumByCurrency(records: FundListItem[], mode: FundSummaryMode) {
     (acc, item) => {
       // 申请单：只累计「成功 / 已打款」；流水：成功文案或正负金额
       const successByTitle = /成功|到账|已打款/.test(item.title);
-      const pendingOrFail = /申请|审核|处理|失败|拒绝|退回|冻结|待打款/.test(item.title);
+      const pendingOrFail = /申请|审核|处理|失败|拒绝|退回|冻结|待打款|充值中/.test(item.title);
       let value = 0;
       if (successByTitle) {
         value = Math.abs(item.amount);
@@ -63,7 +63,7 @@ function resolveTone(title: string, amount: number) {
   if (/失败|拒绝|退回|已拒绝/.test(title)) {
     return styles.fail;
   }
-  if (/待审|审核|申请|处理|冻结|待打款/.test(title)) {
+  if (/待审|审核|申请|处理|冻结|待打款|充值中/.test(title)) {
     return styles.pending;
   }
   if (/成功|到账|入账|已通过|已打款/.test(title)) {

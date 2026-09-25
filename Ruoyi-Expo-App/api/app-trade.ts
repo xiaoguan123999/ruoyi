@@ -432,55 +432,19 @@ export async function applyAppWithdraw(body: AppAmountBody): Promise<string> {
   return res.msg || '提现申请已提交';
 }
 
-function mapFundStatusLabel(kind: 'recharge' | 'withdraw', status: string): string {
-  const raw = status.trim();
-  const lower = raw.toLowerCase();
-  const prefix = kind === 'recharge' ? '充值' : '提现';
+/** 充值申请单：0 充值中 / 1 充值成功 / 2 充值失败 */
+function mapRechargeStatusLabel(status: string, statusLabel?: string): string {
+  const code = status.trim();
+  const fromApi = (statusLabel || '').trim();
+  const blob = `${code} ${fromApi}`.toLowerCase();
 
-  if (
-    ['1', 'success', 'approved', 'pass', 'passed', '成功', '已通过', '已成功'].includes(lower) ||
-    raw === '成功' ||
-    raw === '已通过'
-  ) {
-    return `${prefix}成功`;
+  if (code === '1' || (/(成功|已通过|已成功|success|approved|pass)/.test(blob) && !/(失败|拒绝|reject|fail)/.test(blob))) {
+    return '充值成功';
   }
-  if (['2', 'reject', 'rejected', 'fail', 'failed', '拒绝', '已拒绝', '失败'].includes(lower)) {
-    return `${prefix}失败`;
+  if (code === '2' || /(失败|拒绝|已拒绝|reject|fail)/.test(blob)) {
+    return '充值失败';
   }
-  if (['3', 'pay_pending', '待打款'].includes(lower) || raw === '待打款') {
-    return '待打款';
-  }
-  if (
-    ['0', 'pending', 'processing', 'audit', 'waiting', '申请中', '审核中', '处理中', '待审', '待审核'].includes(
-      lower,
-    ) ||
-    raw === '申请中' ||
-    raw === '审核中' ||
-    raw === '待审' ||
-    raw === '待审核'
-  ) {
-    return '审核中';
-  }
-  if (!raw) {
-    return `${prefix}记录`;
-  }
-  // 已是中文文案则规范化常见别名
-  if (/[\u4e00-\u9fff]/.test(raw)) {
-    return normalizeFundStatusTitle(raw);
-  }
-  return '审核中';
-}
-
-/** 接口可能直接下发「待审」「申请中」等文案，统一成展示用状态 */
-function normalizeFundStatusTitle(title: string): string {
-  const raw = title.trim();
-  if (!raw) {
-    return raw;
-  }
-  if (/待审|待审核|申请中|处理中|审核中/.test(raw) && !/成功|拒绝|失败|通过/.test(raw)) {
-    return '审核中';
-  }
-  return raw;
+  return '充值中';
 }
 
 function mapFundRecord(
@@ -502,7 +466,7 @@ function mapFundRecord(
   const title =
     kind === 'withdraw'
       ? mapWithdrawStatusLabel(status, titleFromApi || undefined)
-      : normalizeFundStatusTitle(titleFromApi || mapFundStatusLabel(kind, status));
+      : mapRechargeStatusLabel(status, titleFromApi || undefined);
 
   return {
     id: String(id || `${kind}-${pickString(raw, ['createTime'])}-${amount}`),
@@ -514,7 +478,7 @@ function mapFundRecord(
   };
 }
 
-/** GET /app/fundRecords — 充值/提现申请单（含申请中/成功/拒绝） */
+/** GET /app/fundRecords — 充值/提现申请单 */
 export async function fetchAppFundRecords(options?: {
   pageNum?: number;
   pageSize?: number;
