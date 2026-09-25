@@ -8,88 +8,100 @@
       class="mb8"
     />
 
-    <el-tabs v-model="activeTab">
-      <el-tab-pane label="用户余额" name="balance">
-        <el-form :model="queryParams" ref="queryRef" :inline="true" class="mb8" v-show="showSearch">
-          <el-form-item label="手机号" prop="phone">
-            <el-input v-model="queryParams.phone" placeholder="手机号" clearable style="width: 180px" @keyup.enter="handleQuery" />
-          </el-form-item>
-          <el-form-item label="会员" prop="memberId">
-            <MemberSelect v-model="queryParams.memberId" />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-          </el-form-item>
-        </el-form>
+    <el-radio-group v-model="activeTab" class="mb8 ops-switch">
+      <el-radio-button value="balance">用户余额</el-radio-button>
+      <el-radio-button value="log">变动流水</el-radio-button>
+    </el-radio-group>
 
-        <el-row :gutter="10" class="mb8">
-          <el-col :span="1.5">
-            <el-button type="primary" plain icon="Plus" @click="openGrant" v-hasPermi="['biz:lotteryChance:adjust']">添加次数</el-button>
-          </el-col>
-          <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" />
-        </el-row>
+    <template v-if="activeTab === 'balance'">
+      <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
+        <el-form-item label="会员" prop="memberId">
+          <MemberSelect v-model="queryParams.memberId" />
+        </el-form-item>
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="queryParams.phone" placeholder="手机号" clearable style="width: 160px" @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
 
-        <el-table v-loading="loading" :data="dataList">
-          <el-table-column label="会员ID" align="center" prop="memberId" width="90" />
-          <el-table-column label="手机号" align="center" prop="phone" width="130" />
-          <el-table-column label="姓名" align="center" prop="realName" width="100" />
-          <el-table-column label="活动" align="left" prop="activityTitle" min-width="120" show-overflow-tooltip />
-          <el-table-column label="可用次数" align="center" prop="balance" width="90" />
-          <el-table-column label="累计发放" align="center" prop="totalGranted" width="90" />
-          <el-table-column label="累计消耗" align="center" prop="totalConsumed" width="90" />
-          <el-table-column label="更新时间" align="center" prop="updateTime" width="170">
-            <template #default="scope"><span>{{ parseTime(scope.row.updateTime) }}</span></template>
-          </el-table-column>
-          <el-table-column label="操作" align="center" width="180" fixed="right">
-            <template #default="scope">
-              <el-button link type="primary" @click="openAdjust(scope.row)" v-hasPermi="['biz:lotteryChance:adjust']">调整</el-button>
-              <el-button link type="primary" @click="viewLogs(scope.row)">流水</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-        <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
-      </el-tab-pane>
+      <el-row :gutter="10" class="mb8">
+        <el-col :span="1.5">
+          <el-button type="primary" plain icon="Plus" @click="openGrant" v-hasPermi="['biz:lotteryChance:adjust']">添加次数</el-button>
+        </el-col>
+        <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+      </el-row>
 
-      <el-tab-pane label="变动流水" name="log">
-        <el-form :model="logQuery" ref="logQueryRef" :inline="true" class="mb8">
-          <el-form-item label="手机号">
-            <el-input v-model="logQuery.phone" placeholder="手机号" clearable style="width: 160px" />
-          </el-form-item>
-          <el-form-item label="会员">
-            <MemberSelect v-model="logQuery.memberId" />
-          </el-form-item>
-          <el-form-item label="类型">
-            <el-select v-model="logQuery.changeType" clearable placeholder="类型" style="width: 150px">
-              <el-option label="规则发放" value="RULE_GRANT" />
-              <el-option label="后台增加" value="ADMIN_GRANT" />
-              <el-option label="后台扣减" value="ADMIN_DEDUCT" />
-              <el-option label="抽奖消耗" value="DRAW_CONSUME" />
-              <el-option label="失败退回" value="DRAW_REFUND" />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleLogQuery">搜索</el-button>
-          </el-form-item>
-        </el-form>
-        <el-table v-loading="logLoading" :data="logList">
-          <el-table-column label="时间" align="center" prop="createTime" width="170">
-            <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
-          </el-table-column>
-          <el-table-column label="会员ID" align="center" prop="memberId" width="90" />
-          <el-table-column label="手机号" align="center" prop="phone" width="130" />
-          <el-table-column label="类型" align="center" width="100">
-            <template #default="scope">{{ changeTypeLabel(scope.row.changeType) }}</template>
-          </el-table-column>
-          <el-table-column label="变动" align="center" prop="changeAmount" width="80" />
-          <el-table-column label="余额" align="center" prop="balanceAfter" width="80" />
-          <el-table-column label="规则" align="left" prop="ruleName" min-width="120" show-overflow-tooltip />
-          <el-table-column label="备注" align="left" prop="remark" min-width="140" show-overflow-tooltip />
-          <el-table-column label="操作者" align="center" prop="createBy" width="100" />
-        </el-table>
-        <pagination v-show="logTotal > 0" :total="logTotal" v-model:page="logQuery.pageNum" v-model:limit="logQuery.pageSize" @pagination="getLogList" />
-      </el-tab-pane>
-    </el-tabs>
+      <el-table v-loading="loading" :data="dataList">
+        <el-table-column label="会员ID" align="center" prop="memberId" width="90" />
+        <el-table-column label="手机号" align="center" prop="phone" width="130" />
+        <el-table-column label="姓名" align="center" prop="realName" width="100" />
+        <el-table-column label="活动" align="left" prop="activityTitle" min-width="120" show-overflow-tooltip />
+        <el-table-column label="可用次数" align="center" prop="balance" width="90" />
+        <el-table-column label="累计发放" align="center" prop="totalGranted" width="90" />
+        <el-table-column label="累计消耗" align="center" prop="totalConsumed" width="90" />
+        <el-table-column label="更新时间" align="center" prop="updateTime" width="170">
+          <template #default="scope"><span>{{ parseTime(scope.row.updateTime) }}</span></template>
+        </el-table-column>
+        <el-table-column label="操作" align="center" width="180" fixed="right">
+          <template #default="scope">
+            <el-button link type="primary" icon="Edit" @click="openAdjust(scope.row)" v-hasPermi="['biz:lotteryChance:adjust']">调整</el-button>
+            <el-button link type="primary" icon="Document" @click="viewLogs(scope.row)">流水</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+    </template>
+
+    <template v-if="activeTab === 'log'">
+      <el-form :model="logQuery" ref="logQueryRef" :inline="true" v-show="showSearch">
+        <el-form-item label="会员" prop="memberId">
+          <MemberSelect v-model="logQuery.memberId" />
+        </el-form-item>
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="logQuery.phone" placeholder="手机号" clearable style="width: 160px" @keyup.enter="handleLogQuery" />
+        </el-form-item>
+        <el-form-item label="类型" prop="changeType">
+          <el-select v-model="logQuery.changeType" clearable placeholder="类型" style="width: 150px">
+            <el-option label="规则发放" value="RULE_GRANT" />
+            <el-option label="后台增加" value="ADMIN_GRANT" />
+            <el-option label="后台扣减" value="ADMIN_DEDUCT" />
+            <el-option label="抽奖消耗" value="DRAW_CONSUME" />
+            <el-option label="失败退回" value="DRAW_REFUND" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" icon="Search" @click="handleLogQuery">搜索</el-button>
+          <el-button icon="Refresh" @click="resetLogQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-row :gutter="10" class="mb8">
+        <el-col :span="1.5">
+          <span class="ops-toolbar-title">次数变动流水</span>
+        </el-col>
+        <right-toolbar v-model:showSearch="showSearch" @queryTable="getLogList"></right-toolbar>
+      </el-row>
+
+      <el-table v-loading="logLoading" :data="logList">
+        <el-table-column label="时间" align="center" prop="createTime" width="170">
+          <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
+        </el-table-column>
+        <el-table-column label="会员ID" align="center" prop="memberId" width="90" />
+        <el-table-column label="手机号" align="center" prop="phone" width="130" />
+        <el-table-column label="类型" align="center" width="100">
+          <template #default="scope">{{ changeTypeLabel(scope.row.changeType) }}</template>
+        </el-table-column>
+        <el-table-column label="变动" align="center" prop="changeAmount" width="80" />
+        <el-table-column label="余额" align="center" prop="balanceAfter" width="80" />
+        <el-table-column label="规则" align="left" prop="ruleName" min-width="120" show-overflow-tooltip />
+        <el-table-column label="备注" align="left" prop="remark" min-width="140" show-overflow-tooltip />
+        <el-table-column label="操作者" align="center" prop="createBy" width="100" />
+      </el-table>
+      <pagination v-show="logTotal > 0" :total="logTotal" v-model:page="logQuery.pageNum" v-model:limit="logQuery.pageSize" @pagination="getLogList" />
+    </template>
 
     <el-dialog :title="adjustForm.mode === 'grant' ? '添加抽奖次数' : '调整抽奖次数'" v-model="adjustOpen" width="480px" append-to-body>
       <el-form label-width="100px">
@@ -214,6 +226,13 @@ function handleLogQuery() {
   getLogList()
 }
 
+function resetLogQuery() {
+  logQuery.value.phone = undefined
+  logQuery.value.memberId = undefined
+  logQuery.value.changeType = undefined
+  handleLogQuery()
+}
+
 function openGrant() {
   if (!soleActivityId.value) {
     proxy.$modal.msgWarning("请先配置并启用抽奖活动")
@@ -296,6 +315,21 @@ getSoleLotteryActivity().then((res: any) => {
 </script>
 
 <style scoped>
-.mb8 { margin-bottom: 8px; }
-.field-tip { margin-left: 8px; font-size: 12px; color: var(--el-text-color-secondary); }
+.ops-switch {
+  display: inline-flex;
+}
+.ops-toolbar-title {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  white-space: nowrap;
+}
+.field-tip {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
 </style>
