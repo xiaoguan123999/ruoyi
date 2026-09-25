@@ -26,6 +26,9 @@ public interface IBizLotteryChanceService
     /** 按启用规则尝试发放次数（幂等） */
     int tryGrantByRules(Long activityId, Long memberId);
 
+    /** 对当前进行中活动按获次规则尝试发放（签到/实名等事件主动触发） */
+    int tryGrantForMember(Long memberId);
+
     /** 后台加减次数，amount 正增负减 */
     void adminAdjust(Long activityId, Long memberId, int amount, String remark, String operator);
 

@@ -32,6 +32,7 @@ import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.mapper.BizRechargeMapper;
 import com.ruoyi.biz.service.IBizBlacklistService;
 import com.ruoyi.biz.service.IBizLevelRewardService;
+import com.ruoyi.biz.service.IBizLotteryChanceService;
 import com.ruoyi.biz.service.IBizMemberService;
 import com.ruoyi.biz.service.IBizPromoService;
 import com.ruoyi.biz.service.IBizWalletService;
@@ -58,6 +59,9 @@ public class BizMemberServiceImpl implements IBizMemberService
 
     @Autowired
     private IBizPromoService promoService;
+
+    @Autowired
+    private IBizLotteryChanceService lotteryChanceService;
 
     @Autowired
     private IBizBlacklistService blacklistService;
@@ -436,6 +440,18 @@ public class BizMemberServiceImpl implements IBizMemberService
         memberMapper.updateMember(update);
         refreshLevelAndUplines(memberId);
         promoService.grantInviteOnKyc(memberId);
+        // 直推实名条件只影响上级：下级实名后上级 inviteKyc 计数+1
+        if (exist.getParentId() != null)
+        {
+            try
+            {
+                lotteryChanceService.tryGrantForMember(exist.getParentId());
+            }
+            catch (Exception ignored)
+            {
+                // 获次失败不影响实名成功
+            }
+        }
     }
 
     @Override

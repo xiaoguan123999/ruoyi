@@ -7,6 +7,7 @@
         <result property="activityId"      column="activity_id"/>
         <result property="ruleName"        column="rule_name"/>
         <result property="checkinDays"     column="checkin_days"/>
+        <result property="streakDays"    column="streak_days"    />
         <result property="inviteKycCount"  column="invite_kyc_count"/>
         <result property="grantAmount"     column="grant_amount"/>
         <result property="onceOnly"        column="once_only"/>
@@ -21,7 +22,7 @@
     </resultMap>
 
     <sql id="selectVo">
-        select rule_id, activity_id, rule_name, checkin_days, invite_kyc_count, grant_amount,
+        select rule_id, activity_id, rule_name, checkin_days, streak_days, invite_kyc_count, grant_amount,
                once_only, max_repeat, status, sort, create_by, create_time, update_by, update_time, remark
         from biz_lottery_chance_rule
     </sql>
@@ -48,10 +49,10 @@
 
     <insert id="insertChanceRule" parameterType="BizLotteryChanceRule" useGeneratedKeys="true" keyProperty="ruleId">
         insert into biz_lottery_chance_rule (
-            activity_id, rule_name, checkin_days, invite_kyc_count, grant_amount, once_only, max_repeat,
+            activity_id, rule_name, checkin_days, streak_days, invite_kyc_count, grant_amount, once_only, max_repeat,
             status, sort, create_by, create_time, remark
         ) values (
-            #{activityId}, #{ruleName}, #{checkinDays}, #{inviteKycCount}, #{grantAmount}, #{onceOnly}, #{maxRepeat},
+            #{activityId}, #{ruleName}, #{checkinDays}, #{streakDays}, #{inviteKycCount}, #{grantAmount}, #{onceOnly}, #{maxRepeat},
             #{status}, #{sort}, #{createBy}, sysdate(), #{remark}
         )
     </insert>
@@ -61,6 +62,7 @@
         <set>
             <if test="ruleName != null and ruleName != ''">rule_name = #{ruleName},</if>
             <if test="checkinDays != null">checkin_days = #{checkinDays},</if>
+            <if test="streakDays != null">streak_days = #{streakDays},</if>
             <if test="inviteKycCount != null">invite_kyc_count = #{inviteKycCount},</if>
             <if test="grantAmount != null">grant_amount = #{grantAmount},</if>
             <if test="onceOnly != null">once_only = #{onceOnly},</if>

@@ -19,9 +19,9 @@ public class AppChainDepositOrderData
     private Integer decimals;
     @ApiModelProperty("用户申请金额，2位小数")
     private BigDecimal amount;
-    @ApiModelProperty("必须转账的精确金额，6位小数。前端请用 payAmountText，避免 JS 精度丢失")
+    @ApiModelProperty("必须转账的精确金额，4位小数。前端请用 payAmountText，避免 JS 精度丢失")
     private BigDecimal payAmount;
-    @ApiModelProperty("6位小数字符串，复制转账金额用这个")
+    @ApiModelProperty("4位小数字符串，复制转账金额用这个")
     private String payAmountText;
     @ApiModelProperty("展示用，无时区，不要用来做倒计时")
     private String expireTime;

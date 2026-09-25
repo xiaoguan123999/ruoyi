@@ -22,6 +22,7 @@ import com.ruoyi.biz.mapper.BizCheckinMapper;
 import com.ruoyi.biz.mapper.BizCheckinPrizeMapper;
 import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.service.IBizCheckinService;
+import com.ruoyi.biz.service.IBizLotteryChanceService;
 import com.ruoyi.biz.service.IBizConfigService;
 import com.ruoyi.biz.service.IBizWalletService;
 import com.ruoyi.common.exception.ServiceException;
@@ -48,6 +49,9 @@ public class BizCheckinServiceImpl implements IBizCheckinService
 
     @Autowired
     private IBizConfigService configService;
+
+    @Autowired
+    private IBizLotteryChanceService lotteryChanceService;
 
     @Autowired
     private ISysConfigService sysConfigService;
@@ -146,6 +150,14 @@ public class BizCheckinServiceImpl implements IBizCheckinService
         checkinMapper.insertCheckin(checkin);
         walletService.credit(memberId, BizConstants.CURRENCY_CNY, amount, BizConstants.BIZ_CHECKIN,
                 checkin.getCheckinId(), "每日签到");
+        try
+        {
+            lotteryChanceService.tryGrantForMember(memberId);
+        }
+        catch (Exception ignored)
+        {
+            // 获次失败不影响签到成功
+        }
 
         int streak = calcStreak(memberId, today);
         CheckinResult result = new CheckinResult();

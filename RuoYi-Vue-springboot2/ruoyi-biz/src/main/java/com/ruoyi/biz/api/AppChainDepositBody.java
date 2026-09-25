@@ -5,7 +5,7 @@ import io.swagger.annotations.ApiModelProperty;
 
 public class AppChainDepositBody
 {
-    @ApiModelProperty(value = "用户填写的充值金额，按2位四舍五入后再加6位指纹", required = true)
+    @ApiModelProperty(value = "用户填写的充值金额，按2位四舍五入后再加4位指纹", required = true)
     private BigDecimal amount;
     @ApiModelProperty("TRC20 或 BEP20，不传默认 TRC20")
     private String network;

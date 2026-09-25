@@ -113,12 +113,13 @@ public class BizLotteryChanceServiceImpl implements IBizLotteryChanceService
             return 0;
         }
         int checkinDays = checkinMapper.countByMemberId(memberId);
+        int streakDays = checkinMapper.countConsecutiveDays(memberId);
         int inviteKyc = memberMapper.countDirectKycMembers(memberId);
         int granted = 0;
         for (int i = 0; i < rules.size(); i++)
         {
             BizLotteryChanceRule rule = rules.get(i);
-            int levels = qualifiedLevels(rule, checkinDays, inviteKyc);
+            int levels = qualifiedLevels(rule, checkinDays, streakDays, inviteKyc);
             if (levels <= 0)
             {
                 continue;
@@ -140,6 +141,22 @@ public class BizLotteryChanceServiceImpl implements IBizLotteryChanceService
             }
         }
         return granted;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int tryGrantForMember(Long memberId)
+    {
+        if (memberId == null)
+        {
+            return 0;
+        }
+        com.ruoyi.biz.domain.BizLotteryActivity activity = lotteryActivityMapper.selectCurrentActiveActivity();
+        if (activity == null || activity.getActivityId() == null)
+        {
+            return 0;
+        }
+        return tryGrantByRules(activity.getActivityId(), memberId);
     }
 
     @Override
@@ -244,11 +261,12 @@ public class BizLotteryChanceServiceImpl implements IBizLotteryChanceService
     /**
      * 按条件倍数计算已达标档次。例：签到≥3 且 直推≥3，实际 6/6 → 2 档。
      */
-    private int qualifiedLevels(BizLotteryChanceRule rule, int checkinDays, int inviteKyc)
+    private int qualifiedLevels(BizLotteryChanceRule rule, int checkinDays, int streakDays, int inviteKyc)
     {
         int needCheckin = rule.getCheckinDays() != null ? rule.getCheckinDays().intValue() : 0;
+        int needStreak = rule.getStreakDays() != null ? rule.getStreakDays().intValue() : 0;
         int needInvite = rule.getInviteKycCount() != null ? rule.getInviteKycCount().intValue() : 0;
-        if (needCheckin <= 0 && needInvite <= 0)
+        if (needCheckin <= 0 && needStreak <= 0 && needInvite <= 0)
         {
             return 0;
         }
@@ -256,6 +274,14 @@ public class BizLotteryChanceServiceImpl implements IBizLotteryChanceService
         if (needCheckin > 0)
         {
             levels = Math.min(levels, checkinDays / needCheckin);
+        }
+        if (needStreak > 0)
+        {
+            if (streakDays < needStreak)
+            {
+                return 0;
+            }
+            levels = Math.min(levels, streakDays / needStreak);
         }
         if (needInvite > 0)
         {
@@ -386,14 +412,15 @@ public class BizLotteryChanceServiceImpl implements IBizLotteryChanceService
             throw new ServiceException("请填写规则名称");
         }
         int checkin = rule.getCheckinDays() != null ? rule.getCheckinDays().intValue() : 0;
+        int streak = rule.getStreakDays() != null ? rule.getStreakDays().intValue() : 0;
         int invite = rule.getInviteKycCount() != null ? rule.getInviteKycCount().intValue() : 0;
-        if (checkin < 0 || invite < 0)
+        if (checkin < 0 || streak < 0 || invite < 0)
         {
             throw new ServiceException("条件天数/人数不能为负");
         }
-        if (checkin == 0 && invite == 0)
+        if (checkin == 0 && streak == 0 && invite == 0)
         {
-            throw new ServiceException("签到天数与直推实名人数至少配置一项");
+            throw new ServiceException("累计签到、连续签到、直推实名至少填写一项");
         }
         if (rule.getGrantAmount() == null || rule.getGrantAmount().intValue() < 1)
         {
@@ -447,6 +474,10 @@ public class BizLotteryChanceServiceImpl implements IBizLotteryChanceService
         if (rule.getCheckinDays() == null)
         {
             rule.setCheckinDays(Integer.valueOf(0));
+        }
+        if (rule.getStreakDays() == null)
+        {
+            rule.setStreakDays(Integer.valueOf(0));
         }
         if (rule.getInviteKycCount() == null)
         {

@@ -14,6 +14,9 @@ public class BizLotteryChanceRule extends BaseEntity
     private String ruleName;
     /** 需累计签到天数，0=不限制 */
     private Integer checkinDays;
+
+    /** 连续签到天数，0=不限制 */
+    private Integer streakDays;
     /** 需直推实名人数，0=不限制 */
     private Integer inviteKycCount;
     /** 每档达标发放的抽奖次数 */
@@ -33,6 +36,16 @@ public class BizLotteryChanceRule extends BaseEntity
     public void setRuleName(String ruleName) { this.ruleName = ruleName; }
     public Integer getCheckinDays() { return checkinDays; }
     public void setCheckinDays(Integer checkinDays) { this.checkinDays = checkinDays; }
+
+    public Integer getStreakDays()
+    {
+        return streakDays;
+    }
+
+    public void setStreakDays(Integer streakDays)
+    {
+        this.streakDays = streakDays;
+    }
     public Integer getInviteKycCount() { return inviteKycCount; }
     public void setInviteKycCount(Integer inviteKycCount) { this.inviteKycCount = inviteKycCount; }
     public Integer getGrantAmount() { return grantAmount; }

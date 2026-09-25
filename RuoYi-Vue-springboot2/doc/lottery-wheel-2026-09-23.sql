@@ -289,6 +289,7 @@ create table if not exists biz_lottery_chance_rule (
   activity_id       bigint(20)      not null                   comment '活动ID',
   rule_name         varchar(64)     not null                   comment '规则名称',
   checkin_days      int(11)         not null default 0         comment '需累计签到天数，0=不限制',
+  streak_days int(11) NOT NULL DEFAULT 0 COMMENT '连续签到天数，0=不限制',
   invite_kyc_count  int(11)         not null default 0         comment '需直推实名人数，0=不限制',
   grant_amount      int(11)         not null default 1         comment '每档达标发放次数',
   once_only         char(1)         default '1'                comment '1仅发放一次 0按倍数可重复',

@@ -44,8 +44,10 @@ public class BizChainDepositServiceImpl implements IBizChainDepositService
     private static final Logger log = LoggerFactory.getLogger(BizChainDepositServiceImpl.class);
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int FINGERPRINT_TRIES = 50;
+    /** 指纹金额小数位：仅待付单间唯一，成功/过期等终结态可复用 */
+    private static final int FINGERPRINT_SCALE = 4;
     private static final String DEFAULT_HINT =
-            "请向该地址转入所选网络的 USDT，金额必须与显示的6位小数完全一致。请勿转 TRX、BNB 或其他币。超时未到账请重新下单。";
+            "请向该地址转入所选网络的 USDT，金额必须与显示的4位小数完全一致。请勿转 TRX、BNB 或其他币。超时未到账请重新下单。";
 
     @Autowired
     private BizChainDepositMapper depositMapper;
@@ -283,7 +285,7 @@ public class BizChainDepositServiceImpl implements IBizChainDepositService
             return;
         }
         String network = ChainNetwork.normalizeOrDefault(tx.getNetwork());
-        BigDecimal payAmount = tx.getAmount().setScale(6, RoundingMode.DOWN);
+        BigDecimal payAmount = tx.getAmount().setScale(FINGERPRINT_SCALE, RoundingMode.DOWN);
         BizChainDeposit locked = depositMapper.selectPendingByPayAmountForUpdate(payAmount, tx.getToAddress().trim(),
                 network);
         if (locked == null)
@@ -462,7 +464,9 @@ public class BizChainDepositServiceImpl implements IBizChainDepositService
         for (int i = 0; i < FINGERPRINT_TRIES; i++)
         {
             int micro = 1 + RANDOM.nextInt(9999);
-            BigDecimal pay = amount.add(new BigDecimal(micro).movePointLeft(6)).setScale(6, RoundingMode.UNNECESSARY);
+            BigDecimal pay = amount.add(new BigDecimal(micro).movePointLeft(FINGERPRINT_SCALE))
+                    .setScale(FINGERPRINT_SCALE, RoundingMode.UNNECESSARY);
+            // countPendingByPayAmount 仅统计 status=待付 且未过期，终结态可复用同金额
             if (depositMapper.countPendingByPayAmount(pay, address, network) == 0)
             {
                 return pay;
@@ -643,9 +647,9 @@ public class BizChainDepositServiceImpl implements IBizChainDepositService
     {
         if (pay == null)
         {
-            return "0.000000";
+            return "0.0000";
         }
-        return pay.setScale(6, RoundingMode.DOWN).toPlainString();
+        return pay.setScale(FINGERPRINT_SCALE, RoundingMode.DOWN).toPlainString();
     }
 
     private static String cut(String raw, int max)

@@ -1,6 +1,8 @@
 package com.ruoyi.biz.mapper;
 
 import java.util.List;
+
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import com.ruoyi.biz.api.AppTeamLevelStats;
 import com.ruoyi.biz.api.AppTeamMemberItem;
@@ -9,6 +11,7 @@ import com.ruoyi.biz.domain.BizTeamTreeNode;
 import com.ruoyi.biz.domain.BizTeamTreeSummary;
 import com.ruoyi.biz.domain.BizTeamOverview;
 
+@Mapper
 public interface BizMemberMapper
 {
     BizMember selectMemberById(Long memberId);

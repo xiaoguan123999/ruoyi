@@ -45,4 +45,24 @@
         insert into biz_checkin (member_id, checkin_date, amount, currency, create_time)
         values (#{memberId}, #{checkinDate}, #{amount}, #{currency}, sysdate())
     </insert>
+
+    <select id="countConsecutiveDays" resultType="int">
+        SELECT IFNULL((
+            SELECT streak_len FROM (
+                SELECT grp, COUNT(*) AS streak_len, MAX(checkin_date) AS streak_end
+                FROM (
+                    SELECT DISTINCT checkin_date,
+                           DATE_SUB(checkin_date, INTERVAL ROW_NUMBER() OVER (ORDER BY checkin_date) DAY) AS grp
+                    FROM biz_checkin
+                    WHERE member_id = #{memberId}
+                ) t
+                GROUP BY grp
+            ) s
+            WHERE streak_end &gt;= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+              AND streak_end &lt;= CURDATE()
+            ORDER BY streak_len DESC
+            LIMIT 1
+        ), 0)
+    </select>
+
 </mapper>
