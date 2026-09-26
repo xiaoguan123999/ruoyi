@@ -1,34 +1,34 @@
 SET NAMES utf8mb4;
--- ²úÆ·¿¨Æ¬ÑÕÉ«¸²¸Ç£¨¿É¿Õ£¬¿ÕÔò App ×ß theme ÍÆµ¼£©¿ÉÖØ¸´Ö´ĞĞ
+-- äº§å“å¡ç‰‡é¢œè‰²è¦†ç›–ï¼ˆå¯ç©ºï¼Œç©ºåˆ™ App èµ° theme æ¨å¯¼ï¼‰å¯é‡å¤æ‰§è¡Œ
 
 set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'accent_color');
-set @sql := if(@exist = 0, 'alter table biz_product add column accent_color varchar(16) default '''' comment ''ĞòºÅ/Ó¢ÎÄÃûÇ¿µ÷É«£¬¿ÕÔò¸útheme'' after cta_text', 'select 1');
+set @sql := if(@exist = 0, 'alter table biz_product add column accent_color varchar(16) default '''' comment ''åºå·/è‹±æ–‡åå¼ºè°ƒè‰²ï¼Œç©ºåˆ™è·Ÿtheme'' after cta_text', 'select 1');
 prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
 set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'title_color');
-set @sql := if(@exist = 0, 'alter table biz_product add column title_color varchar(16) default '''' comment ''²úÆ·ÃûÑÕÉ«£¬¿ÕÔò¸útheme'' after accent_color', 'select 1');
+set @sql := if(@exist = 0, 'alter table biz_product add column title_color varchar(16) default '''' comment ''äº§å“åé¢œè‰²ï¼Œç©ºåˆ™è·Ÿtheme'' after accent_color', 'select 1');
 prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
 set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'remark_color');
-set @sql := if(@exist = 0, 'alter table biz_product add column remark_color varchar(16) default '''' comment ''±¸×¢/¿ÚºÅÑÕÉ«£¬¿ÕÔò¸útheme'' after title_color', 'select 1');
+set @sql := if(@exist = 0, 'alter table biz_product add column remark_color varchar(16) default '''' comment ''å¤‡æ³¨/å£å·é¢œè‰²ï¼Œç©ºåˆ™è·Ÿtheme'' after title_color', 'select 1');
 prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
 set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'label_color');
-set @sql := if(@exist = 0, 'alter table biz_product add column label_color varchar(16) default '''' comment ''ÄÚÈİÇø±êÌâÑÕÉ«£¬¿ÕÔò¸útheme'' after remark_color', 'select 1');
+set @sql := if(@exist = 0, 'alter table biz_product add column label_color varchar(16) default '''' comment ''å†…å®¹åŒºæ ‡é¢˜é¢œè‰²ï¼Œç©ºåˆ™è·Ÿtheme'' after remark_color', 'select 1');
 prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
 set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'value_color');
-set @sql := if(@exist = 0, 'alter table biz_product add column value_color varchar(16) default '''' comment ''ÊıÖµÑÕÉ«£¬¿ÕÔò¸útheme'' after label_color', 'select 1');
+set @sql := if(@exist = 0, 'alter table biz_product add column value_color varchar(16) default '''' comment ''æ•°å€¼é¢œè‰²ï¼Œç©ºåˆ™è·Ÿtheme'' after label_color', 'select 1');
 prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
 set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'unit_color');
-set @sql := if(@exist = 0, 'alter table biz_product add column unit_color varchar(16) default '''' comment ''µ¥Î»ÑÕÉ«£¬¿ÕÔò¸útheme'' after value_color', 'select 1');
+set @sql := if(@exist = 0, 'alter table biz_product add column unit_color varchar(16) default '''' comment ''å•ä½é¢œè‰²ï¼Œç©ºåˆ™è·Ÿtheme'' after value_color', 'select 1');
 prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
 set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'btn_color');
-set @sql := if(@exist = 0, 'alter table biz_product add column btn_color varchar(16) default '''' comment ''°´Å¥±³¾°É«£¬¿ÕÔò¸útheme'' after unit_color', 'select 1');
+set @sql := if(@exist = 0, 'alter table biz_product add column btn_color varchar(16) default '''' comment ''æŒ‰é’®èƒŒæ™¯è‰²ï¼Œç©ºåˆ™è·Ÿtheme'' after unit_color', 'select 1');
 prepare stmt from @sql; execute stmt; deallocate prepare stmt;
 
 set @exist := (select count(*) from information_schema.columns where table_schema = database() and table_name = 'biz_product' and column_name = 'btn_text_color');
-set @sql := if(@exist = 0, 'alter table biz_product add column btn_text_color varchar(16) default '''' comment ''°´Å¥ÎÄ×ÖÉ«£¬¿ÕÔò°×'' after btn_color', 'select 1');
+set @sql := if(@exist = 0, 'alter table biz_product add column btn_text_color varchar(16) default '''' comment ''æŒ‰é’®æ–‡å­—è‰²ï¼Œç©ºåˆ™ç™½'' after btn_color', 'select 1');
 prepare stmt from @sql; execute stmt; deallocate prepare stmt;
