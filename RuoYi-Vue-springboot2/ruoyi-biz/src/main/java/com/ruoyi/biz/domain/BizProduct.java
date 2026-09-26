@@ -137,6 +137,30 @@ public class BizProduct extends BaseEntity
     @ApiModelProperty("主按钮文案覆盖")
     private String ctaText;
 
+    @ApiModelProperty("序号/英文名强调色，空则 App 按 theme 推导")
+    private String accentColor;
+
+    @ApiModelProperty("产品名颜色，空则按 theme")
+    private String titleColor;
+
+    @ApiModelProperty("备注/口号颜色，空则按 theme")
+    private String remarkColor;
+
+    @ApiModelProperty("内容区标题颜色，空则按 theme")
+    private String labelColor;
+
+    @ApiModelProperty("数值颜色，空则按 theme")
+    private String valueColor;
+
+    @ApiModelProperty("单位颜色，空则按 theme")
+    private String unitColor;
+
+    @ApiModelProperty("按钮背景色，空则按 theme")
+    private String btnColor;
+
+    @ApiModelProperty("按钮文字色，空则白色")
+    private String btnTextColor;
+
     @ApiModelProperty("模板默认按钮文案")
     private String templateDefaultCta;
 
@@ -789,6 +813,86 @@ public class BizProduct extends BaseEntity
     public void setCtaText(String ctaText)
     {
         this.ctaText = ctaText;
+    }
+
+    public String getAccentColor()
+    {
+        return accentColor;
+    }
+
+    public void setAccentColor(String accentColor)
+    {
+        this.accentColor = accentColor;
+    }
+
+    public String getTitleColor()
+    {
+        return titleColor;
+    }
+
+    public void setTitleColor(String titleColor)
+    {
+        this.titleColor = titleColor;
+    }
+
+    public String getRemarkColor()
+    {
+        return remarkColor;
+    }
+
+    public void setRemarkColor(String remarkColor)
+    {
+        this.remarkColor = remarkColor;
+    }
+
+    public String getLabelColor()
+    {
+        return labelColor;
+    }
+
+    public void setLabelColor(String labelColor)
+    {
+        this.labelColor = labelColor;
+    }
+
+    public String getValueColor()
+    {
+        return valueColor;
+    }
+
+    public void setValueColor(String valueColor)
+    {
+        this.valueColor = valueColor;
+    }
+
+    public String getUnitColor()
+    {
+        return unitColor;
+    }
+
+    public void setUnitColor(String unitColor)
+    {
+        this.unitColor = unitColor;
+    }
+
+    public String getBtnColor()
+    {
+        return btnColor;
+    }
+
+    public void setBtnColor(String btnColor)
+    {
+        this.btnColor = btnColor;
+    }
+
+    public String getBtnTextColor()
+    {
+        return btnTextColor;
+    }
+
+    public void setBtnTextColor(String btnTextColor)
+    {
+        this.btnTextColor = btnTextColor;
     }
 
     public String getTemplateDefaultCta()

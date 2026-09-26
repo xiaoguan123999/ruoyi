@@ -46,6 +46,14 @@
         <result property="badgeText"         column="badge_text"/>
         <result property="cardNo"            column="card_no"/>
         <result property="ctaText"           column="cta_text"/>
+        <result property="accentColor"       column="accent_color"/>
+        <result property="titleColor"        column="title_color"/>
+        <result property="remarkColor"       column="remark_color"/>
+        <result property="labelColor"        column="label_color"/>
+        <result property="valueColor"        column="value_color"/>
+        <result property="unitColor"         column="unit_color"/>
+        <result property="btnColor"          column="btn_color"/>
+        <result property="btnTextColor"      column="btn_text_color"/>
         <result property="createBy"          column="create_by"/>
         <result property="createTime"        column="create_time"/>
         <result property="updateBy"          column="update_by"/>
@@ -63,6 +71,8 @@
                p.status, p.sort, p.cover_url,
                p.template_id, t.template_name, t.template_code, t.has_main_amount, t.default_cta_text,
                p.theme, p.badge_text, p.card_no, p.cta_text,
+               p.accent_color, p.title_color, p.remark_color, p.label_color,
+               p.value_color, p.unit_color, p.btn_color, p.btn_text_color,
                p.create_by, p.create_time, p.update_by, p.update_time, p.remark
         from biz_product p
         left join biz_product_category c on c.category_id = p.category_id
@@ -103,6 +113,8 @@
             income_mode, accumulate_cycle_days, related_product_id,
             status, sort, cover_url,
             template_id, theme, badge_text, card_no, cta_text,
+            accent_color, title_color, remark_color, label_color,
+            value_color, unit_color, btn_color, btn_text_color,
             create_by, create_time, remark
         ) values (
             #{productName}, #{nameEn}, #{categoryId}, #{currency}, #{price}, #{priceCny}, #{priceUsdt},
@@ -112,6 +124,8 @@
             #{incomeMode}, #{accumulateCycleDays}, #{relatedProductId},
             #{status}, #{sort}, #{coverUrl},
             #{templateId}, #{theme}, #{badgeText}, #{cardNo}, #{ctaText},
+            #{accentColor}, #{titleColor}, #{remarkColor}, #{labelColor},
+            #{valueColor}, #{unitColor}, #{btnColor}, #{btnTextColor},
             #{createBy}, sysdate(), #{remark}
         )
     </insert>
@@ -156,6 +170,14 @@
             <if test="badgeText != null">badge_text = #{badgeText},</if>
             <if test="cardNo != null">card_no = #{cardNo},</if>
             <if test="ctaText != null">cta_text = #{ctaText},</if>
+            <if test="accentColor != null">accent_color = #{accentColor},</if>
+            <if test="titleColor != null">title_color = #{titleColor},</if>
+            <if test="remarkColor != null">remark_color = #{remarkColor},</if>
+            <if test="labelColor != null">label_color = #{labelColor},</if>
+            <if test="valueColor != null">value_color = #{valueColor},</if>
+            <if test="unitColor != null">unit_color = #{unitColor},</if>
+            <if test="btnColor != null">btn_color = #{btnColor},</if>
+            <if test="btnTextColor != null">btn_text_color = #{btnTextColor},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             <if test="remark != null">remark = #{remark},</if>
             update_time = sysdate()
