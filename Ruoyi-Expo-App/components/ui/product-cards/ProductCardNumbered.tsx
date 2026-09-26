@@ -131,15 +131,20 @@ const SKINS: Record<string, Skin> = {
 };
 
 function themeSkin(theme?: string): Skin {
-  const custom = parseThemeHex(theme);
+  const raw = String(theme || '').trim();
+  if (!raw) {
+    // 未设置主题色：中性银灰，避免误当成蓝色主题
+    return SKINS.silver;
+  }
+  const custom = parseThemeHex(raw);
   if (custom) {
     return skinFromHex(custom);
   }
-  const named = String(theme || '').trim().toLowerCase();
+  const named = raw.toLowerCase();
   if (SKINS[named]) {
     return SKINS[named];
   }
-  return SKINS.blue;
+  return SKINS.silver;
 }
 
 function pickHex(override?: string, fallback?: string) {
