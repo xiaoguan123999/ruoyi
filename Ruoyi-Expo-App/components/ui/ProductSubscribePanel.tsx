@@ -33,10 +33,19 @@ function InfoRow({ label, value, highlight, last }: RowProps) {
 
 function formatMoney(amount: number, unit: string): string {
   if (!(amount > 0)) {
-    return '--';
+    return '';
   }
   const text = Number.isInteger(amount) ? String(amount) : amount.toFixed(2).replace(/\.?0+$/, '');
   return `${text} ${unit}`;
+}
+
+function isBlank(value?: string) {
+  const text = String(value || '').trim();
+  return !text || text === '--' || text === '-';
+}
+
+function joinPresent(parts: string[]) {
+  return parts.filter((part) => !isBlank(part)).join(' / ');
 }
 
 export function ProductSubscribePanel({
@@ -47,14 +56,14 @@ export function ProductSubscribePanel({
 }: Props) {
   const [quantity, setQuantity] = useState(MIN_QUANTITY);
   const [quantityText, setQuantityText] = useState(String(MIN_QUANTITY));
-  const productName = [item.name, item.enName].filter((v) => v && v !== '--').join(' ') || '--';
+  const productName = [item.name, item.enName].filter((v) => v && v !== '--').join(' ');
   const supportCny = item.amountCny > 0;
   const supportUsdt = item.amount > 0;
-  const amountUsdt = supportUsdt ? `${item.amount} USDT` : '--';
-  const amountCny = supportCny ? `${item.amountCny} RMB` : '--';
-  const dailyUsdt = item.daily > 0 ? `${item.daily} USDT` : '--';
-  const dailyCny = item.dailyCny > 0 ? `${item.dailyCny} RMB` : '--';
-  const term = item.termDays > 0 ? `${item.termDays} 天` : '--';
+  const amountUsdt = supportUsdt ? `${item.amount} USDT` : '';
+  const amountCny = supportCny ? `${item.amountCny} RMB` : '';
+  const dailyUsdt = item.daily > 0 ? `${item.daily} USDT` : '';
+  const dailyCny = item.dailyCny > 0 ? `${item.dailyCny} RMB` : '';
+  const term = item.termDays > 0 ? `${item.termDays} 天` : '';
 
   const applyQuantity = (next: number) => {
     const safe = Number.isFinite(next) ? Math.max(MIN_QUANTITY, Math.floor(next)) : MIN_QUANTITY;
@@ -71,28 +80,20 @@ export function ProductSubscribePanel({
     if (supportCny) {
       parts.push(formatMoney(item.amountCny * quantity, 'RMB'));
     }
-    return parts.length ? parts.join(' / ') : '--';
+    return parts.filter((part) => !isBlank(part)).join(' / ');
   }, [item.amount, item.amountCny, quantity, supportCny, supportUsdt]);
 
   const rows = [
     { label: '产品名称', value: productName },
-    { label: '产品类型', value: item.tag || '--' },
-    {
-      label: '单份金额',
-      value: `${amountUsdt} / ${amountCny}`,
-      highlight: true,
-    },
-    {
-      label: '单份日收益',
-      value: `${dailyUsdt} / ${dailyCny}`,
-      highlight: true,
-    },
-    { label: '收益发放方式', value: item.payoutMethod || '--' },
+    { label: '产品类型', value: item.tag },
+    { label: '单份金额', value: joinPresent([amountUsdt, amountCny]), highlight: true },
+    { label: '单份日收益', value: joinPresent([dailyUsdt, dailyCny]), highlight: true },
+    { label: '收益发放方式', value: item.payoutMethod },
     { label: '产品期限', value: term, highlight: true },
-    { label: '支持货币', value: item.currencies || '--' },
-    { label: '风险等级', value: item.riskLevel || '--' },
-    { label: '激活条件', value: item.unlockRuleText || '--' },
-  ] as const;
+    { label: '支持货币', value: item.currencies },
+    { label: '风险等级', value: item.riskLevel },
+    { label: '激活条件', value: item.unlockRuleText },
+  ].filter((row) => !isBlank(row.value));
 
   const changeQuantity = (delta: number) => {
     applyQuantity(quantity + delta);
@@ -125,7 +126,7 @@ export function ProductSubscribePanel({
           <InfoRow
             key={row.label}
             label={row.label}
-            value={row.value}
+            value={row.value || ''}
             highlight={'highlight' in row ? row.highlight : false}
             last={index === rows.length - 1}
           />
@@ -164,12 +165,14 @@ export function ProductSubscribePanel({
         </View>
       </View>
 
-      <View style={styles.payableCard}>
-        <View style={styles.payableRow}>
-          <Text style={styles.payableLabel}>应付金额</Text>
-          <Text style={styles.payableValue}>{payable}</Text>
+      {isBlank(payable) ? null : (
+        <View style={styles.payableCard}>
+          <View style={styles.payableRow}>
+            <Text style={styles.payableLabel}>应付金额</Text>
+            <Text style={styles.payableValue}>{payable}</Text>
+          </View>
         </View>
-      </View>
+      )}
 
       <View style={styles.actions}>
         {supportCny ? (
