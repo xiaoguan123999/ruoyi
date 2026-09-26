@@ -171,17 +171,29 @@
             </div>
           </div>
         </el-form-item>
+        <el-form-item label="英文名" prop="nameEn">
+          <div class="text-with-color">
+            <el-input v-model="form.nameEn" placeholder="卡片英文名，可空" class="text-with-color__input" />
+            <div class="text-with-color__color" title="序号与英文名共用，可空则跟主题色">
+              <span class="text-with-color__label">颜色</span>
+              <el-color-picker v-model="form.accentColor" color-format="hex" :predefine="themePresets" />
+              <el-input v-model="form.accentColor" maxlength="16" clearable placeholder="可空" style="width: 100px" />
+            </div>
+          </div>
+        </el-form-item>
         <el-row :gutter="16">
           <el-col :span="14">
-            <el-form-item label="英文名" prop="nameEn">
-              <div class="text-with-color">
-                <el-input v-model="form.nameEn" placeholder="卡片英文名，可空" class="text-with-color__input" />
-                <div class="text-with-color__color" title="序号与英文名共用，可空则跟主题色">
-                  <span class="text-with-color__label">颜色</span>
-                  <el-color-picker v-model="form.accentColor" color-format="hex" :predefine="themePresets" />
-                  <el-input v-model="form.accentColor" maxlength="16" clearable placeholder="可空" style="width: 100px" />
-                </div>
-              </div>
+            <el-form-item label="业务模式" prop="bizMode">
+              <el-radio-group v-model="form.bizMode">
+                <el-radio value="REBATE">日返</el-radio>
+                <el-radio value="ASSIST">助力退本</el-radio>
+              </el-radio-group>
+              <el-tooltip
+                content="日返：扣款后按天发返利。助力退本：无日返，认购发助力值，到期退本。列表是否直购看上方「跳过二级页」。"
+                placement="top"
+              >
+                <el-icon class="publish-bar__help" style="margin-left: 8px"><QuestionFilled /></el-icon>
+              </el-tooltip>
             </el-form-item>
           </el-col>
           <el-col :span="10">
@@ -190,18 +202,6 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="业务模式" prop="bizMode">
-          <el-radio-group v-model="form.bizMode">
-            <el-radio value="REBATE">日返</el-radio>
-            <el-radio value="ASSIST">助力退本</el-radio>
-          </el-radio-group>
-          <el-tooltip
-            content="日返：扣款后按天发返利。助力退本：无日返，认购发助力值，到期退本。列表是否直购看上方「跳过二级页」。"
-            placement="top"
-          >
-            <el-icon class="publish-bar__help" style="margin-left: 8px"><QuestionFilled /></el-icon>
-          </el-tooltip>
-        </el-form-item>
 
         <el-tabs v-model="drawerTab" class="product-tabs">
           <el-tab-pane label="业务" name="biz">
