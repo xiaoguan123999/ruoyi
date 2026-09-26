@@ -368,7 +368,7 @@
           </el-tab-pane>
 
           <el-tab-pane label="卡片" name="card">
-            <p class="section-tip">选模板、封面和主题色即可；单项颜色留空则跟主题色推导。英文名旁的颜色同时作用于序号。</p>
+            <p class="section-tip">选模板、封面即可；主题色与单项颜色均可空，单项留空则跟主题色推导。英文名旁的颜色同时作用于序号。</p>
             <el-form-item label="卡片模板" prop="templateId">
               <el-select v-model="form.templateId" placeholder="请选择卡片模板" style="width: 100%" @change="onTemplateChange">
                 <el-option
@@ -385,7 +385,7 @@
             <el-form-item label="封面">
               <image-upload v-model="form.coverUrl" :limit="1" />
               <p class="section-tip" style="margin-top: 6px">
-                深空序号卡封面铺满整卡；主题色用于描边和未单独配色时的文字/按钮倾向。
+                深空序号卡封面铺满整卡；主题色可空，有值时用于描边和未单独配色时的文字/按钮倾向。
               </p>
             </el-form-item>
             <el-row :gutter="16">
@@ -393,10 +393,16 @@
                 <el-form-item label="主题色" prop="theme">
                   <div class="field-with-tip">
                     <div class="theme-color-row">
-                      <el-color-picker v-model="form.theme" color-format="hex" :predefine="themePresets" />
-                      <el-input v-model="form.theme" maxlength="16" placeholder="#2F7BFF" style="width: 132px" />
+                      <el-color-picker
+                        :model-value="form.theme || null"
+                        color-format="hex"
+                        clearable
+                        :predefine="themePresets"
+                        @update:model-value="onThemePick"
+                      />
+                      <el-input v-model="form.theme" maxlength="16" clearable placeholder="不设置请留空" style="width: 148px" />
                     </div>
-                    <p class="field-tip">兜底色。常用：蓝 #2F7BFF、紫 #7B6BFF、金 #C9A227</p>
+                    <p class="field-tip">默认不设置，需要配色再点选</p>
                   </div>
                 </el-form-item>
               </el-col>
@@ -499,18 +505,21 @@ import WalletTypeSelect from "@/views/biz/components/WalletTypeSelect.vue"
 import { QuestionFilled } from "@element-plus/icons-vue"
 
 const { proxy } = getCurrentInstance() as any
+/** 仅用于色板快捷色，不作为表单默认值 */
+const themePresets = ["#2F7BFF", "#7B6BFF", "#C9A227", "#1AA7A0", "#8A94A6"]
+/** 旧数据可能存过命名色，转成 hex；未识别则清空 */
 const THEME_NAME_HEX: Record<string, string> = {
-  blue: "#2F7BFF",
   purple: "#7B6BFF",
   gold: "#C9A227",
   cyan: "#1AA7A0",
   silver: "#8A94A6"
 }
-const themePresets = Object.values(THEME_NAME_HEX)
 
-function normalizeThemeColor(value?: string) {
-  const raw = String(value || "").trim()
-  if (!raw) return THEME_NAME_HEX.blue
+/** 主题色默认为空；仅保留合法 hex，其它（含旧命名 blue）一律清空 */
+function normalizeThemeColor(value?: string | null) {
+  if (value == null) return ""
+  const raw = String(value).trim()
+  if (!raw) return ""
   const named = THEME_NAME_HEX[raw.toLowerCase()]
   if (named) return named
   if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(raw)) {
@@ -519,7 +528,11 @@ function normalizeThemeColor(value?: string) {
     }
     return raw.toUpperCase()
   }
-  return THEME_NAME_HEX.blue
+  return ""
+}
+
+function onThemePick(val?: string | null) {
+  form.value.theme = val ? normalizeThemeColor(val) : ""
 }
 
 /** 可选颜色：非法或空一律存空串，App 走 theme 默认 */
@@ -855,7 +868,7 @@ function reset() {
     accumulateCycleDays: 0,
     relatedProductId: undefined,
     templateId: undefined,
-    theme: THEME_NAME_HEX.blue,
+    theme: "",
     badgeText: "",
     cardNo: "",
     ctaText: "",
