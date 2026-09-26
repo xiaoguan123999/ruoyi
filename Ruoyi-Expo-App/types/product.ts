@@ -37,6 +37,15 @@ export type ProductItem = {
   badgeText?: string;
   cardNo?: string;
   ctaText?: string;
+  /** 序号/英文名强调色；空则跟 theme 推导 */
+  accentColor?: string;
+  titleColor?: string;
+  remarkColor?: string;
+  labelColor?: string;
+  valueColor?: string;
+  unitColor?: string;
+  btnColor?: string;
+  btnTextColor?: string;
   mainAmountDisplay?: string;
   metrics?: ProductMetric[];
   payoutMethod?: string;
@@ -60,23 +69,9 @@ export type ProductSeries = {
   items: ProductItem[];
 };
 
-export const THEME_PRESET_HEX = {
-  blue: '#2F7BFF',
-  purple: '#7B6BFF',
-  gold: '#C9A227',
-  cyan: '#1AA7A0',
-  silver: '#8A94A6',
-} as const;
-
+/** Any #RGB or #RRGGBB from the admin color field. */
 export function parseThemeHex(theme?: string): string | undefined {
   const raw = String(theme || '').trim();
-  if (!raw) {
-    return undefined;
-  }
-  const named = THEME_PRESET_HEX[raw.toLowerCase() as keyof typeof THEME_PRESET_HEX];
-  if (named) {
-    return named;
-  }
   const match = raw.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
   if (!match) {
     return undefined;
@@ -88,27 +83,7 @@ export function parseThemeHex(theme?: string): string | undefined {
   return `#${hex.toUpperCase()}`;
 }
 
-export function namedThemeKey(theme?: string): keyof typeof THEME_PRESET_HEX | undefined {
-  const raw = String(theme || '').trim().toLowerCase();
-  if (raw in THEME_PRESET_HEX) {
-    return raw as keyof typeof THEME_PRESET_HEX;
-  }
-  const hex = parseThemeHex(theme);
-  if (!hex) {
-    return undefined;
-  }
-  return (Object.keys(THEME_PRESET_HEX) as Array<keyof typeof THEME_PRESET_HEX>).find(
-    (key) => THEME_PRESET_HEX[key].toUpperCase() === hex,
-  );
-}
-
-export function themeTitleColor(theme?: string, fallbackTone?: 'blue' | 'purple'): string {
-  const key = namedThemeKey(theme) || namedThemeKey(fallbackTone);
-  if (key === 'purple') return '#D8CCFF';
-  if (key === 'gold') return '#E8C36A';
-  if (key === 'cyan') return '#7EE7E0';
-  if (key === 'silver') return '#C8D0DC';
-  if (key === 'blue') return '#A8D8FF';
+export function themeTitleColor(theme?: string): string {
   return parseThemeHex(theme) || '#A8D8FF';
 }
 

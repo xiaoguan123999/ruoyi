@@ -13,7 +13,7 @@ type Props = {
 };
 
 export function ProductCardClassic({ item, onPress }: Props) {
-  const titleColor = themeTitleColor(item.theme, item.titleTone);
+  const titleColor = themeTitleColor(item.theme);
   const m0 = metricAt(item, 0, '每日收益', item.daily > 0 ? `${item.daily} USDT` : item.dailyCny > 0 ? `${item.dailyCny} RMB` : '--');
   const m1 = metricAt(item, 1, '收益周期', item.cycle || '--');
   const amountText =

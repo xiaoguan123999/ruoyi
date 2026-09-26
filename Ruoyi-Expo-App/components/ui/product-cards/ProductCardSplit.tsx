@@ -11,7 +11,7 @@ import Svg, {
 } from 'react-native-svg';
 
 import { Text } from '@/components/ui/AppText';
-import { metricAt, namedThemeKey, parseThemeHex, type ProductItem } from '@/types/product';
+import { metricAt, parseThemeHex, type ProductItem } from '@/types/product';
 
 type Props = {
   item: ProductItem;
@@ -21,15 +21,8 @@ type Props = {
 
 /** 主题色：角标实心色 / 助力值高亮（对齐原图三档） */
 function themeAccent(theme?: string) {
-  const key = namedThemeKey(theme) || (theme || 'blue').toLowerCase();
-  if (key === 'purple') {
-    return { badge: '#A890E0', assist: '#C4A8FF' };
-  }
-  if (key === 'gold') {
-    return { badge: '#D4B06A', assist: '#E8C36A' };
-  }
   const hex = parseThemeHex(theme);
-  if (hex && !namedThemeKey(theme)) {
+  if (hex) {
     return { badge: hex, assist: hex };
   }
   return { badge: '#5EB4F0', assist: '#7EC8FF' };

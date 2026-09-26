@@ -242,6 +242,15 @@ export type AppProduct = {
   badgeText?: string;
   cardNo?: string;
   ctaText?: string;
+  /** 序号/英文名强调色，空则跟 theme */
+  accentColor?: string;
+  titleColor?: string;
+  remarkColor?: string;
+  labelColor?: string;
+  valueColor?: string;
+  unitColor?: string;
+  btnColor?: string;
+  btnTextColor?: string;
   mainAmountDisplay?: string;
   /** REBATE / ASSIST */
   bizMode?: string;

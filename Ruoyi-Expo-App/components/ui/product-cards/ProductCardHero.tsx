@@ -9,7 +9,7 @@ import { colors } from '@/theme/colors';
 type Props = { item: ProductItem; onPress?: () => void };
 
 export function ProductCardHero({ item, onPress }: Props) {
-  const titleColor = themeTitleColor(item.theme, item.titleTone);
+  const titleColor = themeTitleColor(item.theme);
   const m0 = metricAt(item, 0, '每日收益');
   const m1 = metricAt(item, 1, '收益周期', item.cycle || '--');
   const amount = item.mainAmountDisplay || (item.amount > 0 ? `${item.amount} USDT` : `${item.amountCny || '--'} 元`);

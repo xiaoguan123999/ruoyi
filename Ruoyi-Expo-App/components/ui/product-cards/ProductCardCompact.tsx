@@ -9,7 +9,7 @@ import { colors } from '@/theme/colors';
 type Props = { item: ProductItem; onPress?: () => void };
 
 export function ProductCardCompact({ item, onPress }: Props) {
-  const titleColor = themeTitleColor(item.theme, item.titleTone);
+  const titleColor = themeTitleColor(item.theme);
   const grid = [0, 1, 2, 3].map((i) => metricAt(item, i));
 
   return (

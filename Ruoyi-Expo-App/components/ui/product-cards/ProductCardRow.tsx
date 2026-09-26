@@ -8,7 +8,7 @@ import { colors } from '@/theme/colors';
 type Props = { item: ProductItem; onPress?: () => void };
 
 export function ProductCardRow({ item, onPress }: Props) {
-  const titleColor = themeTitleColor(item.theme, item.titleTone);
+  const titleColor = themeTitleColor(item.theme);
   const price = metricAt(item, 0, '价格', item.mainAmountDisplay || '--');
   const sub = metricAt(item, 1, '', '');
 

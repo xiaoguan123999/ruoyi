@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/AppText';
-import { metricAt, namedThemeKey, parseThemeHex, type ProductItem } from '@/types/product';
+import { metricAt, parseThemeHex, type ProductItem } from '@/types/product';
 
 type Props = { item: ProductItem; onPress?: () => void };
 
@@ -131,15 +131,19 @@ const SKINS: Record<string, Skin> = {
 };
 
 function themeSkin(theme?: string): Skin {
-  const named = namedThemeKey(theme);
-  if (named && SKINS[named]) {
-    return SKINS[named];
-  }
   const custom = parseThemeHex(theme);
   if (custom) {
     return skinFromHex(custom);
   }
+  const named = String(theme || '').trim().toLowerCase();
+  if (SKINS[named]) {
+    return SKINS[named];
+  }
   return SKINS.blue;
+}
+
+function pickHex(override?: string, fallback?: string) {
+  return parseThemeHex(override) || fallback || '';
 }
 
 function stripZeros(n: number) {
@@ -193,9 +197,22 @@ function DualMoney({
   return <Text style={[styles.moneyNum, { color: skin.value }]}>--</Text>;
 }
 
-/** 封面铺满整卡；主题色只作用在文字和按钮上 */
+/** 封面铺满整卡；主题色只作用在文字和按钮上；单项颜色可空覆盖 */
 export function ProductCardNumbered({ item, onPress }: Props) {
-  const skin = themeSkin(item.theme);
+  const base = themeSkin(item.theme);
+  const skin: Skin = {
+    border: base.border,
+    line: base.line,
+    no: pickHex(item.accentColor, base.no),
+    en: pickHex(item.accentColor, base.en),
+    title: pickHex(item.titleColor, base.title),
+    slogan: pickHex(item.remarkColor, base.slogan),
+    label: pickHex(item.labelColor, base.label),
+    value: pickHex(item.valueColor, base.value),
+    unit: pickHex(item.unitColor, base.unit),
+    btn: pickHex(item.btnColor, base.btn),
+  };
+  const btnTextColor = pickHex(item.btnTextColor, '#FFFFFF');
   const m0 = metricAt(item, 0, '金额');
   const m1 = metricAt(item, 1, '每日收益');
   const m2 = metricAt(item, 2, '助力值');
@@ -264,7 +281,7 @@ export function ProductCardNumbered({ item, onPress }: Props) {
                 pressed && styles.btnPressed,
               ]}
             >
-              <Text style={styles.btnText}>{item.ctaText || '立即认购'}</Text>
+              <Text style={[styles.btnText, { color: btnTextColor }]}>{item.ctaText || '立即认购'}</Text>
             </Pressable>
           </View>
         </View>
@@ -412,7 +429,6 @@ const styles = StyleSheet.create({
   },
   btnPressed: { opacity: 0.88 },
   btnText: {
-    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 1,
