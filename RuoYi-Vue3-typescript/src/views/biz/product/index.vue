@@ -162,12 +162,26 @@
           </el-select>
         </el-form-item>
         <el-form-item label="产品名称" prop="productName">
-          <el-input v-model="form.productName" placeholder="App 卡片主标题" />
+          <div class="text-with-color">
+            <el-input v-model="form.productName" placeholder="App 卡片主标题" class="text-with-color__input" />
+            <div class="text-with-color__color" title="名称颜色，可空则跟主题色">
+              <span class="text-with-color__label">颜色</span>
+              <el-color-picker v-model="form.titleColor" color-format="hex" :predefine="themePresets" />
+              <el-input v-model="form.titleColor" maxlength="16" clearable placeholder="可空" style="width: 100px" />
+            </div>
+          </div>
         </el-form-item>
         <el-row :gutter="16">
           <el-col :span="14">
             <el-form-item label="英文名" prop="nameEn">
-              <el-input v-model="form.nameEn" placeholder="卡片副标题，可空" />
+              <div class="text-with-color">
+                <el-input v-model="form.nameEn" placeholder="卡片英文名，可空" class="text-with-color__input" />
+                <div class="text-with-color__color" title="序号与英文名共用，可空则跟主题色">
+                  <span class="text-with-color__label">颜色</span>
+                  <el-color-picker v-model="form.accentColor" color-format="hex" :predefine="themePresets" />
+                  <el-input v-model="form.accentColor" maxlength="16" clearable placeholder="可空" style="width: 100px" />
+                </div>
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="10">
@@ -354,7 +368,7 @@
           </el-tab-pane>
 
           <el-tab-pane label="卡片" name="card">
-            <p class="section-tip">选模板、封面和主题色即可；坑位指标按模板默认自动绑定业务字段，一般不用改。</p>
+            <p class="section-tip">选模板、封面和主题色即可；单项颜色留空则跟主题色推导。英文名旁的颜色同时作用于序号。</p>
             <el-form-item label="卡片模板" prop="templateId">
               <el-select v-model="form.templateId" placeholder="请选择卡片模板" style="width: 100%" @change="onTemplateChange">
                 <el-option
@@ -371,7 +385,7 @@
             <el-form-item label="封面">
               <image-upload v-model="form.coverUrl" :limit="1" />
               <p class="section-tip" style="margin-top: 6px">
-                深空序号卡封面铺满整卡；主题色用于按钮、描边和文字倾向。浅色偏深字，深色偏浅字。
+                深空序号卡封面铺满整卡；主题色用于描边和未单独配色时的文字/按钮倾向。
               </p>
             </el-form-item>
             <el-row :gutter="16">
@@ -382,13 +396,13 @@
                       <el-color-picker v-model="form.theme" color-format="hex" :predefine="themePresets" />
                       <el-input v-model="form.theme" maxlength="16" placeholder="#2F7BFF" style="width: 132px" />
                     </div>
-                    <p class="field-tip">取色或填色值。常用：蓝 #2F7BFF、紫 #7B6BFF、金 #C9A227</p>
+                    <p class="field-tip">兜底色。常用：蓝 #2F7BFF、紫 #7B6BFF、金 #C9A227</p>
                   </div>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="卡片序号">
-                  <el-input v-model="form.cardNo" maxlength="8" placeholder="如 01，NUMBERED 用" />
+                  <el-input v-model="form.cardNo" maxlength="8" placeholder="如 01；颜色同英文名旁" />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -396,7 +410,39 @@
               <el-input v-model="form.badgeText" maxlength="64" placeholder="空则用系列名称" />
             </el-form-item>
             <el-form-item label="按钮文案">
-              <el-input v-model="form.ctaText" maxlength="32" placeholder="空则用模板默认" />
+              <div class="text-with-color">
+                <el-input v-model="form.ctaText" maxlength="32" placeholder="空则用模板默认" class="text-with-color__input" />
+                <div class="text-with-color__color" title="按钮背景色">
+                  <span class="text-with-color__label">底色</span>
+                  <el-color-picker v-model="form.btnColor" color-format="hex" :predefine="themePresets" />
+                  <el-input v-model="form.btnColor" maxlength="16" clearable placeholder="可空" style="width: 88px" />
+                </div>
+                <div class="text-with-color__color" title="按钮文字色，空则白色">
+                  <span class="text-with-color__label">字色</span>
+                  <el-color-picker v-model="form.btnTextColor" color-format="hex" :predefine="['#FFFFFF', '#0B3A6E', '#1A2030']" />
+                  <el-input v-model="form.btnTextColor" maxlength="16" clearable placeholder="可空=白" style="width: 88px" />
+                </div>
+              </div>
+            </el-form-item>
+            <el-form-item label="指标区颜色">
+              <div class="metric-color-row">
+                <div class="text-with-color__color" title="金额/每日收益等标题">
+                  <span class="text-with-color__label">标题</span>
+                  <el-color-picker v-model="form.labelColor" color-format="hex" :predefine="themePresets" />
+                  <el-input v-model="form.labelColor" maxlength="16" clearable placeholder="可空" style="width: 88px" />
+                </div>
+                <div class="text-with-color__color" title="数值颜色">
+                  <span class="text-with-color__label">数值</span>
+                  <el-color-picker v-model="form.valueColor" color-format="hex" :predefine="themePresets" />
+                  <el-input v-model="form.valueColor" maxlength="16" clearable placeholder="可空" style="width: 88px" />
+                </div>
+                <div class="text-with-color__color" title="元 / USDT 单位色">
+                  <span class="text-with-color__label">单位</span>
+                  <el-color-picker v-model="form.unitColor" color-format="hex" :predefine="themePresets" />
+                  <el-input v-model="form.unitColor" maxlength="16" clearable placeholder="可空" style="width: 88px" />
+                </div>
+              </div>
+              <p class="field-tip">对应卡片上「金额 / 每日收益」等标签与数字；可空跟主题色</p>
             </el-form-item>
           </el-tab-pane>
 
@@ -415,7 +461,14 @@
               </el-col>
             </el-row>
             <el-form-item label="备注">
-              <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="卡片说明文案，选填" />
+              <div class="text-with-color text-with-color--top">
+                <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="卡片口号/说明，选填" class="text-with-color__input" />
+                <div class="text-with-color__color" title="备注/口号颜色，可空则跟主题色">
+                  <span class="text-with-color__label">颜色</span>
+                  <el-color-picker v-model="form.remarkColor" color-format="hex" :predefine="themePresets" />
+                  <el-input v-model="form.remarkColor" maxlength="16" clearable placeholder="可空" style="width: 100px" />
+                </div>
+              </div>
             </el-form-item>
             <el-form-item label="激活条件">
               <el-input
@@ -467,6 +520,37 @@ function normalizeThemeColor(value?: string) {
     return raw.toUpperCase()
   }
   return THEME_NAME_HEX.blue
+}
+
+/** 可选颜色：非法或空一律存空串，App 走 theme 默认 */
+function normalizeOptionalColor(value?: string | null) {
+  if (value == null) return ""
+  const raw = String(value).trim()
+  if (!raw) return ""
+  if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(raw)) {
+    if (raw.length === 4) {
+      return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`.toUpperCase()
+    }
+    return raw.toUpperCase()
+  }
+  return ""
+}
+
+const CARD_COLOR_KEYS = [
+  "accentColor",
+  "titleColor",
+  "remarkColor",
+  "labelColor",
+  "valueColor",
+  "unitColor",
+  "btnColor",
+  "btnTextColor"
+] as const
+
+function normalizeCardColors(target: Record<string, any>) {
+  CARD_COLOR_KEYS.forEach((key) => {
+    target[key] = normalizeOptionalColor(target[key])
+  })
 }
 
 const productList = ref<any[]>([])
@@ -775,6 +859,14 @@ function reset() {
     badgeText: "",
     cardNo: "",
     ctaText: "",
+    accentColor: "",
+    titleColor: "",
+    remarkColor: "",
+    labelColor: "",
+    valueColor: "",
+    unitColor: "",
+    btnColor: "",
+    btnTextColor: "",
     metrics: []
   }
   proxy.resetForm("formRef")
@@ -806,6 +898,7 @@ function handleUpdate(row: any) {
       form.value.onSale = form.value.onSale === "1" || form.value.onSale === 1 || form.value.onSale === true ? "1" : "0"
     }
     form.value.theme = normalizeThemeColor(form.value.theme)
+    normalizeCardColors(form.value)
     if (!form.value.bizMode) form.value.bizMode = "REBATE"
     if (!form.value.assistGrantMode) form.value.assistGrantMode = "CNY"
     if (!form.value.incomeMode) form.value.incomeMode = "CREDIT"
@@ -841,6 +934,7 @@ function submitForm() {
       return
     }
     form.value.theme = normalizeThemeColor(form.value.theme)
+    normalizeCardColors(form.value)
     form.value.bizMode = form.value.bizMode === "ASSIST" ? "ASSIST" : "REBATE"
     form.value.skipDetail = form.value.skipDetail === "1" || form.value.skipDetail === true ? "1" : "0"
     if (form.value.bizMode === "ASSIST") {
@@ -1062,6 +1156,38 @@ loadCredit()
   display: flex;
   align-items: center;
   gap: 10px;
+}
+.text-with-color {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+.text-with-color--top {
+  align-items: flex-start;
+}
+.text-with-color__input {
+  flex: 1;
+  min-width: 0;
+}
+.text-with-color__color {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.text-with-color__label {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
+}
+.metric-color-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  width: 100%;
 }
 .drawer-footer {
   display: flex;
