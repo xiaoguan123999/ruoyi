@@ -67,7 +67,13 @@ export default function SignInScreen() {
       });
       toastThenNavigate('登录成功', () => router.replace('/(tabs)'), { type: 'success' });
     } catch (error) {
-      modalError(error instanceof ApiError ? error.message : '登录失败');
+      modalError(
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error && error.message
+            ? `登录失败：${error.message}`
+            : '登录失败：未知错误',
+      );
       void loadCaptcha();
     } finally {
       setLoading(false);

@@ -149,7 +149,11 @@ export async function appLogin(body: AppLoginBody): Promise<RuoyiUser> {
 
   const token = extractToken(res);
   if (!token) {
-    throw new ApiError(res.msg || '登录失败', res.code);
+    const msg = res.msg?.trim();
+    throw new ApiError(
+      msg && msg !== '操作成功' ? msg : '登录失败，请稍后重试',
+      Number(res.code) || -1,
+    );
   }
 
   await setToken(token);

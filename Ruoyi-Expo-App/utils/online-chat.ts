@@ -1,5 +1,9 @@
 import type { AppServiceChannel, RuoyiUser } from '@/api/types';
 
+/** 后台未配置或链接打不开时使用 */
+export const FALLBACK_CHAT_URL =
+  'https://chat.rgoslz.com/chat/index?channelId=4819681885c54f5ab5d5fcc4c25a7639';
+
 function channelHttpUrl(channel: AppServiceChannel): string {
   const url = (channel.linkUrl || channel.value || '').trim();
   return /^https?:\/\//i.test(url) ? url : '';
@@ -44,4 +48,29 @@ export function withChatVisitorParams(url: string, user?: RuoyiUser | null): str
 
 export function resolveChatChannelUrl(channel: AppServiceChannel, user?: RuoyiUser | null): string {
   return withChatVisitorParams(channelHttpUrl(channel), user);
+}
+
+export function resolveFallbackChatUrl(user?: RuoyiUser | null): string {
+  return withChatVisitorParams(FALLBACK_CHAT_URL, user);
+}
+
+/** 优先后台链接，没有可用配置时用固定客服地址 */
+export function resolvePreferredChatUrl(
+  channels: AppServiceChannel[],
+  user?: RuoyiUser | null,
+): { url: string; title: string; fromAdmin: boolean } {
+  const channel = pickOnlineChatChannel(channels);
+  const adminUrl = channel ? resolveChatChannelUrl(channel, user) : '';
+  if (adminUrl) {
+    return {
+      url: adminUrl,
+      title: channel?.name?.trim() || '在线客服',
+      fromAdmin: true,
+    };
+  }
+  return {
+    url: resolveFallbackChatUrl(user),
+    title: '在线客服',
+    fromAdmin: false,
+  };
 }

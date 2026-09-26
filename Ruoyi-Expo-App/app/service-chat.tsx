@@ -5,12 +5,10 @@ import { useRouter } from 'expo-router';
 
 import { Text } from '@/components/ui/AppText';
 import { fetchAppServiceCenter } from '@/api/app-service';
-import { ApiError } from '@/api/request';
 import { OnlineChatFrame } from '@/components/ui/OnlineChatFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { useStableSafeBottom, useStableSafeTop } from '@/hooks/useStableSafeTop';
-import { pickOnlineChatChannel, resolveChatChannelUrl } from '@/utils/online-chat';
-import { modalError } from '@/utils/toast';
+import { resolveFallbackChatUrl, resolvePreferredChatUrl } from '@/utils/online-chat';
 
 function useWebKeyboardInset() {
   const [inset, setInset] = useState(0);
@@ -53,6 +51,7 @@ export default function ServiceChatScreen() {
   const { user } = useAuth();
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('在线客服');
+  const [fromAdmin, setFromAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,20 +59,20 @@ export default function ServiceChatScreen() {
     void (async () => {
       try {
         const center = await fetchAppServiceCenter();
-        const channel = pickOnlineChatChannel(center?.channels ?? []);
-        const nextUrl = channel ? resolveChatChannelUrl(channel, user) : '';
         if (!alive) {
           return;
         }
-        setTitle(channel?.name?.trim() || '在线客服');
-        setUrl(nextUrl);
-        if (!nextUrl) {
-          modalError('暂未配置在线客服链接');
+        const next = resolvePreferredChatUrl(center?.channels ?? [], user);
+        setTitle(next.title);
+        setUrl(next.url);
+        setFromAdmin(next.fromAdmin);
+      } catch {
+        if (!alive) {
+          return;
         }
-      } catch (error) {
-        if (!(error instanceof ApiError) || error.code !== 401) {
-          modalError(error instanceof ApiError ? error.message : '获取客服信息失败');
-        }
+        setTitle('在线客服');
+        setUrl(resolveFallbackChatUrl(user));
+        setFromAdmin(false);
       } finally {
         if (alive) {
           setLoading(false);
@@ -84,6 +83,14 @@ export default function ServiceChatScreen() {
       alive = false;
     };
   }, [user]);
+
+  const useFallbackChat = () => {
+    if (!fromAdmin) {
+      return;
+    }
+    setFromAdmin(false);
+    setUrl(resolveFallbackChatUrl(user));
+  };
 
   return (
     <View style={styles.root}>
@@ -110,7 +117,7 @@ export default function ServiceChatScreen() {
             <ActivityIndicator color="#FFFFFF" />
           </View>
         ) : url ? (
-          <OnlineChatFrame url={url} />
+          <OnlineChatFrame url={url} onLoadError={useFallbackChat} />
         ) : (
           <Text style={styles.empty}>暂未配置在线客服链接</Text>
         )}

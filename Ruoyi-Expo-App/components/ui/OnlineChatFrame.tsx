@@ -4,6 +4,7 @@ import { WebView } from 'react-native-webview';
 
 type Props = {
   url: string;
+  onLoadError?: () => void;
 };
 
 const FIT_CHAT_VIEWPORT = `
@@ -38,7 +39,7 @@ const FIT_CHAT_VIEWPORT = `
 true;
 `;
 
-export function OnlineChatFrame({ url }: Props) {
+export function OnlineChatFrame({ url, onLoadError }: Props) {
   const webRef = useRef<WebView>(null);
   const heightRef = useRef(0);
 
@@ -77,6 +78,7 @@ export function OnlineChatFrame({ url }: Props) {
           },
           allow: 'microphone; camera; clipboard-write; clipboard-read; autoplay',
           referrerPolicy: 'no-referrer-when-downgrade',
+          onError: () => onLoadError?.(),
         })}
       </View>
     );
@@ -97,6 +99,12 @@ export function OnlineChatFrame({ url }: Props) {
       injectedJavaScript={FIT_CHAT_VIEWPORT}
       onLayout={fitToLayout}
       onLoadEnd={() => applyFit(heightRef.current)}
+      onError={() => onLoadError?.()}
+      onHttpError={(event) => {
+        if (event.nativeEvent.statusCode >= 400) {
+          onLoadError?.();
+        }
+      }}
     />
   );
 }
