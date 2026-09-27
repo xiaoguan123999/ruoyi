@@ -64,6 +64,8 @@ const pageNum = ref(1)
 const hasMore = ref(true)
 const keyword = ref("")
 const dropdownWrap = ref<HTMLElement | null>(null)
+/** 请求序号：忽略过期响应，避免无关键词列表盖住搜索结果 */
+let fetchSeq = 0
 
 const styleObj = computed(() => ({
   width: typeof props.width === "number" ? `${props.width}px` : props.width
@@ -79,10 +81,19 @@ const innerValue = computed(() => {
 
 const displayOptions = computed(() => {
   const map = new Map<number, any>()
-  Object.values(selectedCache.value).forEach((m: any) => {
-    const id = Number(m?.memberId)
-    if (id > 0) map.set(id, m)
-  })
+  const k = (keyword.value || "").trim()
+  // 有搜索词时只展示接口结果，避免缓存里的无关会员混进下拉
+  if (!k) {
+    Object.values(selectedCache.value).forEach((m: any) => {
+      const id = Number(m?.memberId)
+      if (id > 0) map.set(id, m)
+    })
+  } else {
+    selectedIds().forEach((id) => {
+      const m = selectedCache.value[id]
+      if (m) map.set(id, m)
+    })
+  }
   options.value.forEach((m) => {
     const id = Number(m?.memberId)
     if (id > 0) map.set(id, m)
@@ -119,11 +130,16 @@ function buildQuery(page: number) {
   const q: Record<string, any> = { pageNum: page, pageSize: PAGE_SIZE }
   const k = (keyword.value || "").trim()
   if (!k) return q
-  if (/^\d+$/.test(k) && k.length <= 8) {
-    q.memberId = Number(k)
-  } else if (/^\d+$/.test(k)) {
-    q.phone = k
-  } else if (/^[A-Za-z0-9_-]+$/.test(k)) {
+  // 纯数字：短的按会员ID精确查；≥7 位按手机号模糊（含完整 11 位）
+  if (/^\d+$/.test(k)) {
+    if (k.length >= 7) {
+      q.phone = k
+    } else {
+      q.memberId = Number(k)
+    }
+    return q
+  }
+  if (/^[A-Za-z0-9_-]+$/.test(k)) {
     q.inviteCode = k
   } else {
     q.realName = k
@@ -167,6 +183,7 @@ async function ensureSelectedOptions() {
 }
 
 async function fetchPage(reset: boolean) {
+  const seq = ++fetchSeq
   if (reset) {
     pageNum.value = 1
     hasMore.value = true
@@ -176,8 +193,13 @@ async function fetchPage(reset: boolean) {
     loadingMore.value = true
   }
   const page = pageNum.value
+  const queryAtStart = (keyword.value || "").trim()
   try {
     const res: any = await listMember(buildQuery(page))
+    // 过期请求或关键词已变：丢弃
+    if (seq !== fetchSeq || queryAtStart !== (keyword.value || "").trim()) {
+      return
+    }
     const rows = res.rows || []
     const total = Number(res.total || 0)
     mergeOptions(rows, reset)
@@ -187,11 +209,14 @@ async function fetchPage(reset: boolean) {
     if (rows.length) pageNum.value = page + 1
     await ensureSelectedOptions()
   } catch {
+    if (seq !== fetchSeq) return
     if (reset) options.value = []
     hasMore.value = false
   } finally {
-    loading.value = false
-    loadingMore.value = false
+    if (seq === fetchSeq) {
+      loading.value = false
+      loadingMore.value = false
+    }
   }
 }
 
@@ -199,16 +224,17 @@ let searchTimer: ReturnType<typeof setTimeout> | null = null
 function onRemoteSearch(query: string) {
   keyword.value = query || ""
   if (searchTimer) clearTimeout(searchTimer)
+  // 输入即作废进行中的无关键词请求
+  fetchSeq++
   searchTimer = setTimeout(() => {
     fetchPage(true)
-  }, 280)
+  }, 200)
 }
 
 function onUpdate(val: any) {
   if (props.multiple) {
     const raw = Array.isArray(val) ? val : []
     const next = raw.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0)
-    // 选中后立刻写入缓存，避免远程刷新丢标签
     next.forEach((id) => {
       const hit = displayOptions.value.find((m) => Number(m.memberId) === id)
       if (hit) selectedCache.value[id] = hit
@@ -227,6 +253,7 @@ function onUpdate(val: any) {
 }
 
 function onClear() {
+  keyword.value = ""
   if (props.multiple) {
     emit("update:modelValue", [])
     emit("change", [])
@@ -265,8 +292,12 @@ function bindScroll(bind: boolean) {
 
 function onVisibleChange(visible: boolean) {
   if (visible) {
-    if (!options.value.length) fetchPage(true)
-    else ensureSelectedOptions()
+    // 已有关键词时按关键词刷新；无关键词且无选项时拉首屏
+    if ((keyword.value || "").trim() || !options.value.length) {
+      fetchPage(true)
+    } else {
+      ensureSelectedOptions()
+    }
     bindScroll(true)
   } else {
     bindScroll(false)
