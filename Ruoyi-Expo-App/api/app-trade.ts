@@ -602,13 +602,27 @@ const WALLET_BIZ_LABEL: Record<string, string> = {
   INVITE: '推广奖励',
   LEVEL_REWARD: '等级奖励',
   KYC_REWARD: '实名奖励',
+  ASSIST_GRANT: '助力值发放',
+  LOTTERY_ASSIST: '幸运抽奖',
 };
 
+function isRawBizTypeCode(label: string, bizType: string): boolean {
+  if (!label) {
+    return true;
+  }
+  const upper = label.toUpperCase();
+  return upper === bizType || /^[A-Z][A-Z0-9_]*$/.test(label);
+}
+
 function mapWalletLogTitle(raw: Record<string, unknown>, bizType: string): string {
-  // 优先用接口下发的业务类型文案
+  const mapped = WALLET_BIZ_LABEL[bizType];
+  // 优先用接口中文文案；若仍是业务码（如 LOTTERY_ASSIST）则走本地映射
   const bizTypeLabel = pickString(raw, ['bizTypeLabel', 'bizTypeName', 'typeLabel']);
-  if (bizTypeLabel) {
+  if (bizTypeLabel && !isRawBizTypeCode(bizTypeLabel, bizType)) {
     return bizTypeLabel;
+  }
+  if (mapped) {
+    return mapped;
   }
 
   const remark = pickString(raw, ['title', 'bizName', 'productName', 'remark', 'remarkInfo']);
@@ -620,7 +634,7 @@ function mapWalletLogTitle(raw: Record<string, unknown>, bizType: string): strin
     }
     return remark;
   }
-  return remark || WALLET_BIZ_LABEL[bizType] || bizType || '交易';
+  return remark || bizType || '交易';
 }
 
 function mapWalletLogItem(raw: unknown): AppWalletLogItem | null {

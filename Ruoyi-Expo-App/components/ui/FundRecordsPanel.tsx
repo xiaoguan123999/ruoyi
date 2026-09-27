@@ -84,9 +84,16 @@ type Props = {
   summaryLabel?: string;
   summaryMode?: FundSummaryMode;
   showSummary?: boolean;
+  /** money：带 ¥/USDT；points：仅数字（助力值当积分） */
+  amountMode?: 'money' | 'points';
   emptyText?: string;
   onRefresh: () => void | Promise<void>;
 };
+
+function formatPointsLabel(amount: number): string {
+  const value = formatBalance(Math.abs(amount));
+  return amount < 0 ? `- ${value}` : value;
+}
 
 export function FundRecordsPanel({
   loading,
@@ -94,6 +101,7 @@ export function FundRecordsPanel({
   summaryLabel = '累计',
   summaryMode = 'credit',
   showSummary = true,
+  amountMode = 'money',
   emptyText = '暂无记录',
   onRefresh,
 }: Props) {
@@ -103,24 +111,36 @@ export function FundRecordsPanel({
       records.map((item) => {
         const feeAmount = hasFeeFields(item) ? item.feeAmount : undefined;
         const arrivalAmount = hasFeeFields(item) ? item.arrivalAmount : undefined;
+        const amountLabel =
+          amountMode === 'points'
+            ? formatPointsLabel(item.amount)
+            : formatMoneyLabel(item.amount, item.currency);
         return {
           id: item.id,
           title: item.title,
           remark: 'remark' in item ? item.remark : undefined,
           date: formatRecordDate(item.createTime),
-          amount: formatMoneyLabel(item.amount, item.currency),
+          amount: amountLabel,
           fee:
             feeAmount != null && feeAmount > 0
-              ? `手续费 ${formatMoneyLabel(feeAmount, item.currency)}`
+              ? `手续费 ${
+                  amountMode === 'points'
+                    ? formatPointsLabel(feeAmount)
+                    : formatMoneyLabel(feeAmount, item.currency)
+                }`
               : undefined,
           arrival:
             arrivalAmount != null && arrivalAmount > 0
-              ? `到账 ${formatMoneyLabel(arrivalAmount, item.currency)}`
+              ? `到账 ${
+                  amountMode === 'points'
+                    ? formatPointsLabel(arrivalAmount)
+                    : formatMoneyLabel(arrivalAmount, item.currency)
+                }`
               : undefined,
           tone: resolveTone(item.title, item.amount),
         };
       }),
-    [records],
+    [amountMode, records],
   );
 
   if (loading) {

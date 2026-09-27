@@ -80,16 +80,17 @@ function GradientPill({
     </Pressable>
   );
 }
-function BoostValueBox({ value }: { value: number }) {
+function BoostValueBox({ value, onPress }: { value: number; onPress: () => void }) {
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   return (
-    <View
+    <Pressable
+      onPress={onPress}
       onLayout={(event) => {
         const { width, height } = event.nativeEvent.layout;
         setSize({ width, height });
       }}
-      style={styles.boostBox}
+      style={({ pressed }) => [styles.boostBox, pressed && styles.boostPressed]}
     >
       {size.width > 0 ? (
         <Svg width={size.width} height={size.height} style={StyleSheet.absoluteFill}>
@@ -114,7 +115,7 @@ function BoostValueBox({ value }: { value: number }) {
       )}
       <Text style={styles.boostLabel}>助力值</Text>
       <Text style={styles.boostValue}>{formatBalance(value)}</Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -217,7 +218,7 @@ export default function ProfileScreen() {
                   连接星空 · 智联未来
                 </Text>
               </View>
-              <BoostValueBox value={boostValue} />
+              <BoostValueBox value={boostValue} onPress={() => router.push('/assist-records')} />
             </View>
           </View>
         </View>
@@ -438,6 +439,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 6,
     paddingHorizontal: 8,
+  },
+  boostPressed: {
+    opacity: 0.88,
   },
   boostFallback: {
     backgroundColor: '#F8D6AC',
