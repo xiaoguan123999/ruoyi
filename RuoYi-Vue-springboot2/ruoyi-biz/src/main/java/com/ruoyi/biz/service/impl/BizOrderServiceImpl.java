@@ -215,6 +215,7 @@ public class BizOrderServiceImpl implements IBizOrderService
             orderMapper.insertOrder(order);
 
             creditAssistGrants(memberId, product, order.getOrderId(), grants, qtyDec);
+            commissionService.grantForSubscribe(order);
 
             memberService.refreshLevelAndUplines(memberId);
             return fillActivate(orderMapper.selectOrderById(order.getOrderId()), new UnlockSupport());
