@@ -169,6 +169,8 @@ public class BizOrderServiceImpl implements IBizOrderService
         order.setWithdrawRequired(product.getWithdrawRequired());
         order.setStatus(BizConstants.ORDER_HOLDING);
         order.setCreateTime(DateUtils.getNowDate());
+        order.setRelatedSlotsUsed(Integer.valueOf(0));
+        order.setAccumulateSettledShares(Integer.valueOf(0));
 
         if (assistMode)
         {
@@ -258,8 +260,6 @@ public class BizOrderServiceImpl implements IBizOrderService
         order.setAccumulatedAmount(BigDecimal.ZERO);
         order.setAccumulateDays(Integer.valueOf(0));
         order.setAccumulatePaused("0");
-        order.setRelatedSlotsUsed(Integer.valueOf(0));
-        order.setAccumulateSettledShares(Integer.valueOf(0));
         orderMapper.insertOrder(order);
         creditAssistGrants(memberId, product, order.getOrderId(), rebateGrants, qtyDec);
         commissionService.grantForSubscribe(order);
