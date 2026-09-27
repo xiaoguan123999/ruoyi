@@ -67,7 +67,10 @@
         update biz_pay_channel
         <set>
             <if test="displayName != null">display_name = #{displayName},</if>
+            <if test="channelName != null">channel_name = #{channelName},</if>
             <if test="productId != null">product_id = #{productId},</if>
+            <if test="scene != null">scene = #{scene},</if>
+            <if test="currency != null">currency = #{currency},</if>
             <if test="minAmount != null">min_amount = #{minAmount},</if>
             <if test="maxAmount != null">max_amount = #{maxAmount},</if>
             <if test="weight != null">weight = #{weight},</if>
@@ -78,4 +81,14 @@
         </set>
         where channel_id = #{channelId}
     </update>
+
+    <insert id="insertPayChannel" parameterType="BizPayChannel" useGeneratedKeys="true" keyProperty="channelId">
+        insert into biz_pay_channel (
+            provider_code, channel_code, channel_name, display_name, scene, product_id, currency,
+            min_amount, max_amount, weight, status, sort_order, remark, create_time
+        ) values (
+            #{providerCode}, #{channelCode}, #{channelName}, #{displayName}, #{scene}, #{productId}, #{currency},
+            #{minAmount}, #{maxAmount}, #{weight}, #{status}, #{sortOrder}, #{remark}, sysdate()
+        )
+    </insert>
 </mapper>

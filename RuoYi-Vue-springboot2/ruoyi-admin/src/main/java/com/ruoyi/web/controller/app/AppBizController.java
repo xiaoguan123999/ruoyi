@@ -127,7 +127,7 @@ public class AppBizController extends BaseController
         return table;
     }
 
-    @ApiOperation(value = "结算订单累计", notes = "ACCUMULATE 订单满周期且持有对档产品后，将累计金额结算进产品收益钱包并清零累计。")
+    @ApiOperation(value = "结算订单累计", notes = "ACCUMULATE 订单满周期后，按对档产品已激活且未消耗份数结算累计金额进产品收益；不足则按比例结算。每份对档激活份额每轮只能用一次。")
     @PostMapping("/orders/{orderId}/settleAccumulate")
     public AppOrderResult settleAccumulate(@PathVariable Long orderId)
     {

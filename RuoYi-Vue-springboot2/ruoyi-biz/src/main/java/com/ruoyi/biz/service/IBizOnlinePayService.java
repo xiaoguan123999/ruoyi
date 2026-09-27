@@ -22,6 +22,8 @@ public interface IBizOnlinePayService
 
     int updateChannel(BizPayChannel row);
 
+    int insertChannel(BizPayChannel row);
+
     List<AppPayChannelItem> listAppChannels(String scene);
 
     AppPayDepositData createDeposit(Long memberId, java.math.BigDecimal amount, String scene,

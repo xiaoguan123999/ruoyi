@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -53,6 +54,15 @@ public class BizPayChannelController extends BaseController
     public AjaxResult edit(@RequestBody BizPayChannel row)
     {
         return toAjax(onlinePayService.updateChannel(row));
+    }
+
+    @ApiOperation("新增通道")
+    @PreAuthorize("@ss.hasPermi('biz:payChannel:add') or @ss.hasPermi('biz:payChannel:edit')")
+    @Log(title = "支付通道", businessType = BusinessType.INSERT)
+    @PostMapping
+    public AjaxResult add(@RequestBody BizPayChannel row)
+    {
+        return toAjax(onlinePayService.insertChannel(row));
     }
 
     @ApiOperation("服务商列表")

@@ -128,11 +128,26 @@ public class BizOrder extends BaseEntity
     @ApiModelProperty("上次累计日期")
     private Date lastAccumulateDate;
 
+    @ApiModelProperty("累计结算已消耗的对档激活份数（本单累计）")
+    private Integer relatedSlotsUsed;
+
+    @ApiModelProperty("当前累计周期内已结算份数")
+    private Integer accumulateSettledShares;
+
     @ApiModelProperty("是否可结算累计进产品收益")
     private Boolean canSettleAccumulate;
 
-    @ApiModelProperty("是否已持有对档产品")
+    @ApiModelProperty("是否有可用对档激活份额（未耗尽）")
     private Boolean relatedProductOwned;
+
+    @ApiModelProperty("对档产品已激活份数")
+    private Integer relatedActivatedQty;
+
+    @ApiModelProperty("对档剩余可用结算份额")
+    private Integer relatedSlotsAvailable;
+
+    @ApiModelProperty("本次预计可结算份数")
+    private Integer settleableShares;
 
     @ApiModelProperty("一拖二：下级几份同档激活上级1份，0关闭")
     private Integer unlockDirectQty;
@@ -398,10 +413,20 @@ public class BizOrder extends BaseEntity
     public void setAccumulateCycleStartAt(Date accumulateCycleStartAt) { this.accumulateCycleStartAt = accumulateCycleStartAt; }
     public Date getLastAccumulateDate() { return lastAccumulateDate; }
     public void setLastAccumulateDate(Date lastAccumulateDate) { this.lastAccumulateDate = lastAccumulateDate; }
+    public Integer getRelatedSlotsUsed() { return relatedSlotsUsed; }
+    public void setRelatedSlotsUsed(Integer relatedSlotsUsed) { this.relatedSlotsUsed = relatedSlotsUsed; }
+    public Integer getAccumulateSettledShares() { return accumulateSettledShares; }
+    public void setAccumulateSettledShares(Integer accumulateSettledShares) { this.accumulateSettledShares = accumulateSettledShares; }
     public Boolean getCanSettleAccumulate() { return canSettleAccumulate; }
     public void setCanSettleAccumulate(Boolean canSettleAccumulate) { this.canSettleAccumulate = canSettleAccumulate; }
     public Boolean getRelatedProductOwned() { return relatedProductOwned; }
     public void setRelatedProductOwned(Boolean relatedProductOwned) { this.relatedProductOwned = relatedProductOwned; }
+    public Integer getRelatedActivatedQty() { return relatedActivatedQty; }
+    public void setRelatedActivatedQty(Integer relatedActivatedQty) { this.relatedActivatedQty = relatedActivatedQty; }
+    public Integer getRelatedSlotsAvailable() { return relatedSlotsAvailable; }
+    public void setRelatedSlotsAvailable(Integer relatedSlotsAvailable) { this.relatedSlotsAvailable = relatedSlotsAvailable; }
+    public Integer getSettleableShares() { return settleableShares; }
+    public void setSettleableShares(Integer settleableShares) { this.settleableShares = settleableShares; }
 
     public Integer getUnlockDirectQty() { return unlockDirectQty; }
     public void setUnlockDirectQty(Integer unlockDirectQty) { this.unlockDirectQty = unlockDirectQty; }

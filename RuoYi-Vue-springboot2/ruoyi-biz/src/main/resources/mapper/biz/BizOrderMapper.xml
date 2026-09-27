@@ -34,6 +34,8 @@
         <result property="accumulatePaused"  column="accumulate_paused"/>
         <result property="accumulateCycleStartAt" column="accumulate_cycle_start_at"/>
         <result property="lastAccumulateDate" column="last_accumulate_date"/>
+        <result property="relatedSlotsUsed"  column="related_slots_used"/>
+        <result property="accumulateSettledShares" column="accumulate_settled_shares"/>
         <result property="unlockDirectQty"   column="unlock_direct_qty"/>
         <result property="unlockDelayHours"  column="unlock_delay_hours"/>
         <result property="incomeStartTime"   column="income_start_time"/>
@@ -53,6 +55,7 @@
                o.income_mode, o.accumulate_cycle_days, o.related_product_id, rp.product_name as related_product_name,
                o.accumulated_amount, o.accumulate_days, o.accumulate_paused,
                o.accumulate_cycle_start_at, o.last_accumulate_date,
+               o.related_slots_used, o.accumulate_settled_shares,
                o.unlock_direct_qty, o.unlock_delay_hours, o.income_start_time,
                o.status, o.create_time, o.update_time, o.remark
         from biz_order o
@@ -108,6 +111,22 @@
         select ifnull(sum(ifnull(quantity, 1)), 0) from biz_order where member_id = #{memberId} and product_id = #{productId}
     </select>
 
+    <select id="sumActivatedLotsByMemberProduct" resultType="int">
+        select ifnull(sum(ifnull(l.qty, 1)), 0)
+        from biz_order_unlock_lot l
+        inner join biz_order o on o.order_id = l.order_id
+        where o.member_id = #{memberId}
+          and o.product_id = #{productId}
+          and l.activate_time is not null
+    </select>
+
+    <select id="sumRelatedSlotsUsedByMemberProduct" resultType="int">
+        select ifnull(sum(ifnull(related_slots_used, 0)), 0)
+        from biz_order
+        where member_id = #{memberId}
+          and related_product_id = #{relatedProductId}
+    </select>
+
     <select id="selectDirectDownlineProductOrders" resultMap="BizOrderResult">
         <include refid="selectOrderVo"/>
         where o.product_id = #{productId}
@@ -150,6 +169,7 @@
             biz_mode, assist_value, principal_return_days, principal_return_at, principal_returned,
             income_mode, accumulate_cycle_days, related_product_id,
             accumulated_amount, accumulate_days, accumulate_paused, accumulate_cycle_start_at, last_accumulate_date,
+            related_slots_used, accumulate_settled_shares,
             unlock_direct_qty, unlock_delay_hours, income_start_time, status, create_time
         ) values (
             #{orderNo}, #{memberId}, #{productId}, #{productName}, #{currency}, #{price}, #{quantity}, #{dailyRebate},
@@ -157,6 +177,7 @@
             #{bizMode}, #{assistValue}, #{principalReturnDays}, #{principalReturnAt}, #{principalReturned},
             #{incomeMode}, #{accumulateCycleDays}, #{relatedProductId},
             #{accumulatedAmount}, #{accumulateDays}, #{accumulatePaused}, #{accumulateCycleStartAt}, #{lastAccumulateDate},
+            #{relatedSlotsUsed}, #{accumulateSettledShares},
             #{unlockDirectQty}, #{unlockDelayHours}, #{incomeStartTime}, #{status}, #{createTime}
         )
     </insert>
@@ -174,6 +195,8 @@
             <if test="accumulateCycleStartAt != null">accumulate_cycle_start_at = #{accumulateCycleStartAt},</if>
             <if test="params != null and params.clearAccumulateCycleStart != null">accumulate_cycle_start_at = null,</if>
             <if test="lastAccumulateDate != null">last_accumulate_date = #{lastAccumulateDate},</if>
+            <if test="relatedSlotsUsed != null">related_slots_used = #{relatedSlotsUsed},</if>
+            <if test="accumulateSettledShares != null">accumulate_settled_shares = #{accumulateSettledShares},</if>
             <if test="status != null">status = #{status},</if>
             update_time = sysdate()
         </set>

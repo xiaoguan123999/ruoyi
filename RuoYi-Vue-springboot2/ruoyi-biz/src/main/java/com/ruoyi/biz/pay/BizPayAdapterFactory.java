@@ -22,6 +22,9 @@ public class BizPayAdapterFactory
     @Autowired
     private JeepayAdapter jeepayAdapter;
 
+    @Autowired
+    private BaileAdapter baileAdapter;
+
     public IBizPayAdapter getAdapter(BizPayProvider provider)
     {
         if (provider == null)
@@ -46,6 +49,10 @@ public class BizPayAdapterFactory
         if (BizConstants.PAY_FAMILY_JEEPAY.equals(family) || "fuwang".equals(family))
         {
             return jeepayAdapter;
+        }
+        if (BizConstants.PAY_FAMILY_BAILE.equals(family) || "baile".equals(family))
+        {
+            return baileAdapter;
         }
         throw new ServiceException("服务商 " + provider.getProviderName() + " 尚未接入真实网关");
     }

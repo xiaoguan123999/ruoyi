@@ -289,6 +289,9 @@ public class BizConstants
 
     public static final String PAY_FAMILY_JEEPAY = "jeepay";
 
+    /** 百乐：/api/createorder，成功 state=2 */
+    public static final String PAY_FAMILY_BAILE = "baile";
+
     /** 支付网关日志：出站调用 */
     public static final String PAY_GW_LOG_CALL = "CALL";
 

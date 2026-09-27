@@ -98,10 +98,10 @@ public class BizProduct extends BaseEntity
     @ApiModelProperty("累计周期天数，如60；0表示不用")
     private Integer accumulateCycleDays;
 
-    @ApiModelProperty("对档产品ID，结算累计前须持有")
+    @ApiModelProperty("对档产品ID，累计结算前须有对应已激活份数")
     private Long relatedProductId;
 
-    @ApiModelProperty("对档产品名称（列表展示）")
+    @ApiModelProperty("对档产品名称")
     private String relatedProductName;
 
     @ApiModelProperty("上架状态：0上架 1下架")

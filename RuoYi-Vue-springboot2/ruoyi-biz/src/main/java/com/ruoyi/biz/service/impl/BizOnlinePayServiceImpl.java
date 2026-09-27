@@ -126,6 +126,71 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
     }
 
     @Override
+    public int insertChannel(BizPayChannel row)
+    {
+        if (row == null)
+        {
+            throw new ServiceException("通道参数无效");
+        }
+        if (StringUtils.isEmpty(row.getProviderCode()))
+        {
+            throw new ServiceException("请选择服务商");
+        }
+        if (providerMapper.selectPayProviderByCode(row.getProviderCode().trim()) == null)
+        {
+            throw new ServiceException("服务商不存在：" + row.getProviderCode());
+        }
+        if (StringUtils.isEmpty(row.getChannelCode()))
+        {
+            throw new ServiceException("通道编码不能为空");
+        }
+        String code = row.getChannelCode().trim();
+        if (channelMapper.selectPayChannelByCode(code) != null)
+        {
+            throw new ServiceException("通道编码已存在：" + code);
+        }
+        row.setProviderCode(row.getProviderCode().trim());
+        row.setChannelCode(code);
+        if (StringUtils.isEmpty(row.getChannelName()))
+        {
+            row.setChannelName(StringUtils.isEmpty(row.getDisplayName()) ? code : row.getDisplayName());
+        }
+        if (StringUtils.isEmpty(row.getDisplayName()))
+        {
+            row.setDisplayName(row.getChannelName());
+        }
+        if (StringUtils.isEmpty(row.getScene()))
+        {
+            row.setScene("alipay");
+        }
+        if (StringUtils.isEmpty(row.getCurrency()))
+        {
+            row.setCurrency("CNY");
+        }
+        if (StringUtils.isEmpty(row.getProductId()))
+        {
+            throw new ServiceException("产品码(wayCode)不能为空");
+        }
+        if (row.getMinAmount() == null)
+        {
+            row.setMinAmount(java.math.BigDecimal.TEN);
+        }
+        if (row.getWeight() == null)
+        {
+            row.setWeight(Integer.valueOf(100));
+        }
+        if (row.getSortOrder() == null)
+        {
+            row.setSortOrder(Integer.valueOf(0));
+        }
+        if (StringUtils.isEmpty(row.getStatus()))
+        {
+            row.setStatus("0");
+        }
+        return channelMapper.insertPayChannel(row);
+    }
+
+    @Override
     public List<AppPayChannelItem> listAppChannels(String scene)
     {
         BizPayChannel query = new BizPayChannel();

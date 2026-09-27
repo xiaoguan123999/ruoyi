@@ -19,6 +19,12 @@ public interface BizOrderMapper
 
     int countMemberProductOrders(@Param("memberId") Long memberId, @Param("productId") Long productId);
 
+    /** 会员某产品已激活份数（unlock lot 有 activate_time） */
+    int sumActivatedLotsByMemberProduct(@Param("memberId") Long memberId, @Param("productId") Long productId);
+
+    /** 会员对某对档产品已消耗的结算份额（各累计订单 related_slots_used 之和） */
+    int sumRelatedSlotsUsedByMemberProduct(@Param("memberId") Long memberId, @Param("relatedProductId") Long relatedProductId);
+
     List<BizOrder> selectDirectDownlineProductOrders(@Param("parentId") Long parentId, @Param("productId") Long productId);
 
     List<BizOrder> selectDirectDownlineOrders(@Param("parentId") Long parentId);

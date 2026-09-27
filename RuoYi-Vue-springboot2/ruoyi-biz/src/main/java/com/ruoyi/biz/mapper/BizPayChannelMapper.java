@@ -12,4 +12,6 @@ public interface BizPayChannelMapper
     List<BizPayChannel> selectPayChannelList(BizPayChannel query);
     List<BizPayChannel> selectOperationalChannels(BizPayChannel query);
     int updatePayChannel(BizPayChannel row);
+
+    int insertPayChannel(BizPayChannel row);
 }

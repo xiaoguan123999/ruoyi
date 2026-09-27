@@ -258,6 +258,8 @@ public class BizOrderServiceImpl implements IBizOrderService
         order.setAccumulatedAmount(BigDecimal.ZERO);
         order.setAccumulateDays(Integer.valueOf(0));
         order.setAccumulatePaused("0");
+        order.setRelatedSlotsUsed(Integer.valueOf(0));
+        order.setAccumulateSettledShares(Integer.valueOf(0));
         orderMapper.insertOrder(order);
         creditAssistGrants(memberId, product, order.getOrderId(), rebateGrants, qtyDec);
         commissionService.grantForSubscribe(order);
@@ -538,33 +540,141 @@ public class BizOrderServiceImpl implements IBizOrderService
         {
             throw new ServiceException("未满累计周期（" + days + "/" + cycle + "天）");
         }
-        if (order.getRelatedProductId() == null || !hasRelatedProduct(memberId, order.getRelatedProductId()))
+        String relatedName = StringUtils.isEmpty(order.getRelatedProductName()) ? "对档产品" : order.getRelatedProductName();
+        if (order.getRelatedProductId() == null)
         {
-            String name = StringUtils.isEmpty(order.getRelatedProductName()) ? "对档产品" : order.getRelatedProductName();
-            throw new ServiceException("请先认购" + name + "后再结算");
+            throw new ServiceException("请先认购" + relatedName + "后再结算");
         }
+
+        RelatedSlotSnapshot slot = resolveRelatedSlots(memberId, order);
+        int orderQty = qtyOf(order);
+        int settledInCycle = nz(order.getAccumulateSettledShares());
+        if (settledInCycle < 0)
+        {
+            settledInCycle = 0;
+        }
+        if (settledInCycle > orderQty)
+        {
+            settledInCycle = orderQty;
+        }
+        int remainShares = orderQty - settledInCycle;
+        if (remainShares <= 0)
+        {
+            throw new ServiceException("本周期累计已全部结算，请等待下一周期");
+        }
+        // 可用 = 对档已激活 - 本单已消耗；不同产品单（A1/A2）互不占用
+        int settleShares = Math.min(remainShares, slot.available);
+        if (settleShares <= 0)
+        {
+            throw new ServiceException("需要已激活的" + relatedName
+                    + "（已激活" + slot.activated + "份，本单可用" + slot.available + "份），本单本轮还需" + remainShares + "份");
+        }
+
+        BigDecimal credit = amount.multiply(new BigDecimal(settleShares))
+                .divide(new BigDecimal(remainShares), 4, RoundingMode.HALF_UP);
+        if (credit.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            throw new ServiceException("暂无可结算累计金额");
+        }
+        if (credit.compareTo(amount) > 0)
+        {
+            credit = amount;
+        }
+        BigDecimal remainAmount = amount.subtract(credit);
+        if (remainAmount.compareTo(BigDecimal.ZERO) < 0)
+        {
+            remainAmount = BigDecimal.ZERO;
+        }
+
         String currency = StringUtils.isEmpty(order.getCurrency())
                 ? BizConstants.CURRENCY_CNY : order.getCurrency().toUpperCase();
-        walletService.credit(memberId, currency, amount, BizConstants.BIZ_ACCUMULATE_SETTLE,
-                order.getOrderId(), "订单累计结算:" + order.getProductName(), BizConstants.WALLET_PRODUCT);
+        walletService.credit(memberId, currency, credit, BizConstants.BIZ_ACCUMULATE_SETTLE,
+                order.getOrderId(),
+                "订单累计结算:" + order.getProductName() + "(" + settleShares + "/" + remainShares + "份)",
+                BizConstants.WALLET_PRODUCT);
+
+        int newSettledInCycle = settledInCycle + settleShares;
+        int newSlotsUsed = nz(order.getRelatedSlotsUsed()) + settleShares;
+        boolean cycleDone = newSettledInCycle >= orderQty || remainAmount.compareTo(BigDecimal.ZERO) <= 0;
 
         BizOrder patch = new BizOrder();
         patch.setOrderId(orderId);
-        patch.setAccumulatedAmount(BigDecimal.ZERO);
-        patch.setAccumulateDays(Integer.valueOf(0));
-        patch.setAccumulatePaused("0");
-        patch.setAccumulateCycleStartAt(DateUtils.getNowDate());
+        patch.setAccumulatedAmount(cycleDone ? BigDecimal.ZERO : remainAmount);
+        patch.setRelatedSlotsUsed(Integer.valueOf(newSlotsUsed));
+        if (cycleDone)
+        {
+            patch.setAccumulateDays(Integer.valueOf(0));
+            patch.setAccumulatePaused("0");
+            patch.setAccumulateSettledShares(Integer.valueOf(0));
+            patch.setAccumulateCycleStartAt(DateUtils.getNowDate());
+        }
+        else
+        {
+            patch.setAccumulateSettledShares(Integer.valueOf(newSettledInCycle));
+            patch.setAccumulatePaused("1");
+        }
         orderMapper.updateOrder(patch);
         return selectOrderById(orderId);
     }
 
-    private boolean hasRelatedProduct(Long memberId, Long relatedProductId)
+    /**
+     * 对档可用结算份额（按「本单」计算，不同累计产品单互不抢份额）：
+     * 可用 = 对档已激活份数 - 本单 related_slots_used。
+     * 例：A 激活 1 份时，A1、A2 各可结一轮；A1 结完不影响 A2。
+     * 同一单进入下一 60 天周期时，因本单已消耗，需更多已激活对档。
+     * 激活口径与 App「已激活 x/y」一致（unlock lot 有 activate_time）；认购份数不计入。
+     */
+    private RelatedSlotSnapshot resolveRelatedSlots(Long memberId, BizOrder order)
     {
+        RelatedSlotSnapshot snap = new RelatedSlotSnapshot();
+        Long relatedProductId = order.getRelatedProductId();
         if (memberId == null || relatedProductId == null)
         {
-            return false;
+            return snap;
         }
-        return orderMapper.countMemberProductOrders(memberId, relatedProductId) > 0;
+        snap.activated = countActivatedShares(memberId, relatedProductId);
+        int usedByThisOrder = Math.max(0, nz(order.getRelatedSlotsUsed()));
+        snap.available = Math.max(0, snap.activated - usedByThisOrder);
+        return snap;
+    }
+
+    /**
+     * 统计会员某产品已激活份数（与 fillActivate / App 已激活一致）。
+     * 先跑 unlock plan 同步 lot，再按 activate_time 汇总；不用 order.quantity。
+     */
+    private int countActivatedShares(Long memberId, Long productId)
+    {
+        if (memberId == null || productId == null)
+        {
+            return 0;
+        }
+        UnlockSupport support = new UnlockSupport();
+        support.plan(memberId, productId);
+
+        BizOrder query = new BizOrder();
+        query.setMemberId(memberId);
+        query.setProductId(productId);
+        List<BizOrder> list = orderMapper.selectOrderList(query);
+        if (list == null || list.isEmpty())
+        {
+            return 0;
+        }
+        int sum = 0;
+        for (int i = 0; i < list.size(); i++)
+        {
+            BizOrder row = fillActivate(list.get(i), support);
+            if (row != null)
+            {
+                sum += nz(row.getActivatedQty());
+            }
+        }
+        return Math.max(0, sum);
+    }
+
+    private static final class RelatedSlotSnapshot
+    {
+        private int activated;
+        private int available;
     }
 
     private void fillAccumulateFlags(BizOrder order)
@@ -575,16 +685,36 @@ public class BizOrderServiceImpl implements IBizOrderService
             {
                 order.setCanSettleAccumulate(Boolean.FALSE);
                 order.setRelatedProductOwned(Boolean.FALSE);
+                order.setRelatedActivatedQty(Integer.valueOf(0));
+                order.setRelatedSlotsAvailable(Integer.valueOf(0));
+                order.setSettleableShares(Integer.valueOf(0));
             }
             return;
         }
-        boolean owned = hasRelatedProduct(order.getMemberId(), order.getRelatedProductId());
-        order.setRelatedProductOwned(Boolean.valueOf(owned));
+        RelatedSlotSnapshot slot = resolveRelatedSlots(order.getMemberId(), order);
+        order.setRelatedActivatedQty(Integer.valueOf(slot.activated));
+        order.setRelatedSlotsAvailable(Integer.valueOf(slot.available));
+        order.setRelatedProductOwned(Boolean.valueOf(slot.available > 0));
+
         BigDecimal amount = order.getAccumulatedAmount() == null ? BigDecimal.ZERO : order.getAccumulatedAmount();
         int cycle = nz(order.getAccumulateCycleDays());
         int days = nz(order.getAccumulateDays());
         boolean cycleOk = cycle <= 0 || days >= cycle;
-        order.setCanSettleAccumulate(Boolean.valueOf(amount.compareTo(BigDecimal.ZERO) > 0 && cycleOk && owned));
+        int orderQty = qtyOf(order);
+        int settledInCycle = nz(order.getAccumulateSettledShares());
+        if (settledInCycle < 0)
+        {
+            settledInCycle = 0;
+        }
+        if (settledInCycle > orderQty)
+        {
+            settledInCycle = orderQty;
+        }
+        int remainShares = Math.max(0, orderQty - settledInCycle);
+        int settleShares = Math.min(remainShares, slot.available);
+        order.setSettleableShares(Integer.valueOf(settleShares));
+        order.setCanSettleAccumulate(Boolean.valueOf(
+                amount.compareTo(BigDecimal.ZERO) > 0 && cycleOk && settleShares > 0));
     }
 
     private void refreshUnlock(Long memberId, Long productId, UnlockSupport support)
@@ -614,13 +744,19 @@ public class BizOrderServiceImpl implements IBizOrderService
         }
         support.rememberLots(order.getOrderId(), lots);
         Date now = DateUtils.getNowDate();
-        int activated = lots.size();
+        // 已激活 = 有 activate_time 的份数；未跑通一拖二的份额不会建 lot，买过≠激活
+        int activated = 0;
         int ready = 0;
         Date nextStart = null;
         Date firstStart = null;
         for (int i = 0; i < lots.size(); i++)
         {
             BizOrderUnlockLot lot = lots.get(i);
+            if (lot.getActivateTime() == null)
+            {
+                continue;
+            }
+            activated += qtyOfLot(lot);
             Date start = lot.getIncomeStartTime();
             if (start != null && (firstStart == null || start.before(firstStart)))
             {
@@ -628,7 +764,7 @@ public class BizOrderServiceImpl implements IBizOrderService
             }
             if (start != null && !now.before(start))
             {
-                ready++;
+                ready += qtyOfLot(lot);
             }
             else if (start != null && (nextStart == null || start.before(nextStart)))
             {
