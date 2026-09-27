@@ -558,6 +558,10 @@ export function updatePayChannel(data: any): Promise<AjaxResult> {
   return request({ url: '/biz/payChannel', method: 'put', data })
 }
 
+export function addPayChannel(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/payChannel', method: 'post', data })
+}
+
 export function listPayProvider(query?: any): Promise<AjaxResult<any[]>> {
   return request({ url: '/biz/payChannel/providers', method: 'get', params: query })
 }

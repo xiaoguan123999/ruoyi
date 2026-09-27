@@ -1,7 +1,7 @@
 <template>
   <div class="app-container ops-page">
     <el-alert
-      title="供应商即代收服务商（福旺/无忧/非凡）。adapterFamily 决定协议：jeepay / wuyou / monpay。callbackIps 为回调来源 IP 白名单，逗号分隔。下单和回调在后端，本页只改服务商配置。"
+      title="供应商即代收服务商（福旺/无忧/非凡/百乐）。adapterFamily 决定协议：jeepay / wuyou / monpay / baile。callbackIps 为回调来源 IP 白名单，逗号分隔。下单和回调在后端，本页只改服务商配置。"
       type="info"
       :closable="false"
       show-icon
@@ -68,6 +68,7 @@
             <el-option label="jeepay（福旺）" value="jeepay" />
             <el-option label="wuyou（无忧）" value="wuyou" />
             <el-option label="monpay（非凡）" value="monpay" />
+            <el-option label="baile（百乐）" value="baile" />
           </el-select>
         </el-form-item>
         <el-form-item label="网关"><el-input v-model="form.gatewayUrl" placeholder="真实网关地址" /></el-form-item>

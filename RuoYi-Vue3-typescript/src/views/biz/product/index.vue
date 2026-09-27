@@ -271,7 +271,7 @@
                     <el-radio value="CREDIT">每天进产品收益钱包</el-radio>
                     <el-radio value="ACCUMULATE">订单累计后结算</el-radio>
                   </el-radio-group>
-                  <p class="field-tip">累计模式：日返先记在认购单，满周期且持有对档产品后结算进产品收益，再走现有提现</p>
+                  <p class="field-tip">累计模式：日返先记在认购单，满周期后按「对档产品已激活且未消耗份数」结算进产品收益；1 份对档激活只能支撑 1 份本产品结算一轮，下一周期需新的对档激活份额</p>
                 </div>
               </el-form-item>
               <template v-if="form.incomeMode === 'ACCUMULATE'">
