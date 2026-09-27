@@ -145,21 +145,22 @@ function RecordCard({ item, onSettled }: { item: AppOrderRecord; onSettled: () =
               {formatMoneyLabel(item.accumulatedAmount || 0, item.currency)}
             </Text>
           </View>
-          <View style={[styles.row, styles.accMeta]}>
+          <View style={styles.row}>
+            <Text style={styles.accLabel}>周期</Text>
             <Text style={styles.accHint}>
-              周期 {item.accumulateDays || 0}/{item.accumulateCycleDays || 0} 天
+              {item.accumulateDays || 0}/{item.accumulateCycleDays || 0} 天
               {item.accumulatePaused ? ' · 已暂停' : ''}
             </Text>
-            {item.relatedProductName ? (
-              <Text style={styles.accHint}>
-                {item.relatedProductOwned ? '已持有' : '需认购'}
-                {item.relatedProductName}
-              </Text>
-            ) : null}
           </View>
           {item.canSettleAccumulate ? (
             <PrimaryButton
-              title={settling ? '结算中…' : '结算到产品收益'}
+              title={
+                settling
+                  ? '结算中…'
+                  : item.settleableShares && item.settleableShares < item.quantity
+                    ? `结算${item.settleableShares}份到产品收益`
+                    : '结算到产品收益'
+              }
               onPress={onSettle}
               compact
               disabled={settling}
@@ -277,9 +278,6 @@ const styles = StyleSheet.create({
     color: '#FFD56A',
     fontSize: 16,
     fontWeight: '700',
-  },
-  accMeta: {
-    paddingHorizontal: 0,
   },
   accHint: {
     color: 'rgba(180,200,230,0.65)',

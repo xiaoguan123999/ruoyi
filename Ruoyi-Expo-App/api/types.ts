@@ -347,6 +347,9 @@ export type AppOrderRecord = {
   accumulatePaused?: boolean;
   relatedProductName?: string;
   relatedProductOwned?: boolean;
+  relatedActivatedQty?: number;
+  relatedSlotsAvailable?: number;
+  settleableShares?: number;
   canSettleAccumulate?: boolean;
 };
 

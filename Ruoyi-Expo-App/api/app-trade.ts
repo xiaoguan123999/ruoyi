@@ -190,6 +190,9 @@ function mapOrder(raw: unknown): AppOrderRecord | null {
       raw.accumulatePaused === true,
     relatedProductName: pickString(raw, ['relatedProductName'], '') || undefined,
     relatedProductOwned: Boolean(raw.relatedProductOwned),
+    relatedActivatedQty: pickNumber(raw, ['relatedActivatedQty']),
+    relatedSlotsAvailable: pickNumber(raw, ['relatedSlotsAvailable']),
+    settleableShares: pickNumber(raw, ['settleableShares']),
     canSettleAccumulate: Boolean(raw.canSettleAccumulate),
   };
 }
