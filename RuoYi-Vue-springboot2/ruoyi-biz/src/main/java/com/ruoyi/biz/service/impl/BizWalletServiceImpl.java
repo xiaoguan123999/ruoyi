@@ -574,6 +574,10 @@ public class BizWalletServiceImpl implements IBizWalletService
         {
             return "助力值发放";
         }
+        if (BizConstants.BIZ_LOTTERY_ASSIST.equals(bizType))
+        {
+            return "幸运抽奖";
+        }
         if (BizConstants.BIZ_PRINCIPAL_RETURN.equals(bizType))
         {
             return "本金返还";
