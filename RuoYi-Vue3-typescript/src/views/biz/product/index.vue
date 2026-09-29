@@ -45,7 +45,7 @@
       <el-form-item label="在售" prop="onSale">
         <el-select v-model="queryParams.onSale" placeholder="在售" clearable style="width: 140px">
           <el-option label="在售" value="1" />
-          <el-option label="不在售" value="0" />
+          <el-option label="停售" value="0" />
         </el-select>
       </el-form-item>
       <el-form-item>
@@ -97,9 +97,14 @@
           <el-tag :type="scope.row.withdrawRequired === '1' ? 'warning' : 'info'">{{ scope.row.withdrawRequired === '1' ? '是' : '否' }}</el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="跳过二级页" align="center" width="110">
+        <template #default="scope">
+          <el-tag :type="isSkipDetail(scope.row) ? 'warning' : 'info'">{{ isSkipDetail(scope.row) ? '是' : '否' }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="在售" align="center" width="80">
         <template #default="scope">
-          <el-tag :type="isOnSale(scope.row) ? 'success' : 'info'">{{ isOnSale(scope.row) ? '在售' : '不在售' }}</el-tag>
+          <el-tag :type="isOnSale(scope.row) ? 'success' : 'info'">{{ isOnSale(scope.row) ? '在售' : '停售' }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="状态" align="center" prop="status" width="80">
@@ -140,9 +145,9 @@
             <el-switch v-model="form.status" active-value="0" inactive-value="1" />
           </div>
           <div class="publish-bar__item">
-            <span class="publish-bar__label">开放认购</span>
+            <span class="publish-bar__label">在售</span>
             <el-switch v-model="form.onSale" active-value="1" inactive-value="0" />
-            <el-tooltip content="关闭后列表点认购提示暂未开放，与上架独立" placement="top">
+            <el-tooltip content="关闭后列表点认购提示暂未开放（同列表「在售」），与上架独立" placement="top">
               <el-icon class="publish-bar__help"><QuestionFilled /></el-icon>
             </el-tooltip>
           </div>
@@ -797,6 +802,10 @@ function unlockText(row: any) {
 function isOnSale(row: any) {
   if (typeof row.onSaleFlag === "boolean") return row.onSaleFlag
   return row.onSale === "1" || row.onSale === 1 || row.onSale === true
+}
+function isSkipDetail(row: any) {
+  if (typeof row.skipDetailFlag === "boolean") return row.skipDetailFlag
+  return row.skipDetail === "1" || row.skipDetail === 1 || row.skipDetail === true
 }
 function normalizeOnSale(data: any) {
   if (data.onSale == null || data.onSale === "") {
