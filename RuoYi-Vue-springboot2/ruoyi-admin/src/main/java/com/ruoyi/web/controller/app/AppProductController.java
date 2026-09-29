@@ -84,7 +84,7 @@ public class AppProductController extends BaseController
         return AppProductListResult.ok(list);
     }
 
-    @ApiOperation(value = "产品详情", notes = "认购页按产品ID查询。下架或不存在返回失败。")
+    @ApiOperation(value = "产品详情", notes = "认购页按产品ID查询。下架或不存在返回失败。未开售仍返回详情，由认购接口拦截。")
     @GetMapping({"/products/{productId}", "/product/{productId}"})
     public AppProductResult productDetail(@ApiParam("产品ID") @PathVariable Long productId)
     {
@@ -96,10 +96,6 @@ public class AppProductController extends BaseController
         if (product == null || !BizConstants.STATUS_OK.equals(product.getStatus()))
         {
             return AppProductResult.fail("产品不存在或已下架");
-        }
-        if (!product.saleOpen())
-        {
-            return AppProductResult.fail("产品暂未开售");
         }
         product.setCoverUrl(toPublicUrl(product.getCoverUrl()));
         productService.enrichForApp(product);

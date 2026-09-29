@@ -694,7 +694,7 @@ public class BizProduct extends BaseEntity
         }
     }
 
-    @ApiModelProperty("是否开售，true 可进详情")
+    @ApiModelProperty("是否开售，true 可认购")
     public Boolean getOnSaleFlag()
     {
         return Boolean.valueOf(saleOpen());
