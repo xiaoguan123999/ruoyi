@@ -162,11 +162,7 @@ export default function ProductsScreen() {
   };
 
   const openDetail = (item: ProductItem) => {
-    if (item.onSaleFlag !== true) {
-      modalWarning('暂未开放');
-      return;
-    }
-    // 跳过二级页：列表直购（与业务模式无关）
+    // 先看有没有二级页。没有才在列表判断能否下单；有则直接进入，下单校验放在二级页。
     if (isSkipDetail(item)) {
       // SPLIT 双按钮走 onSubscribe；单按钮布局点主 CTA 时按已配价选币种
       if (isSplitLayout(item)) {
