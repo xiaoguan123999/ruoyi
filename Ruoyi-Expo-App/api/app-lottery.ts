@@ -52,6 +52,7 @@ export type AppLotteryPrize = {
 export type AppLotteryCurrent = {
   activityId: number;
   title: string;
+  startTime?: string;
   intervalHours: number;
   ruleText: string;
   drawCount: number;
@@ -133,6 +134,7 @@ export async function fetchLotteryCurrent(): Promise<AppLotteryCurrent | null> {
   return {
     activityId: toNumber(data.activityId),
     title: pickString(data, ['title']),
+    startTime: pickString(data, ['startTime']) || undefined,
     intervalHours: toNumber(data.intervalHours, 72),
     ruleText: pickString(data, ['ruleText']),
     drawCount: toNumber(data.drawCount),

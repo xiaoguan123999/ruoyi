@@ -125,6 +125,27 @@ function sectorBoxSize(chrome: ReturnType<typeof sectorChrome>, side: boolean) {
 }
 
 /** 第 i 扇区中心角 = i * slice，首项正对顶部指针 */
+
+function isBeforeStart(startTime?: string) {
+  if (!startTime) {
+    return false;
+  }
+  const matched = startTime.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!matched) {
+    const time = Date.parse(startTime);
+    return Number.isFinite(time) && time > Date.now();
+  }
+  const time = new Date(
+    Number(matched[1]),
+    Number(matched[2]) - 1,
+    Number(matched[3]),
+    Number(matched[4]),
+    Number(matched[5]),
+    Number(matched[6] || 0),
+  ).getTime();
+  return time > Date.now();
+}
+
 function targetRotationForIndex(index: number, count: number, currentAngle: number): number {
   const slice = 360 / Math.max(count, 1);
   const center = index * slice;
@@ -375,6 +396,10 @@ export default function LotteryScreen() {
     }
     if (!current) {
       modalInfo(loaded ? '暂无进行中的抽奖活动' : '活动加载中，请稍候');
+      return;
+    }
+    if (isBeforeStart(current.startTime)) {
+      modalInfo('活动尚未开始');
       return;
     }
     if (prizes.length === 0) {
