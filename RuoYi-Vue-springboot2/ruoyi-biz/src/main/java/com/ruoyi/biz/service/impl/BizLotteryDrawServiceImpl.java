@@ -92,7 +92,11 @@ public class BizLotteryDrawServiceImpl implements IBizLotteryDrawService
         info.setIntervalHours(activity.getIntervalHours());
         info.setRuleText(activity.getRuleText());
 
-        lotteryChanceService.tryGrantByRules(activityId, memberId);
+        boolean notStarted = activityNotStarted(activity);
+        if (!notStarted)
+        {
+            lotteryChanceService.tryGrantByRules(activityId, memberId);
+        }
         int chanceBalance = lotteryChanceService.getBalance(activityId, memberId);
         info.setChanceBalance(Integer.valueOf(chanceBalance));
 
@@ -107,7 +111,7 @@ public class BizLotteryDrawServiceImpl implements IBizLotteryDrawService
 
         String lockKey = LotteryRedisKeys.limit(activityId, memberId);
         Boolean locked = intervalHours > 0 ? stringRedisTemplate.hasKey(lockKey) : Boolean.FALSE;
-        boolean canDraw = chanceBalance > 0 && !Boolean.TRUE.equals(locked);
+        boolean canDraw = !notStarted && chanceBalance > 0 && !Boolean.TRUE.equals(locked);
         info.setCanDraw(Boolean.valueOf(canDraw));
         if (!canDraw && intervalHours > 0)
         {
@@ -160,6 +164,10 @@ public class BizLotteryDrawServiceImpl implements IBizLotteryDrawService
             throw new ServiceException("请先登录");
         }
         BizLotteryActivity activity = requireActiveActivity();
+        if (activityNotStarted(activity))
+        {
+            throw new ServiceException("活动尚未开始");
+        }
         Long activityId = activity.getActivityId();
         // intervalHours=0 表示关闭频控（本地测试用）；null 才默认 72
         int intervalHours = activity.getIntervalHours() != null ? activity.getIntervalHours().intValue() : 72;
@@ -377,6 +385,11 @@ public class BizLotteryDrawServiceImpl implements IBizLotteryDrawService
             throw new ServiceException("暂无进行中的抽奖活动");
         }
         return activity;
+    }
+
+    private boolean activityNotStarted(BizLotteryActivity activity)
+    {
+        return activity.getStartTime() != null && activity.getStartTime().after(new Date());
     }
 
     private int readDrawCount(Long activityId, Long memberId)

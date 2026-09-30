@@ -156,6 +156,10 @@ public class BizLotteryChanceServiceImpl implements IBizLotteryChanceService
         {
             return 0;
         }
+        if (activity.getStartTime() != null && activity.getStartTime().after(new java.util.Date()))
+        {
+            return 0;
+        }
         return tryGrantByRules(activity.getActivityId(), memberId);
     }
 

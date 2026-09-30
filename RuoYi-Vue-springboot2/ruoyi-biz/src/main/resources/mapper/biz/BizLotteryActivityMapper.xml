@@ -31,7 +31,6 @@
     <select id="selectCurrentActiveActivity" resultMap="BizLotteryActivityResult">
         <include refid="selectLotteryActivityVo"/>
         where status = '0'
-          and (start_time is null or start_time &lt;= sysdate())
           and (end_time is null or end_time &gt;= sysdate())
         order by activity_id desc
         limit 1

@@ -9,7 +9,7 @@ public interface BizLotteryActivityMapper
 {
     BizLotteryActivity selectLotteryActivityById(Long activityId);
 
-    /** 当前启用且在有效期内的活动（取一条） */
+    /** 当前启用且未结束的活动（未到开始时间也返回，抽奖时再拦截） */
     BizLotteryActivity selectCurrentActiveActivity();
 
     /** 系统唯一抽奖活动（不限状态，取最早一条） */
