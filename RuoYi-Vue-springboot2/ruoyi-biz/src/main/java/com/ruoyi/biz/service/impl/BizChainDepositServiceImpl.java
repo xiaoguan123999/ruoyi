@@ -397,33 +397,29 @@ public class BizChainDepositServiceImpl implements IBizChainDepositService
     }
 
     /**
-     * Nearest ancestor with the given network address wins; otherwise system default.
-     * The member's own address is not used for himself.
+     * 从自己往上找最近一个已配该网络收款地址的会员（含本人），否则系统默认。
+     * 团队长本人也打到自己名下的项目方地址，下级同样打到该地址。
      */
     private ChainCollectTarget resolveCollect(Long memberId, String network)
     {
         boolean bep20 = ChainNetwork.isBep20(network);
-        if (memberId != null)
+        Long cursorId = memberId;
+        int guard = 0;
+        while (cursorId != null && cursorId.longValue() > 0L && guard++ < 32)
         {
-            BizMember current = memberMapper.selectMemberCore(memberId);
-            Long parentId = current == null ? null : current.getParentId();
-            int guard = 0;
-            while (parentId != null && parentId.longValue() > 0L && guard++ < 32)
+            BizMember node = memberMapper.selectMemberCore(cursorId);
+            if (node == null)
             {
-                BizMember parent = memberMapper.selectMemberCore(parentId);
-                if (parent == null)
-                {
-                    break;
-                }
-                String teamAddress = bep20
-                        ? Bep20Address.normalize(parent.getChainAddressBep20())
-                        : TronAddress.normalize(parent.getChainAddress());
-                if (StringUtils.isNotEmpty(teamAddress))
-                {
-                    return ChainCollectTarget.of(teamAddress, BizConstants.CHAIN_SOURCE_TEAM, parent.getMemberId());
-                }
-                parentId = parent.getParentId();
+                break;
             }
+            String teamAddress = bep20
+                    ? Bep20Address.normalize(node.getChainAddressBep20())
+                    : TronAddress.normalize(node.getChainAddress());
+            if (StringUtils.isNotEmpty(teamAddress))
+            {
+                return ChainCollectTarget.of(teamAddress, BizConstants.CHAIN_SOURCE_TEAM, node.getMemberId());
+            }
+            cursorId = node.getParentId();
         }
         String systemAddress = bep20
                 ? Bep20Address.normalize(config(BizConstants.CONFIG_CHAIN_BSC_ADDRESS, ""))

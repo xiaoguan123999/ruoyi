@@ -158,11 +158,11 @@ public class BizMember extends BaseEntity
     private Long[] memberIds;
 
     @Excel(name = "链上收款地址")
-    @ApiModelProperty("USDT-TRC20 团队收款地址。填了后其下级充值走该地址，空则继续找更上级或系统默认")
+    @ApiModelProperty("USDT-TRC20 团队收款地址。填了后本人及下级该网络充值都走该地址，空则继续找上级或系统默认")
     private String chainAddress;
 
     @Excel(name = "BEP20收款地址")
-    @ApiModelProperty("USDT-BEP20 团队收款地址。按网络独立解析，填了后其下级 BEP20 充值走该地址")
+    @ApiModelProperty("USDT-BEP20 团队收款地址。按网络独立解析，填了后本人及下级 BEP20 充值都走该地址")
     private String chainAddressBep20;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

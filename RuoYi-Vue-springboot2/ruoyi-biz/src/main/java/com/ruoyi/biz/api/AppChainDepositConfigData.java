@@ -14,7 +14,7 @@ public class AppChainDepositConfigData
     private String currency;
     @ApiModelProperty("兼容字段：默认网络的收款地址")
     private String address;
-    @ApiModelProperty("SYSTEM 系统默认地址，TEAM 最近配置了地址的上级")
+    @ApiModelProperty("SYSTEM 系统默认地址，TEAM 从自己往上最近一个已配地址的会员（含本人）")
     private String addressSource;
     private String contractAddress;
     private Integer decimals;

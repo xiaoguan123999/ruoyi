@@ -10,7 +10,7 @@ public class AppChainDepositNetworkItem
     private String name;
     private String asset;
     private String address;
-    @ApiModelProperty("SYSTEM 系统默认，TEAM 最近配置了该网络地址的上级")
+    @ApiModelProperty("SYSTEM 系统默认，TEAM 从自己往上最近一个已配该网络地址的会员（含本人）")
     private String addressSource;
     private String contractAddress;
     @ApiModelProperty("链上代币精度，TRC20=6 BEP20=18。转账金额仍用订单 payAmountText 的4位小数")

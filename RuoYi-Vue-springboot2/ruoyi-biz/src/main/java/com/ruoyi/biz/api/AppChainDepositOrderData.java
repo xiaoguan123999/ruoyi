@@ -10,7 +10,7 @@ public class AppChainDepositOrderData
     @ApiModelProperty("TRC20 或 BEP20")
     private String network;
     private String address;
-    @ApiModelProperty("SYSTEM 系统默认，TEAM 团队长地址")
+    @ApiModelProperty("SYSTEM 系统默认，TEAM 会员名下的项目方收款地址（含本人或最近上级）")
     private String addressSource;
     private String asset;
     private String currency;

@@ -112,7 +112,7 @@ public class BizMemberController extends BaseController
         return success();
     }
 
-    @ApiOperation(value = "设置团队USDT收款地址", notes = "chainAddress=TRC20，chainAddressBep20=BEP20。各网络独立解析；空字符串清空该网络，null不改")
+    @ApiOperation(value = "设置团队USDT收款地址", notes = "chainAddress=TRC20，chainAddressBep20=BEP20。各网络独立解析。填了后该会员本人及下级都打到这个地址；空字符串清空该网络，null不改")
     @PreAuthorize("@ss.hasPermi('biz:member:edit')")
     @Log(title = "团队收款地址", businessType = BusinessType.UPDATE)
     @PutMapping("/{memberId}/chainAddress")
