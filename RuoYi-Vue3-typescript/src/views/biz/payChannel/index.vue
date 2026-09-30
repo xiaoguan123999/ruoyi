@@ -55,6 +55,7 @@
         <template #default="scope">{{ scope.row.minAmount }} ~ {{ scope.row.maxAmount || "不限" }}</template>
       </el-table-column>
       <el-table-column label="权重" align="center" prop="weight" width="70" />
+      <el-table-column label="排序" align="center" prop="sortOrder" width="70" />
       <el-table-column label="模拟" align="center" width="80">
         <template #default="scope">
           <el-tag :type="scope.row.mockMode === '1' ? 'warning' : 'success'">{{ scope.row.mockMode === '1' ? '模拟' : '真实' }}</el-tag>
