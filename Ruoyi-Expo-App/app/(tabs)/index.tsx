@@ -228,9 +228,8 @@ export default function HomeScreen() {
             <Pressable style={styles.lotteryCard} onPress={() => router.push('/lottery')}>
               <Image
                 source={images.lotteryBanner}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                contentPosition="right"
+                style={styles.lotteryImage}
+                contentFit="fill"
               />
               <View style={styles.lotteryText}>
                 <Text style={styles.lotteryTitle}>幸运抽奖</Text>
@@ -367,15 +366,22 @@ const styles = StyleSheet.create({
   lotteryCard: {
     marginHorizontal: 16,
     marginTop: 14,
-    aspectRatio: 373 / 110,
     borderRadius: 20,
     overflow: 'hidden',
-    justifyContent: 'center',
+  },
+  lotteryImage: {
+    width: '100%',
+    aspectRatio: 373 / 110,
   },
   lotteryText: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
     paddingLeft: 20,
     paddingRight: 150,
-    paddingVertical: 14,
   },
   lotteryTitle: {
     color: '#FFFFFF',
