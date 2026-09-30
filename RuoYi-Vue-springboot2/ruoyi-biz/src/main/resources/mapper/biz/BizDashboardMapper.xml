@@ -14,6 +14,9 @@
         and coalesce(${alias}.audit_time, ${alias}.create_time) &lt; #{dayEnd}
     </sql>
 
+    <!-- 助力提现只看钱包类型，不用 remark LIKE，避免 utf8mb4_general_ci / 0900_ai_ci 混用 -->
+    <sql id="wdAssistType">ifnull(w.wallet_type_code, '') = 'ASSIST'</sql>
+
     <select id="selectStats" resultType="BizDashboardRow">
         select
             m.registerToday, m.registerTotal, m.kycToday, m.kycTotal, m.pendingKyc,
@@ -119,12 +122,12 @@
                 ifnull(sum(case when <include refid="passedToday"><property name="alias" value="w"/></include> and ifnull(w.wallet_type_code, '') = 'PROMO' then 1 else 0 end), 0) as wdPromoTodayCount,
                 ifnull(sum(case when w.status = '1' and ifnull(w.wallet_type_code, '') = 'PROMO' then 1 else 0 end), 0) as wdPromoTotalCount,
 
-                ifnull(sum(case when <include refid="passedToday"><property name="alias" value="w"/></include> and (ifnull(w.wallet_type_code, '') = 'ASSIST' or ifnull(w.remark, '') like concat(convert(unhex('E58AA9E58A9B') using utf8mb4), '%') or upper(ifnull(w.remark, '')) like 'ASSIST%') and w.currency = 'CNY' then w.amount else 0 end), 0) as wdAssistTodayCny,
-                ifnull(sum(case when <include refid="passedToday"><property name="alias" value="w"/></include> and (ifnull(w.wallet_type_code, '') = 'ASSIST' or ifnull(w.remark, '') like concat(convert(unhex('E58AA9E58A9B') using utf8mb4), '%') or upper(ifnull(w.remark, '')) like 'ASSIST%') and w.currency = 'USDT' then w.amount else 0 end), 0) as wdAssistTodayUsdt,
-                ifnull(sum(case when w.status = '1' and (ifnull(w.wallet_type_code, '') = 'ASSIST' or ifnull(w.remark, '') like concat(convert(unhex('E58AA9E58A9B') using utf8mb4), '%') or upper(ifnull(w.remark, '')) like 'ASSIST%') and w.currency = 'CNY' then w.amount else 0 end), 0) as wdAssistTotalCny,
-                ifnull(sum(case when w.status = '1' and (ifnull(w.wallet_type_code, '') = 'ASSIST' or ifnull(w.remark, '') like concat(convert(unhex('E58AA9E58A9B') using utf8mb4), '%') or upper(ifnull(w.remark, '')) like 'ASSIST%') and w.currency = 'USDT' then w.amount else 0 end), 0) as wdAssistTotalUsdt,
-                ifnull(sum(case when <include refid="passedToday"><property name="alias" value="w"/></include> and (ifnull(w.wallet_type_code, '') = 'ASSIST' or ifnull(w.remark, '') like concat(convert(unhex('E58AA9E58A9B') using utf8mb4), '%') or upper(ifnull(w.remark, '')) like 'ASSIST%') then 1 else 0 end), 0) as wdAssistTodayCount,
-                ifnull(sum(case when w.status = '1' and (ifnull(w.wallet_type_code, '') = 'ASSIST' or ifnull(w.remark, '') like concat(convert(unhex('E58AA9E58A9B') using utf8mb4), '%') or upper(ifnull(w.remark, '')) like 'ASSIST%') then 1 else 0 end), 0) as wdAssistTotalCount,
+                ifnull(sum(case when <include refid="passedToday"><property name="alias" value="w"/></include> and <include refid="wdAssistType"/> and w.currency = 'CNY' then w.amount else 0 end), 0) as wdAssistTodayCny,
+                ifnull(sum(case when <include refid="passedToday"><property name="alias" value="w"/></include> and <include refid="wdAssistType"/> and w.currency = 'USDT' then w.amount else 0 end), 0) as wdAssistTodayUsdt,
+                ifnull(sum(case when w.status = '1' and <include refid="wdAssistType"/> and w.currency = 'CNY' then w.amount else 0 end), 0) as wdAssistTotalCny,
+                ifnull(sum(case when w.status = '1' and <include refid="wdAssistType"/> and w.currency = 'USDT' then w.amount else 0 end), 0) as wdAssistTotalUsdt,
+                ifnull(sum(case when <include refid="passedToday"><property name="alias" value="w"/></include> and <include refid="wdAssistType"/> then 1 else 0 end), 0) as wdAssistTodayCount,
+                ifnull(sum(case when w.status = '1' and <include refid="wdAssistType"/> then 1 else 0 end), 0) as wdAssistTotalCount,
 
                 ifnull(sum(case when <include refid="passedToday"><property name="alias" value="w"/></include> and w.currency = 'CNY' then w.amount else 0 end), 0) as wdTotalTodayCny,
                 ifnull(sum(case when <include refid="passedToday"><property name="alias" value="w"/></include> and w.currency = 'USDT' then w.amount else 0 end), 0) as wdTotalTodayUsdt,
