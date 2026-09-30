@@ -19,7 +19,7 @@ public class AppChainDepositOrderData
     private Integer decimals;
     @ApiModelProperty("用户申请金额，2位小数")
     private BigDecimal amount;
-    @ApiModelProperty("必须转账的精确金额，4位小数。前端请用 payAmountText，避免 JS 精度丢失")
+    @ApiModelProperty("必须转账的精确金额，4位小数，格式 x.0abc（十分位固定0）。前端请用 payAmountText")
     private BigDecimal payAmount;
     @ApiModelProperty("4位小数字符串，复制转账金额用这个")
     private String payAmountText;

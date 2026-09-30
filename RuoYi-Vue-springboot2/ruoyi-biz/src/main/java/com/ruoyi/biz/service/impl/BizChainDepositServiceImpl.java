@@ -43,9 +43,10 @@ public class BizChainDepositServiceImpl implements IBizChainDepositService
 {
     private static final Logger log = LoggerFactory.getLogger(BizChainDepositServiceImpl.class);
     private static final SecureRandom RANDOM = new SecureRandom();
-    private static final int FINGERPRINT_TRIES = 50;
-    /** 指纹金额小数位：仅待付单间唯一，成功/过期等终结态可复用 */
+    private static final int FINGERPRINT_TRIES = 80;
+    /** 付款金额 4 位小数。十分位固定 0，后三位 001–999 随机，仅待付单间唯一 */
     private static final int FINGERPRINT_SCALE = 4;
+    private static final int FINGERPRINT_TAIL_MAX = 999;
     private static final String DEFAULT_HINT =
             "请向该地址转入所选网络的 USDT，金额必须与显示的4位小数完全一致。请勿转 TRX、BNB 或其他币。超时未到账请重新下单。";
 
@@ -413,7 +414,7 @@ public class BizChainDepositServiceImpl implements IBizChainDepositService
                 break;
             }
             String teamAddress = bep20
-                    ? Bep20Address.normalize(node.getChainAddressBep20())
+                    ? Bep20Address.display(node.getChainAddressBep20())
                     : TronAddress.normalize(node.getChainAddress());
             if (StringUtils.isNotEmpty(teamAddress))
             {
@@ -422,7 +423,7 @@ public class BizChainDepositServiceImpl implements IBizChainDepositService
             cursorId = node.getParentId();
         }
         String systemAddress = bep20
-                ? Bep20Address.normalize(config(BizConstants.CONFIG_CHAIN_BSC_ADDRESS, ""))
+                ? Bep20Address.display(config(BizConstants.CONFIG_CHAIN_BSC_ADDRESS, ""))
                 : TronAddress.normalize(config(BizConstants.CONFIG_CHAIN_ADDRESS, ""));
         return ChainCollectTarget.of(systemAddress, BizConstants.CHAIN_SOURCE_SYSTEM, null);
     }
@@ -457,12 +458,13 @@ public class BizChainDepositServiceImpl implements IBizChainDepositService
 
     private BigDecimal nextFingerprint(BigDecimal amount, String address, String network)
     {
+        // 10.70 先按 2 位；付款金额 = 整数部分 + 0.0 + 三位随机，例如 10.0123 / 10.0890
+        BigDecimal whole = amount.setScale(0, RoundingMode.DOWN);
         for (int i = 0; i < FINGERPRINT_TRIES; i++)
         {
-            int micro = 1 + RANDOM.nextInt(9999);
-            BigDecimal pay = amount.add(new BigDecimal(micro).movePointLeft(FINGERPRINT_SCALE))
+            int tail = 1 + RANDOM.nextInt(FINGERPRINT_TAIL_MAX);
+            BigDecimal pay = whole.add(new BigDecimal(tail).movePointLeft(FINGERPRINT_SCALE))
                     .setScale(FINGERPRINT_SCALE, RoundingMode.UNNECESSARY);
-            // countPendingByPayAmount 仅统计 status=待付 且未过期，终结态可复用同金额
             if (depositMapper.countPendingByPayAmount(pay, address, network) == 0)
             {
                 return pay;
