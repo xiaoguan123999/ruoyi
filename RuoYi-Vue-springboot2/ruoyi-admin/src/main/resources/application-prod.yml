@@ -82,9 +82,9 @@ spring:
       filter:
         stat:
           enabled: true
-          # 慢SQL记录
+          # 慢SQL记录。看板汇总常要 1～3 秒，1 秒会误报成 ERROR
           log-slow-sql: true
-          slow-sql-millis: 1000
+          slow-sql-millis: 10000
           merge-sql: true
         wall:
           config:
