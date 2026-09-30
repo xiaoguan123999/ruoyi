@@ -83,22 +83,24 @@ function descLines(desc: string, maxLines: number): string[] {
 function sectorChrome(count: number, radius: number) {
   const n = Math.max(count, 1);
   const slice = 360 / n;
+  const scale = radius / 118;
   const labelR =
     n <= 3 ? radius * 0.62 : n <= 5 ? radius * 0.58 : n <= 7 ? radius * 0.54 : radius * 0.5;
   const chord = 2 * labelR * Math.sin((slice * Math.PI) / 360);
-  const boxW = Math.max(52, Math.min(chord * 0.82, radius * (n <= 4 ? 0.72 : n <= 6 ? 0.58 : 0.48)));
-  const boxH = Math.max(52, Math.min(radius * (n <= 4 ? 0.55 : n <= 6 ? 0.48 : 0.4), chord * 1.05));
+  const boxW = Math.min(chord * 0.82, radius * (n <= 4 ? 0.72 : n <= 6 ? 0.58 : 0.48));
+  const boxH = Math.min(radius * (n <= 4 ? 0.55 : n <= 6 ? 0.48 : 0.4), chord * 1.05);
+  const px = (value: number) => Math.max(8, Math.round(value * scale));
 
   if (n <= 3) {
-    return { slice, labelR, boxW, boxH, nameSize: 12, descSize: 9, img: 52, maxDesc: 3, hubRatio: 0.34 };
+    return { slice, labelR, boxW, boxH, nameSize: px(12), descSize: px(9), img: px(52), maxDesc: 3, hubRatio: 0.34 };
   }
   if (n === 4) {
-    return { slice, labelR, boxW, boxH, nameSize: 11, descSize: 9, img: 46, maxDesc: 3, hubRatio: 0.32 };
+    return { slice, labelR, boxW, boxH, nameSize: px(11), descSize: px(9), img: px(46), maxDesc: 3, hubRatio: 0.32 };
   }
   if (n <= 6) {
-    return { slice, labelR, boxW, boxH, nameSize: 10, descSize: 8, img: 36, maxDesc: 2, hubRatio: 0.3 };
+    return { slice, labelR, boxW, boxH, nameSize: px(10), descSize: px(8), img: px(36), maxDesc: 2, hubRatio: 0.3 };
   }
-  return { slice, labelR, boxW, boxH, nameSize: 9, descSize: 8, img: 28, maxDesc: 2, hubRatio: 0.28 };
+  return { slice, labelR, boxW, boxH, nameSize: px(9), descSize: px(8), img: px(28), maxDesc: 2, hubRatio: 0.28 };
 }
 
 /**
@@ -111,17 +113,150 @@ function isSideSector(midDeg: number): boolean {
   return toLeftRight < toTopBottom;
 }
 
-function sectorBoxSize(chrome: ReturnType<typeof sectorChrome>, side: boolean) {
-  if (side) {
-    return {
-      width: Math.max(48, chrome.boxW * 0.92),
-      height: Math.max(64, chrome.boxH * 1.22),
-    };
+function sectorFrame(radius: number, sliceDeg: number, side: boolean, screenMid: number) {
+  const turned = ((screenMid % 360) + 360) % 360;
+  const nearTop = Math.min(turned, 360 - turned) < 32;
+  const unit = radius / 112;
+  const hub = (nearTop ? 54 : 40) * unit;
+  const outer = Math.max(hub + 16 * unit, radius - 4 * unit);
+  const halfAngle = ((sliceDeg / 2) * 0.88 * Math.PI) / 180;
+  const fallback = side
+    ? { width: 40 * unit, height: 48 * unit, labelR: (hub + outer) / 2 }
+    : { width: 56 * unit, height: 28 * unit, labelR: (hub + outer) / 2 };
+  let best = { ...fallback, score: 0 };
+  if (!side) {
+    const room = outer - hub - 2 * unit;
+    for (let height = Math.min(radius * 0.38, room); height >= 18 * unit; height -= 2) {
+      const inner = hub + 2 * unit;
+      const labelR = inner + height / 2;
+      let width = Math.min(2 * inner * Math.tan(halfAngle), radius * 0.9);
+      while (width > 20 * unit && Math.hypot(labelR + height / 2, width / 2) > outer) width -= 2;
+      const score = height >= 32 * unit ? width * 3 + height : width + height;
+      if (score > best.score) best = { width, height, labelR, score };
+    }
+  } else {
+    const room = outer - hub - 2 * unit;
+    for (let width = Math.min(radius * 0.58, room); width >= 28 * unit; width -= 2) {
+      const inner = hub + 2 * unit;
+      const labelR = inner + width / 2;
+      let height = Math.min(2 * inner * Math.tan(halfAngle), radius * 0.75);
+      while (height > 20 * unit && Math.hypot(labelR + width / 2, height / 2) > outer) height -= 2;
+      const score = height >= 52 * unit ? width * 4 + height : height * 2 + width;
+      if (score > best.score) best = { width, height, labelR, score };
+    }
   }
-  return {
-    width: Math.max(80, chrome.boxW * 1.28),
-    height: Math.max(52, chrome.boxH * 0.92),
+  return { width: best.width, height: best.height, labelR: best.labelR };
+}
+
+function linePx(value: string, fontSize: number) {
+  return Array.from(value.trim()).length * fontSize * 1.08;
+}
+
+function fitSectorContent(options: {
+  side: boolean;
+  boxW: number;
+  boxH: number;
+  name: string;
+  lines: string[];
+  nameSize: number;
+  descSize: number;
+  img: number;
+  hasImage: boolean;
+}) {
+  let nameSize = options.nameSize;
+  let descSize = options.descSize;
+  let img = options.hasImage ? options.img : 0;
+  const gap = 4;
+  const nameMin = linePx(options.name, 8);
+  const maxImg = Math.max(0, options.boxW - gap - nameMin);
+  const imageFloor = options.hasImage
+    ? Math.min(options.img, options.boxH - 2, maxImg, Math.max(18, Math.round(options.boxW * 0.42)))
+    : 0;
+
+  const pack = () => {
+    const nameW = Math.max(linePx(options.name, nameSize), nameSize + 2);
+    if (options.side) {
+      const slot = Math.max(nameSize + 2, options.boxW - 2);
+      const nameLines = Math.max(1, Math.ceil(nameW / slot));
+      let descH = 0;
+      for (const line of options.lines) {
+        descH += Math.max(1, Math.ceil(linePx(line, descSize) / slot)) * (descSize + 2);
+      }
+      const textH = nameLines * (nameSize + 2) + descH;
+      const imgFit = Math.max(0, Math.min(img, slot, options.boxH - textH - gap));
+      const usedH = textH + (imgFit > 0 ? gap + imgFit : 0);
+      const descOneLine = options.lines.every((line) => linePx(line, descSize) <= slot + 0.5);
+      return {
+        textW: slot,
+        img: imgFit,
+        descOneLine,
+        ok: nameLines === 1 && usedH <= options.boxH + 0.5,
+      };
+    }
+    const imgFit = Math.max(0, Math.min(img, options.boxH - 2, options.boxW - gap - (nameSize + 2)));
+    const slot = Math.max(nameSize + 2, options.boxW - gap - imgFit);
+    const nameLines = nameW <= slot + 0.5 ? 1 : Math.ceil(nameW / Math.max(slot, 1));
+    const descOneLine = options.lines.every((line) => linePx(line, descSize) <= slot + 0.5);
+    let descH = 0;
+    for (const line of options.lines) {
+      descH += Math.max(1, Math.ceil(linePx(line, descSize) / Math.max(slot, 1))) * (descSize + 2);
+    }
+    const textH = nameLines * (nameSize + 2) + descH;
+    return {
+      textW: slot,
+      img: imgFit,
+      descOneLine,
+      ok:
+        nameLines === 1 &&
+        textH <= options.boxH + 0.5 &&
+        slot + (imgFit > 0 ? gap + imgFit : 0) <= options.boxW + 0.5,
+    };
   };
+
+  for (let step = 0; step < 80; step += 1) {
+    const measured = pack();
+    if (options.side) {
+      if (measured.ok && (measured.descOneLine || descSize <= 7)) {
+        return { nameSize, descSize, img: measured.img, textWidth: measured.textW };
+      }
+      if (measured.ok && !measured.descOneLine) {
+        descSize = Math.max(7, descSize - 0.5);
+        continue;
+      }
+      if (img > 0) {
+        img = Math.max(0, img - 2);
+        continue;
+      }
+      if (nameSize > 8) {
+        nameSize -= 0.5;
+        descSize = Math.max(7, descSize - 0.5);
+        continue;
+      }
+      descSize = Math.max(7, descSize - 0.5);
+      continue;
+    }
+    if (measured.ok && measured.descOneLine && measured.img + 0.5 >= imageFloor) {
+      return { nameSize, descSize, img: measured.img, textWidth: measured.textW };
+    }
+    if (img > imageFloor) {
+      img = Math.max(imageFloor, img - 2);
+      continue;
+    }
+    if (measured.ok) {
+      return { nameSize, descSize, img: measured.img, textWidth: measured.textW };
+    }
+    if (descSize > 7) {
+      descSize = Math.max(7, descSize - 0.5);
+      continue;
+    }
+    if (nameSize > 8) {
+      nameSize = Math.max(8, nameSize - 0.5);
+      continue;
+    }
+    return { nameSize, descSize, img: measured.img, textWidth: measured.textW };
+  }
+  const measured = pack();
+  return { nameSize, descSize, img: measured.img, textWidth: measured.textW };
 }
 
 /** 第 i 扇区中心角 = i * slice，首项正对顶部指针 */
@@ -226,30 +361,44 @@ function LotteryDisk({
 
       {prizes.map((prize, index) => {
         const mid = index * chrome.slice;
-        const rad = ((mid - 90) * Math.PI) / 180;
-        const cx = r + chrome.labelR * Math.cos(rad);
-        const cy = r + chrome.labelR * Math.sin(rad);
         const screenMid = mid + layoutRotationDeg;
         const side = isSideSector(screenMid);
-        const box = sectorBoxSize(chrome, side);
-        const lines = descLines(prize.prizeDesc, side ? Math.min(chrome.maxDesc, 2) : chrome.maxDesc);
-        const imgStyle = side
-          ? { width: chrome.img, height: chrome.img, marginTop: 2 }
-          : { width: chrome.img, height: chrome.img };
+        const box = sectorFrame(rOut, chrome.slice, side, screenMid);
+        const place = ((mid - 90) * Math.PI) / 180;
+        const cx = r + box.labelR * Math.cos(place);
+        const cy = r + box.labelR * Math.sin(place);
+        const lines = descLines(prize.prizeDesc, chrome.maxDesc);
+        const fitted = fitSectorContent({
+          side,
+          boxW: box.width,
+          boxH: box.height,
+          name: prize.prizeName,
+          lines,
+          nameSize: chrome.nameSize,
+          descSize: chrome.descSize,
+          img: chrome.img,
+          hasImage: Boolean(prize.imageUrl),
+        });
+        const img = fitted.img;
+        const textWidth = fitted.textWidth;
+        const imgStyle = { width: img, height: img, flexShrink: 0 };
 
         const textBlock = (
-          <View style={side ? styles.textStack : styles.textStackRow}>
+          <View
+            collapsable={false}
+            style={[side ? styles.textStack : styles.textStackRow, { width: textWidth, maxWidth: textWidth, flexShrink: 0 }]}
+          >
             <Text
               style={[
                 styles.prizeName,
                 {
-                  fontSize: chrome.nameSize,
-                  lineHeight: chrome.nameSize + 2,
-                  textAlign: side ? 'center' : 'left',
+                  width: textWidth,
+                  fontSize: fitted.nameSize,
+                  lineHeight: fitted.nameSize + 3,
+                  textAlign: 'center',
                 },
                 prize.nameColor ? { color: prize.nameColor } : null,
               ]}
-              numberOfLines={2}
             >
               {prize.prizeName}
             </Text>
@@ -259,13 +408,13 @@ function LotteryDisk({
                 style={[
                   styles.prizeDesc,
                   {
-                    fontSize: chrome.descSize,
-                    lineHeight: chrome.descSize + 2,
-                    textAlign: side ? 'center' : 'left',
+                    width: textWidth,
+                    fontSize: fitted.descSize,
+                    lineHeight: fitted.descSize + 3,
+                    textAlign: 'center',
                   },
                   prize.descColor ? { color: prize.descColor } : null,
                 ]}
-                numberOfLines={1}
               >
                 {line}
               </Text>
@@ -289,9 +438,9 @@ function LotteryDisk({
             ]}
             pointerEvents="none"
           >
-            <View style={[styles.cellInner, side ? styles.cellCol : styles.cellRow]}>
+            <View collapsable={false} style={[styles.cellInner, side ? styles.cellCol : styles.cellRow, { width: box.width, height: box.height }]}>
               {textBlock}
-              {prize.imageUrl ? (
+              {prize.imageUrl && img > 0 ? (
                 <Image source={{ uri: prize.imageUrl }} style={imgStyle} contentFit="contain" />
               ) : null}
             </View>
@@ -307,6 +456,12 @@ export default function LotteryScreen() {
   const { width } = useWindowDimensions();
   const stageWidth = width - 32;
   const wheelSize = Math.min(236, Math.round(stageWidth * 0.58));
+  const hubScale = wheelSize / 236;
+  const hubWrapSize = Math.round(78 * hubScale);
+  const hubButton = Math.round(74 * hubScale);
+  const hubSvgH = Math.round(94 * hubScale);
+  const hubFont = Math.max(11, Math.round(15 * hubScale));
+  const hubLine = Math.max(14, Math.round(20 * hubScale));
   const rotate = useRef(new Animated.Value(0)).current;
   const labelOpacity = useRef(new Animated.Value(1)).current;
   const angleRef = useRef(0);
@@ -508,9 +663,20 @@ export default function LotteryScreen() {
                 labelOpacity={labelOpacity}
               />
             </Animated.View>
-            <View style={styles.hubWrap} pointerEvents="box-none">
-              <View style={styles.hubFace} pointerEvents="none">
-                <Svg width={78} height={94} viewBox="0 0 78 94">
+            <View
+              style={[
+                styles.hubWrap,
+                {
+                  width: hubWrapSize,
+                  height: hubWrapSize,
+                  marginLeft: -hubWrapSize / 2,
+                  marginTop: -hubWrapSize / 2,
+                },
+              ]}
+              pointerEvents="box-none"
+            >
+              <View style={[styles.hubFace, { top: Math.round(-17 * hubScale) }]} pointerEvents="none">
+                <Svg width={hubWrapSize} height={hubSvgH} viewBox="0 0 78 94">
                   <Defs>
                     <LinearGradient id="hubGold" x1="0" y1="0" x2="0" y2="1">
                       <Stop offset="0" stopColor="#F2D56A" />
@@ -528,12 +694,17 @@ export default function LotteryScreen() {
                 disabled={spinning}
                 style={({ pressed }) => [
                   styles.hub,
+                  {
+                    width: hubButton,
+                    height: hubButton,
+                    borderRadius: hubButton / 2,
+                  },
                   pressed && !spinning && styles.hubPressed,
                   !canPress && styles.hubDisabled,
                 ]}
               >
-                <Text style={styles.hubText}>立即</Text>
-                <Text style={styles.hubText}>抽奖</Text>
+                <Text style={[styles.hubText, { fontSize: hubFont, lineHeight: hubLine }]}>立即</Text>
+                <Text style={[styles.hubText, { fontSize: hubFont, lineHeight: hubLine }]}>抽奖</Text>
               </Pressable>
             </View>
           </View>
@@ -608,7 +779,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
   },
   cellInner: {
     alignItems: 'center',
@@ -623,8 +793,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    paddingHorizontal: 2,
+    gap: 4,
   },
   textStack: {
     alignItems: 'center',
@@ -632,10 +801,9 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   textStackRow: {
-    flexShrink: 1,
-    alignItems: 'flex-start',
+    flexShrink: 0,
+    alignItems: 'center',
     justifyContent: 'center',
-    maxWidth: '58%',
   },
   prizeName: {
     color: TITLE,
