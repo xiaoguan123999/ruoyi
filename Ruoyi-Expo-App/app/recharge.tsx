@@ -7,11 +7,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, TextInput } from '@/components/ui/AppText';
 import {
   createAppPayDeposit,
-  fetchAppPayChannels,
   fetchAppPayOrder,
   isPayOrderPaid,
   isPayOrderPending,
-  listPayChannelsByScene,
 } from '@/api/app-pay';
 import {
   chainNetworkDisplayName,
@@ -19,9 +17,20 @@ import {
   fetchAppChainDepositConfig,
   preferredChainNetwork,
 } from '@/api/app-chain-deposit';
+import {
+  DEFAULT_RECHARGE_METHODS,
+  fetchAppRechargeMethodChannels,
+  fetchAppRechargeMethods,
+} from '@/api/app-recharge-method';
 import { ApiError } from '@/api/request';
 import { fetchAppWallet, parseAmountInput } from '@/api/app-trade';
-import type { AppChainDepositConfig, AppChainNetworkCode, AppPayChannel, AppWallet } from '@/api/types';
+import type {
+  AppChainDepositConfig,
+  AppChainNetworkCode,
+  AppPayChannel,
+  AppRechargeMethod,
+  AppWallet,
+} from '@/api/types';
 import { AppBackground } from '@/components/ui/AppBackground';
 import { DualBalance } from '@/components/ui/DualBalance';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -34,12 +43,58 @@ import { PayCashierPopup } from '@/components/pay/PayCashierPopup';
 import { forgetPayOrder, payReturnUrl, readPayOrder, rememberPayOrder } from '@/utils/pay-session';
 import { modalError, modalSuccess, modalWarning } from '@/utils/toast';
 
-const methods = [
-  { key: 'wechat', label: '微信', icon: images.payWechat, currency: 'CNY' as const, scene: 'wechat' },
-  { key: 'alipay', label: '支付宝', icon: images.payAlipay, currency: 'CNY' as const, scene: 'alipay' },
-  { key: 'usdt', label: 'USDT', icon: images.payUsdt, currency: 'USDT' as const, chain: true },
-  { key: 'bank', label: '银行卡（客服）', icon: images.payCard, currency: 'CNY' as const, toService: true },
-];
+function methodIcon(item: AppRechargeMethod): ImageSource | { uri: string } {
+  const url = (item.iconUrl || '').trim();
+  if (url) {
+    return { uri: url };
+  }
+  if (item.isCs) {
+    return images.payCard;
+  }
+  const code = (item.methodCode || '').toLowerCase();
+  if (code.includes('usdt') || code.includes('chain')) {
+    return images.payUsdt;
+  }
+  if (code.includes('wechat') || code.includes('wx')) {
+    return images.payWechat;
+  }
+  if (code.includes('alipay') || code.includes('ali')) {
+    return images.payAlipay;
+  }
+  return images.payCard;
+}
+
+function onlineChannelsOf(channels: AppPayChannel[]): AppPayChannel[] {
+  return channels.filter((c) => String(c.fulfillType || 'ONLINE').toUpperCase() !== 'CHAIN');
+}
+
+function chainChannelsOf(channels: AppPayChannel[]): AppPayChannel[] {
+  return channels.filter((c) => String(c.fulfillType || '').toUpperCase() === 'CHAIN');
+}
+
+/** USDT/链上方式本身走链上入口，不依赖支付通道表里的占位行 */
+function isChainLikeMethod(method?: { methodCode?: string; toService?: boolean } | null) {
+  if (!method || method.toService) {
+    return false;
+  }
+  const code = (method.methodCode || '').toLowerCase();
+  return code.includes('usdt') || code.includes('chain');
+}
+
+type RechargeMethodView = AppRechargeMethod & {
+  key: string;
+  icon: ImageSource | { uri: string };
+  toService?: boolean;
+};
+
+function toMethodView(item: AppRechargeMethod): RechargeMethodView {
+  return {
+    ...item,
+    key: item.methodCode,
+    icon: methodIcon(item),
+    toService: item.isCs === true,
+  };
+}
 
 function formatLimit(value?: number) {
   if (value == null) {
@@ -48,7 +103,10 @@ function formatLimit(value?: number) {
   return String(value);
 }
 
-function channelLimitText(channel: AppPayChannel) {
+function channelLimitText(channel?: AppPayChannel | null) {
+  if (!channel) {
+    return '';
+  }
   const min = formatLimit(channel.minAmount);
   const max = formatLimit(channel.maxAmount);
   if (min && max) {
@@ -61,10 +119,6 @@ function channelLimitText(channel: AppPayChannel) {
     return `最高 ${max}`;
   }
   return '';
-}
-
-function channelDisplayName(channel: AppPayChannel) {
-  return channel.name?.trim() || '';
 }
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
@@ -228,12 +282,14 @@ export default function RechargeScreen() {
   const amountRef = useRef<ComponentRef<typeof TextInput>>(null);
   const lastOrderNo = useRef('');
   const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState(methods[0].key);
+  const [methods, setMethods] = useState<RechargeMethodView[]>(() => DEFAULT_RECHARGE_METHODS.map(toMethodView));
+  const [method, setMethod] = useState(DEFAULT_RECHARGE_METHODS[0].methodCode);
   const [submitting, setSubmitting] = useState(false);
   const [wallet, setWallet] = useState<AppWallet | null>(null);
-  const [channels, setChannels] = useState<AppPayChannel[]>([]);
-  const [channelByScene, setChannelByScene] = useState<Record<string, string>>({});
-  const [sheetScene, setSheetScene] = useState<string | null>(null);
+  const [channelsByMethod, setChannelsByMethod] = useState<Record<string, AppPayChannel[]>>({});
+  const [channelByMethod, setChannelByMethod] = useState<Record<string, string>>({});
+  const [channelSheet, setChannelSheet] = useState(false);
+  const [loadingChannels, setLoadingChannels] = useState(false);
   const [networkSheet, setNetworkSheet] = useState(false);
   const [cashier, setCashier] = useState<{ payUrl: string; outTradeNo: string } | null>(null);
   const [chainConfig, setChainConfig] = useState<AppChainDepositConfig | null>(null);
@@ -255,11 +311,12 @@ export default function RechargeScreen() {
     } catch {
     }
     try {
-      setChannels(await fetchAppPayChannels());
-    } catch (error) {
-      if (!(error instanceof ApiError) || error.code !== 401) {
-        modalError(error instanceof ApiError ? error.message : '获取充值通道失败');
-      }
+      const nextMethods = (await fetchAppRechargeMethods()).map(toMethodView);
+      setMethods(nextMethods);
+      setMethod((prev) => (nextMethods.some((item) => item.key === prev) ? prev : nextMethods[0]?.key || prev));
+    } catch {
+      const fallback = DEFAULT_RECHARGE_METHODS.map(toMethodView);
+      setMethods(fallback);
     }
     try {
       setChainConfig(await fetchAppChainDepositConfig());
@@ -285,24 +342,17 @@ export default function RechargeScreen() {
   const cny = wallet?.cnyAvailable ?? 0;
   const usdt = wallet?.usdtAvailable ?? 0;
   const selected = methods.find((item) => item.key === method);
-  const selectedScene = selected?.scene;
-  const sceneChannels = useMemo(
-    () => (selectedScene ? listPayChannelsByScene(channels, selectedScene) : []),
-    [channels, selectedScene],
-  );
+  const selectedChannels = selected ? (channelsByMethod[selected.key] ?? []) : [];
+  const selectedOnlineChannels = useMemo(() => onlineChannelsOf(selectedChannels), [selectedChannels]);
+  const selectedChainChannels = useMemo(() => chainChannelsOf(selectedChannels), [selectedChannels]);
+  const isChainMethod = !selected?.toService && selectedOnlineChannels.length === 0 && (selectedChainChannels.length > 0 || isChainLikeMethod(selected));
   const selectedChannel = useMemo(() => {
-    if (!selectedScene) {
+    if (!selected || selected.toService || isChainMethod) {
       return undefined;
     }
-    const code = channelByScene[selectedScene];
-    return sceneChannels.find((item) => item.channelCode === code);
-  }, [channelByScene, sceneChannels, selectedScene]);
-
-  const sheetMeta = methods.find((item) => item.scene === sheetScene);
-  const sheetChannels = useMemo(
-    () => (sheetScene ? listPayChannelsByScene(channels, sheetScene) : []),
-    [channels, sheetScene],
-  );
+    const code = channelByMethod[selected.key];
+    return selectedOnlineChannels.find((item) => item.channelCode === code) || selectedOnlineChannels[0];
+  }, [channelByMethod, isChainMethod, selected, selectedOnlineChannels]);
 
   const openNetworkSheet = () => {
     if (chainUnavailable) {
@@ -317,13 +367,80 @@ export default function RechargeScreen() {
     setNetworkSheet(true);
   };
 
-  const openChannelSheet = (scene: string) => {
-    const list = listPayChannelsByScene(channels, scene);
-    if (list.length === 0) {
+  const applyChannelsForMethod = (key: string, list: AppPayChannel[], methodHint?: RechargeMethodView) => {
+    setChannelsByMethod((prev) => ({ ...prev, [key]: list }));
+    const online = onlineChannelsOf(list);
+    const method = methodHint || methods.find((item) => item.key === key);
+    const chainOnly = online.length === 0 && (chainChannelsOf(list).length > 0 || isChainLikeMethod(method));
+    if (chainOnly) {
+      setNetworkSheet(false);
+      openNetworkSheet();
+      return;
+    }
+    setNetworkSheet(false);
+    if (online.length === 0) {
+      setChannelSheet(false);
+      return;
+    }
+    if (online.length === 1) {
+      setChannelByMethod((prev) => ({ ...prev, [key]: online[0].channelCode }));
+      setChannelSheet(false);
+      return;
+    }
+    setChannelByMethod((prev) => {
+      if (prev[key] && online.some((item) => item.channelCode === prev[key])) {
+        return prev;
+      }
+      return { ...prev, [key]: online[0].channelCode };
+    });
+    setChannelSheet(true);
+  };
+
+  const loadChannelsForMethod = async (next: RechargeMethodView) => {
+    if (next.toService) {
+      setNetworkSheet(false);
+      setChannelSheet(false);
+      return;
+    }
+    if (!next.methodCode) {
+      modalWarning('支付方式配置异常');
+      return;
+    }
+    if (channelsByMethod[next.key]) {
+      applyChannelsForMethod(next.key, channelsByMethod[next.key], next);
+      return;
+    }
+    setLoadingChannels(true);
+    try {
+      const list = await fetchAppRechargeMethodChannels(next.methodCode);
+      applyChannelsForMethod(next.key, list, next);
+      if (list.length === 0 && !isChainLikeMethod(next)) {
+        modalWarning('暂未开放充值');
+      }
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 401) {
+        modalError(error instanceof ApiError ? error.message : '获取支付通道失败');
+      }
+    } finally {
+      setLoadingChannels(false);
+    }
+  };
+
+  const openChannelSheet = () => {
+    if (loadingChannels) {
+      return false;
+    }
+    if (selectedOnlineChannels.length === 0) {
       modalWarning('暂未开放充值');
       return false;
     }
-    setSheetScene(scene);
+    if (selectedOnlineChannels.length === 1) {
+      const only = selectedOnlineChannels[0];
+      setChannelByMethod((prev) => ({ ...prev, [selected!.key]: only.channelCode }));
+      setChannelSheet(false);
+      return true;
+    }
+    setChannelSheet(true);
     return true;
   };
 
@@ -333,29 +450,20 @@ export default function RechargeScreen() {
       return;
     }
     setMethod(key);
-    if (next.toService || (!next.scene && !next.chain)) {
-      setSheetScene(null);
-      setNetworkSheet(false);
-      return;
-    }
-    if (next.chain) {
-      setSheetScene(null);
-      openNetworkSheet();
-      return;
-    }
-    setNetworkSheet(false);
-    if (next.scene) {
-      openChannelSheet(next.scene);
-    }
+    setChannelSheet(false);
+    void loadChannelsForMethod(next);
   };
 
-  const onPickChannel = (channel: AppPayChannel) => {
-    if (!sheetScene) {
+  useEffect(() => {
+    const current = methods.find((item) => item.key === method);
+    if (!current || current.toService) {
       return;
     }
-    setChannelByScene((prev) => ({ ...prev, [sheetScene]: channel.channelCode }));
-    setSheetScene(null);
-  };
+    if (channelsByMethod[current.key]) {
+      return;
+    }
+    void loadChannelsForMethod(current);
+  }, [method, methods]);
 
   const checkOrder = useCallback(async (outTradeNo: string, quiet = false) => {
     const order = await fetchAppPayOrder(outTradeNo);
@@ -404,7 +512,7 @@ export default function RechargeScreen() {
       router.push('/service-chat');
       return;
     }
-    if (selected.chain) {
+    if (isChainMethod) {
       const value = Math.round(parseAmountInput(amount) * 100) / 100;
       if (value <= 0) {
         modalWarning('请输入有效充值金额');
@@ -435,14 +543,12 @@ export default function RechargeScreen() {
       }
       return;
     }
-    if (!selected.scene || sceneChannels.length === 0) {
+    if (selectedOnlineChannels.length === 0) {
       modalWarning('暂未开放充值');
       return;
     }
     if (!selectedChannel) {
-      if (selected.scene) {
-        openChannelSheet(selected.scene);
-      }
+      openChannelSheet();
       return;
     }
     const value = parseAmountInput(amount);
@@ -462,7 +568,6 @@ export default function RechargeScreen() {
     try {
       const deposit = await createAppPayDeposit({
         amount: value,
-        scene: selected.scene,
         channelCode: selectedChannel.channelCode,
         returnUrl: payReturnUrl(),
       });
@@ -476,14 +581,12 @@ export default function RechargeScreen() {
     }
   };
 
-  const limitHint = selected?.chain
+  const limitHint = isChainMethod
     ? [
         chainConfig?.minAmount != null ? `最低 ${chainConfig.minAmount}` : '',
         chainConfig?.maxAmount != null ? `最高 ${chainConfig.maxAmount}` : '',
       ].filter(Boolean).join(' · ') || null
-    : selectedChannel
-      ? channelLimitText(selectedChannel)
-      : null;
+    : channelLimitText(selectedChannel) || null;
 
   return (
     <AppBackground>
@@ -519,34 +622,25 @@ export default function RechargeScreen() {
             );
           })}
         </GlassCard>
-        {!selected?.toService && !selected?.chain ? (
+        {!selected?.toService && !isChainMethod ? (
           <GlassCard>
-            <Pressable
-              style={styles.pickerRow}
-              onPress={() => {
-                if (selected?.scene) {
-                  openChannelSheet(selected.scene);
-                  return;
-                }
-                modalWarning('请先选择充值方式');
-              }}
-            >
+            <Pressable style={styles.pickerRow} onPress={() => openChannelSheet()}>
               <Image source={selected?.icon ?? images.payCard} style={styles.pickerIcon} contentFit="contain" />
               <View style={styles.pickerText}>
                 <Text style={styles.pickerTitle} numberOfLines={1}>
-                  {selectedChannel ? channelDisplayName(selectedChannel) : '点击选择付款方式'}
+                  {selectedChannel ? selectedChannel.name : '点击选择付款方式'}
                 </Text>
                 <Text style={styles.pickerSub} numberOfLines={1}>
                   {selectedChannel
                     ? channelLimitText(selectedChannel) || '已选择通道'
-                    : '不同方式限额不同，请按需选择'}
+                    : '该方式下可有多个支付通道'}
                 </Text>
               </View>
-              <Text style={styles.pickerArrow}>›</Text>
+              {selectedOnlineChannels.length > 1 ? <Text style={styles.pickerArrow}>›</Text> : null}
             </Pressable>
           </GlassCard>
         ) : null}
-        {selected?.chain && !chainUnavailable ? (
+        {isChainMethod && !chainUnavailable ? (
           <GlassCard>
             <Pressable
               style={styles.pickerRow}
@@ -575,12 +669,12 @@ export default function RechargeScreen() {
             onChangeText={setAmount}
             keyboardType="numeric"
             style={styles.input}
-            placeholder={selected?.currency === 'USDT' ? 'USDT 0' : '¥ 0'}
+            placeholder={isChainMethod ? 'USDT 0' : '¥ 0'}
             placeholderTextColor={colors.placeholder}
           />
           {limitHint ? <Text style={styles.limit}>{limitHint}</Text> : null}
         </GlassCard>
-        {selected?.chain ? (
+        {isChainMethod ? (
           <GlassCard>
             <Text style={styles.label}>充值说明</Text>
             <Text style={styles.rule}>
@@ -614,22 +708,23 @@ export default function RechargeScreen() {
         }}
       />
       <PickSheet
-        visible={sheetScene != null}
+        visible={channelSheet}
         title="选择支付通道"
-        hint={`${sheetMeta?.label || ''} · 请选择可用方式完成充值`}
-        icon={sheetMeta?.icon}
-        items={sheetChannels.map((item) => ({
+        hint={`${selected?.label || ''} · 请选择可用方式完成充值`}
+        icon={selected?.icon}
+        items={selectedOnlineChannels.map((item) => ({
           key: item.channelCode,
-          name: channelDisplayName(item),
+          name: item.name,
           sub: channelLimitText(item),
         }))}
-        selectedKey={sheetScene ? channelByScene[sheetScene] : undefined}
-        onClose={() => setSheetScene(null)}
+        selectedKey={selectedChannel?.channelCode}
+        onClose={() => setChannelSheet(false)}
         onSelect={(key) => {
-          const channel = sheetChannels.find((item) => item.channelCode === key);
-          if (channel) {
-            onPickChannel(channel);
+          if (!selected) {
+            return;
           }
+          setChannelByMethod((prev) => ({ ...prev, [selected.key]: key }));
+          setChannelSheet(false);
         }}
       />
       <PickSheet

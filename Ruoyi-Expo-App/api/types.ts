@@ -603,6 +603,7 @@ export type AppPayChannel = {
   channelCode: string;
   name: string;
   scene: string;
+  fulfillType?: string;
   providerCode?: string;
   providerName?: string;
   currency?: string;
@@ -610,6 +611,20 @@ export type AppPayChannel = {
   maxAmount?: number;
   mock?: boolean;
 };
+
+/** GET /app/recharge/methods */
+export type AppRechargeFulfillType = 'ONLINE' | 'CHAIN';
+
+export type AppRechargeMethod = {
+  methodId?: number;
+  methodCode: string;
+  label: string;
+  iconUrl?: string;
+  isCs?: boolean;
+  sortOrder?: number;
+};
+
+
 
 /** POST /app/pay/deposit */
 export type AppPayDepositBody = {
