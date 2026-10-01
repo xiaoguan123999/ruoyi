@@ -196,6 +196,9 @@ export default function WalletManageScreen() {
             <Pressable
               key={item.key}
               onPress={() => {
+                if (item.key === activeTab) {
+                  return;
+                }
                 setActiveTab(item.key);
                 setLoading(true);
               }}
