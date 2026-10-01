@@ -11,6 +11,8 @@ public class AppPayChannelItem
     private String name;
     @ApiModelProperty("场景 alipay/wechat/union/usdt")
     private String scene;
+    @ApiModelProperty("ONLINE/CHAIN")
+    private String fulfillType;
     @ApiModelProperty("服务商")
     private String providerCode;
     @ApiModelProperty("服务商名")
@@ -28,6 +30,8 @@ public class AppPayChannelItem
     public void setName(String name) { this.name = name; }
     public String getScene() { return scene; }
     public void setScene(String scene) { this.scene = scene; }
+    public String getFulfillType() { return fulfillType; }
+    public void setFulfillType(String fulfillType) { this.fulfillType = fulfillType; }
     public String getProviderCode() { return providerCode; }
     public void setProviderCode(String providerCode) { this.providerCode = providerCode; }
     public String getProviderName() { return providerName; }

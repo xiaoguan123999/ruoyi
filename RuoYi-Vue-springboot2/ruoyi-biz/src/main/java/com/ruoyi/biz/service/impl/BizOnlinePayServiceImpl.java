@@ -54,6 +54,7 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
     @Autowired
     private BizPayChannelMapper channelMapper;
 
+
     @Autowired
     private BizPayOrderMapper payOrderMapper;
 
@@ -122,6 +123,11 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         {
             throw new ServiceException("通道不存在");
         }
+        if (StringUtils.isEmpty(row.getScene()))
+        {
+            throw new ServiceException("请选择支付方式");
+        }
+        row.setScene(row.getScene().trim().toLowerCase());
         return channelMapper.updatePayChannel(row);
     }
 
@@ -132,6 +138,11 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         {
             throw new ServiceException("通道参数无效");
         }
+        if (StringUtils.isEmpty(row.getScene()))
+        {
+            throw new ServiceException("请选择支付方式");
+        }
+        row.setScene(row.getScene().trim().toLowerCase());
         if (StringUtils.isEmpty(row.getProviderCode()))
         {
             throw new ServiceException("请选择服务商");
@@ -167,7 +178,26 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         {
             row.setCurrency("CNY");
         }
-        if (StringUtils.isEmpty(row.getProductId()))
+        if (StringUtils.isEmpty(row.getFulfillType()))
+        {
+            row.setFulfillType(BizConstants.PAY_FULFILL_ONLINE);
+        }
+        else
+        {
+            row.setFulfillType(row.getFulfillType().trim().toUpperCase());
+        }
+        if (BizConstants.PAY_FULFILL_CHAIN.equals(row.getFulfillType()))
+        {
+            if (StringUtils.isEmpty(row.getProductId()))
+            {
+                row.setProductId("CHAIN");
+            }
+            if (StringUtils.isEmpty(row.getCurrency()))
+            {
+                row.setCurrency("USDT");
+            }
+        }
+        else if (StringUtils.isEmpty(row.getProductId()))
         {
             throw new ServiceException("产品码(wayCode)不能为空");
         }
@@ -206,11 +236,18 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         }
         for (BizPayChannel row : rows)
         {
+            String fulfill = row.getFulfillType() == null ? BizConstants.PAY_FULFILL_ONLINE
+                    : row.getFulfillType().trim().toUpperCase();
+            if (BizConstants.PAY_FULFILL_CHAIN.equals(fulfill))
+            {
+                continue;
+            }
             AppPayChannelItem item = new AppPayChannelItem();
             item.setChannelCode(row.getChannelCode());
             String name = StringUtils.isEmpty(row.getDisplayName()) ? row.getChannelName() : row.getDisplayName();
             item.setName(name);
             item.setScene(row.getScene());
+            item.setFulfillType(fulfill);
             item.setProviderCode(row.getProviderCode());
             item.setProviderName(row.getProviderName());
             item.setCurrency(row.getCurrency());
@@ -237,6 +274,12 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         }
         amount = amount.setScale(2, RoundingMode.HALF_UP);
         BizPayChannel channel = resolveChannel(scene, channelCode);
+        String fulfill = channel.getFulfillType() == null ? BizConstants.PAY_FULFILL_ONLINE
+                : channel.getFulfillType().trim().toUpperCase();
+        if (BizConstants.PAY_FULFILL_CHAIN.equals(fulfill))
+        {
+            throw new ServiceException("该通道为链上充值，请走链上充值入口");
+        }
         if (channel.getMinAmount() != null && amount.compareTo(channel.getMinAmount()) < 0)
         {
             throw new ServiceException("最低充值 " + channel.getMinAmount().stripTrailingZeros().toPlainString());

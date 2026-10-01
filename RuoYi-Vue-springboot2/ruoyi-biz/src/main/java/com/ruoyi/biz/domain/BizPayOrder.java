@@ -17,6 +17,8 @@ public class BizPayOrder extends BaseEntity
     private String providerName;
     private String channelCode;
     private String channelName;
+    /** query: channel.scene = method_code */
+    private String scene;
     private String productId;
     private String currency;
     private BigDecimal amount;
@@ -50,6 +52,8 @@ public class BizPayOrder extends BaseEntity
     public void setChannelCode(String channelCode) { this.channelCode = channelCode; }
     public String getChannelName() { return channelName; }
     public void setChannelName(String channelName) { this.channelName = channelName; }
+    public String getScene() { return scene; }
+    public void setScene(String scene) { this.scene = scene; }
     public String getProductId() { return productId; }
     public void setProductId(String productId) { this.productId = productId; }
     public String getCurrency() { return currency; }

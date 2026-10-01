@@ -3,11 +3,13 @@
 <mapper namespace="com.ruoyi.biz.mapper.BizPayChannelMapper">
     <resultMap type="BizPayChannel" id="BizPayChannelResult">
         <id property="channelId" column="channel_id"/>
+        <result property="methodLabel" column="method_label"/>
         <result property="providerCode" column="provider_code"/>
         <result property="channelCode" column="channel_code"/>
         <result property="channelName" column="channel_name"/>
         <result property="displayName" column="display_name"/>
         <result property="scene" column="scene"/>
+        <result property="fulfillType" column="fulfill_type"/>
         <result property="productId" column="product_id"/>
         <result property="currency" column="currency"/>
         <result property="minAmount" column="min_amount"/>
@@ -24,27 +26,30 @@
         <result property="adapterFamily" column="adapter_family"/>
     </resultMap>
     <sql id="joinCols">
-        c.channel_id, c.provider_code, c.channel_code, c.channel_name, c.display_name, c.scene,
+        c.channel_id, c.provider_code, c.channel_code, c.channel_name, c.display_name, c.scene, c.fulfill_type,
         c.product_id, c.currency, c.min_amount, c.max_amount, c.weight, c.status, c.sort_order,
         c.remark, c.create_time, c.update_time, p.provider_name, p.mock_mode, p.status as provider_status,
-        p.adapter_family
+        p.adapter_family, m.label as method_label
     </sql>
     <select id="selectPayChannelById" resultMap="BizPayChannelResult">
         select <include refid="joinCols"/>
         from biz_pay_channel c
         left join biz_pay_provider p on p.provider_code = c.provider_code
+        left join biz_recharge_method m on m.method_code = c.scene
         where c.channel_id = #{channelId}
     </select>
     <select id="selectPayChannelByCode" resultMap="BizPayChannelResult">
         select <include refid="joinCols"/>
         from biz_pay_channel c
         left join biz_pay_provider p on p.provider_code = c.provider_code
+        left join biz_recharge_method m on m.method_code = c.scene
         where c.channel_code = #{channelCode}
     </select>
     <select id="selectPayChannelList" resultMap="BizPayChannelResult">
         select <include refid="joinCols"/>
         from biz_pay_channel c
         left join biz_pay_provider p on p.provider_code = c.provider_code
+        left join biz_recharge_method m on m.method_code = c.scene
         <where>
             <if test="providerCode != null and providerCode != ''">and c.provider_code = #{providerCode}</if>
             <if test="channelCode != null and channelCode != ''">and c.channel_code = #{channelCode}</if>
@@ -57,6 +62,7 @@
         select <include refid="joinCols"/>
         from biz_pay_channel c
         inner join biz_pay_provider p on p.provider_code = c.provider_code
+        left join biz_recharge_method m on m.method_code = c.scene
         where c.status = '0' and p.status = '0'
         <if test="providerCode != null and providerCode != ''">and c.provider_code = #{providerCode}</if>
         <if test="scene != null and scene != ''">and c.scene = #{scene}</if>
@@ -70,6 +76,7 @@
             <if test="channelName != null">channel_name = #{channelName},</if>
             <if test="productId != null">product_id = #{productId},</if>
             <if test="scene != null">scene = #{scene},</if>
+            <if test="fulfillType != null">fulfill_type = #{fulfillType},</if>
             <if test="currency != null">currency = #{currency},</if>
             <if test="minAmount != null">min_amount = #{minAmount},</if>
             <if test="maxAmount != null">max_amount = #{maxAmount},</if>
@@ -84,10 +91,10 @@
 
     <insert id="insertPayChannel" parameterType="BizPayChannel" useGeneratedKeys="true" keyProperty="channelId">
         insert into biz_pay_channel (
-            provider_code, channel_code, channel_name, display_name, scene, product_id, currency,
+            provider_code, channel_code, channel_name, display_name, scene, fulfill_type, product_id, currency,
             min_amount, max_amount, weight, status, sort_order, remark, create_time
         ) values (
-            #{providerCode}, #{channelCode}, #{channelName}, #{displayName}, #{scene}, #{productId}, #{currency},
+            #{providerCode}, #{channelCode}, #{channelName}, #{displayName}, #{scene}, #{fulfillType}, #{productId}, #{currency},
             #{minAmount}, #{maxAmount}, #{weight}, #{status}, #{sortOrder}, #{remark}, sysdate()
         )
     </insert>

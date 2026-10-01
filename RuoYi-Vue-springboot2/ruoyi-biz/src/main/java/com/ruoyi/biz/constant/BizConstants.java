@@ -283,6 +283,11 @@ public class BizConstants
     public static final String PAY_SCENE_UNION = "union";
     public static final String PAY_SCENE_USDT = "usdt";
 
+    /** 支付通道履约：线上收银台 */
+    public static final String PAY_FULFILL_ONLINE = "ONLINE";
+    /** 支付通道履约：链上充值 */
+    public static final String PAY_FULFILL_CHAIN = "CHAIN";
+
     public static final String PAY_FAMILY_MONPAY = "monpay";
 
     public static final String PAY_FAMILY_WUYOU = "wuyou";

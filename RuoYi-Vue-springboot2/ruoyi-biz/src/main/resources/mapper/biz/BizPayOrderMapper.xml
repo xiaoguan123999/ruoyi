@@ -68,6 +68,7 @@
             <if test="outTradeNo != null and outTradeNo != ''">and o.out_trade_no = #{outTradeNo}</if>
             <if test="providerCode != null and providerCode != ''">and o.provider_code = #{providerCode}</if>
             <if test="channelCode != null and channelCode != ''">and o.channel_code = #{channelCode}</if>
+            <if test="scene != null and scene != ''">and c.scene = #{scene}</if>
             <if test="status != null and status != ''">and o.status = #{status}</if>
             <if test="phone != null and phone != ''">and m.phone like concat('%', #{phone}, '%')</if>
             <if test="params.beginTime != null and params.beginTime != ''">and o.create_time &gt;= #{params.beginTime}</if>

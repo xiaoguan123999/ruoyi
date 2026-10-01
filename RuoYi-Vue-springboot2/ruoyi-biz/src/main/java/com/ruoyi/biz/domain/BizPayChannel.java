@@ -7,11 +7,13 @@ public class BizPayChannel extends BaseEntity
 {
     private static final long serialVersionUID = 1L;
     private Long channelId;
+    private String methodLabel;
     private String providerCode;
     private String channelCode;
     private String channelName;
     private String displayName;
     private String scene;
+    private String fulfillType;
     private String productId;
     private String currency;
     private BigDecimal minAmount;
@@ -26,6 +28,8 @@ public class BizPayChannel extends BaseEntity
 
     public Long getChannelId() { return channelId; }
     public void setChannelId(Long channelId) { this.channelId = channelId; }
+    public String getMethodLabel() { return methodLabel; }
+    public void setMethodLabel(String methodLabel) { this.methodLabel = methodLabel; }
     public String getProviderCode() { return providerCode; }
     public void setProviderCode(String providerCode) { this.providerCode = providerCode; }
     public String getChannelCode() { return channelCode; }
@@ -36,6 +40,8 @@ public class BizPayChannel extends BaseEntity
     public void setDisplayName(String displayName) { this.displayName = displayName; }
     public String getScene() { return scene; }
     public void setScene(String scene) { this.scene = scene; }
+    public String getFulfillType() { return fulfillType; }
+    public void setFulfillType(String fulfillType) { this.fulfillType = fulfillType; }
     public String getProductId() { return productId; }
     public void setProductId(String productId) { this.productId = productId; }
     public String getCurrency() { return currency; }
