@@ -1,7 +1,7 @@
 <template>
   <div class="app-container ops-page" v-loading="ruleLoading">
     <el-alert
-      title="改金额/比例后点「保存规则」立即生效。实名自领金额与「实名认证奖励」同步；发放明细在「推广奖励发放」，认购三级佣金在「推广佣金」。"
+      title="改金额/比例后点「保存规则」立即生效。实名自领金额与「实名认证奖励」同步；发放明细在「推广奖励发放」，认购三级佣金在「推广佣金」。充值返佣与认购返佣相互独立。"
       type="info"
       :closable="false"
       show-icon
@@ -12,7 +12,7 @@
       <el-divider content-position="left">总开关</el-divider>
       <el-form-item label="注册推广总开关" class="with-tip">
         <el-switch v-model="rule.enabled" />
-        <div class="field-tip">关闭后：实名自领、邀请奖励都不发；三级认购返佣不受影响</div>
+        <div class="field-tip">关闭后：实名自领、邀请奖励都不发；三级认购返佣、充值返佣不受影响</div>
       </el-form-item>
 
       <el-divider content-position="left">一、实名注册奖励（用户自领）</el-divider>
@@ -66,10 +66,10 @@
         <div class="field-tip">注册绑定邀请码后不可改上级，请提醒用户核对邀请码</div>
       </el-form-item>
 
-      <el-divider content-position="left">三、团队返佣（认购触发，充值不分佣）</el-divider>
+      <el-divider content-position="left">三、认购返佣</el-divider>
       <el-form-item label="是否开启" class="with-tip">
         <el-switch v-model="rule.teamEnabled" />
-        <div class="field-tip">关闭后下级认购不再给上级分佣</div>
+        <div class="field-tip">关闭后下级认购不再给上级分佣；与充值返佣互不影响</div>
       </el-form-item>
       <el-row :gutter="16">
         <el-col :xs="24" :sm="8" :md="6">
@@ -88,6 +88,65 @@
           </el-form-item>
         </el-col>
       </el-row>
+      <el-form-item label="到账钱包">
+        <WalletTypeSelect v-model="rule.teamWalletTypeCode" />
+        <span class="tip">认购返佣入这个钱包</span>
+      </el-form-item>
+
+      <el-divider content-position="left">四、充值返佣</el-divider>
+      <el-form-item label="充值返佣" class="with-tip">
+        <el-switch v-model="rule.rechargeTeamEnabled" />
+        <div class="field-tip">会员线上支付、USDT 链上到账后，按到账金额给上级返佣</div>
+      </el-form-item>
+      <el-form-item label="人工充值是否返佣" class="with-tip">
+        <el-switch v-model="rule.rechargeTeamManualEnabled" :disabled="!rule.rechargeTeamEnabled" />
+        <div class="field-tip">充值列表「+ 人工充值」审核通过后是否也返。总开关关着时，人工开了也不返</div>
+      </el-form-item>
+      <el-row :gutter="16">
+        <el-col :xs="24" :sm="8" :md="6">
+          <el-form-item label="一级(%)" prop="rechargeTeamRateL1">
+            <el-input-number
+              v-model="rule.rechargeTeamRateL1"
+              :min="0"
+              :max="100"
+              :precision="2"
+              :step="1"
+              :disabled="!rule.rechargeTeamEnabled"
+              controls-position="right"
+              style="width: 160px"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :xs="24" :sm="8" :md="6">
+          <el-form-item label="二级(%)" prop="rechargeTeamRateL2" label-width="90px">
+            <el-input-number
+              v-model="rule.rechargeTeamRateL2"
+              :min="0"
+              :max="100"
+              :precision="2"
+              :step="1"
+              :disabled="!rule.rechargeTeamEnabled"
+              controls-position="right"
+              style="width: 160px"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :xs="24" :sm="8" :md="6">
+          <el-form-item label="三级(%)" prop="rechargeTeamRateL3" label-width="90px">
+            <el-input-number
+              v-model="rule.rechargeTeamRateL3"
+              :min="0"
+              :max="100"
+              :precision="2"
+              :step="1"
+              :disabled="!rule.rechargeTeamEnabled"
+              controls-position="right"
+              style="width: 160px"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <div class="section-tip">比例与认购返佣相互独立，互不影响；保存时会一并提交</div>
 
       <el-divider content-position="left">App 规则说明</el-divider>
       <el-form-item label="展示全文" class="with-tip">
@@ -100,10 +159,6 @@
           placeholder="展示在 App 邀请页 / 规则页"
         />
         <div class="field-tip">改完金额或比例后，可先点「按当前数值生成说明」，再保存</div>
-      </el-form-item>
-      <el-form-item label="到账钱包">
-        <WalletTypeSelect v-model="rule.teamWalletTypeCode" />
-        <span class="tip">下单返佣入这个钱包</span>
       </el-form-item>
 
       <el-form-item label-width="0" class="form-actions">
@@ -134,6 +189,11 @@ const rule = ref({
   teamRateL1: 9,
   teamRateL2: 3,
   teamRateL3: 1,
+  rechargeTeamEnabled: false,
+  rechargeTeamManualEnabled: false,
+  rechargeTeamRateL1: 9,
+  rechargeTeamRateL2: 3,
+  rechargeTeamRateL3: 1,
   kycWalletTypeCode: "PROMO",
   inviteWalletTypeCode: "PROMO",
   teamWalletTypeCode: "PROMO",
@@ -143,9 +203,12 @@ const rules = {
   kycRewardCny: [{ required: true, message: "请填写实名注册奖励人民币", trigger: "blur" }],
   kycRewardUsdt: [{ required: true, message: "请填写实名注册奖励USDT", trigger: "blur" }],
   inviteAmount: [{ required: true, message: "请填写推广奖励金额", trigger: "blur" }],
-  teamRateL1: [{ required: true, message: "请填写一级返佣", trigger: "blur" }],
-  teamRateL2: [{ required: true, message: "请填写二级返佣", trigger: "blur" }],
-  teamRateL3: [{ required: true, message: "请填写三级返佣", trigger: "blur" }]
+  teamRateL1: [{ required: true, message: "请填写认购一级返佣", trigger: "blur" }],
+  teamRateL2: [{ required: true, message: "请填写认购二级返佣", trigger: "blur" }],
+  teamRateL3: [{ required: true, message: "请填写认购三级返佣", trigger: "blur" }],
+  rechargeTeamRateL1: [{ required: true, message: "请填写充值一级返佣", trigger: "blur" }],
+  rechargeTeamRateL2: [{ required: true, message: "请填写充值二级返佣", trigger: "blur" }],
+  rechargeTeamRateL3: [{ required: true, message: "请填写充值三级返佣", trigger: "blur" }]
 }
 
 function fmt(v: any) {
@@ -156,18 +219,35 @@ function fmt(v: any) {
 
 function buildRuleText() {
   const unit = rule.value.inviteCurrency === "USDT" ? " USDT" : " 元"
-  return [
+  const lines = [
     "用户注册与推广奖励规则：",
     "一、实名注册奖励",
     `新用户完成注册并通过实名认证后，可获得 ${fmt(rule.value.kycRewardCny)} 元或 ${fmt(rule.value.kycRewardUsdt)} USDT 平台余额，两种奖励方式任选其一。`,
     "二、实名推广奖励",
     `每成功邀请 1 名新用户完成实名注册，邀请人可获得 ${fmt(rule.value.inviteAmount)}${unit}推广奖励。上下级不可以转移，请核对好正确的邀请码再注册。`,
-    "三、团队返佣机制",
-    "下级成功认购产品后按认购金额返佣，充值到账不返佣。",
+    "三、认购返佣机制",
+    "下级成功认购产品后按认购金额返佣。",
     `一级返佣 ${fmt(rule.value.teamRateL1)}%、二级返佣 ${fmt(rule.value.teamRateL2)}%、三级返佣 ${fmt(rule.value.teamRateL3)}%`,
+    "四、充值返佣机制"
+  ]
+  if (rule.value.rechargeTeamEnabled) {
+    lines.push("会员线上支付、USDT 链上到账后，按到账金额给上级返佣。")
+    if (rule.value.rechargeTeamManualEnabled) {
+      lines.push("人工充值审核通过后同样返佣。")
+    } else {
+      lines.push("人工充值不参与返佣。")
+    }
+    lines.push(
+      `一级返佣 ${fmt(rule.value.rechargeTeamRateL1)}%、二级返佣 ${fmt(rule.value.rechargeTeamRateL2)}%、三级返佣 ${fmt(rule.value.rechargeTeamRateL3)}%`
+    )
+  } else {
+    lines.push("充值到账暂不返佣。")
+  }
+  lines.push(
     "",
     "奖励资格、返佣计算及发放结果以平台系统实际核算为准；如发现异常注册、批量账户或其他违规行为，平台有权取消相关奖励资格。"
-  ].join("\n")
+  )
+  return lines.join("\n")
 }
 
 function fillRuleText() {
@@ -197,6 +277,11 @@ function loadRule() {
       teamRateL1: Number(data.teamRateL1 ?? 9),
       teamRateL2: Number(data.teamRateL2 ?? 3),
       teamRateL3: Number(data.teamRateL3 ?? 1),
+      rechargeTeamEnabled: data.rechargeTeamEnabled === true,
+      rechargeTeamManualEnabled: data.rechargeTeamManualEnabled === true,
+      rechargeTeamRateL1: Number(data.rechargeTeamRateL1 ?? 9),
+      rechargeTeamRateL2: Number(data.rechargeTeamRateL2 ?? 3),
+      rechargeTeamRateL3: Number(data.rechargeTeamRateL3 ?? 1),
       kycWalletTypeCode: kyc.data?.typeCode || "PROMO",
       inviteWalletTypeCode: invite.data?.typeCode || "PROMO",
       teamWalletTypeCode: team.data?.typeCode || "PROMO",
@@ -208,7 +293,15 @@ function loadRule() {
 function saveRule() {
   proxy.$refs["ruleRef"].validate((valid: boolean) => {
     if (!valid) return
-    savePromoRule(rule.value).then(() => Promise.all([
+    const payload = {
+      ...rule.value,
+      rechargeTeamEnabled: !!rule.value.rechargeTeamEnabled,
+      rechargeTeamManualEnabled: !!rule.value.rechargeTeamManualEnabled,
+      rechargeTeamRateL1: Number(rule.value.rechargeTeamRateL1 ?? 0),
+      rechargeTeamRateL2: Number(rule.value.rechargeTeamRateL2 ?? 0),
+      rechargeTeamRateL3: Number(rule.value.rechargeTeamRateL3 ?? 0)
+    }
+    savePromoRule(payload).then(() => Promise.all([
       saveWalletCreditByBiz("KYC_REWARD", rule.value.kycWalletTypeCode),
       saveWalletCreditByBiz("INVITE", rule.value.inviteWalletTypeCode),
       saveWalletCreditByBiz("COMMISSION", rule.value.teamWalletTypeCode)
@@ -233,6 +326,12 @@ loadRule()
 .field-tip {
   margin: 6px 0 0;
   padding: 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.section-tip {
+  margin: -4px 0 16px 140px;
   color: var(--el-text-color-secondary);
   font-size: 12px;
   line-height: 1.4;
