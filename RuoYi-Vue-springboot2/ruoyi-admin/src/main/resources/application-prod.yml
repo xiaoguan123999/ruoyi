@@ -13,6 +13,7 @@ ruoyi:
 logging:
   level:
     com.ruoyi: warn
+    com.ruoyi.biz.pay.channel: info
     org.springframework: warn
 
 server:

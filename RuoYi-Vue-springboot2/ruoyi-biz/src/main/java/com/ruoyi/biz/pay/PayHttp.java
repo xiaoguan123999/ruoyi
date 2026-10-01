@@ -91,7 +91,6 @@ public final class PayHttp
         String text = "";
         try
         {
-            log.info("pay POST {} body={}", url, cut(body, 500));
             conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setRequestMethod("POST");
             conn.setConnectTimeout(10000);
@@ -111,7 +110,6 @@ public final class PayHttp
             httpStatus = Integer.valueOf(code);
             InputStream in = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
             text = read(in);
-            log.info("pay RESP {} {}", Integer.valueOf(code), cut(text, 500));
             if (StringUtils.isEmpty(text))
             {
                 throw new ServiceException("支付网关无响应");
@@ -129,7 +127,9 @@ public final class PayHttp
         }
         finally
         {
-            PayHttpExchange.record(url, body, text, httpStatus, System.currentTimeMillis() - start);
+            long cost = System.currentTimeMillis() - start;
+            PayHttpExchange.record(url, body, text, httpStatus, cost);
+            PayChannelLog.io("http", url, body, text, httpStatus, cost);
             if (conn != null)
             {
                 conn.disconnect();

@@ -15,7 +15,7 @@ import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 
 /**
- * Arctic Ocean (±±±ùÑó): form POST /pay/newOrder /pay/query.
+ * Arctic Ocean (åŒ—å†°æ´‹): form POST /pay/newOrder /pay/query.
  * Amount yuan 2 decimals. Sign MD5 upper. Notify reply ok. orderStatus 1=paid.
  * channel.product_id = service (from merchant ops).
  */
@@ -30,13 +30,13 @@ public class ArcticOceanAdapter implements IBizPayAdapter
         String service = nvl(request.getProductId(), "").trim();
         if (service.length() == 0)
         {
-            throw new ServiceException("À­µ¥Ê§°Ü£ºÎ´ÅäÖÃÇşµÀ±àºÅ");
+            throw new ServiceException("æ‹‰å•å¤±è´¥ï¼šæœªé…ç½®æ¸ é“ç¼–å·");
         }
         Map<String, String> params = new LinkedHashMap<String, String>();
         params.put("service", service);
         params.put("merchantId", mchId(provider));
         params.put("outTradeNo", request.getOutTradeNo());
-        params.put("goodsDesc", "Óà¶î³äÖµ");
+        params.put("goodsDesc", "recharge");
         params.put("amount", PayHttp.yuan(request.getAmount()));
         String clientIp = sanitizeIp(request.getClientIp());
         if (clientIp.length() > 0)
@@ -59,13 +59,13 @@ public class ArcticOceanAdapter implements IBizPayAdapter
             String gatewayMsg = nvl(first(json, "msg", "message"), raw);
             log.warn("arctic createOrder fail outTradeNo={} gatewayMsg={} raw={}",
                     request.getOutTradeNo(), gatewayMsg, cut(raw, 500));
-            throw new ServiceException("À­µ¥Ê§°Ü£º" + gatewayMsg);
+            throw new ServiceException("æ‹‰å•å¤±è´¥ï¼š" + gatewayMsg);
         }
         String payUrl = first(json, "result", "payUrl", "pay_url");
         if (StringUtils.isEmpty(payUrl))
         {
             log.warn("arctic createOrder empty payUrl outTradeNo={} raw={}", request.getOutTradeNo(), cut(raw, 500));
-            throw new ServiceException("À­µ¥Ê§°Ü£ºno pay url");
+            throw new ServiceException("æ‹‰å•å¤±è´¥ï¼šno pay url");
         }
         PayCreateResult result = new PayCreateResult();
         result.setPayUrl(payUrl);
@@ -181,7 +181,7 @@ public class ArcticOceanAdapter implements IBizPayAdapter
         JSONObject json = JSON.parseObject(raw);
         if (json == null)
         {
-            throw new ServiceException("Ö§¸¶Íø¹Ø·µ»ØÎŞĞ§");
+            throw new ServiceException("æ”¯ä»˜ç½‘å…³è¿”å›æ— æ•ˆ");
         }
         return json;
     }

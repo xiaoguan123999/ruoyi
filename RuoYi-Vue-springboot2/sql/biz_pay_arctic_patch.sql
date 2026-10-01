@@ -29,11 +29,17 @@ where provider_code = 'arctic';
 insert into biz_pay_channel (provider_code, channel_code, channel_name, display_name, scene, product_id, currency, min_amount, max_amount, weight, status, sort_order, remark, create_time)
 select * from (
   select 'arctic' as provider_code, 'ARCTIC_ALIPAY' as channel_code, 'Alipay' as channel_name, 'Alipay' as display_name,
-         'alipay' as scene, '' as product_id, 'CNY' as currency,
+         'alipay' as scene, 'payTest999' as product_id, 'CNY' as currency,
          10 as min_amount, 50000 as max_amount, 185 as weight, '0' as status, 1 as sort_order,
-         'set product_id = Arctic service for alipay' as remark, sysdate() as create_time
+         'product_id = Arctic service; replace if they give real alipay code' as remark, sysdate() as create_time
   union all
-  select 'arctic', 'ARCTIC_WECHAT', 'WeChat', 'WeChat', 'wechat', '',
-         'CNY', 10, 50000, 185, '0', 2, 'set product_id = Arctic service for wechat', sysdate()
+  select 'arctic', 'ARCTIC_WECHAT', 'WeChat', 'WeChat', 'wechat', 'payTest999',
+         'CNY', 10, 50000, 185, '0', 2, 'product_id = Arctic service; replace if they give real wechat code', sysdate()
 ) t
 where not exists (select 1 from biz_pay_channel c where c.channel_code = t.channel_code);
+
+update biz_pay_channel
+set product_id = 'payTest999',
+    remark = 'product_id = Arctic service payTest999'
+where provider_code = 'arctic'
+  and (product_id is null or product_id = '');

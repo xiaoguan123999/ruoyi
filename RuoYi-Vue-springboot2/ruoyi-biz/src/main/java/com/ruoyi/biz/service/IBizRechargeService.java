@@ -17,6 +17,9 @@ public interface IBizRechargeService
 
     void audit(Long rechargeId, String status, String auditBy, String auditRemark);
 
+    /** Close a pending recharge; no-op if missing or already audited. */
+    void rejectIfPending(Long rechargeId, String auditBy, String auditRemark);
+
     /**
      * 线上支付到账：待审直接通过；若因超时关单被拒，允许翻转为通过并入账。
      */

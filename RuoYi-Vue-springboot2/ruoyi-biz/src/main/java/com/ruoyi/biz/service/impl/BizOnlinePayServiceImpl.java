@@ -29,6 +29,7 @@ import com.ruoyi.biz.mapper.BizPayProviderMapper;
 import com.ruoyi.biz.pay.BizPayAdapterFactory;
 import com.ruoyi.biz.pay.IBizPayAdapter;
 import com.ruoyi.biz.pay.MonPaySign;
+import com.ruoyi.biz.pay.PayChannelLog;
 import com.ruoyi.biz.pay.PayCreateRequest;
 import com.ruoyi.biz.pay.PayCreateResult;
 import com.ruoyi.biz.pay.PayHttpExchange;
@@ -322,6 +323,14 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         req.setReturnUrl(StringUtils.isEmpty(returnUrl) ? base : returnUrl);
         req.setBaseUrl(base);
         req.setClientIp(clientIp);
+        PayChannelLog.in("create", "provider=" + provider.getProviderCode()
+                + " channel=" + channel.getChannelCode()
+                + " outTradeNo=" + outTradeNo
+                + " amount=" + amount
+                + " productId=" + nvl(channel.getProductId())
+                + " notifyUrl=" + req.getNotifyUrl()
+                + " returnUrl=" + nvl(req.getReturnUrl())
+                + " clientIp=" + nvl(clientIp));
         PayCreateResult placed;
         PayHttpExchange.clear();
         long placeStart = System.currentTimeMillis();
@@ -359,6 +368,10 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         payOrderMapper.updatePayOrder(order);
         recordCallLog(BizConstants.PAY_GW_ACTION_CREATE, provider.getProviderCode(), channel.getChannelCode(),
                 outTradeNo, memberId, JSON.toJSONString(req), true, null, placeStart);
+        PayChannelLog.out("create", "outTradeNo=" + outTradeNo
+                + " payType=" + nvl(placed.getPayType())
+                + " providerTradeNo=" + nvl(placed.getProviderTradeNo())
+                + " payUrl=" + nvl(placed.getPayUrl()));
 
         AppPayDepositData data = new AppPayDepositData();
         data.setOutTradeNo(outTradeNo);
@@ -398,6 +411,10 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         String reply = null;
         boolean ok = false;
         String err = null;
+        PayChannelLog.in("notify", "provider=" + nvl(providerCode)
+                + " ip=" + nvl(clientIp)
+                + " outTradeNo=" + nvl(outTradeNo)
+                + " payload=" + nvl(rawBody));
         try
         {
             if (StringUtils.isEmpty(providerCode))
@@ -457,6 +474,11 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         }
         finally
         {
+            PayChannelLog.out("notify", "provider=" + nvl(providerCode)
+                    + " outTradeNo=" + nvl(outTradeNo)
+                    + " ok=" + ok
+                    + " err=" + nvl(err)
+                    + " reply=" + nvl(reply));
             recordCallbackLog(providerCode, channelCode, outTradeNo, memberId, rawBody, reply, clientIp, ok, err, start);
         }
     }
@@ -481,6 +503,9 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         BizPayProvider provider = providerMapper.selectPayProviderByCode(locked.getProviderCode());
         IBizPayAdapter adapter = adapterFactory.getAdapter(provider);
         PayHttpExchange.clear();
+        PayChannelLog.in("query", "provider=" + nvl(locked.getProviderCode())
+                + " channel=" + nvl(locked.getChannelCode())
+                + " outTradeNo=" + locked.getOutTradeNo());
         PayQueryResult queried;
         try
         {
@@ -488,9 +513,12 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         }
         finally
         {
-            // 查单仅用于 App 轮询补状态，正常到账靠回调，不落网关日志
             PayHttpExchange.clear();
         }
+        PayChannelLog.out("query", "outTradeNo=" + locked.getOutTradeNo()
+                + " paid=" + (queried != null && queried.isPaid())
+                + " providerTradeNo=" + (queried == null ? "" : nvl(queried.getProviderTradeNo()))
+                + " raw=" + (queried == null ? "" : nvl(queried.getRaw())));
         if (queried != null && queried.isPaid())
         {
             markPaid(locked, queried.getProviderTradeNo(), queried.getRaw());
@@ -683,14 +711,7 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         {
             return;
         }
-        try
-        {
-            rechargeService.audit(locked.getRechargeId(), BizConstants.AUDIT_REJECT, "system", remark);
-        }
-        catch (ServiceException ex)
-        {
-            // 充值单已非待审则忽略
-        }
+        rechargeService.rejectIfPending(locked.getRechargeId(), "system", remark);
     }
 
     private static void assertCallbackIp(BizPayProvider provider, String clientIp)
@@ -789,6 +810,11 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
             return "";
         }
         return raw.length() <= max ? raw : raw.substring(0, max);
+    }
+
+    private static String nvl(String v)
+    {
+        return v == null ? "" : v;
     }
 
     private static String nvl(String v, String fallback)

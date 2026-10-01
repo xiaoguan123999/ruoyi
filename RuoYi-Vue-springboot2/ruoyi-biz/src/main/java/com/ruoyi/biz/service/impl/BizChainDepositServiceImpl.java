@@ -442,18 +442,7 @@ public class BizChainDepositServiceImpl implements IBizChainDepositService
 
     private void rejectRecharge(Long rechargeId, String remark)
     {
-        if (rechargeId == null)
-        {
-            return;
-        }
-        try
-        {
-            rechargeService.audit(rechargeId, BizConstants.AUDIT_REJECT, "chain", remark);
-        }
-        catch (ServiceException e)
-        {
-            log.debug("chain expire recharge {} {}", rechargeId, e.getMessage());
-        }
+        rechargeService.rejectIfPending(rechargeId, "chain", remark);
     }
 
     private BigDecimal nextFingerprint(BigDecimal amount, String address, String network)

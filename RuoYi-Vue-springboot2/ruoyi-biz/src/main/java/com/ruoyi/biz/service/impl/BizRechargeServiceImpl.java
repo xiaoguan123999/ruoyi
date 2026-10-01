@@ -124,6 +124,26 @@ public class BizRechargeServiceImpl implements IBizRechargeService
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void rejectIfPending(Long rechargeId, String auditBy, String auditRemark)
+    {
+        if (rechargeId == null)
+        {
+            return;
+        }
+        BizRecharge recharge = rechargeMapper.selectRechargeById(rechargeId);
+        if (recharge == null || !BizConstants.AUDIT_PENDING.equals(recharge.getStatus()))
+        {
+            return;
+        }
+        recharge.setStatus(BizConstants.AUDIT_REJECT);
+        recharge.setAuditBy(auditBy);
+        recharge.setAuditTime(new Date());
+        recharge.setAuditRemark(auditRemark);
+        rechargeMapper.updateRecharge(recharge);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void passOnlinePaid(Long rechargeId, String auditBy, String auditRemark)
     {
         BizRecharge recharge = rechargeMapper.selectRechargeById(rechargeId);
