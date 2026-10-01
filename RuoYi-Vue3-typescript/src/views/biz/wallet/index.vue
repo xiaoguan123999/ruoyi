@@ -114,7 +114,7 @@ function getList() {
   loading.value = true
   const params: any = { ...queryParams.value }
   if (onlyNonZero.value) {
-    params.params = { onlyNonZero: true }
+    params.params = { onlyNonZero: 1 }
   }
   listWallet(params).then((res: any) => {
     dataList.value = res.rows || []
