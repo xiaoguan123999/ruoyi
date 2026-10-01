@@ -47,26 +47,8 @@ public class BizRechargeController extends BaseController
     @PreAuthorize("@ss.hasPermi('biz:recharge:list')")
     @Log(title = "充值导出", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
-    public void export(HttpServletResponse response, BizRecharge recharge, String rechargeIds)
+    public void export(HttpServletResponse response, BizRecharge recharge)
     {
-        if ((recharge.getRechargeIds() == null || recharge.getRechargeIds().length == 0)
-                && rechargeIds != null && rechargeIds.length() > 0)
-        {
-            String[] parts = rechargeIds.split(",");
-            java.util.List<Long> idList = new java.util.ArrayList<Long>();
-            for (int i = 0; i < parts.length; i++)
-            {
-                String part = parts[i].trim();
-                if (part.length() > 0)
-                {
-                    idList.add(Long.valueOf(part));
-                }
-            }
-            if (!idList.isEmpty())
-            {
-                recharge.setRechargeIds(idList.toArray(new Long[0]));
-            }
-        }
         List<BizRecharge> list = rechargeService.selectRechargeList(recharge);
         for (int i = 0; i < list.size(); i++)
         {

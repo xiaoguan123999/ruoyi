@@ -83,7 +83,7 @@ public class BizFundRecordServiceImpl implements IBizFundRecordService
         {
             return BizConstants.AUDIT_REJECT;
         }
-        throw new ServiceException("状态只能是 0审核中、3待打款、1提现成功、2提现失败");
+        throw new ServiceException("状态只能是 0审核中、3待打款、1成功、2拒绝");
     }
 
     private void fillLabels(AppFundRecordItem item)
@@ -116,14 +116,6 @@ public class BizFundRecordServiceImpl implements IBizFundRecordService
             statusLabel = status == null ? "" : status;
         }
         item.setStatusLabel(statusLabel);
-        if (withdraw && BizConstants.AUDIT_REJECT.equals(status) && StringUtils.isNotEmpty(item.getAuditRemark()))
-        {
-            item.setFailRemark(item.getAuditRemark());
-        }
-        else
-        {
-            item.setFailRemark("");
-        }
         String title = typeLabel + statusLabel;
         item.setTitle(title);
         item.setName(title);

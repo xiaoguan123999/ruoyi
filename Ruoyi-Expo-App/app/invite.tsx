@@ -107,7 +107,7 @@ export default function InviteScreen() {
           <View style={styles.codeBox}>
             <Text style={styles.code}>{inviteCode}</Text>
             {inviteCode && inviteCode !== '--' ? (
-              <CopyButton value={inviteCode} size={18} showText color="#E8F2FF" />
+              <CopyButton value={inviteCode} size={20} />
             ) : null}
           </View>
 

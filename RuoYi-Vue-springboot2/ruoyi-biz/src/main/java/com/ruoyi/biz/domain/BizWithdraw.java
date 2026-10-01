@@ -281,16 +281,6 @@ public class BizWithdraw extends BaseEntity
         return statusLabelOf(status);
     }
 
-    @ApiModelProperty("提现失败原因，仅 status=2 有值，App 显示在手续费下方")
-    public String getFailRemark()
-    {
-        if (!"2".equals(status) || auditRemark == null)
-        {
-            return "";
-        }
-        return auditRemark;
-    }
-
     public static String statusLabelOf(String status)
     {
         if ("0".equals(status))
@@ -329,8 +319,7 @@ public class BizWithdraw extends BaseEntity
 
     public void fillPayMethodLabel()
     {
-        this.payMethod = inferPayMethod(payMethod, accountInfo, getRemark());
-        this.payMethodLabel = payMethodLabelOf(this.payMethod, accountInfo, getRemark());
+        this.payMethodLabel = payMethodLabelOf(payMethod, accountInfo, getRemark());
     }
 
     public Date getApplyTime()
@@ -348,46 +337,26 @@ public class BizWithdraw extends BaseEntity
         return payMethodLabelOf(payMethod, accountInfo, null);
     }
 
-    public static String inferPayMethod(String payMethod, String accountInfo, String remark)
-    {
-        String method = payMethod == null ? "" : payMethod.trim();
-        String upper = method.toUpperCase();
-        if ("USDT".equals(upper) || "TRC20".equals(upper) || "ERC20".equals(upper))
-        {
-            return "USDT";
-        }
-        if ("BANK".equals(upper) || "PAY_BANK".equals(upper) || "CARD".equals(upper)
-                || "银行卡".equals(method) || "储蓄卡".equals(method) || "bank".equals(method))
-        {
-            return "BANK";
-        }
-        if (looksLikeBank(accountInfo) || looksLikeBank(remark))
-        {
-            return "BANK";
-        }
-        if ("ALIPAY".equals(upper) || "支付宝".equals(method) || method.length() == 0)
-        {
-            return "ALIPAY";
-        }
-        return upper;
-    }
-
     public static String payMethodLabelOf(String payMethod, String accountInfo, String remark)
     {
-        String method = inferPayMethod(payMethod, accountInfo, remark);
+        String method = payMethod == null ? "" : payMethod.trim().toUpperCase();
         if ("USDT".equals(method))
         {
             return "USDT";
         }
-        if ("BANK".equals(method))
+        if ("BANK".equals(method) || "PAY_BANK".equals(method))
         {
             return "银行卡";
         }
-        if ("ALIPAY".equals(method))
+        if (looksLikeBank(accountInfo) || looksLikeBank(remark))
+        {
+            return "银行卡";
+        }
+        if ("ALIPAY".equals(method) || method.length() == 0)
         {
             return "支付宝";
         }
-        return method;
+        return payMethod;
     }
 
     public static boolean looksLikeBank(String text)
@@ -401,15 +370,13 @@ public class BizWithdraw extends BaseEntity
                 || text.contains("开户") || text.contains("借记") || text.contains("支行")
                 || text.contains("工行") || text.contains("农行") || text.contains("建行")
                 || text.contains("中行") || text.contains("交行") || text.contains("招行")
-                || text.contains("邮储") || text.contains("邮政") || text.contains("浦发")
-                || text.contains("民生") || text.contains("兴业") || text.contains("中信")
-                || text.contains("光大") || text.contains("华夏") || text.contains("广发")
-                || text.contains("农商") || text.contains("村镇"))
+                || text.contains("邮储") || text.contains("浦发") || text.contains("民生")
+                || text.contains("兴业") || text.contains("中信") || text.contains("光大")
+                || text.contains("华夏") || text.contains("广发"))
         {
             return true;
         }
-        String digits = text.replaceAll("[^0-9]", "");
-        return digits.length() >= 16 && digits.length() <= 19;
+        return text.matches("(?s).*\\d{16,19}.*");
     }
 
     public Long[] getWithdrawIds()

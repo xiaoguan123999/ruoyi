@@ -192,7 +192,7 @@ public class AppBizController extends BaseController
                 accountInfo, body.getRemark(), body.getGoogleCode(), payMethod));
     }
 
-    @ApiOperation(value = "提现记录", notes = "分页。status/statusLabel：0审核中 3待打款 1提现成功 2提现失败。手续费 feeAmount、到账 arrivalAmount。失败原因 failRemark（仅失败有值，显示在手续费下方），也可用 auditRemark。")
+    @ApiOperation(value = "提现记录", notes = "分页。rows 含 amount、accountInfo、status、statusLabel、payMethodLabel。")
     @GetMapping("/withdraw")
     public TableDataInfo withdrawList()
     {
