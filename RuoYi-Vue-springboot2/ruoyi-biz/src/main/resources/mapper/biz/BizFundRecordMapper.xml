@@ -16,16 +16,20 @@
         <result property="auditTime"     column="audit_time"/>
         <result property="auditRemark"   column="audit_remark"/>
         <result property="remark"        column="remark"/>
+        <result property="feeAmount"     column="fee_amount"/>
+        <result property="arrivalAmount" column="arrival_amount"/>
     </resultMap>
 
     <select id="selectAppFundRecords" resultMap="AppFundRecordResult">
         select t.id, t.biz_type, t.currency, t.amount, t.status, t.account_info, t.pay_method,
-               t.pay_proof_url, t.pay_mode, t.create_time, t.audit_time, t.audit_remark, t.remark
+               t.pay_proof_url, t.pay_mode, t.create_time, t.audit_time, t.audit_remark, t.remark,
+               t.fee_amount, t.arrival_amount
         from (
             <if test="includeRecharge">
             select r.recharge_id as id, 'RECHARGE' as biz_type, r.currency, r.amount, r.status,
                    null as account_info, null as pay_method, null as pay_proof_url, r.pay_mode,
-                   r.create_time, r.audit_time, r.audit_remark, r.remark
+                   r.create_time, r.audit_time, r.audit_remark, r.remark,
+                   null as fee_amount, null as arrival_amount
             from biz_recharge r
             where r.member_id = #{memberId}
             <if test="currency != null and currency != ''">and r.currency = #{currency}</if>
@@ -37,7 +41,8 @@
             <if test="includeWithdraw">
             select w.withdraw_id as id, 'WITHDRAW' as biz_type, w.currency, w.amount, w.status,
                    w.account_info, w.pay_method, w.pay_proof_url, null as pay_mode,
-                   w.create_time, w.audit_time, w.audit_remark, w.remark
+                   w.create_time, w.audit_time, w.audit_remark, w.remark,
+                   w.fee_amount, w.arrival_amount
             from biz_withdraw w
             where w.member_id = #{memberId}
             <if test="currency != null and currency != ''">and w.currency = #{currency}</if>

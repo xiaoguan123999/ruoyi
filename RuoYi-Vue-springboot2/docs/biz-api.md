@@ -810,7 +810,7 @@ GET /app/fundRecords?bizType=RECHARGE&status=0
 }
 ```
 
-充值 `statusLabel`：待审 / 已通过 / 已拒绝。提现：审核中 / 待打款 / 已打款 / 已拒绝。
+充值 `statusLabel`：待审 / 已通过 / 已拒绝。提现：审核中 / 待打款 / 提现成功 / 提现失败。提现失败时 `failRemark` / `auditRemark` 为后台填写的失败原因，App 显示在手续费下方。
 
 ---
 
@@ -916,10 +916,10 @@ App 提现不需要绑定或填写谷歌验证码，`googleCode` 可省略。
 |---|---|
 | 0 | 审核中 |
 | 3 | 待打款 |
-| 1 | 已打款 |
-| 2 | 已拒绝 |
+| 1 | 提现成功 |
+| 2 | 提现失败 |
 
-另返回 `payMethod`（`ALIPAY` / `USDT`）、`payMethodLabel`、`accountInfo`、`payProofUrl`（打款凭证，未打款为空）。
+另返回 `feeAmount`、`arrivalAmount`、`payMethod`（`ALIPAY` / `USDT`）、`payMethodLabel`、`accountInfo`、`payProofUrl`（打款凭证，未打款为空）。`status=2` 时 `failRemark`（及 `auditRemark`）为后台失败原因，显示在手续费下方。
 
 ### 16. 上传图片（Cloudflare R2）
 

@@ -212,7 +212,7 @@ export default function ProfileScreen() {
                   <Text style={[styles.metaLine, styles.metaLineFlex]} numberOfLines={1}>
                     {inviteCode ? `邀请码 ${inviteCode}` : '邀请码 --'}
                   </Text>
-                  {inviteCode ? <CopyButton value={inviteCode} /> : null}
+                  {inviteCode ? <CopyButton value={inviteCode} showText size={14} /> : null}
                 </View>
                 <Text style={styles.slogan} numberOfLines={1}>
                   连接星空 · 智联未来
@@ -490,6 +490,7 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
     minWidth: 0,
   },

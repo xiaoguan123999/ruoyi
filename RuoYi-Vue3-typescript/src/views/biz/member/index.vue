@@ -1,30 +1,5 @@
 <template>
   <div class="app-container ops-page">
-    <div class="ops-section-card">
-      <div class="ops-section-card__hd">App 谷歌验证</div>
-      <div class="ops-section-card__bd">
-        <el-form :model="google" label-width="140px" v-loading="googleLoading" class="ops-form-full">
-          <el-row :gutter="16">
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="谷歌验证开关">
-                <el-switch v-model="google.enabled" />
-                <span class="tip">关闭后 App 不能绑定谷歌验证器</span>
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="10">
-              <el-form-item label="验证器名称">
-                <el-input v-model="google.issuer" placeholder="显示在谷歌验证器里的名称" maxlength="32" />
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="6">
-              <el-form-item label-width="0">
-                <el-button type="primary" @click="saveGoogle" v-hasPermi="['biz:member:edit']">保存</el-button>
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </el-form>
-      </div>
-    </div>
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
       <el-form-item label="会员" prop="memberId">
         <MemberSelect v-model="queryParams.memberId" />
@@ -152,10 +127,21 @@
           <el-tag :type="createByTagType(scope.row.createBy)" size="small">{{ createByText(scope.row.createBy) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="创建时间" align="center" prop="createTime" width="160">
+      <el-table-column label="注册时间" align="center" prop="createTime" width="170">
         <template #default="scope">
-          <span>{{ parseTime(scope.row.createTime) }}</span>
+          <span>{{ parseTime(scope.row.createTime) || "—" }}</span>
         </template>
+      </el-table-column>
+      <el-table-column label="最后登录时间" align="center" prop="lastLoginTime" width="170">
+        <template #default="scope">
+          <span>{{ parseTime(scope.row.lastLoginTime) || "—" }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="注册IP" align="center" prop="registerIp" width="140">
+        <template #default="scope">{{ scope.row.registerIp || "—" }}</template>
+      </el-table-column>
+      <el-table-column label="最后登录IP" align="center" prop="lastLoginIp" width="140">
+        <template #default="scope">{{ scope.row.lastLoginIp || "—" }}</template>
       </el-table-column>
       <el-table-column label="操作" align="center" width="480" class-name="small-padding fixed-width" fixed="right">
         <template #default="scope">
@@ -181,6 +167,7 @@
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="110px">
         <el-form-item label="手机号" prop="phone">
           <el-input v-model="form.phone" placeholder="请输入手机号" maxlength="11" />
+          <div v-if="!isAdd" class="tip block">修改后用于 App 登录。不能和已有会员重复。</div>
         </el-form-item>
         <template v-if="isAdd">
           <el-form-item label="登录密码" prop="password">
@@ -294,7 +281,7 @@
 </template>
 
 <script setup lang="ts" name="BizMember">
-import { listMember, getMember, addMember, updateMember, updateMemberChainAddress, updateMemberParent, resetMemberPwd, resetMemberPayPwd, getMemberGoogleConfig, saveMemberGoogleConfig } from "@/api/biz"
+import { listMember, getMember, addMember, updateMember, updateMemberChainAddress, updateMemberParent, resetMemberPwd, resetMemberPayPwd } from "@/api/biz"
 import WalletAdjustDialog from "@/views/biz/components/WalletAdjustDialog.vue"
 
 const { proxy } = getCurrentInstance() as any
@@ -349,8 +336,6 @@ const rebindRules = {
   }]
 }
 
-const googleLoading = ref(false)
-const google = ref({ enabled: true, issuer: "App" })
 const selectedRows = ref<any[]>([])
 
 const data = reactive({
@@ -474,22 +459,6 @@ function applyRouteQuery() {
   }
 }
 
-function loadGoogle() {
-  googleLoading.value = true
-  getMemberGoogleConfig().then((res: any) => {
-    const data = res.data || {}
-    google.value = {
-      enabled: data.enabled !== false,
-      issuer: data.issuer || "App"
-    }
-  }).finally(() => { googleLoading.value = false })
-}
-function saveGoogle() {
-  saveMemberGoogleConfig(google.value).then(() => {
-    proxy.$modal.msgSuccess("谷歌验证配置已保存")
-    loadGoogle()
-  })
-}
 function getList() {
   loading.value = true
   listMember(queryParams.value).then((res: any) => {
@@ -700,7 +669,6 @@ function submitForm() {
   })
 }
 applyRouteQuery()
-loadGoogle()
 getList()
 watch(
   () => String(route.query.kycStatus || ""),

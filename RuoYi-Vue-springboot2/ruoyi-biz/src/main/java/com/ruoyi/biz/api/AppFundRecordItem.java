@@ -23,9 +23,13 @@ public class AppFundRecordItem
     private String name;
     @ApiModelProperty("申请金额")
     private BigDecimal amount;
+    @ApiModelProperty("手续费，提现才有")
+    private BigDecimal feeAmount;
+    @ApiModelProperty("到账金额，提现才有")
+    private BigDecimal arrivalAmount;
     @ApiModelProperty("币种")
     private String currency;
-    @ApiModelProperty("状态 0待处理 1成功 2拒绝")
+    @ApiModelProperty("状态 0审核中/待审 3待打款 1成功 2提现失败/已拒绝")
     private String status;
     @ApiModelProperty("状态中文")
     private String statusLabel;
@@ -45,6 +49,8 @@ public class AppFundRecordItem
     private Date auditTime;
     @ApiModelProperty("审核备注")
     private String auditRemark;
+    @ApiModelProperty("提现失败原因，仅提现且 status=2 有值，显示在手续费下方")
+    private String failRemark;
     @ApiModelProperty("备注")
     private String remark;
 
@@ -62,6 +68,10 @@ public class AppFundRecordItem
     public void setName(String name) { this.name = name; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
+    public BigDecimal getFeeAmount() { return feeAmount; }
+    public void setFeeAmount(BigDecimal feeAmount) { this.feeAmount = feeAmount; }
+    public BigDecimal getArrivalAmount() { return arrivalAmount; }
+    public void setArrivalAmount(BigDecimal arrivalAmount) { this.arrivalAmount = arrivalAmount; }
     public String getCurrency() { return currency; }
     public void setCurrency(String currency) { this.currency = currency; }
     public String getStatus() { return status; }
@@ -84,6 +94,8 @@ public class AppFundRecordItem
     public void setAuditTime(Date auditTime) { this.auditTime = auditTime; }
     public String getAuditRemark() { return auditRemark; }
     public void setAuditRemark(String auditRemark) { this.auditRemark = auditRemark; }
+    public String getFailRemark() { return failRemark; }
+    public void setFailRemark(String failRemark) { this.failRemark = failRemark; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
 }

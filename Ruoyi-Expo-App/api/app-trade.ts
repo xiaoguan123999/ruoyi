@@ -519,7 +519,7 @@ export async function fetchAppRechargeRecords(): Promise<AppFundRecord[]> {
 
 /** 提现申请单状态：0 审核中 / 3 待打款 / 1 提现成功 / 2 提现失败 */
 function mapWithdrawStatusLabel(status: string, statusLabel?: string): string {
-  const code = status.trim();
+  const code = String(status ?? '').trim();
   if (code === '0') {
     return '审核中';
   }
@@ -532,17 +532,20 @@ function mapWithdrawStatusLabel(status: string, statusLabel?: string): string {
   if (code === '2') {
     return '提现失败';
   }
-  const fromApi = statusLabel?.trim();
-  if (fromApi === '已打款') {
+  const fromApi = (statusLabel || '').trim();
+  if (/成功|已打款/.test(fromApi)) {
     return '提现成功';
   }
-  if (fromApi === '已拒绝') {
+  if (/失败|拒绝/.test(fromApi)) {
     return '提现失败';
   }
-  if (fromApi) {
-    return fromApi;
+  if (/待打款/.test(fromApi)) {
+    return '待打款';
   }
-  return '审核中';
+  if (/审核/.test(fromApi)) {
+    return '审核中';
+  }
+  return fromApi || '审核中';
 }
 
 function mapWithdrawRecord(raw: unknown): AppFundRecord | null {
@@ -556,7 +559,8 @@ function mapWithdrawRecord(raw: unknown): AppFundRecord | null {
   const status = pickString(raw, ['status'], '');
   const statusLabel = pickString(raw, ['statusLabel']);
   const title = mapWithdrawStatusLabel(status, statusLabel || undefined);
-  const auditRemark = pickString(raw, ['auditRemark', 'remark']);
+  const failed = status === '2' || title === '提现失败';
+  const auditRemark = pickString(raw, ['failRemark', 'auditRemark']);
 
   return {
     id: String(id || `withdraw-${pickString(raw, ['createTime'])}-${amount}`),
@@ -564,9 +568,9 @@ function mapWithdrawRecord(raw: unknown): AppFundRecord | null {
     amount,
     feeAmount: feeAmount > 0 ? feeAmount : undefined,
     arrivalAmount: arrivalAmount > 0 ? arrivalAmount : undefined,
-    remark: status === '2' && auditRemark ? auditRemark : undefined,
+    remark: failed && auditRemark ? auditRemark : undefined,
     currency: normalizeCurrency(raw.currency),
-    status,
+    status: failed ? '2' : status,
     createTime: formatDateTime(raw.createTime ?? raw.auditTime ?? raw.updateTime),
   };
 }

@@ -308,20 +308,7 @@ public class BizWithdrawServiceImpl implements IBizWithdrawService
         {
             return BizConstants.PAY_USDT;
         }
-        String method = payMethod == null ? "" : payMethod.trim().toUpperCase();
-        if (BizConstants.PAY_USDT.equals(method) || BizConstants.PAY_BANK.equals(method))
-        {
-            return method;
-        }
-        if (BizWithdraw.looksLikeBank(accountInfo) || BizWithdraw.looksLikeBank(remark))
-        {
-            return BizConstants.PAY_BANK;
-        }
-        if (BizConstants.PAY_ALIPAY.equals(method))
-        {
-            return method;
-        }
-        return BizConstants.PAY_ALIPAY;
+        return BizWithdraw.inferPayMethod(payMethod, accountInfo, remark);
     }
 
     private String resolveWalletTypeCode(String remark)

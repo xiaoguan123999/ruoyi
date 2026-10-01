@@ -47,7 +47,7 @@
         <el-button type="primary" plain icon="Plus" @click="handleAdd" v-hasPermi="['biz:recharge:add']">人工充值</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['biz:recharge:list']">导出{{ selectedRows.length ? `（${selectedRows.length}）` : "" }}</el-button>
+        <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['biz:recharge:list']">导出Excel{{ selectedRows.length ? `（已选${selectedRows.length}）` : "（按筛选）" }}</el-button>
       </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
