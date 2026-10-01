@@ -474,6 +474,27 @@ export function delCsChannel(channelId: number | number[]): Promise<AjaxResult> 
   return request({ url: '/biz/service/' + channelId, method: 'delete' })
 }
 
+export function listRechargeMethod(query: any): Promise<TableDataInfo<any[]>> {
+  return request({ url: '/biz/rechargeMethod/list', method: 'get', params: query })
+}
+
+export function getRechargeMethod(methodId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/rechargeMethod/' + methodId, method: 'get' })
+}
+
+export function addRechargeMethod(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/rechargeMethod', method: 'post', data })
+}
+
+export function updateRechargeMethod(data: any): Promise<AjaxResult> {
+  return request({ url: '/biz/rechargeMethod', method: 'put', data })
+}
+
+export function delRechargeMethod(methodId: number | number[]): Promise<AjaxResult> {
+  return request({ url: '/biz/rechargeMethod/' + methodId, method: 'delete' })
+}
+
+
 export function getPromoRule(): Promise<AjaxResult<any>> {
   return request({ url: '/biz/promo/rule', method: 'get' })
 }

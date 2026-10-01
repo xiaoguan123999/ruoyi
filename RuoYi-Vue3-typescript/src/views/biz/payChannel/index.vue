@@ -1,7 +1,7 @@
 <template>
   <div class="app-container ops-page">
     <el-alert
-      title="通道给 App 选支付方式。productId 是三方产品码（福旺 wayCode / 无忧 8000·8001 / 非凡 13·15 / 百乐通道编码）。下单和回调在后端，本页可新增与修改通道。"
+      title="通道需绑定支付方式（编码即原场景 wechat/alipay/union/usdt）。productId 是三方产品码。下单和回调在后端。"
       type="info"
       :closable="false"
       show-icon
@@ -13,12 +13,9 @@
           <el-option v-for="p in providers" :key="p.providerCode" :label="p.providerName" :value="p.providerCode" />
         </el-select>
       </el-form-item>
-      <el-form-item label="场景" prop="scene">
-        <el-select v-model="queryParams.scene" placeholder="场景" clearable style="width: 140px">
-          <el-option label="支付宝" value="alipay" />
-          <el-option label="微信" value="wechat" />
-          <el-option label="银联" value="union" />
-          <el-option label="USDT" value="usdt" />
+      <el-form-item label="支付方式" prop="scene">
+        <el-select v-model="queryParams.scene" placeholder="支付方式" clearable filterable style="width: 160px">
+          <el-option v-for="m in methods" :key="m.methodCode" :label="m.label + '（' + m.methodCode + '）'" :value="m.methodCode" />
         </el-select>
       </el-form-item>
       <el-form-item label="状态" prop="status">
@@ -41,6 +38,9 @@
 
     <el-table v-loading="loading" :data="dataList">
       <el-table-column label="服务商" align="center" prop="providerName" width="90" />
+      <el-table-column label="支付方式" align="center" min-width="110">
+        <template #default="scope">{{ scope.row.methodLabel || "—" }}</template>
+      </el-table-column>
       <el-table-column label="通道名" align="center" prop="channelName" min-width="110" show-overflow-tooltip>
         <template #default="scope">{{ scope.row.channelName || "—" }}</template>
       </el-table-column>
@@ -49,7 +49,9 @@
       </el-table-column>
       <el-table-column label="编码" align="center" prop="channelCode" min-width="140" show-overflow-tooltip />
       <el-table-column label="产品码" align="center" prop="productId" min-width="110" show-overflow-tooltip />
-      <el-table-column label="场景" align="center" prop="scene" width="90" />
+      <el-table-column label="履约" align="center" width="90">
+        <template #default="scope">{{ scope.row.fulfillType === 'CHAIN' ? '链上' : '线上' }}</template>
+      </el-table-column>
       <el-table-column label="币种" align="center" prop="currency" width="80" />
       <el-table-column label="限额" align="center" min-width="140">
         <template #default="scope">{{ scope.row.minAmount }} ~ {{ scope.row.maxAmount || "不限" }}</template>
@@ -82,6 +84,11 @@
             <el-option v-for="p in providers" :key="p.providerCode" :label="p.providerName + '（' + p.providerCode + '）'" :value="p.providerCode" />
           </el-select>
         </el-form-item>
+        <el-form-item label="支付方式" prop="scene">
+          <el-select v-model="form.scene" filterable placeholder="选择支付方式编码" style="width: 100%" @change="onMethodChange">
+            <el-option v-for="m in methods" :key="m.methodCode" :label="m.label + '（' + m.methodCode + '）'" :value="m.methodCode" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="通道编码" prop="channelCode">
           <el-input v-model="form.channelCode" placeholder="唯一编码，如 BAILE_WECHAT" :disabled="!!form.channelId" />
         </el-form-item>
@@ -94,13 +101,11 @@
         <el-form-item label="产品码" prop="productId">
           <el-input v-model="form.productId" placeholder="三方产品码，如 901 / 8000 / 13" />
         </el-form-item>
-        <el-form-item label="场景" prop="scene">
-          <el-select v-model="form.scene" style="width: 100%">
-            <el-option label="支付宝" value="alipay" />
-            <el-option label="微信" value="wechat" />
-            <el-option label="银联" value="union" />
-            <el-option label="USDT" value="usdt" />
-          </el-select>
+        <el-form-item label="履约类型" prop="fulfillType">
+          <el-radio-group v-model="form.fulfillType">
+            <el-radio value="ONLINE">线上收银台</el-radio>
+            <el-radio value="CHAIN">链上充值</el-radio>
+          </el-radio-group>
         </el-form-item>
         <el-form-item label="币种">
           <el-select v-model="form.currency" style="width: 100%">
@@ -165,11 +170,12 @@
 </template>
 
 <script setup lang="ts" name="BizPayChannel">
-import { listPayChannel, getPayChannel, addPayChannel, updatePayChannel, listPayProvider, getPayProvider, updatePayProvider } from "@/api/biz"
+import { listPayChannel, getPayChannel, addPayChannel, updatePayChannel, listPayProvider, getPayProvider, updatePayProvider, listRechargeMethod } from "@/api/biz"
 
 const { proxy } = getCurrentInstance() as any
 const dataList = ref<any[]>([])
 const providers = ref<any[]>([])
+const methods = ref<any[]>([])
 const loading = ref(true)
 const showSearch = ref(true)
 const total = ref(0)
@@ -177,15 +183,20 @@ const open = ref(false)
 const providerOpen = ref(false)
 const form = ref<any>({})
 const providerForm = ref<any>({})
-const queryParams = ref({ pageNum: 1, pageSize: 100, providerCode: undefined, scene: undefined, status: undefined })
+const queryParams = ref({ pageNum: 1, pageSize: 100, providerCode: undefined, scene: undefined as string | undefined, status: undefined })
 const rules = {
   providerCode: [{ required: true, message: "请选择服务商", trigger: "change" }],
+  scene: [{ required: true, message: "请选择支付方式", trigger: "change" }],
   channelCode: [{ required: true, message: "通道编码不能为空", trigger: "blur" }],
   displayName: [{ required: true, message: "展示名不能为空", trigger: "blur" }],
-  productId: [{ required: true, message: "产品码不能为空", trigger: "blur" }],
-  scene: [{ required: true, message: "请选择场景", trigger: "change" }]
+  productId: [{ required: true, message: "产品码不能为空", trigger: "blur" }]
 }
 
+function loadMethods() {
+  listRechargeMethod({ pageNum: 1, pageSize: 200, status: "0", isCs: "0" }).then((res: any) => {
+    methods.value = res.rows || []
+  })
+}
 function getList() {
   loading.value = true
   listPayChannel(queryParams.value).then((res: any) => {
@@ -193,6 +204,14 @@ function getList() {
     total.value = res.total
     loading.value = false
   })
+}
+
+function onMethodChange(code?: string) {
+  const scene = String(code || form.value.scene || "").trim().toLowerCase()
+  form.value.scene = scene
+  if (scene === "usdt") {
+    form.value.currency = form.value.currency || "USDT"
+  }
 }
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { proxy.resetForm("queryRef"); handleQuery() }
@@ -205,6 +224,7 @@ function resetForm() {
     displayName: "",
     productId: "",
     scene: "alipay",
+    fulfillType: "ONLINE",
     currency: "CNY",
     minAmount: 10,
     maxAmount: undefined,
@@ -217,9 +237,11 @@ function resetForm() {
 }
 function handleAdd() {
   resetForm()
+  loadMethods()
   open.value = true
 }
 function handleUpdate(row: any) {
+  loadMethods()
   getPayChannel(row.channelId).then((res: any) => {
     form.value = res.data || {}
     open.value = true
@@ -228,11 +250,13 @@ function handleUpdate(row: any) {
 function submitChannel() {
   proxy.$refs["formRef"].validate((valid: boolean) => {
     if (!valid) return
+    onMethodChange()
     const req = form.value.channelId ? updatePayChannel(form.value) : addPayChannel(form.value)
     req.then(() => {
       proxy.$modal.msgSuccess(form.value.channelId ? "已保存" : "已新增")
       open.value = false
-      getList()
+      loadMethods()
+getList()
     })
   })
 }
@@ -262,5 +286,6 @@ function submitProvider() {
   })
 }
 listPayProvider().then((res: any) => { providers.value = res.data || [] })
+loadMethods()
 getList()
 </script>

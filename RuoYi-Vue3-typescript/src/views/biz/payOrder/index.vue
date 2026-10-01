@@ -28,6 +28,16 @@
       <el-form-item label="手机号" prop="phone">
         <el-input v-model="queryParams.phone" placeholder="手机号" clearable style="width: 160px" @keyup.enter="handleQuery" />
       </el-form-item>
+      <el-form-item label="服务商" prop="providerCode">
+        <el-select v-model="queryParams.providerCode" placeholder="服务商" clearable filterable style="width: 140px">
+          <el-option v-for="p in providers" :key="p.providerCode" :label="p.providerName" :value="p.providerCode" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="支付方式" prop="scene">
+        <el-select v-model="queryParams.scene" placeholder="支付方式" clearable filterable style="width: 160px">
+          <el-option v-for="m in methods" :key="m.methodCode" :label="m.label + '（' + m.methodCode + '）'" :value="m.methodCode" />
+        </el-select>
+      </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="queryParams.status" placeholder="状态" clearable style="width: 140px">
           <el-option label="待付" value="0" />
@@ -95,17 +105,41 @@ import {
   simulatePayOrder,
   syncPayOrder,
   getPayOrderExpireMinutes,
-  savePayOrderExpireMinutes
+  savePayOrderExpireMinutes,
+  listPayProvider,
+  listRechargeMethod
 } from "@/api/biz"
 
 const { proxy } = getCurrentInstance() as any
 const dataList = ref<any[]>([])
+const providers = ref<any[]>([])
+const methods = ref<any[]>([])
 const loading = ref(true)
 const showSearch = ref(true)
 const total = ref(0)
 const expireLoading = ref(false)
 const expireMinutes = ref(30)
-const queryParams = ref({ pageNum: 1, pageSize: 100, outTradeNo: undefined, phone: undefined, status: undefined })
+const queryParams = ref({
+  pageNum: 1,
+  pageSize: 100,
+  outTradeNo: undefined as string | undefined,
+  phone: undefined as string | undefined,
+  providerCode: undefined as string | undefined,
+  scene: undefined as string | undefined,
+  status: undefined as string | undefined
+})
+
+function loadProviders() {
+  listPayProvider().then((res: any) => {
+    providers.value = res.data || []
+  })
+}
+
+function loadMethods() {
+  listRechargeMethod({ pageNum: 1, pageSize: 200, status: "0", isCs: "0" }).then((res: any) => {
+    methods.value = res.rows || []
+  })
+}
 
 function loadExpire() {
   expireLoading.value = true
@@ -174,6 +208,8 @@ function handleSimulate(row: any) {
 function openPay(url: string) {
   window.open(url, "_blank")
 }
+loadProviders()
+loadMethods()
 loadExpire()
 getList()
 </script>
