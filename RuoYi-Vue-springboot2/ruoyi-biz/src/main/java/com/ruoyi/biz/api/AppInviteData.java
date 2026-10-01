@@ -24,12 +24,22 @@ public class AppInviteData
     private BigDecimal kycRewardCny;
     @ApiModelProperty("实名注册奖励USDT")
     private BigDecimal kycRewardUsdt;
-    @ApiModelProperty("一级返佣百分比")
+    @ApiModelProperty("认购一级返佣百分比")
     private BigDecimal teamRateL1;
-    @ApiModelProperty("二级返佣百分比")
+    @ApiModelProperty("认购二级返佣百分比")
     private BigDecimal teamRateL2;
-    @ApiModelProperty("三级返佣百分比")
+    @ApiModelProperty("认购三级返佣百分比")
     private BigDecimal teamRateL3;
+    @ApiModelProperty("充值团队返佣开关")
+    private Boolean rechargeTeamEnabled;
+    @ApiModelProperty("后台人工充值是否返佣")
+    private Boolean rechargeTeamManualEnabled;
+    @ApiModelProperty("充值一级返佣百分比")
+    private BigDecimal rechargeTeamRateL1;
+    @ApiModelProperty("充值二级返佣百分比")
+    private BigDecimal rechargeTeamRateL2;
+    @ApiModelProperty("充值三级返佣百分比")
+    private BigDecimal rechargeTeamRateL3;
     @ApiModelProperty("规则说明全文")
     private String ruleText;
     @ApiModelProperty("注册绑定邀请码后不可改上级")
@@ -55,6 +65,16 @@ public class AppInviteData
     public void setTeamRateL2(BigDecimal teamRateL2) { this.teamRateL2 = teamRateL2; }
     public BigDecimal getTeamRateL3() { return teamRateL3; }
     public void setTeamRateL3(BigDecimal teamRateL3) { this.teamRateL3 = teamRateL3; }
+    public Boolean getRechargeTeamEnabled() { return rechargeTeamEnabled; }
+    public void setRechargeTeamEnabled(Boolean rechargeTeamEnabled) { this.rechargeTeamEnabled = rechargeTeamEnabled; }
+    public Boolean getRechargeTeamManualEnabled() { return rechargeTeamManualEnabled; }
+    public void setRechargeTeamManualEnabled(Boolean rechargeTeamManualEnabled) { this.rechargeTeamManualEnabled = rechargeTeamManualEnabled; }
+    public BigDecimal getRechargeTeamRateL1() { return rechargeTeamRateL1; }
+    public void setRechargeTeamRateL1(BigDecimal rechargeTeamRateL1) { this.rechargeTeamRateL1 = rechargeTeamRateL1; }
+    public BigDecimal getRechargeTeamRateL2() { return rechargeTeamRateL2; }
+    public void setRechargeTeamRateL2(BigDecimal rechargeTeamRateL2) { this.rechargeTeamRateL2 = rechargeTeamRateL2; }
+    public BigDecimal getRechargeTeamRateL3() { return rechargeTeamRateL3; }
+    public void setRechargeTeamRateL3(BigDecimal rechargeTeamRateL3) { this.rechargeTeamRateL3 = rechargeTeamRateL3; }
     public String getRuleText() { return ruleText; }
     public void setRuleText(String ruleText) { this.ruleText = ruleText; }
     public Boolean getLockParent() { return lockParent; }

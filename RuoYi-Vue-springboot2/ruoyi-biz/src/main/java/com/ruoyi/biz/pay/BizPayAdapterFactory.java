@@ -25,6 +25,9 @@ public class BizPayAdapterFactory
     @Autowired
     private BaileAdapter baileAdapter;
 
+    @Autowired
+    private ArcticOceanAdapter arcticOceanAdapter;
+
     public IBizPayAdapter getAdapter(BizPayProvider provider)
     {
         if (provider == null)
@@ -53,6 +56,10 @@ public class BizPayAdapterFactory
         if (BizConstants.PAY_FAMILY_BAILE.equals(family) || "baile".equals(family))
         {
             return baileAdapter;
+        }
+        if (BizConstants.PAY_FAMILY_ARCTIC.equals(family) || "arctic".equals(family) || "arcticocean".equals(family))
+        {
+            return arcticOceanAdapter;
         }
         throw new ServiceException("服务商 " + provider.getProviderName() + " 尚未接入真实网关");
     }

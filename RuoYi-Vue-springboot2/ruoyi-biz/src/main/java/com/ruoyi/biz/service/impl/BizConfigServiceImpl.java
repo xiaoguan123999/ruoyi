@@ -104,6 +104,36 @@ public class BizConfigServiceImpl implements IBizConfigService
     }
 
     @Override
+    public BigDecimal getRechargeTeamRate(int level)
+    {
+        if (level == 1)
+        {
+            return decimal(BizConstants.CONFIG_RECHARGE_RATE_L1, "9");
+        }
+        if (level == 2)
+        {
+            return decimal(BizConstants.CONFIG_RECHARGE_RATE_L2, "3");
+        }
+        if (level == 3)
+        {
+            return decimal(BizConstants.CONFIG_RECHARGE_RATE_L3, "1");
+        }
+        return BigDecimal.ZERO;
+    }
+
+    @Override
+    public boolean isRechargeTeamCommissionEnabled()
+    {
+        return bool(BizConstants.CONFIG_RECHARGE_TEAM_ENABLED, false);
+    }
+
+    @Override
+    public boolean isRechargeTeamManualCommissionEnabled()
+    {
+        return bool(BizConstants.CONFIG_RECHARGE_TEAM_MANUAL_ENABLED, false);
+    }
+
+    @Override
     public boolean isUsdtEnabled()
     {
         String value = configService.selectConfigByKey(BizConstants.CONFIG_USDT_ENABLED);

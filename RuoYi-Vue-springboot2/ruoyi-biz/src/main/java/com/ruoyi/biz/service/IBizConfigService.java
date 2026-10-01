@@ -19,6 +19,13 @@ public interface IBizConfigService
 
     boolean isTeamCommissionEnabled();
 
+    BigDecimal getRechargeTeamRate(int level);
+
+    boolean isRechargeTeamCommissionEnabled();
+
+    /** 后台人工充值是否参与充值返佣，默认 false */
+    boolean isRechargeTeamManualCommissionEnabled();
+
     boolean isUsdtEnabled();
 
     boolean isWithdrawNeedKyc();

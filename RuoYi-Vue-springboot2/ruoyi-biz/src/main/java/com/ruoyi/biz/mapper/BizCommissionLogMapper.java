@@ -8,4 +8,6 @@ public interface BizCommissionLogMapper
     List<BizCommissionLog> selectCommissionList(BizCommissionLog log);
 
     int insertCommissionLog(BizCommissionLog log);
+
+    int countByRechargeId(Long rechargeId);
 }

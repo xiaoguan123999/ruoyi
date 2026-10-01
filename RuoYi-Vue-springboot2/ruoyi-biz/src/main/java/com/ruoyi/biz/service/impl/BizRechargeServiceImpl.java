@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.BizRecharge;
 import com.ruoyi.biz.mapper.BizRechargeMapper;
+import com.ruoyi.biz.service.IBizCommissionService;
 import com.ruoyi.biz.service.IBizConfigService;
 import com.ruoyi.biz.service.IBizMemberService;
 import com.ruoyi.biz.service.IBizRechargeService;
@@ -29,6 +30,9 @@ public class BizRechargeServiceImpl implements IBizRechargeService
 
     @Autowired
     private IBizMemberService memberService;
+
+    @Autowired
+    private IBizCommissionService commissionService;
 
     @Override
     public BizRecharge selectRechargeById(Long rechargeId)
@@ -113,6 +117,7 @@ public class BizRechargeServiceImpl implements IBizRechargeService
         {
             walletService.credit(recharge.getMemberId(), recharge.getCurrency(), recharge.getAmount(),
                     BizConstants.BIZ_RECHARGE, recharge.getRechargeId(), "充值入账");
+            commissionService.grantForRecharge(recharge);
             memberService.refreshLevelAndUplines(recharge.getMemberId());
         }
     }
@@ -142,6 +147,7 @@ public class BizRechargeServiceImpl implements IBizRechargeService
         rechargeMapper.updateRecharge(recharge);
         walletService.credit(recharge.getMemberId(), recharge.getCurrency(), recharge.getAmount(),
                 BizConstants.BIZ_RECHARGE, recharge.getRechargeId(), "充值入账");
+        commissionService.grantForRecharge(recharge);
         memberService.refreshLevelAndUplines(recharge.getMemberId());
     }
 }

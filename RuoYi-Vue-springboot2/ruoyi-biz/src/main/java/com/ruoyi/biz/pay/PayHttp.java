@@ -99,6 +99,7 @@ public final class PayHttp
             conn.setDoOutput(true);
             conn.setDoInput(true);
             conn.setRequestProperty("Accept", "*/*");
+            conn.setRequestProperty("User-Agent", "RuoYiPay/1.0");
             conn.setRequestProperty("Content-Type", contentType);
             byte[] bytes = body == null ? new byte[0] : body.getBytes(StandardCharsets.UTF_8);
             conn.setRequestProperty("Content-Length", String.valueOf(bytes.length));

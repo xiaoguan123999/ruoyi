@@ -204,6 +204,17 @@ public class BizConstants
 
     public static final String CONFIG_TEAM_ENABLED = "biz.team.enabled";
 
+    public static final String CONFIG_RECHARGE_TEAM_ENABLED = "biz.recharge.team.enabled";
+
+    /** 后台「人工充值」审核通过后是否走充值返佣，默认关 */
+    public static final String CONFIG_RECHARGE_TEAM_MANUAL_ENABLED = "biz.recharge.team.manual.enabled";
+
+    public static final String CONFIG_RECHARGE_RATE_L1 = "biz.recharge.team.rate.l1";
+
+    public static final String CONFIG_RECHARGE_RATE_L2 = "biz.recharge.team.rate.l2";
+
+    public static final String CONFIG_RECHARGE_RATE_L3 = "biz.recharge.team.rate.l3";
+
     public static final String CONFIG_PROMO_RULE_TEXT = "biz.promo.ruleText";
 
     public static final String CONFIG_USDT_ENABLED = "biz.usdt.enabled";
@@ -296,6 +307,9 @@ public class BizConstants
 
     /** 百乐：/api/createorder，成功 state=2 */
     public static final String PAY_FAMILY_BAILE = "baile";
+
+    /** 北冰洋：/pay/newOrder，金额元，回调应答 ok */
+    public static final String PAY_FAMILY_ARCTIC = "arctic";
 
     /** 支付网关日志：出站调用 */
     public static final String PAY_GW_LOG_CALL = "CALL";

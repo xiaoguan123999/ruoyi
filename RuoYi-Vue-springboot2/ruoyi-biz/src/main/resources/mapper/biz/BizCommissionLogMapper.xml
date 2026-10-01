@@ -37,6 +37,11 @@
         order by c.commission_id desc
     </select>
 
+    <select id="countByRechargeId" resultType="int">
+        select count(1) from biz_commission_log
+        where recharge_id = #{rechargeId}
+    </select>
+
     <insert id="insertCommissionLog" parameterType="BizCommissionLog" useGeneratedKeys="true" keyProperty="commissionId">
         insert into biz_commission_log (
             from_member_id, to_member_id, team_level, currency, base_amount, rate, amount, recharge_id, order_id, create_time

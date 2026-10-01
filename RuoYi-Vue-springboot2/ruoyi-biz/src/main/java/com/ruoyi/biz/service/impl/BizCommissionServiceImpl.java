@@ -10,6 +10,7 @@ import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.BizCommissionLog;
 import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizOrder;
+import com.ruoyi.biz.domain.BizRecharge;
 import com.ruoyi.biz.mapper.BizCommissionLogMapper;
 import com.ruoyi.biz.service.IBizCommissionService;
 import com.ruoyi.biz.service.IBizConfigService;
@@ -49,13 +50,50 @@ public class BizCommissionServiceImpl implements IBizCommissionService
         {
             return;
         }
-        BigDecimal base = order.getPrice();
+        grantUpchain(order.getMemberId(), order.getCurrency(), order.getPrice(),
+                order.getOrderId(), null, "认购", true);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void grantForRecharge(BizRecharge recharge)
+    {
+        if (recharge == null || recharge.getMemberId() == null || recharge.getRechargeId() == null)
+        {
+            return;
+        }
+        if (!configService.isRechargeTeamCommissionEnabled())
+        {
+            return;
+        }
+        if (isManualRecharge(recharge) && !configService.isRechargeTeamManualCommissionEnabled())
+        {
+            return;
+        }
+        if (commissionLogMapper.countByRechargeId(recharge.getRechargeId()) > 0)
+        {
+            return;
+        }
+        grantUpchain(recharge.getMemberId(), recharge.getCurrency(), recharge.getAmount(),
+                null, recharge.getRechargeId(), "充值", false);
+    }
+
+    /** 后台「+ 人工充值」及未标线上的旧单 */
+    private boolean isManualRecharge(BizRecharge recharge)
+    {
+        String payMode = recharge.getPayMode();
+        return payMode == null || payMode.length() == 0 || BizConstants.PAY_MODE_MANUAL.equals(payMode);
+    }
+
+    private void grantUpchain(Long fromMemberId, String currencyRaw, BigDecimal base,
+            Long orderId, Long rechargeId, String scene, boolean subscribeRate)
+    {
         if (base == null || base.compareTo(BigDecimal.ZERO) <= 0)
         {
             return;
         }
-        String currency = order.getCurrency() == null ? BizConstants.CURRENCY_CNY : order.getCurrency().toUpperCase();
-        BizMember current = memberService.selectMemberById(order.getMemberId());
+        String currency = currencyRaw == null ? BizConstants.CURRENCY_CNY : currencyRaw.toUpperCase();
+        BizMember current = memberService.selectMemberById(fromMemberId);
         if (current == null || current.testAccount())
         {
             return;
@@ -73,23 +111,26 @@ public class BizCommissionServiceImpl implements IBizCommissionService
                 parentId = parent.getParentId();
                 continue;
             }
-            BigDecimal rate = configService.getTeamRate(level);
+            BigDecimal rate = subscribeRate ? configService.getTeamRate(level)
+                    : configService.getRechargeTeamRate(level);
             if (rate.compareTo(BigDecimal.ZERO) > 0)
             {
                 BigDecimal amount = base.multiply(rate).divide(new BigDecimal("100"), 4, RoundingMode.DOWN);
                 if (amount.compareTo(BigDecimal.ZERO) > 0)
                 {
+                    Long bizId = orderId != null ? orderId : rechargeId;
                     walletService.credit(parent.getMemberId(), currency, amount,
-                            BizConstants.BIZ_COMMISSION, order.getOrderId(), "认购团队" + level + "级分佣");
+                            BizConstants.BIZ_COMMISSION, bizId, scene + "团队" + level + "级分佣");
                     BizCommissionLog log = new BizCommissionLog();
-                    log.setFromMemberId(order.getMemberId());
+                    log.setFromMemberId(fromMemberId);
                     log.setToMemberId(parent.getMemberId());
-                    log.setTeamLevel(level);
+                    log.setTeamLevel(Integer.valueOf(level));
                     log.setCurrency(currency);
                     log.setBaseAmount(base);
                     log.setRate(rate);
                     log.setAmount(amount);
-                    log.setOrderId(order.getOrderId());
+                    log.setOrderId(orderId);
+                    log.setRechargeId(rechargeId);
                     commissionLogMapper.insertCommissionLog(log);
                     memberService.refreshLevel(parent.getMemberId());
                 }

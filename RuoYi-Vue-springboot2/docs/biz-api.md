@@ -263,6 +263,11 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
     "teamRateL1": 9,
     "teamRateL2": 3,
     "teamRateL3": 1,
+    "rechargeTeamEnabled": false,
+    "rechargeTeamManualEnabled": false,
+    "rechargeTeamRateL1": 9,
+    "rechargeTeamRateL2": 3,
+    "rechargeTeamRateL3": 1,
     "lockParent": true,
     "ruleText": "用户注册与推广奖励规则：\n一、实名注册奖励\n..."
   }
@@ -276,7 +281,10 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 | reward | 邀请奖励整数金额；规则关闭或金额为 0 时返回 `0`（兼容旧字段） |
 | inviteAmount / inviteCurrency | 每成功邀请 1 名实名用户发给邀请人的金额和币种 |
 | kycRewardCny / kycRewardUsdt | 实名后本人可领的两种金额，任选其一 |
-| teamRateL1 / L2 / L3 | 充值三级返佣百分比 |
+| teamRateL1 / L2 / L3 | 认购三级返佣百分比 |
+| rechargeTeamEnabled | 充值三级返佣开关（线上/链上） |
+| rechargeTeamManualEnabled | 后台「人工充值」是否返佣，默认关；总开关关则一律不返 |
+| rechargeTeamRateL1 / L2 / L3 | 充值三级返佣百分比，与认购独立 |
 | lockParent | 注册绑定后不可改上级 |
 | ruleText | 后台配置的规则全文，可直接展示 |
 
@@ -301,6 +309,11 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
     "teamRateL1": 9,
     "teamRateL2": 3,
     "teamRateL3": 1,
+    "rechargeTeamEnabled": false,
+    "rechargeTeamManualEnabled": false,
+    "rechargeTeamRateL1": 9,
+    "rechargeTeamRateL2": 3,
+    "rechargeTeamRateL3": 1,
     "ruleText": "...",
     "kycStatus": "1",
     "kycRewardClaimed": false,
@@ -315,7 +328,10 @@ Header 带 `Authorization: Bearer <token>`。服务端会删除 Redis 里的登�
 | kycSelfEnabled | 实名注册奖励开关 |
 | kycRewardCny / kycRewardUsdt | 实名后可选的两种金额 |
 | inviteEnabled | 邀请奖励开关 |
-| teamEnabled | 充值三级返佣开关 |
+| teamEnabled | 认购三级返佣开关 |
+| rechargeTeamEnabled | 充值三级返佣开关，默认关（线上/链上） |
+| rechargeTeamManualEnabled | 后台「人工充值」是否返佣，默认关 |
+| rechargeTeamRateL1 / L2 / L3 | 充值三级返佣百分比，与认购独立 |
 | kycStatus | 已登录才有：`0` 未实名 `1` 已实名 |
 | kycRewardClaimed | 是否已领过实名注册奖励 |
 | kycRewardClaimable | 当前是否可领（已实名且未领且开关打开） |
@@ -1237,7 +1253,7 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | GET | `/biz/order/list` | 认购订单 |
 | GET | `/biz/checkin/list` | 签到记录 |
 | GET/PUT | `/biz/checkin/rule` | 签到规则（金额、连续天数、奖品、概率） |
-| GET/PUT | `/biz/promo/rule` | 注册推广规则（实名奖励、邀请奖励、三级返佣、规则说明） |
+| GET/PUT | `/biz/promo/rule` | 注册推广规则。认购返佣：`teamEnabled` `teamRateL1/L2/L3`。充值返佣：`rechargeTeamEnabled` `rechargeTeamManualEnabled` `rechargeTeamRateL1/L2/L3`（总开关默认关；人工充值另开，默认不返，与认购独立） |
 | GET | `/biz/promo/grant/list` | 实名自领 / 推广奖励发放记录 |
 | GET | `/biz/checkin/prize/list` | 签到中奖记录 |
 | GET | `/biz/recharge/list` | 充值列表 |

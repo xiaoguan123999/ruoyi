@@ -66,6 +66,11 @@ public class BizPromoServiceImpl implements IBizPromoService
         rule.setTeamRateL1(configService.getTeamRate(1));
         rule.setTeamRateL2(configService.getTeamRate(2));
         rule.setTeamRateL3(configService.getTeamRate(3));
+        rule.setRechargeTeamEnabled(Boolean.valueOf(configService.isRechargeTeamCommissionEnabled()));
+        rule.setRechargeTeamManualEnabled(Boolean.valueOf(configService.isRechargeTeamManualCommissionEnabled()));
+        rule.setRechargeTeamRateL1(configService.getRechargeTeamRate(1));
+        rule.setRechargeTeamRateL2(configService.getRechargeTeamRate(2));
+        rule.setRechargeTeamRateL3(configService.getRechargeTeamRate(3));
         rule.setRuleText(strVal(BizConstants.CONFIG_PROMO_RULE_TEXT, defaultRuleText(rule)));
         return rule;
     }
@@ -83,12 +88,21 @@ public class BizPromoServiceImpl implements IBizPromoService
         BigDecimal l1 = nvl(rule.getTeamRateL1());
         BigDecimal l2 = nvl(rule.getTeamRateL2());
         BigDecimal l3 = nvl(rule.getTeamRateL3());
+        BigDecimal rl1 = rule.getRechargeTeamRateL1() == null ? configService.getRechargeTeamRate(1)
+                : nvl(rule.getRechargeTeamRateL1());
+        BigDecimal rl2 = rule.getRechargeTeamRateL2() == null ? configService.getRechargeTeamRate(2)
+                : nvl(rule.getRechargeTeamRateL2());
+        BigDecimal rl3 = rule.getRechargeTeamRateL3() == null ? configService.getRechargeTeamRate(3)
+                : nvl(rule.getRechargeTeamRateL3());
         assertNonNegative(kycCny, "实名注册奖励人民币");
         assertNonNegative(kycUsdt, "实名注册奖励USDT");
         assertNonNegative(inviteAmount, "推广奖励金额");
-        assertRate(l1, "一级返佣");
-        assertRate(l2, "二级返佣");
-        assertRate(l3, "三级返佣");
+        assertRate(l1, "认购一级返佣");
+        assertRate(l2, "认购二级返佣");
+        assertRate(l3, "认购三级返佣");
+        assertRate(rl1, "充值一级返佣");
+        assertRate(rl2, "充值二级返佣");
+        assertRate(rl3, "充值三级返佣");
         String inviteCurrency = StringUtils.isEmpty(rule.getInviteCurrency()) ? BizConstants.CURRENCY_CNY
                 : rule.getInviteCurrency().toUpperCase();
         if (!BizConstants.CURRENCY_CNY.equals(inviteCurrency) && !BizConstants.CURRENCY_USDT.equals(inviteCurrency))
@@ -102,6 +116,17 @@ public class BizPromoServiceImpl implements IBizPromoService
         rule.setTeamRateL1(l1);
         rule.setTeamRateL2(l2);
         rule.setTeamRateL3(l3);
+        rule.setRechargeTeamRateL1(rl1);
+        rule.setRechargeTeamRateL2(rl2);
+        rule.setRechargeTeamRateL3(rl3);
+        if (rule.getRechargeTeamEnabled() == null)
+        {
+            rule.setRechargeTeamEnabled(Boolean.valueOf(configService.isRechargeTeamCommissionEnabled()));
+        }
+        if (rule.getRechargeTeamManualEnabled() == null)
+        {
+            rule.setRechargeTeamManualEnabled(Boolean.valueOf(configService.isRechargeTeamManualCommissionEnabled()));
+        }
         String ruleText = rule.getRuleText();
         if (StringUtils.isEmpty(ruleText))
         {
@@ -123,11 +148,18 @@ public class BizPromoServiceImpl implements IBizPromoService
         saveConfig(BizConstants.CONFIG_PROMO_INVITE_CURRENCY, "实名推广奖励币种", inviteCurrency, "邀请奖励币种 CNY或USDT");
         saveConfig(BizConstants.CONFIG_PROMO_LOCK_PARENT, "邀请后不可改上级",
                 boolStr(rule.getLockParent(), true), "注册时绑定邀请码后不可转移");
-        saveConfig(BizConstants.CONFIG_TEAM_ENABLED, "团队返佣开关",
+        saveConfig(BizConstants.CONFIG_TEAM_ENABLED, "认购团队返佣开关",
                 boolStr(rule.getTeamEnabled(), true), "false关闭认购三级返佣");
-        saveConfig(BizConstants.CONFIG_RATE_L1, "团队一级分佣比例", fmt(l1), "认购一级分佣百分比");
-        saveConfig(BizConstants.CONFIG_RATE_L2, "团队二级分佣比例", fmt(l2), "认购二级分佣百分比");
-        saveConfig(BizConstants.CONFIG_RATE_L3, "团队三级分佣比例", fmt(l3), "认购三级分佣百分比");
+        saveConfig(BizConstants.CONFIG_RATE_L1, "认购一级分佣比例", fmt(l1), "认购一级分佣百分比");
+        saveConfig(BizConstants.CONFIG_RATE_L2, "认购二级分佣比例", fmt(l2), "认购二级分佣百分比");
+        saveConfig(BizConstants.CONFIG_RATE_L3, "认购三级分佣比例", fmt(l3), "认购三级分佣百分比");
+        saveConfig(BizConstants.CONFIG_RECHARGE_TEAM_ENABLED, "充值团队返佣开关",
+                boolStr(rule.getRechargeTeamEnabled(), false), "false关闭充值三级返佣");
+        saveConfig(BizConstants.CONFIG_RECHARGE_TEAM_MANUAL_ENABLED, "人工充值返佣开关",
+                boolStr(rule.getRechargeTeamManualEnabled(), false), "false则后台人工充值审核通过不返佣");
+        saveConfig(BizConstants.CONFIG_RECHARGE_RATE_L1, "充值一级分佣比例", fmt(rl1), "充值一级分佣百分比");
+        saveConfig(BizConstants.CONFIG_RECHARGE_RATE_L2, "充值二级分佣比例", fmt(rl2), "充值二级分佣百分比");
+        saveConfig(BizConstants.CONFIG_RECHARGE_RATE_L3, "充值三级分佣比例", fmt(rl3), "充值三级分佣百分比");
         saveConfig(BizConstants.CONFIG_INVITE_REWARD, "邀请奖励金额", fmt(inviteAmount), "每成功邀请1名实名用户给邀请人的金额");
         saveConfig(BizConstants.CONFIG_PROMO_RULE_TEXT, "注册推广规则说明", ruleText, "App邀请/规则页展示全文");
     }
@@ -171,6 +203,11 @@ public class BizPromoServiceImpl implements IBizPromoService
         data.setTeamRateL1(rule.getTeamRateL1());
         data.setTeamRateL2(rule.getTeamRateL2());
         data.setTeamRateL3(rule.getTeamRateL3());
+        data.setRechargeTeamEnabled(rule.getRechargeTeamEnabled());
+        data.setRechargeTeamManualEnabled(rule.getRechargeTeamManualEnabled());
+        data.setRechargeTeamRateL1(rule.getRechargeTeamRateL1());
+        data.setRechargeTeamRateL2(rule.getRechargeTeamRateL2());
+        data.setRechargeTeamRateL3(rule.getRechargeTeamRateL3());
         data.setRuleText(rule.getRuleText());
         if (memberId == null)
         {
@@ -209,6 +246,11 @@ public class BizPromoServiceImpl implements IBizPromoService
         data.setTeamRateL1(rule.getTeamRateL1());
         data.setTeamRateL2(rule.getTeamRateL2());
         data.setTeamRateL3(rule.getTeamRateL3());
+        data.setRechargeTeamEnabled(rule.getRechargeTeamEnabled());
+        data.setRechargeTeamManualEnabled(rule.getRechargeTeamManualEnabled());
+        data.setRechargeTeamRateL1(rule.getRechargeTeamRateL1());
+        data.setRechargeTeamRateL2(rule.getRechargeTeamRateL2());
+        data.setRechargeTeamRateL3(rule.getRechargeTeamRateL3());
         data.setRuleText(rule.getRuleText());
         data.setLockParent(rule.getLockParent());
         boolean payInvite = bool(rule.getEnabled()) && bool(rule.getInviteEnabled())
@@ -375,10 +417,23 @@ public class BizPromoServiceImpl implements IBizPromoService
         sb.append("每成功邀请 1 名新用户完成实名注册，邀请人可获得 ").append(fmt(nvl(rule.getInviteAmount()))).append(inviteUnit)
                 .append("推广奖励。上下级不可以转移，请核对好正确的邀请码再注册。\n");
         sb.append("三、团队返佣机制\n");
-        sb.append("下级成功认购产品后，按认购金额给上级发放三级返佣，充值到账不返佣。\n");
-        sb.append("一级返佣 ").append(fmt(nvl(rule.getTeamRateL1()))).append("%、二级返佣 ")
-                .append(fmt(nvl(rule.getTeamRateL2()))).append("%、三级返佣 ").append(fmt(nvl(rule.getTeamRateL3())))
-                .append("%\n\n");
+        sb.append("下级成功认购产品后，按认购金额给上级发放三级返佣：一级 ")
+                .append(fmt(nvl(rule.getTeamRateL1()))).append("%、二级 ")
+                .append(fmt(nvl(rule.getTeamRateL2()))).append("%、三级 ")
+                .append(fmt(nvl(rule.getTeamRateL3()))).append("%。\n");
+        if (bool(rule.getRechargeTeamEnabled()))
+        {
+            sb.append("下级线上或链上充值到账后，按到账金额给上级发放三级返佣：一级 ")
+                    .append(fmt(nvl(rule.getRechargeTeamRateL1()))).append("%、二级 ")
+                    .append(fmt(nvl(rule.getRechargeTeamRateL2()))).append("%、三级 ")
+                    .append(fmt(nvl(rule.getRechargeTeamRateL3()))).append("%。");
+            if (bool(rule.getRechargeTeamManualEnabled()))
+            {
+                sb.append("后台人工充值审核通过后同样返佣。");
+            }
+            sb.append("\n");
+        }
+        sb.append("\n");
         sb.append("奖励资格、返佣计算及发放结果以平台系统实际核算为准；如发现异常注册、批量账户或其他违规行为，平台有权取消相关奖励资格。");
         return sb.toString();
     }

@@ -1,5 +1,5 @@
 SET NAMES utf8mb4;
--- 数据看板慢查询索引，可重复执行。不改业务数据。
+-- Dashboard slow-query indexes. Repeatable. No business data change.
 
 drop procedure if exists biz_patch_dashboard_index;
 

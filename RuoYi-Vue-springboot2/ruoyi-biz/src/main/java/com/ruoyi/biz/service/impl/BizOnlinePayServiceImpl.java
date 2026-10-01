@@ -445,7 +445,7 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
                 ok = true;
                 return reply;
             }
-            markPaid(locked, first(payload, "trade_no", "tradeNo", "payOrderId", "pay_order_id"), rawBody);
+            markPaid(locked, first(payload, "trade_no", "tradeNo", "payOrderId", "pay_order_id", "orderCode"), rawBody);
             reply = adapter.notifySuccess();
             ok = true;
             return reply;
