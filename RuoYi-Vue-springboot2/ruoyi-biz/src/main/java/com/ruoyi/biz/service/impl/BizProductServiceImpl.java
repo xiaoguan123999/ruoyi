@@ -9,10 +9,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.biz.constant.BizConstants;
+import com.ruoyi.biz.domain.BizOrder;
+import com.ruoyi.biz.domain.BizOrderSnapshotSyncResult;
+import com.ruoyi.biz.domain.BizOrderSnapshotSyncResult.BizOrderSnapshotFieldDiff;
+import com.ruoyi.biz.domain.BizOrderSnapshotSyncResult.BizOrderSnapshotPreview;
 import com.ruoyi.biz.domain.BizProduct;
 import com.ruoyi.biz.domain.BizProductCardMetric;
 import com.ruoyi.biz.domain.BizProductCardTemplate;
 import com.ruoyi.biz.domain.BizProductCategory;
+import com.ruoyi.biz.mapper.BizOrderMapper;
 import com.ruoyi.biz.mapper.BizProductCardMetricMapper;
 import com.ruoyi.biz.mapper.BizProductCardTemplateMapper;
 import com.ruoyi.biz.mapper.BizProductCategoryMapper;
@@ -36,6 +41,9 @@ public class BizProductServiceImpl implements IBizProductService
 
     @Autowired
     private BizProductCategoryMapper categoryMapper;
+
+    @Autowired
+    private BizOrderMapper orderMapper;
 
     @Override
     public BizProduct selectProductById(Long productId)
@@ -215,6 +223,7 @@ public class BizProductServiceImpl implements IBizProductService
         {
             product.setIncomeMode(BizConstants.INCOME_MODE_CREDIT);
             product.setAccumulateCycleDays(Integer.valueOf(0));
+            product.setProtectDays(Integer.valueOf(0));
             product.setRelatedProductId(null);
             return;
         }
@@ -241,11 +250,25 @@ public class BizProductServiceImpl implements IBizProductService
             }
             product.setIncomeMode(BizConstants.INCOME_MODE_ACCUMULATE);
             product.setAccumulateCycleDays(Integer.valueOf(cycle));
+            product.setProtectDays(Integer.valueOf(0));
+        }
+        else if (BizConstants.INCOME_MODE_PROTECT.equals(mode))
+        {
+            int protect = product.getProtectDays() == null ? 0 : product.getProtectDays().intValue();
+            if (protect <= 0)
+            {
+                throw new ServiceException("保护期+累计池请填写保护天数（前N天日返进产品收益）");
+            }
+            product.setIncomeMode(BizConstants.INCOME_MODE_PROTECT);
+            product.setProtectDays(Integer.valueOf(protect));
+            product.setAccumulateCycleDays(Integer.valueOf(0));
+            product.setRelatedProductId(null);
         }
         else
         {
             product.setIncomeMode(BizConstants.INCOME_MODE_CREDIT);
             product.setAccumulateCycleDays(Integer.valueOf(0));
+            product.setProtectDays(Integer.valueOf(0));
             product.setRelatedProductId(null);
         }
     }
@@ -509,5 +532,289 @@ public class BizProductServiceImpl implements IBizProductService
             product.setDailyRebate(product.getDailyRebateUsdt());
             product.setCurrency(BizConstants.CURRENCY_USDT);
         }
+    }
+
+    @Override
+    public BizOrderSnapshotSyncResult previewOrderSnapshot(Long productId, Integer sampleLimit)
+    {
+        return buildSnapshotSync(productId, sampleLimit, false);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BizOrderSnapshotSyncResult syncOrderSnapshot(Long productId, Boolean confirm)
+    {
+        if (!Boolean.TRUE.equals(confirm))
+        {
+            throw new ServiceException("请确认后同步持仓快照");
+        }
+        return buildSnapshotSync(productId, Integer.valueOf(20), true);
+    }
+
+    private BizOrderSnapshotSyncResult buildSnapshotSync(Long productId, Integer sampleLimit, boolean apply)
+    {
+        BizProduct product = selectProductById(productId);
+        if (product == null)
+        {
+            throw new ServiceException("产品不存在");
+        }
+        if (product.assistMode())
+        {
+            throw new ServiceException("助力产品不支持同步持仓快照");
+        }
+        int limit = sampleLimit == null ? 20 : sampleLimit.intValue();
+        if (limit < 1)
+        {
+            limit = 20;
+        }
+        if (limit > 50)
+        {
+            limit = 50;
+        }
+        BizOrder query = new BizOrder();
+        query.setProductId(productId);
+        query.setStatus(BizConstants.ORDER_HOLDING);
+        List<BizOrder> list = orderMapper.selectOrderList(query);
+        if (list == null)
+        {
+            list = new ArrayList<BizOrder>();
+        }
+
+        BizOrderSnapshotSyncResult result = new BizOrderSnapshotSyncResult();
+        result.setProductId(product.getProductId());
+        result.setProductName(product.getProductName());
+        result.setStatusFilter(BizConstants.ORDER_HOLDING);
+        result.setSampleLimit(Integer.valueOf(limit));
+        result.getWarnings().add("只同步持仓中的日返单，助力单跳过");
+        result.getWarnings().add("不改剩余天数、已激活、已累计金额、已发日返；只影响之后发放");
+
+        int skipAssist = 0;
+        int skipSame = 0;
+        int wouldSync = 0;
+        int synced = 0;
+        for (int i = 0; i < list.size(); i++)
+        {
+            BizOrder order = list.get(i);
+            BizOrderSnapshotPreview row = diffOne(product, order);
+            if ("skip_assist".equals(row.getAction()))
+            {
+                skipAssist++;
+            }
+            else if (Boolean.TRUE.equals(row.getChanged()))
+            {
+                wouldSync++;
+                if (apply)
+                {
+                    applySnapshot(product, order);
+                    row.setAction("synced");
+                    synced++;
+                }
+            }
+            else
+            {
+                skipSame++;
+            }
+            if (result.getSample().size() < limit)
+            {
+                result.getSample().add(row);
+            }
+        }
+        result.setTotalMatched(Integer.valueOf(list.size()));
+        result.setWouldSync(Integer.valueOf(wouldSync));
+        result.setSkipSame(Integer.valueOf(skipSame));
+        result.setSkipAssist(Integer.valueOf(skipAssist));
+        if (apply)
+        {
+            result.setSynced(Integer.valueOf(synced));
+            result.setAction(synced > 0 ? "synced" : "skip_same");
+        }
+        else
+        {
+            result.setAction("preview");
+        }
+        return result;
+    }
+
+    private BizOrderSnapshotPreview diffOne(BizProduct product, BizOrder order)
+    {
+        BizOrderSnapshotPreview row = new BizOrderSnapshotPreview();
+        row.setOrderId(order.getOrderId());
+        row.setOrderNo(order.getOrderNo());
+        row.setMemberId(order.getMemberId());
+        row.setPhone(order.getPhone());
+        if (order.assistMode())
+        {
+            row.setChanged(Boolean.FALSE);
+            row.setAction("skip_assist");
+            row.getWarnings().add("助力单首期不同步");
+            return row;
+        }
+        SnapshotTarget target = targetOf(product, order);
+        addDiff(row, "productName", text(order.getProductName()), text(target.productName), false);
+        addDiff(row, "dailyRebate", dec(order.getDailyRebate()), dec(target.dailyRebate), true);
+        addDiff(row, "durationDays", num(order.getDurationDays()), num(target.durationDays), true);
+        addDiff(row, "withdrawRequired", text(order.getWithdrawRequired()), text(target.withdrawRequired), false);
+        addDiff(row, "unlockDirectQty", num(order.getUnlockDirectQty()), num(target.unlockDirectQty), true);
+        addDiff(row, "unlockDelayHours", num(order.getUnlockDelayHours()), num(target.unlockDelayHours), true);
+        addDiff(row, "incomeMode", text(normMode(order.getIncomeMode())), text(target.incomeMode), true);
+        addDiff(row, "accumulateCycleDays", num(order.getAccumulateCycleDays()), num(target.accumulateCycleDays), false);
+        addDiff(row, "protectDays", num(order.getProtectDays()), num(target.protectDays), false);
+        addDiff(row, "relatedProductId", id(order.getRelatedProductId()), id(target.relatedProductId), true);
+        boolean changed = !row.getFieldDiffs().isEmpty();
+        row.setChanged(Boolean.valueOf(changed));
+        row.setAction(changed ? "would_sync" : "skip_same");
+        return row;
+    }
+
+    private void applySnapshot(BizProduct product, BizOrder order)
+    {
+        SnapshotTarget target = targetOf(product, order);
+        BizOrder patch = new BizOrder();
+        patch.setOrderId(order.getOrderId());
+        patch.setProductName(target.productName);
+        patch.setDailyRebate(target.dailyRebate);
+        patch.setDurationDays(Integer.valueOf(target.durationDays));
+        patch.setWithdrawRequired(target.withdrawRequired);
+        patch.setUnlockDirectQty(Integer.valueOf(target.unlockDirectQty));
+        patch.setUnlockDelayHours(Integer.valueOf(target.unlockDelayHours));
+        patch.setIncomeMode(target.incomeMode);
+        patch.setAccumulateCycleDays(Integer.valueOf(target.accumulateCycleDays));
+        patch.setProtectDays(Integer.valueOf(target.protectDays));
+        patch.setRelatedProductId(target.relatedProductId);
+        orderMapper.updateOrderSnapshot(patch);
+    }
+
+    private SnapshotTarget targetOf(BizProduct product, BizOrder order)
+    {
+        SnapshotTarget target = new SnapshotTarget();
+        target.productName = product.getProductName();
+        int qty = order.getQuantity() == null || order.getQuantity().intValue() <= 0
+                ? 1 : order.getQuantity().intValue();
+        BigDecimal unit = product.rebateOf(order.getCurrency());
+        if (unit == null)
+        {
+            unit = BigDecimal.ZERO;
+        }
+        target.dailyRebate = unit.multiply(new BigDecimal(qty));
+        target.durationDays = nz(product.getDurationDays());
+        target.withdrawRequired = StringUtils.isEmpty(product.getWithdrawRequired())
+                ? "0" : product.getWithdrawRequired();
+        target.unlockDirectQty = nz(product.getUnlockDirectQty());
+        target.unlockDelayHours = nz(product.getUnlockDelayHours());
+        if (product.accumulateIncome())
+        {
+            target.incomeMode = BizConstants.INCOME_MODE_ACCUMULATE;
+            target.accumulateCycleDays = nz(product.getAccumulateCycleDays());
+            target.protectDays = 0;
+            target.relatedProductId = product.getRelatedProductId();
+        }
+        else if (product.protectIncome())
+        {
+            target.incomeMode = BizConstants.INCOME_MODE_PROTECT;
+            target.accumulateCycleDays = 0;
+            target.protectDays = nz(product.getProtectDays());
+            target.relatedProductId = null;
+        }
+        else
+        {
+            target.incomeMode = BizConstants.INCOME_MODE_CREDIT;
+            target.accumulateCycleDays = 0;
+            target.protectDays = 0;
+            target.relatedProductId = null;
+        }
+        return target;
+    }
+
+    private void addDiff(BizOrderSnapshotPreview row, String field, String before, String after, boolean warn)
+    {
+        if (before == null)
+        {
+            before = "";
+        }
+        if (after == null)
+        {
+            after = "";
+        }
+        if (before.equals(after))
+        {
+            return;
+        }
+        row.getFieldDiffs().add(new BizOrderSnapshotFieldDiff(field, before, after));
+        if (!warn)
+        {
+            return;
+        }
+        if ("dailyRebate".equals(field))
+        {
+            row.getWarnings().add("日返金额变更只影响之后发放，不补发不冲正");
+        }
+        else if ("durationDays".equals(field))
+        {
+            row.getWarnings().add("总天数快照会改，剩余天数不改");
+        }
+        else if ("unlockDirectQty".equals(field))
+        {
+            row.getWarnings().add("一拖二比例变更后按新规则重算未激活份，已激活不撤销");
+        }
+        else if ("unlockDelayHours".equals(field))
+        {
+            row.getWarnings().add("等待小时只影响尚未写入开始返利时间的份额");
+        }
+        else if ("incomeMode".equals(field))
+        {
+            row.getWarnings().add("入账方式变更不清理已累计金额，不自动转入钱包");
+        }
+        else if ("relatedProductId".equals(field))
+        {
+            row.getWarnings().add("对档产品变更不影响本单已消耗的对档份额");
+        }
+    }
+
+    private String normMode(String mode)
+    {
+        if (StringUtils.isEmpty(mode))
+        {
+            return BizConstants.INCOME_MODE_CREDIT;
+        }
+        return mode.trim().toUpperCase();
+    }
+
+    private String text(String value)
+    {
+        return value == null ? "" : value;
+    }
+
+    private String num(Integer value)
+    {
+        return String.valueOf(nz(value));
+    }
+
+    private String id(Long value)
+    {
+        return value == null ? "" : String.valueOf(value.longValue());
+    }
+
+    private String dec(BigDecimal value)
+    {
+        return (value == null ? BigDecimal.ZERO : value).stripTrailingZeros().toPlainString();
+    }
+
+    private int nz(Integer value)
+    {
+        return value == null ? 0 : value.intValue();
+    }
+
+    private static final class SnapshotTarget
+    {
+        private String productName;
+        private BigDecimal dailyRebate;
+        private int durationDays;
+        private String withdrawRequired;
+        private int unlockDirectQty;
+        private int unlockDelayHours;
+        private String incomeMode;
+        private int accumulateCycleDays;
+        private int protectDays;
+        private Long relatedProductId;
     }
 }

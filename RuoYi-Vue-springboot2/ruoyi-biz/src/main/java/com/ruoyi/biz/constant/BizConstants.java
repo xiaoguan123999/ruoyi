@@ -95,6 +95,9 @@ public class BizConstants
     /** 日返入账：先累计在订单，满周期结算进产品收益 */
     public static final String INCOME_MODE_ACCUMULATE = "ACCUMULATE";
 
+    /** 日返入账：保护期先进产品收益，之后未激活进累计池，激活后自动转入 */
+    public static final String INCOME_MODE_PROTECT = "PROTECT";
+
     public static final String BIZ_RECHARGE = "RECHARGE";
 
     public static final String BIZ_WITHDRAW_FREEZE = "WITHDRAW_FREEZE";

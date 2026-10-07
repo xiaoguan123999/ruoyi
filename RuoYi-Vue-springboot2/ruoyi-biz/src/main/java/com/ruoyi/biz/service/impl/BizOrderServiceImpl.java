@@ -208,6 +208,7 @@ public class BizOrderServiceImpl implements IBizOrderService
             order.setUnlockDelayHours(Integer.valueOf(0));
             order.setIncomeMode(BizConstants.INCOME_MODE_CREDIT);
             order.setAccumulateCycleDays(Integer.valueOf(0));
+            order.setProtectDays(Integer.valueOf(0));
             order.setRelatedProductId(null);
             order.setAccumulatedAmount(BigDecimal.ZERO);
             order.setAccumulateDays(Integer.valueOf(0));
@@ -246,16 +247,25 @@ public class BizOrderServiceImpl implements IBizOrderService
         order.setRemainingDays(product.getDurationDays());
         order.setUnlockDirectQty(nz(product.getUnlockDirectQty()));
         order.setUnlockDelayHours(nz(product.getUnlockDelayHours()));
-        if (product.accumulateIncome())
+        if (product.protectIncome())
+        {
+            order.setIncomeMode(BizConstants.INCOME_MODE_PROTECT);
+            order.setProtectDays(Integer.valueOf(nz(product.getProtectDays())));
+            order.setAccumulateCycleDays(Integer.valueOf(0));
+            order.setRelatedProductId(null);
+        }
+        else if (product.accumulateIncome())
         {
             order.setIncomeMode(BizConstants.INCOME_MODE_ACCUMULATE);
             order.setAccumulateCycleDays(nz(product.getAccumulateCycleDays()));
+            order.setProtectDays(Integer.valueOf(0));
             order.setRelatedProductId(product.getRelatedProductId());
         }
         else
         {
             order.setIncomeMode(BizConstants.INCOME_MODE_CREDIT);
             order.setAccumulateCycleDays(Integer.valueOf(0));
+            order.setProtectDays(Integer.valueOf(0));
             order.setRelatedProductId(null);
         }
         order.setAccumulatedAmount(BigDecimal.ZERO);
@@ -421,6 +431,11 @@ public class BizOrderServiceImpl implements IBizOrderService
         {
             return;
         }
+        if (order.protectIncome())
+        {
+            rebateProtect(order, today, lots);
+            return;
+        }
         BigDecimal unit = unitRebate(order);
         BigDecimal paid = BigDecimal.ZERO;
         Date now = DateUtils.getNowDate();
@@ -495,7 +510,8 @@ public class BizOrderServiceImpl implements IBizOrderService
             else
             {
                 walletService.credit(order.getMemberId(), currency, paid,
-                        BizConstants.BIZ_REBATE, order.getOrderId(), "产品每日返利");
+                        BizConstants.BIZ_REBATE, order.getOrderId(), "产品每日返利",
+                        BizConstants.WALLET_PRODUCT);
             }
         }
         if (!allActivated)
@@ -513,6 +529,102 @@ public class BizOrderServiceImpl implements IBizOrderService
         orderMapper.updateOrder(update);
     }
 
+    private void rebateProtect(BizOrder order, Date today, List<BizOrderUnlockLot> lots)
+    {
+        BigDecimal unit = unitRebate(order);
+        BigDecimal paidWallet = BigDecimal.ZERO;
+        BigDecimal paidPool = BigDecimal.ZERO;
+        Date now = DateUtils.getNowDate();
+        int protectDays = nz(order.getProtectDays());
+        int duration = order.getDurationDays() == null ? 0 : order.getDurationDays().intValue();
+        for (int i = 0; i < lots.size(); i++)
+        {
+            BizOrderUnlockLot lot = lots.get(i);
+            int remain = nz(lot.getRemainingDays());
+            if (remain <= 0)
+            {
+                continue;
+            }
+            if (lot.getLastRebateDate() != null && !today.after(lot.getLastRebateDate()))
+            {
+                continue;
+            }
+            BigDecimal piece = unit.multiply(new BigDecimal(qtyOfLot(lot)));
+            int paidCount = duration > 0 ? Math.max(0, duration - remain) : 0;
+            boolean inProtect = protectDays <= 0 || paidCount < protectDays;
+            if (inProtect || lot.getActivateTime() != null)
+            {
+                paidWallet = paidWallet.add(piece);
+            }
+            else
+            {
+                paidPool = paidPool.add(piece);
+            }
+            lot.setRemainingDays(Integer.valueOf(remain - 1));
+            lot.setLastRebateDate(today);
+            lotMapper.updateLot(lot);
+        }
+        BigDecimal paid = paidWallet.add(paidPool);
+        int remainMax = 0;
+        boolean allLotsDone = lots.size() > 0;
+        for (int i = 0; i < lots.size(); i++)
+        {
+            int remain = nz(lots.get(i).getRemainingDays());
+            if (remain > remainMax)
+            {
+                remainMax = remain;
+            }
+            if (remain > 0)
+            {
+                allLotsDone = false;
+            }
+        }
+        boolean allActivated = nz(order.getActivatedQty()) >= qtyOf(order);
+        BizOrder update = new BizOrder();
+        update.setOrderId(order.getOrderId());
+        if (paid.compareTo(BigDecimal.ZERO) > 0)
+        {
+            String currency = StringUtils.isEmpty(order.getCurrency())
+                    ? BizConstants.CURRENCY_CNY : order.getCurrency().toUpperCase();
+            BizRebateLog rebateLog = new BizRebateLog();
+            rebateLog.setOrderId(order.getOrderId());
+            rebateLog.setMemberId(order.getMemberId());
+            rebateLog.setCurrency(currency);
+            rebateLog.setAmount(paid);
+            rebateLog.setRebateDate(today);
+            rebateLogMapper.insertRebateLog(rebateLog);
+            update.setLastRebateDate(today);
+            if (paidWallet.compareTo(BigDecimal.ZERO) > 0)
+            {
+                walletService.credit(order.getMemberId(), currency, paidWallet,
+                        BizConstants.BIZ_REBATE, order.getOrderId(), "产品每日返利",
+                        BizConstants.WALLET_PRODUCT);
+            }
+            if (paidPool.compareTo(BigDecimal.ZERO) > 0)
+            {
+                BigDecimal prev = order.getAccumulatedAmount() == null ? BigDecimal.ZERO : order.getAccumulatedAmount();
+                int days = nz(order.getAccumulateDays()) + 1;
+                update.setAccumulatedAmount(prev.add(paidPool));
+                update.setAccumulateDays(Integer.valueOf(days));
+                update.setLastAccumulateDate(today);
+                if (order.getAccumulateCycleStartAt() == null)
+                {
+                    update.setAccumulateCycleStartAt(now);
+                }
+            }
+        }
+        update.setRemainingDays(Integer.valueOf(remainMax));
+        if (allLotsDone)
+        {
+            update.setStatus(BizConstants.ORDER_FINISHED);
+        }
+        else if (!allActivated)
+        {
+            update.setRemainingDays(Integer.valueOf(Math.max(remainMax, 1)));
+        }
+        orderMapper.updateOrder(update);
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public BizOrder settleAccumulate(Long memberId, Long orderId)
@@ -525,6 +637,10 @@ public class BizOrderServiceImpl implements IBizOrderService
         if (order == null || !memberId.equals(order.getMemberId()))
         {
             throw new ServiceException("订单不存在");
+        }
+        if (order.protectIncome())
+        {
+            throw new ServiceException("累计收益在一拖二激活后自动转入产品收益，无需手动结算");
         }
         if (!order.accumulateIncome())
         {
@@ -563,7 +679,6 @@ public class BizOrderServiceImpl implements IBizOrderService
         {
             throw new ServiceException("本周期累计已全部结算，请等待下一周期");
         }
-        // 可用 = 对档已激活 - 本单已消耗；不同产品单（A1/A2）互不占用
         int settleShares = Math.min(remainShares, slot.available);
         if (settleShares <= 0)
         {
@@ -680,22 +795,42 @@ public class BizOrderServiceImpl implements IBizOrderService
 
     private void fillAccumulateFlags(BizOrder order)
     {
-        if (order == null || !order.accumulateIncome())
+        if (order == null)
         {
-            if (order != null)
-            {
-                order.setCanSettleAccumulate(Boolean.FALSE);
-                order.setRelatedProductOwned(Boolean.FALSE);
-                order.setRelatedActivatedQty(Integer.valueOf(0));
-                order.setRelatedSlotsAvailable(Integer.valueOf(0));
-                order.setSettleableShares(Integer.valueOf(0));
-            }
+            return;
+        }
+        order.setProtectDays(Integer.valueOf(nz(order.getProtectDays())));
+        if (order.protectIncome())
+        {
+            order.setCanSettleAccumulate(Boolean.FALSE);
+            order.setRelatedProductOwned(Boolean.FALSE);
+            order.setRelatedActivatedQty(Integer.valueOf(0));
+            order.setRelatedSlotsAvailable(Integer.valueOf(0));
+            order.setSettleableShares(Integer.valueOf(0));
+            int duration = order.getDurationDays() == null ? 0 : order.getDurationDays().intValue();
+            int remain = nz(order.getRemainingDays());
+            int paidCount = duration > 0 ? Math.max(0, duration - remain) : 0;
+            int protect = nz(order.getProtectDays());
+            BigDecimal pool = order.getAccumulatedAmount() == null ? BigDecimal.ZERO : order.getAccumulatedAmount();
+            boolean pastProtect = protect > 0 && paidCount >= protect;
+            order.setAccumulateVisible(Boolean.valueOf(pastProtect || pool.compareTo(BigDecimal.ZERO) > 0));
+            return;
+        }
+        if (!order.accumulateIncome())
+        {
+            order.setCanSettleAccumulate(Boolean.FALSE);
+            order.setRelatedProductOwned(Boolean.FALSE);
+            order.setRelatedActivatedQty(Integer.valueOf(0));
+            order.setRelatedSlotsAvailable(Integer.valueOf(0));
+            order.setSettleableShares(Integer.valueOf(0));
+            order.setAccumulateVisible(Boolean.FALSE);
             return;
         }
         RelatedSlotSnapshot slot = resolveRelatedSlots(order.getMemberId(), order);
         order.setRelatedActivatedQty(Integer.valueOf(slot.activated));
         order.setRelatedSlotsAvailable(Integer.valueOf(slot.available));
         order.setRelatedProductOwned(Boolean.valueOf(slot.available > 0));
+        order.setAccumulateVisible(Boolean.TRUE);
 
         BigDecimal amount = order.getAccumulatedAmount() == null ? BigDecimal.ZERO : order.getAccumulatedAmount();
         int cycle = nz(order.getAccumulateCycleDays());
@@ -750,18 +885,35 @@ public class BizOrderServiceImpl implements IBizOrderService
         int ready = 0;
         Date nextStart = null;
         Date firstStart = null;
+        boolean protect = order.protectIncome();
+        int protectDays = nz(order.getProtectDays());
+        int duration = order.getDurationDays() == null ? 0 : order.getDurationDays().intValue();
         for (int i = 0; i < lots.size(); i++)
         {
             BizOrderUnlockLot lot = lots.get(i);
-            if (lot.getActivateTime() == null)
+            if (lot.getActivateTime() != null)
             {
-                continue;
+                activated += qtyOfLot(lot);
             }
-            activated += qtyOfLot(lot);
             Date start = lot.getIncomeStartTime();
             if (start != null && (firstStart == null || start.before(firstStart)))
             {
                 firstStart = start;
+            }
+            if (protect)
+            {
+                int remain = nz(lot.getRemainingDays());
+                int paidCount = duration > 0 ? Math.max(0, duration - remain) : 0;
+                boolean inProtect = protectDays <= 0 || paidCount < protectDays;
+                if (remain > 0 && (inProtect || lot.getActivateTime() != null))
+                {
+                    ready += qtyOfLot(lot);
+                }
+                continue;
+            }
+            if (lot.getActivateTime() == null)
+            {
+                continue;
             }
             if (start != null && !now.before(start))
             {
@@ -778,7 +930,14 @@ public class BizOrderServiceImpl implements IBizOrderService
         order.setIncomeReadyQty(Integer.valueOf(ready));
         order.setActivateStatus(activated > 0 ? "1" : "0");
         order.setIncomeReady(Boolean.valueOf(ready > 0));
-        if (activated <= 0)
+        if (protect)
+        {
+            if (order.getCreateTime() != null)
+            {
+                order.setIncomeStartTime(order.getCreateTime());
+            }
+        }
+        else if (activated <= 0)
         {
             order.setIncomeStartTime(null);
         }
@@ -902,6 +1061,57 @@ public class BizOrderServiceImpl implements IBizOrderService
         return value == null ? 0 : value.intValue();
     }
 
+    /**
+     * 新激活份数按「激活前未激活份数」比例，把累计池转入产品收益。
+     * 产品结束后仍可转。当天日返尚未发放时，下次 rebate 会走产品收益。
+     */
+    private void transferAccumulateOnActivate(BizOrder order, int newlyActivated, int unactivatedBefore)
+    {
+        if (order == null || newlyActivated <= 0 || unactivatedBefore <= 0)
+        {
+            return;
+        }
+        BizOrder fresh = orderMapper.selectOrderById(order.getOrderId());
+        if (fresh == null || !fresh.protectIncome())
+        {
+            return;
+        }
+        BigDecimal pool = fresh.getAccumulatedAmount() == null ? BigDecimal.ZERO : fresh.getAccumulatedAmount();
+        if (pool.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            return;
+        }
+        BigDecimal credit = pool.multiply(new BigDecimal(newlyActivated))
+                .divide(new BigDecimal(unactivatedBefore), 4, RoundingMode.HALF_UP);
+        if (credit.compareTo(pool) > 0)
+        {
+            credit = pool;
+        }
+        if (credit.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            return;
+        }
+        String currency = StringUtils.isEmpty(fresh.getCurrency())
+                ? BizConstants.CURRENCY_CNY : fresh.getCurrency().toUpperCase();
+        walletService.credit(fresh.getMemberId(), currency, credit, BizConstants.BIZ_ACCUMULATE_SETTLE,
+                fresh.getOrderId(), "累计收益转入产品收益:" + fresh.getProductName(),
+                BizConstants.WALLET_PRODUCT);
+        BigDecimal remain = pool.subtract(credit);
+        if (remain.compareTo(BigDecimal.ZERO) < 0)
+        {
+            remain = BigDecimal.ZERO;
+        }
+        BizOrder patch = new BizOrder();
+        patch.setOrderId(fresh.getOrderId());
+        patch.setAccumulatedAmount(remain);
+        if (remain.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            patch.setAccumulateDays(Integer.valueOf(0));
+        }
+        orderMapper.updateOrder(patch);
+        order.setAccumulatedAmount(remain);
+    }
+
     private class UnlockPlan
     {
         private int downQty;
@@ -949,7 +1159,6 @@ public class BizOrderServiceImpl implements IBizOrderService
             {
                 BizOrder query = new BizOrder();
                 query.setMemberId(memberId);
-                query.setStatus(BizConstants.ORDER_HOLDING);
                 List<BizOrder> list = orderMapper.selectOrderList(query);
                 if (list == null)
                 {
@@ -1024,7 +1233,8 @@ public class BizOrderServiceImpl implements IBizOrderService
             for (int i = 0; i < holding.size(); i++)
             {
                 BizOrder row = holding.get(i);
-                if (sameTier(productId, row.getProductId(), this))
+                if (productId.equals(row.getProductId())
+                        && (row.protectIncome() || BizConstants.ORDER_HOLDING.equals(row.getStatus())))
                 {
                     parents.add(row);
                 }
@@ -1034,7 +1244,7 @@ public class BizOrderServiceImpl implements IBizOrderService
             for (int i = 0; i < allDowns.size(); i++)
             {
                 BizOrder row = allDowns.get(i);
-                if (sameTier(productId, row.getProductId(), this))
+                if (productId.equals(row.getProductId()))
                 {
                     tierDowns.add(row);
                 }
@@ -1087,6 +1297,133 @@ public class BizOrderServiceImpl implements IBizOrderService
         }
 
         private List<BizOrderUnlockLot> syncLots(BizOrder order, int activate, int startIndex, int need,
+                int orderNeed, List<BizOrder> tierDowns)
+        {
+            if (!order.protectIncome())
+            {
+                return syncCreditLots(order, activate, startIndex, need, orderNeed, tierDowns);
+            }
+            List<BizOrderUnlockLot> existing = lotMapper.selectByOrderId(order.getOrderId());
+            if (existing == null)
+            {
+                existing = new ArrayList<BizOrderUnlockLot>();
+            }
+            Map<Integer, BizOrderUnlockLot> byShare = new HashMap<Integer, BizOrderUnlockLot>();
+            int prevActivated = 0;
+            int siblingRemain = -1;
+            Date siblingLast = order.getLastRebateDate();
+            for (int i = 0; i < existing.size(); i++)
+            {
+                BizOrderUnlockLot row = existing.get(i);
+                byShare.put(Integer.valueOf(nz(row.getShareNo())), row);
+                if (row.getActivateTime() != null)
+                {
+                    prevActivated += qtyOfLot(row);
+                }
+                if (siblingRemain < 0 && row.getRemainingDays() != null)
+                {
+                    siblingRemain = nz(row.getRemainingDays());
+                }
+                if (row.getLastRebateDate() != null)
+                {
+                    siblingLast = row.getLastRebateDate();
+                }
+            }
+            Date ownTime = order.getCreateTime() != null ? order.getCreateTime() : DateUtils.getNowDate();
+            int delay = nz(order.getUnlockDelayHours());
+            int duration = order.getDurationDays() == null ? 0 : order.getDurationDays().intValue();
+            int inheritRemain = siblingRemain >= 0 ? siblingRemain : nz(order.getRemainingDays());
+            if (inheritRemain <= 0)
+            {
+                inheritRemain = duration;
+            }
+            int oQty = qtyOf(order);
+            int newlyActivated = 0;
+            for (int shareNo = 0; shareNo < oQty; shareNo++)
+            {
+                boolean shouldActivate = shareNo < activate;
+                Date activateTime = null;
+                if (shouldActivate)
+                {
+                    activateTime = ownTime;
+                    if (orderNeed > 0 && startIndex >= 0)
+                    {
+                        Date reached = firstReachTime(tierDowns, (startIndex + shareNo + 1) * need);
+                        if (reached == null)
+                        {
+                            shouldActivate = false;
+                            activateTime = null;
+                        }
+                        else if (reached.after(ownTime))
+                        {
+                            activateTime = reached;
+                        }
+                    }
+                }
+                BizOrderUnlockLot lot = byShare.get(Integer.valueOf(shareNo));
+                if (lot == null)
+                {
+                    lot = new BizOrderUnlockLot();
+                    lot.setOrderId(order.getOrderId());
+                    lot.setShareNo(Integer.valueOf(shareNo));
+                    lot.setQty(Integer.valueOf(1));
+                    lot.setActivateTime(activateTime);
+                    lot.setIncomeStartTime(activateTime == null ? null : plusHours(activateTime, delay));
+                    lot.setRemainingDays(Integer.valueOf(inheritRemain));
+                    lot.setLastRebateDate(siblingLast);
+                    lotMapper.insertLot(lot);
+                    existing.add(lot);
+                    byShare.put(Integer.valueOf(shareNo), lot);
+                    if (activateTime != null)
+                    {
+                        newlyActivated += qtyOfLot(lot);
+                    }
+                }
+                else if (shouldActivate && lot.getActivateTime() == null && activateTime != null)
+                {
+                    lot.setActivateTime(activateTime);
+                    lot.setIncomeStartTime(plusHours(activateTime, delay));
+                    lotMapper.updateLot(lot);
+                    newlyActivated += qtyOfLot(lot);
+                }
+            }
+            int unactivatedBefore = Math.max(0, oQty - prevActivated);
+            if (newlyActivated > 0 && unactivatedBefore > 0)
+            {
+                transferAccumulateOnActivate(order, newlyActivated, unactivatedBefore);
+            }
+            if (activate > 0 && order.getIncomeStartTime() == null && !existing.isEmpty())
+            {
+                Date first = existing.get(0).getIncomeStartTime();
+                for (int i = 1; i < existing.size(); i++)
+                {
+                    Date start = existing.get(i).getIncomeStartTime();
+                    if (start != null && (first == null || start.before(first)))
+                    {
+                        first = start;
+                    }
+                }
+                if (first != null)
+                {
+                    BizOrder update = new BizOrder();
+                    update.setOrderId(order.getOrderId());
+                    update.setIncomeStartTime(first);
+                    orderMapper.updateOrder(update);
+                    order.setIncomeStartTime(first);
+                }
+            }
+            existing.sort(new Comparator<BizOrderUnlockLot>()
+            {
+                @Override
+                public int compare(BizOrderUnlockLot a, BizOrderUnlockLot b)
+                {
+                    return Integer.compare(nz(a.getShareNo()), nz(b.getShareNo()));
+                }
+            });
+            return existing;
+        }
+
+        private List<BizOrderUnlockLot> syncCreditLots(BizOrder order, int activate, int startIndex, int need,
                 int orderNeed, List<BizOrder> tierDowns)
         {
             List<BizOrderUnlockLot> existing = lotMapper.selectByOrderId(order.getOrderId());

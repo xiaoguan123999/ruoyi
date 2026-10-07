@@ -599,8 +599,13 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 | assistValueCny / assistValueUsdt | ASSIST 认购成功按币种发放的助力值（入账钱包 `ASSIST`，不可提现） |
 | principalReturnDays | ASSIST 本金返还天数；到期退回余额钱包 |
 | skipDetail / skipDetailFlag | `1`/`true`：列表直购、不进认购二级页；`0`/`false`：进二级页。与 `bizMode` 无关。双币按钮仍只看价格是否配置 |
-| unlockDirectQty | 直属下级需认购同一产品的总份数。`0` 关闭一拖二，自己认购即激活；`2` 即一拖二。ASSIST 固定关闭 |
-| unlockDelayHours | 激活后再等多少小时才开始日返。填 `24` 表示激活后等 24 小时；`0` 表示激活后即可日返 |
+| unlockDirectQty | 直推买同一产品多少份激活上级 1 份。`0` 关闭一拖二；`2` 即一拖二（自己 N 份要直推 2N 份）。只算直推、只算同一 productId。能激活多少算多少。ASSIST 固定关闭 |
+| unlockDelayHours | CREDIT / ACCUMULATE：激活后再等多少小时才开始日返。PROTECT 保护期内不看这个，认购当天就开始日返 |
+| incomeMode | 三种入账，互不影响：`CREDIT` 每天进产品收益；`ACCUMULATE` 订单累计后手动结算；`PROTECT` 保护期+累计池 |
+| accumulateCycleDays | **ACCUMULATE 累计周期**，满周期才可点结算。PROTECT / CREDIT 不读 |
+| protectDays | **PROTECT 保护天数 N**。前 N 天进产品收益；第 N+1 天起未激活份进累计池。ACCUMULATE / CREDIT 不读 |
+| durationDays | 产品天数 D，日返只发 D 天 |
+| relatedProductId | **ACCUMULATE 对档产品**，结算看对档已激活份数。PROTECT / CREDIT 不需要 |
 | onSale | `1` 开售，`0` 未开售。未开售仍出现在列表，App 不可进详情 |
 | onSaleFlag | 同 onSale，`true` 可点详情 |
 | layoutType | 卡片布局编码：`CLASSIC` / `HERO` / `SPLIT` / `NUMBERED` / `ROW` / `COMPACT` 等；未知时 App 降级 CLASSIC |
@@ -613,7 +618,15 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 
 `withdrawRequired = 1` 表示认购该币种指定产品后，才允许提现对应币种（看订单当时选的币）。
 
-一拖二：自己买 1 份，直属下级累计认购同一产品达到 `unlockDirectQty` 份后（先后顺序不限），订单立刻激活。激活后再等 `unlockDelayHours` 小时才开始日返。未到返利时间不扣 `remainingDays`。两处都填 `0`：自己认购即激活且可日返。
+一拖二：只算直推、同一产品。自己 1 份需直推 `unlockDirectQty` 份才激活该份；自己 100 份直推 120 份且比例为 2 → 激活 60 份。`0` 关闭，买了即激活。
+
+三种入账都支持，后台产品选一个即可：
+
+**CREDIT（每天进产品收益）**：激活且过等待小时后，日返进产品收益钱包（可提）。
+
+**ACCUMULATE（订单累计后结算）**：激活且过等待小时后，日返先记在订单 `accumulatedAmount`（不可提）。满 `accumulateCycleDays` 且有对档激活份额时，`canSettleAccumulate=true`，点 `POST /app/orders/{orderId}/settleAccumulate` 按对档份数转入产品收益。`accumulateVisible` 恒 `true`。
+
+**PROTECT（保护期+累计池）**：前 N 天（`protectDays`）无论激不激活，日返进产品收益，认购记录不展示累计。第 N+1～D 天：已激活份继续进产品收益，未激活份进 `accumulatedAmount`。激活当下按新激活份/激活前未激活份把累计转入产品收益。产品结束后不再发日返，之后激活仍可转剩余累计。不要点结算，`canSettleAccumulate` 恒 `false`。
 
 **ASSIST（星航助力）**：无日返、无一拖二。认购成功即时发助力值到 `ASSIST` 钱包；`principalReturnDays` 天后本金退回 `BALANCE`。详情见 `docs/product-assist-mode-design.md`，SQL 见 `docs/patch-2026-09-22-product.sql`。
 
@@ -669,7 +682,14 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
       "unlockDelayHours": 24,
       "incomeStartTime": "2026-08-30 10:00:00",
       "activateStatus": "1",
+      "activatedQty": 1,
       "incomeReady": false,
+      "incomeMode": "PROTECT",
+      "protectDays": 60,
+      "accumulateCycleDays": 0,
+      "accumulatedAmount": 0,
+      "accumulateVisible": false,
+      "canSettleAccumulate": false,
       "status": "0"
     }
   ]
@@ -681,12 +701,22 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 | seriesId / categoryId | 产品所属系列，和产品列表同一套 |
 | seriesName / categoryName | 系列名称 |
 | seriesCoverUrl | 系列封面，空字符串表示没有图 |
-| activateStatus | `0` 未激活（一拖二未达标），`1` 已激活。达标立刻为 `1`，不必等满等待小时。不要用 `status` |
-| incomeReady | `true` 已到返利时间，日返任务才会打款；`false` 未达标或激活后还在等小时 |
-| incomeStartTime | 开始返利时间 = 达标时刻 + 等待小时。一拖二未达标为 `null` |
-| unlockDirectQty | 下单时快照：直属下级需认购同一产品的份数，`0` 表示该单无一带二 |
-| unlockDirectHave | 直属下级已认购该产品的累计份数 |
-| unlockDelayHours | 下单时快照：激活后再等多少小时才日返 |
+| activateStatus | `0` 一份都没激活，`1` 至少一份已激活。不要用 `status` |
+| activatedQty | 本单已激活份数 |
+| quantity | 本单总份数 |
+| incomeReady | CREDIT / ACCUMULATE：已到返利时间。PROTECT：保护期内或已激活份今日会进产品收益 |
+| incomeStartTime | CREDIT / ACCUMULATE：达标+等待小时，未激活为 `null`。PROTECT：认购时间 |
+| unlockDirectQty | 直推几份激活上级 1 份，`0` 无一带二 |
+| unlockDirectHave | 直推已认购**同一产品**的份数 |
+| unlockDelayHours | CREDIT / ACCUMULATE 激活后再等小时 |
+| incomeMode | `CREDIT` / `ACCUMULATE` / `PROTECT` |
+| protectDays | PROTECT 保护天数 N。保护期内 `accumulateVisible=false` |
+| accumulateCycleDays | ACCUMULATE 累计周期快照，不要当保护天数展示 |
+| accumulatedAmount | ACCUMULATE：待结算累计。PROTECT：累计池（激活后自动转入） |
+| accumulateVisible | `true` 才在认购记录展示累计。ACCUMULATE 恒 true；PROTECT 保护期内 false |
+| canSettleAccumulate | 仅 ACCUMULATE 满周期且有对档份额时为 true。PROTECT / CREDIT 恒 false |
+
+`POST /app/orders/{orderId}/settleAccumulate`：**只给 ACCUMULATE**。满周期 + 对档已激活才成功。PROTECT 会返回「无需手动结算」，不要给这种单展示结算按钮。
 
 产品改了所属系列后，历史订单按**当前产品挂的系列**返回。新订单按当时产品配置写入一拖二快照；改产品只影响之后的新单。
 
@@ -1245,8 +1275,10 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | GET/POST/PUT | `/system/notice` | 通知公告（系统管理菜单，类型选「公告」会展示到 App） |
 | GET/POST/PUT | `/biz/productCategory` | 产品分类（App 系列）列表/新增/修改，含 `defaultTemplateId` |
 | GET | `/biz/productCategory/options` | 分类下拉 |
-| GET/POST/PUT | `/biz/product` | 产品列表/新增/修改，产品挂 `categoryId`；保存可带 `templateId/theme/badgeText/cardNo/ctaText/metrics` |
+| GET/POST/PUT | `/biz/product` | 产品列表/新增/修改，产品挂 `categoryId`；保存可带 `templateId/theme/badgeText/cardNo/ctaText/metrics`。入账 `incomeMode`：`CREDIT` / `ACCUMULATE`（必填 `accumulateCycleDays`+`relatedProductId`）/ `PROTECT`（必填 `protectDays`） |
 | GET | `/biz/product/{productId}` | 产品详情（含 metrics） |
+| GET | `/biz/product/{productId}/syncOrderSnapshot/preview` | 预览同步持仓快照。改产品默认不影响老单，提前开品后在产品页点同步。详见下方 |
+| POST | `/biz/product/{productId}/syncOrderSnapshot` | 一键同步持仓快照，body `{ "confirm": true }` |
 | DELETE | `/biz/product/{ids}` | 删除产品 |
 | GET/POST/PUT/DELETE | `/biz/productCardTemplate` | 产品卡片模板 CRUD |
 | GET | `/biz/productCardTemplate/options` | 启用中的模板下拉 |
@@ -1282,6 +1314,80 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | GET/PUT | `/biz/service/config` | 客服中心标题、工作时间、提示文案 |
 | GET/POST/PUT/DELETE | `/biz/service` | 客服渠道（二维码/微信号/电话等） |
 | GET | `/biz/commission/list` | 分佣记录 |
+
+### 同步持仓快照（后台产品页一键）
+
+改产品默认**只影响之后新单**。提前开品、改完规则后，在产品编辑页点「同步持仓快照」。权限 `biz:product:edit`。
+
+只同步该产品 **持仓中（status=0）的日返单**。助力单跳过。已完成不同步。不补发、不冲正。
+
+| 会同步 | 不会动 |
+|---|---|
+| `productName` | `price` / `quantity` / `currency` |
+| `dailyRebate`（当前产品日返单价 × 本单份数） | `remainingDays`、lot 剩余天数、已发日返 |
+| `durationDays` | `accumulatedAmount`、已累计天数、已结算份数 |
+| `withdrawRequired` | 已激活时间、`incomeStartTime` |
+| `unlockDirectQty` / `unlockDelayHours` | `bizMode`、助力值、退本时间 |
+| `incomeMode` / `accumulateCycleDays` / `protectDays` / `relatedProductId` | 已完成订单 |
+
+**预览** `GET /biz/product/{productId}/syncOrderSnapshot/preview?sampleLimit=20`
+
+`sampleLimit` 默认 20，最大 50。助力产品会 500「助力产品不支持同步持仓快照」。
+
+```json
+{
+  "code": 200,
+  "data": {
+    "productId": 1,
+    "productName": "天启一号",
+    "statusFilter": "0",
+    "totalMatched": 12,
+    "wouldSync": 8,
+    "skipSame": 3,
+    "skipAssist": 1,
+    "action": "preview",
+    "sampleLimit": 20,
+    "sample": [
+      {
+        "orderId": 88,
+        "orderNo": "...",
+        "memberId": 10,
+        "phone": "13800000000",
+        "changed": true,
+        "action": "would_sync",
+        "fieldDiffs": [
+          { "field": "protectDays", "before": "0", "after": "60" },
+          { "field": "incomeMode", "before": "CREDIT", "after": "PROTECT" }
+        ],
+        "warnings": ["入账方式变更不清理已累计金额，不自动转入钱包"]
+      }
+    ],
+    "warnings": [
+      "只同步持仓中的日返单，助力单跳过",
+      "不改剩余天数、已激活、已累计金额、已发日返；只影响之后发放"
+    ]
+  }
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| totalMatched | 持仓单总数（含助力） |
+| wouldSync | 有差异、点确认会改的日返单 |
+| skipSame | 已与产品一致 |
+| skipAssist | 助力单，首期不同步 |
+| sample[].action | `would_sync` / `skip_same` / `skip_assist` |
+| sample[].fieldDiffs | 只列有变化的字段 |
+
+**执行** `POST /biz/product/{productId}/syncOrderSnapshot`
+
+```json
+{ "confirm": true }
+```
+
+`confirm` 必须是 `true`，否则 500「请确认后同步持仓快照」。返回结构同预览，多 `synced`（实际更新笔数），`action` 为 `synced` 或 `skip_same`，抽样里已改的单 `action=synced`。
+
+前端建议：产品编辑页按钮「同步持仓快照」→ 先调 preview → 弹确认（展示 wouldSync、抽样 diff、warnings）→ 用户点确认再 POST。`wouldSync=0` 可提示已全部一致、不必执行。
 
 列表查询通用分页：`pageNum`、`pageSize`。
 

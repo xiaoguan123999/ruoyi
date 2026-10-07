@@ -16,6 +16,6 @@ public interface IBizOrderService
     /** ASSIST 到期退本到 BALANCE */
     int processAssistPrincipalReturn();
 
-    /** ACCUMULATE 订单满周期结算累计进产品收益钱包 */
+    /** 已改为激活自动转入；接口保留，调用则提示无需手动结算 */
     BizOrder settleAccumulate(Long memberId, Long orderId);
 }

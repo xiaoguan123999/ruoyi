@@ -32,6 +32,7 @@
         <result property="principalReturnDays" column="principal_return_days"/>
         <result property="incomeMode"        column="income_mode"/>
         <result property="accumulateCycleDays" column="accumulate_cycle_days"/>
+        <result property="protectDays"       column="protect_days"/>
         <result property="relatedProductId"  column="related_product_id"/>
         <result property="relatedProductName" column="related_product_name"/>
         <result property="status"            column="status"/>
@@ -67,7 +68,7 @@
                p.duration_days, p.withdraw_required, p.buy_limit, p.unlock_direct_qty, p.unlock_delay_hours,
                p.unlock_rule_text, p.payout_method, p.risk_level, p.on_sale, p.skip_detail,
                p.biz_mode, p.assist_grant_mode, p.assist_value_cny, p.assist_value_usdt, p.principal_return_days,
-               p.income_mode, p.accumulate_cycle_days, p.related_product_id, rp.product_name as related_product_name,
+               p.income_mode, p.accumulate_cycle_days, p.protect_days, p.related_product_id, rp.product_name as related_product_name,
                p.status, p.sort, p.cover_url,
                p.template_id, t.template_name, t.template_code, t.has_main_amount, t.default_cta_text,
                p.theme, p.badge_text, p.card_no, p.cta_text,
@@ -110,7 +111,7 @@
             daily_rebate, daily_rebate_cny, daily_rebate_usdt, duration_days, withdraw_required, buy_limit,
             unlock_direct_qty, unlock_delay_hours, unlock_rule_text, payout_method, risk_level, on_sale, skip_detail,
             biz_mode, assist_grant_mode, assist_value_cny, assist_value_usdt, principal_return_days,
-            income_mode, accumulate_cycle_days, related_product_id,
+            income_mode, accumulate_cycle_days, protect_days, related_product_id,
             status, sort, cover_url,
             template_id, theme, badge_text, card_no, cta_text,
             accent_color, title_color, remark_color, label_color,
@@ -121,7 +122,7 @@
             #{dailyRebate}, #{dailyRebateCny}, #{dailyRebateUsdt}, #{durationDays}, #{withdrawRequired}, #{buyLimit},
             #{unlockDirectQty}, #{unlockDelayHours}, #{unlockRuleText}, #{payoutMethod}, #{riskLevel}, #{onSale}, #{skipDetail},
             #{bizMode}, #{assistGrantMode}, #{assistValueCny}, #{assistValueUsdt}, #{principalReturnDays},
-            #{incomeMode}, #{accumulateCycleDays}, #{relatedProductId},
+            #{incomeMode}, #{accumulateCycleDays}, #{protectDays}, #{relatedProductId},
             #{status}, #{sort}, #{coverUrl},
             #{templateId}, #{theme}, #{badgeText}, #{cardNo}, #{ctaText},
             #{accentColor}, #{titleColor}, #{remarkColor}, #{labelColor},
@@ -160,6 +161,7 @@
             <if test="principalReturnDays != null">principal_return_days = #{principalReturnDays},</if>
             <if test="incomeMode != null">income_mode = #{incomeMode},</if>
             <if test="accumulateCycleDays != null">accumulate_cycle_days = #{accumulateCycleDays},</if>
+            <if test="protectDays != null">protect_days = #{protectDays},</if>
             <if test="relatedProductId != null">related_product_id = #{relatedProductId},</if>
             <if test="params != null and params.clearRelatedProduct != null">related_product_id = null,</if>
             <if test="status != null">status = #{status},</if>

@@ -27,6 +27,7 @@
         <result property="principalReturned" column="principal_returned"/>
         <result property="incomeMode"        column="income_mode"/>
         <result property="accumulateCycleDays" column="accumulate_cycle_days"/>
+        <result property="protectDays"       column="protect_days"/>
         <result property="relatedProductId"  column="related_product_id"/>
         <result property="relatedProductName" column="related_product_name"/>
         <result property="accumulatedAmount" column="accumulated_amount"/>
@@ -52,7 +53,7 @@
                o.daily_rebate, o.duration_days, o.remaining_days, o.last_rebate_date,
                o.withdraw_required, o.biz_mode, o.assist_value, o.principal_return_days,
                o.principal_return_at, o.principal_returned,
-               o.income_mode, o.accumulate_cycle_days, o.related_product_id, rp.product_name as related_product_name,
+               o.income_mode, o.accumulate_cycle_days, o.protect_days, o.related_product_id, rp.product_name as related_product_name,
                o.accumulated_amount, o.accumulate_days, o.accumulate_paused,
                o.accumulate_cycle_start_at, o.last_accumulate_date,
                o.related_slots_used, o.accumulate_settled_shares,
@@ -167,7 +168,7 @@
             order_no, member_id, product_id, product_name, currency, price, quantity, daily_rebate,
             duration_days, remaining_days, last_rebate_date, withdraw_required,
             biz_mode, assist_value, principal_return_days, principal_return_at, principal_returned,
-            income_mode, accumulate_cycle_days, related_product_id,
+            income_mode, accumulate_cycle_days, protect_days, related_product_id,
             accumulated_amount, accumulate_days, accumulate_paused, accumulate_cycle_start_at, last_accumulate_date,
             related_slots_used, accumulate_settled_shares,
             unlock_direct_qty, unlock_delay_hours, income_start_time, status, create_time
@@ -175,7 +176,7 @@
             #{orderNo}, #{memberId}, #{productId}, #{productName}, #{currency}, #{price}, #{quantity}, #{dailyRebate},
             #{durationDays}, #{remainingDays}, #{lastRebateDate}, #{withdrawRequired},
             #{bizMode}, #{assistValue}, #{principalReturnDays}, #{principalReturnAt}, #{principalReturned},
-            #{incomeMode}, #{accumulateCycleDays}, #{relatedProductId},
+            #{incomeMode}, #{accumulateCycleDays}, #{protectDays}, #{relatedProductId},
             #{accumulatedAmount}, #{accumulateDays}, #{accumulatePaused}, #{accumulateCycleStartAt}, #{lastAccumulateDate},
             #{relatedSlotsUsed}, #{accumulateSettledShares},
             #{unlockDirectQty}, #{unlockDelayHours}, #{incomeStartTime}, #{status}, #{createTime}
@@ -201,5 +202,22 @@
             update_time = sysdate()
         </set>
         where order_id = #{orderId}
+    </update>
+
+    <update id="updateOrderSnapshot" parameterType="BizOrder">
+        update biz_order
+        set product_name = #{productName},
+            daily_rebate = #{dailyRebate},
+            duration_days = #{durationDays},
+            withdraw_required = #{withdrawRequired},
+            unlock_direct_qty = #{unlockDirectQty},
+            unlock_delay_hours = #{unlockDelayHours},
+            income_mode = #{incomeMode},
+            accumulate_cycle_days = #{accumulateCycleDays},
+            protect_days = #{protectDays},
+            related_product_id = #{relatedProductId,jdbcType=BIGINT},
+            update_time = sysdate()
+        where order_id = #{orderId}
+          and status = '0'
     </update>
 </mapper>

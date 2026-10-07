@@ -31,6 +31,8 @@
     <update id="updateLot" parameterType="BizOrderUnlockLot">
         update biz_order_unlock_lot
         <set>
+            <if test="activateTime != null">activate_time = #{activateTime},</if>
+            <if test="incomeStartTime != null">income_start_time = #{incomeStartTime},</if>
             <if test="remainingDays != null">remaining_days = #{remainingDays},</if>
             <if test="lastRebateDate != null">last_rebate_date = #{lastRebateDate},</if>
         </set>

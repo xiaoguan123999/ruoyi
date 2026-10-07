@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.ruoyi.biz.domain.BizConfirmBody;
 import com.ruoyi.biz.domain.BizProduct;
 import com.ruoyi.biz.service.IBizProductService;
 import com.ruoyi.common.annotation.Log;
@@ -74,5 +75,23 @@ public class BizProductController extends BaseController
     public AjaxResult remove(@PathVariable Long[] productIds)
     {
         return toAjax(productService.deleteProductByIds(productIds));
+    }
+
+    @ApiOperation("预览同步持仓快照")
+    @PreAuthorize("@ss.hasPermi('biz:product:edit')")
+    @GetMapping("/{productId}/syncOrderSnapshot/preview")
+    public AjaxResult previewOrderSnapshot(@PathVariable Long productId, Integer sampleLimit)
+    {
+        return success(productService.previewOrderSnapshot(productId, sampleLimit));
+    }
+
+    @ApiOperation("一键同步持仓快照")
+    @PreAuthorize("@ss.hasPermi('biz:product:edit')")
+    @Log(title = "同步持仓快照", businessType = BusinessType.UPDATE)
+    @PostMapping("/{productId}/syncOrderSnapshot")
+    public AjaxResult syncOrderSnapshot(@PathVariable Long productId, @RequestBody(required = false) BizConfirmBody body)
+    {
+        Boolean confirm = body == null ? null : body.getConfirm();
+        return success(productService.syncOrderSnapshot(productId, confirm));
     }
 }

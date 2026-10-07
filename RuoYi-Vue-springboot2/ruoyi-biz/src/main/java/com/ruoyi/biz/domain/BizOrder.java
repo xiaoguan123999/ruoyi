@@ -99,13 +99,13 @@ public class BizOrder extends BaseEntity
     @ApiModelProperty("是否已退本 0否 1是")
     private String principalReturned;
 
-    @ApiModelProperty("入账方式快照 CREDIT/ACCUMULATE")
+    @ApiModelProperty("入账方式快照 CREDIT/ACCUMULATE/PROTECT")
     private String incomeMode;
 
-    @ApiModelProperty("累计周期天数快照")
+    @ApiModelProperty("累计周期天数快照（ACCUMULATE）")
     private Integer accumulateCycleDays;
 
-    @ApiModelProperty("对档产品快照")
+    @ApiModelProperty("对档产品快照（ACCUMULATE）")
     private Long relatedProductId;
 
     @ApiModelProperty("对档产品名称")
@@ -134,8 +134,14 @@ public class BizOrder extends BaseEntity
     @ApiModelProperty("当前累计周期内已结算份数")
     private Integer accumulateSettledShares;
 
-    @ApiModelProperty("是否可结算累计进产品收益")
+    @ApiModelProperty("是否可手动结算累计（仅 ACCUMULATE）")
     private Boolean canSettleAccumulate;
+
+    @ApiModelProperty("认购记录是否展示累计。ACCUMULATE 恒 true；PROTECT 保护期内 false")
+    private Boolean accumulateVisible;
+
+    @ApiModelProperty("保护天数N快照（PROTECT）")
+    private Integer protectDays;
 
     @ApiModelProperty("是否有可用对档激活份额（未耗尽）")
     private Boolean relatedProductOwned;
@@ -397,6 +403,7 @@ public class BizOrder extends BaseEntity
     public String getIncomeMode() { return incomeMode; }
     public void setIncomeMode(String incomeMode) { this.incomeMode = incomeMode; }
     public boolean accumulateIncome() { return "ACCUMULATE".equalsIgnoreCase(incomeMode); }
+    public boolean protectIncome() { return "PROTECT".equalsIgnoreCase(incomeMode); }
     public Integer getAccumulateCycleDays() { return accumulateCycleDays; }
     public void setAccumulateCycleDays(Integer accumulateCycleDays) { this.accumulateCycleDays = accumulateCycleDays; }
     public Long getRelatedProductId() { return relatedProductId; }
@@ -419,6 +426,10 @@ public class BizOrder extends BaseEntity
     public void setAccumulateSettledShares(Integer accumulateSettledShares) { this.accumulateSettledShares = accumulateSettledShares; }
     public Boolean getCanSettleAccumulate() { return canSettleAccumulate; }
     public void setCanSettleAccumulate(Boolean canSettleAccumulate) { this.canSettleAccumulate = canSettleAccumulate; }
+    public Boolean getAccumulateVisible() { return accumulateVisible; }
+    public void setAccumulateVisible(Boolean accumulateVisible) { this.accumulateVisible = accumulateVisible; }
+    public Integer getProtectDays() { return protectDays; }
+    public void setProtectDays(Integer protectDays) { this.protectDays = protectDays; }
     public Boolean getRelatedProductOwned() { return relatedProductOwned; }
     public void setRelatedProductOwned(Boolean relatedProductOwned) { this.relatedProductOwned = relatedProductOwned; }
     public Integer getRelatedActivatedQty() { return relatedActivatedQty; }

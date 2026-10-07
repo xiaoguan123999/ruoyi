@@ -92,13 +92,16 @@ public class BizProduct extends BaseEntity
     @ApiModelProperty("本金返还天数（ASSIST）")
     private Integer principalReturnDays;
 
-    @ApiModelProperty("日返入账 CREDIT进钱包 / ACCUMULATE订单累计")
+    @ApiModelProperty("日返入账 CREDIT进钱包 / ACCUMULATE订单累计结算 / PROTECT保护期+累计池")
     private String incomeMode;
 
-    @ApiModelProperty("累计周期天数，如60；0表示不用")
+    @ApiModelProperty("累计周期天数（ACCUMULATE 用）")
     private Integer accumulateCycleDays;
 
-    @ApiModelProperty("对档产品ID，累计结算前须有对应已激活份数")
+    @ApiModelProperty("保护天数N（PROTECT 用）：前N天进产品收益，之后未激活进累计池")
+    private Integer protectDays;
+
+    @ApiModelProperty("对档产品ID（ACCUMULATE 结算用）")
     private Long relatedProductId;
 
     @ApiModelProperty("对档产品名称")
@@ -546,6 +549,11 @@ public class BizProduct extends BaseEntity
         return "ACCUMULATE".equalsIgnoreCase(incomeMode);
     }
 
+    public boolean protectIncome()
+    {
+        return "PROTECT".equalsIgnoreCase(incomeMode);
+    }
+
     public Integer getAccumulateCycleDays()
     {
         return accumulateCycleDays;
@@ -554,6 +562,16 @@ public class BizProduct extends BaseEntity
     public void setAccumulateCycleDays(Integer accumulateCycleDays)
     {
         this.accumulateCycleDays = accumulateCycleDays;
+    }
+
+    public Integer getProtectDays()
+    {
+        return protectDays;
+    }
+
+    public void setProtectDays(Integer protectDays)
+    {
+        this.protectDays = protectDays;
     }
 
     public Long getRelatedProductId()
