@@ -334,22 +334,31 @@ export type AppOrderRecord = {
   activatedQty: number;
   status: string;
   statusLabel: '进行中' | '已到期' | string;
+  /** 0 一份都没激活，1 至少一份已激活；不要用 status */
   activateStatus: string;
   incomeReady: boolean;
   incomeStartTime?: string;
   activateLabel: string;
   createTime: string;
-  /** CREDIT / ACCUMULATE */
+  /** CREDIT / ACCUMULATE / PROTECT */
   incomeMode?: string;
-  accumulatedAmount?: number;
-  accumulateDays?: number;
+  /** PROTECT：保护天数 N */
+  protectDays?: number;
+  /** ACCUMULATE：累计周期 */
   accumulateCycleDays?: number;
+  accumulateDays?: number;
   accumulatePaused?: boolean;
+  /** PROTECT：false 保护期内不展示累计；true 才出累计模块 */
+  accumulateVisible?: boolean;
+  accumulatedAmount?: number;
   relatedProductName?: string;
   relatedProductOwned?: boolean;
   relatedActivatedQty?: number;
   relatedSlotsAvailable?: number;
   settleableShares?: number;
+  unlockDirectQty?: number;
+  unlockDirectHave?: number;
+  /** ACCUMULATE：是否可手动结算；PROTECT 应为 false */
   canSettleAccumulate?: boolean;
 };
 

@@ -123,12 +123,15 @@ function mapOrderStatus(raw: Record<string, unknown>): {
 } {
   const status = pickString(raw, ['status'], '');
   const lower = status.toLowerCase();
+  // status: 0 持仓中，1 已完成。激活看 activateStatus，不要用 status
   const expired =
+    status === '1' ||
     ['2', '3', 'expired', 'finished', 'closed', 'end', '已到期', '已结束', '已完成'].includes(lower) ||
     ['已到期', '已结束', '已完成'].includes(status);
   const running =
     !expired &&
-    (['0', '1', 'running', 'active', 'processing', '进行中'].includes(lower) ||
+    (status === '0' ||
+      ['running', 'active', 'processing', '进行中'].includes(lower) ||
       status === '' ||
       status === '进行中');
 
@@ -162,6 +165,11 @@ function mapOrder(raw: unknown): AppOrderRecord | null {
   const mapped = mapOrderStatus(raw);
   const quantity = Math.max(1, Math.floor(toNumber(raw.quantity, 1)));
   const activatedQty = Math.max(0, Math.min(quantity, Math.floor(toNumber(raw.activatedQty, 0))));
+  const incomeMode = pickString(raw, ['incomeMode'], '') || undefined;
+  const protectDays = Math.max(0, Math.floor(toNumber(raw.protectDays, 0)));
+  const accumulateCycleDays = Math.max(0, Math.floor(toNumber(raw.accumulateCycleDays, 0)));
+  const unlockDirectQty = Math.max(0, Math.floor(toNumber(raw.unlockDirectQty, 0)));
+  const unlockDirectHave = Math.max(0, Math.floor(toNumber(raw.unlockDirectHave, 0)));
   return {
     orderId,
     productId: pickNumber(raw, ['productId']) || undefined,
@@ -180,20 +188,26 @@ function mapOrder(raw: unknown): AppOrderRecord | null {
       : undefined,
     activateLabel: mapped.activateLabel,
     createTime: formatDateTime(raw.createTime ?? raw.orderTime ?? raw.payTime),
-    incomeMode: pickString(raw, ['incomeMode'], '') || undefined,
-    accumulatedAmount: pickNumber(raw, ['accumulatedAmount']),
+    incomeMode,
+    protectDays,
+    accumulateCycleDays,
     accumulateDays: Math.floor(toNumber(raw.accumulateDays, 0)),
-    accumulateCycleDays: Math.floor(toNumber(raw.accumulateCycleDays, 0)),
     accumulatePaused:
       raw.accumulatePaused === '1' ||
       raw.accumulatePaused === 1 ||
       raw.accumulatePaused === true,
+    accumulateVisible: raw.accumulateVisible === true,
+    accumulatedAmount: pickNumber(raw, ['accumulatedAmount']),
     relatedProductName: pickString(raw, ['relatedProductName'], '') || undefined,
     relatedProductOwned: Boolean(raw.relatedProductOwned),
     relatedActivatedQty: pickNumber(raw, ['relatedActivatedQty']),
     relatedSlotsAvailable: pickNumber(raw, ['relatedSlotsAvailable']),
     settleableShares: pickNumber(raw, ['settleableShares']),
-    canSettleAccumulate: Boolean(raw.canSettleAccumulate),
+    unlockDirectQty,
+    unlockDirectHave,
+    // PROTECT 不手动结算；ACCUMULATE 以接口为准
+    canSettleAccumulate:
+      incomeMode === 'ACCUMULATE' ? Boolean(raw.canSettleAccumulate) : false,
   };
 }
 
@@ -204,7 +218,7 @@ export async function fetchAppOrders(): Promise<AppOrderRecord[]> {
     .filter((item): item is AppOrderRecord => item !== null);
 }
 
-/** POST /app/orders/{orderId}/settleAccumulate */
+/** POST /app/orders/{orderId}/settleAccumulate — 仅 ACCUMULATE */
 export async function settleOrderAccumulate(orderId: number): Promise<AppOrderRecord> {
   const res = await request<Record<string, unknown>>(`/app/orders/${orderId}/settleAccumulate`, {
     method: 'POST',

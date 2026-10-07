@@ -51,7 +51,6 @@ export default function ServiceChatScreen() {
   const { user } = useAuth();
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('在线客服');
-  const [fromAdmin, setFromAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -65,14 +64,12 @@ export default function ServiceChatScreen() {
         const next = resolvePreferredChatUrl(center?.channels ?? [], user);
         setTitle(next.title);
         setUrl(next.url);
-        setFromAdmin(next.fromAdmin);
       } catch {
         if (!alive) {
           return;
         }
         setTitle('在线客服');
         setUrl(resolveFallbackChatUrl(user));
-        setFromAdmin(false);
       } finally {
         if (alive) {
           setLoading(false);
@@ -83,14 +80,6 @@ export default function ServiceChatScreen() {
       alive = false;
     };
   }, [user]);
-
-  const useFallbackChat = () => {
-    if (!fromAdmin) {
-      return;
-    }
-    setFromAdmin(false);
-    setUrl(resolveFallbackChatUrl(user));
-  };
 
   return (
     <View style={styles.root}>
@@ -117,7 +106,7 @@ export default function ServiceChatScreen() {
             <ActivityIndicator color="#FFFFFF" />
           </View>
         ) : url ? (
-          <OnlineChatFrame url={url} onLoadError={useFallbackChat} />
+          <OnlineChatFrame url={url} />
         ) : (
           <Text style={styles.empty}>暂未配置在线客服链接</Text>
         )}
