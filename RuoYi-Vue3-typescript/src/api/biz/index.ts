@@ -136,6 +136,14 @@ export function listOrder(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/order/list', method: 'get', params: query })
 }
 
+export function getOrder(orderId: number | string): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/order/' + orderId, method: 'get' })
+}
+
+export function listOrderRebates(orderId: number | string): Promise<AjaxResult<any[]>> {
+  return request({ url: '/biz/order/' + orderId + '/rebates', method: 'get' })
+}
+
 export function listCheckin(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/checkin/list', method: 'get', params: query })
 }

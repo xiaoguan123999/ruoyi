@@ -564,7 +564,7 @@
         :closable="false"
         show-icon
         class="mb8"
-        title="只刷该产品持仓中的日返单；助力单跳过，已完成不碰。剩余天数、已激活、已累计、已发日返不改。"
+        title="只刷该产品持仓中订单（已完成不碰）。日返：同步后重算激活；保护期延长会纠偏累计池。助力：只同步提现指定/本金返还/助力值展示，不改价格、不补扣助力余额。"
       />
       <div class="sync-summary">
         预计同步 <b>{{ syncPreview.wouldSync ?? 0 }}</b> 单
@@ -1062,23 +1062,55 @@ const FIELD_LABELS: Record<string, string> = {
   dailyRebateCny: "日返CNY",
   dailyRebateUsdt: "日返USDT",
   durationDays: "总天数",
+  withdrawRequired: "提现指定",
   withdrawRequireHold: "提现指定",
+  unlockDirectQty: "一拖二",
   unlockDirectNeed: "一拖二",
+  unlockDelayHours: "等待小时",
   incomeMode: "入账方式",
   accumulateCycleDays: "累计周期",
   protectDays: "保护天数",
-  relatedProductId: "对档产品"
+  relatedProductId: "对档产品",
+  assistValue: "助力值",
+  principalReturnDays: "本金返还天数",
+  principalReturnAt: "本金返还时间"
 }
 
-function formatDiffVal(v: any) {
+const INCOME_MODE_LABELS: Record<string, string> = {
+  CREDIT: "每天进产品收益",
+  ACCUMULATE: "订单累计后结算",
+  PROTECT: "保护期 + 累计池"
+}
+
+const YES_NO_LABELS: Record<string, string> = {
+  "0": "否",
+  "1": "是",
+  false: "否",
+  true: "是"
+}
+
+function formatDiffVal(v: any, field?: string) {
   if (v === null || v === undefined || v === "") return "—"
   if (typeof v === "object") return JSON.stringify(v)
-  return String(v)
+  const s = String(v)
+  const f = String(field || "")
+  if (f === "incomeMode") {
+    const key = s.toUpperCase()
+    return INCOME_MODE_LABELS[key] || s
+  }
+  if (f === "withdrawRequired" || f === "withdrawRequireHold") {
+    return YES_NO_LABELS[s] || s
+  }
+  if ((f === "relatedProductId" || f === "protectDays" || f === "accumulateCycleDays"
+      || f === "unlockDirectQty" || f === "unlockDelayHours") && s === "0") {
+    return f === "relatedProductId" ? "无" : "0"
+  }
+  return s
 }
 
 function flattenFieldDiffs(preview: any) {
   const rows: any[] = []
-  const samples = preview?.fieldDiffs || preview?.samples || preview?.sampleDiffs || []
+  const samples = preview?.sample || preview?.fieldDiffs || preview?.samples || preview?.sampleDiffs || []
   if (!Array.isArray(samples)) return rows
   for (const sample of samples) {
     if (!sample || typeof sample !== "object") continue
@@ -1091,8 +1123,8 @@ function flattenFieldDiffs(preview: any) {
         rows.push({
           orderKey: String(orderKey),
           field: FIELD_LABELS[field] || field,
-          from: formatDiffVal(d.from ?? d.oldValue ?? d.before),
-          to: formatDiffVal(d.to ?? d.newValue ?? d.after)
+          from: formatDiffVal(d.from ?? d.oldValue ?? d.before, field),
+          to: formatDiffVal(d.to ?? d.newValue ?? d.after, field)
         })
       }
       continue
@@ -1103,8 +1135,8 @@ function flattenFieldDiffs(preview: any) {
         rows.push({
           orderKey: String(orderKey),
           field: FIELD_LABELS[field] || field,
-          from: formatDiffVal(d.from ?? d.oldValue ?? d.before ?? (Array.isArray(diff) ? diff[0] : undefined)),
-          to: formatDiffVal(d.to ?? d.newValue ?? d.after ?? (Array.isArray(diff) ? diff[1] : undefined))
+          from: formatDiffVal(d.from ?? d.oldValue ?? d.before ?? (Array.isArray(diff) ? diff[0] : undefined), field),
+          to: formatDiffVal(d.to ?? d.newValue ?? d.after ?? (Array.isArray(diff) ? diff[1] : undefined), field)
         })
       }
       continue
@@ -1113,8 +1145,8 @@ function flattenFieldDiffs(preview: any) {
       rows.push({
         orderKey: String(orderKey),
         field: FIELD_LABELS[sample.field] || sample.field,
-        from: formatDiffVal(sample.from ?? sample.oldValue ?? sample.before),
-        to: formatDiffVal(sample.to ?? sample.newValue ?? sample.after)
+        from: formatDiffVal(sample.from ?? sample.oldValue ?? sample.before, sample.field),
+        to: formatDiffVal(sample.to ?? sample.newValue ?? sample.after, sample.field)
       })
     }
   }
