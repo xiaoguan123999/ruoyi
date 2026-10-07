@@ -74,6 +74,16 @@ export function delProduct(productId: number | number[]): Promise<AjaxResult> {
   return request({ url: '/biz/product/' + productId, method: 'delete' })
 }
 
+/** 预览：产品配置同步到持仓日返单快照（不改库） */
+export function previewProductOrderSnapshot(productId: number, sampleLimit = 20): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/product/' + productId + '/syncOrderSnapshot/preview', method: 'get', params: { sampleLimit } })
+}
+
+/** 执行：确认后把产品配置写入持仓日返单快照 */
+export function syncProductOrderSnapshot(productId: number): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/product/' + productId + '/syncOrderSnapshot', method: 'post', data: { confirm: true } })
+}
+
 export function listProductCategory(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/productCategory/list', method: 'get', params: query })
 }

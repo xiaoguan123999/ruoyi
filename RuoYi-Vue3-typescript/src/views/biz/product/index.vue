@@ -112,9 +112,10 @@
           <el-tag :type="scope.row.status === '0' ? 'success' : 'info'">{{ scope.row.status === '0' ? '上架' : '下架' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="280" fixed="right" class-name="product-ops-col">
+      <el-table-column label="操作" align="center" width="260" fixed="right" class-name="product-ops-col">
         <template #default="scope">
           <div class="product-ops">
+            <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:product:edit']">修改</el-button>
             <el-button
               link
               type="primary"
@@ -129,8 +130,19 @@
               @click="toggleStatus(scope.row)"
               v-hasPermi="['biz:product:edit']"
             >{{ scope.row.status === '0' ? '下架' : '上架' }}</el-button>
-            <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['biz:product:edit']">修改</el-button>
-            <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['biz:product:remove']">删除</el-button>
+            <el-dropdown trigger="click" @command="(cmd) => handleProductMore(cmd, scope.row)">
+              <el-button link type="primary">更多</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item
+                    command="sync"
+                    :disabled="syncPreviewLoading && syncTargetId === scope.row.productId"
+                    v-hasPermi="['biz:product:edit']"
+                  >同步快照</el-dropdown-item>
+                  <el-dropdown-item command="delete" divided v-hasPermi="['biz:product:remove']">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
         </template>
       </el-table-column>
@@ -275,20 +287,26 @@
                   <el-radio-group v-model="form.incomeMode">
                     <el-radio value="CREDIT">每天进产品收益钱包</el-radio>
                     <el-radio value="ACCUMULATE">订单累计后结算</el-radio>
+                    <el-radio value="PROTECT">保护期 + 累计池</el-radio>
                   </el-radio-group>
-                  <p class="field-tip">累计模式：日返先记在认购单，满周期后按「对档产品已激活且未消耗份数」结算进产品收益；1 份对档激活只能支撑 1 份本产品结算一轮，下一周期需新的对档激活份额</p>
+                  <p class="field-tip">{{ incomeModeTip }}</p>
                 </div>
               </el-form-item>
               <template v-if="form.incomeMode === 'ACCUMULATE'">
                 <el-row :gutter="16">
                   <el-col :span="12">
-                    <el-form-item label="累计周期" prop="accumulateCycleDays">
-                      <el-input-number v-model="form.accumulateCycleDays" :min="1" controls-position="right" style="width: 100%" />
-                      <span class="field-tip inline">天（如 60）</span>
+                    <el-form-item label="累计周期" prop="accumulateCycleDays" :required="true">
+                      <div class="field-with-tip">
+                        <div>
+                          <el-input-number v-model="form.accumulateCycleDays" :min="1" controls-position="right" style="width: 160px" />
+                          <span class="field-tip inline">天</span>
+                        </div>
+                        <p class="field-tip">如 60</p>
+                      </div>
                     </el-form-item>
                   </el-col>
                   <el-col :span="12">
-                    <el-form-item label="对档产品" prop="relatedProductId">
+                    <el-form-item label="对档产品" prop="relatedProductId" :required="true">
                       <el-select v-model="form.relatedProductId" filterable clearable placeholder="结算前须持有" style="width: 100%">
                         <el-option
                           v-for="item in relatedProductOptions"
@@ -298,6 +316,37 @@
                           :disabled="item.productId === form.productId"
                         />
                       </el-select>
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+              </template>
+              <template v-if="form.incomeMode === 'PROTECT'">
+                <el-row :gutter="16">
+                  <el-col :span="12">
+                    <el-form-item label="保护天数" prop="protectDays" :required="true">
+                      <div class="field-with-tip">
+                        <div>
+                          <el-input-number v-model="form.protectDays" :min="1" controls-position="right" style="width: 160px" />
+                          <span class="field-tip inline">天</span>
+                        </div>
+                        <p class="field-tip">N，如 60。前 N 天日返进产品收益，期内不展示累计</p>
+                      </div>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item label="对档产品" prop="relatedProductId">
+                      <div class="field-with-tip">
+                        <el-select v-model="form.relatedProductId" filterable clearable placeholder="选填" style="width: 100%">
+                          <el-option
+                            v-for="item in relatedProductOptions"
+                            :key="item.productId"
+                            :label="item.productName"
+                            :value="item.productId"
+                            :disabled="item.productId === form.productId"
+                          />
+                        </el-select>
+                        <p class="field-tip">选填，需要时再配对档产品</p>
+                      </div>
                     </el-form-item>
                   </el-col>
                 </el-row>
@@ -356,7 +405,7 @@
                   <el-form-item label="一拖二份数" prop="unlockDirectQty">
                     <div class="field-with-tip">
                       <el-input-number v-model="form.unlockDirectQty" :min="0" :step="1" controls-position="right" style="width: 100%" />
-                      <p class="field-tip">直属下级累计认购达标份数；0 关闭</p>
+                      <p class="field-tip">直推同一产品几份激活上级 1 份；2 = 一拖二。只算直推、同一产品。0 关闭</p>
                     </div>
                   </el-form-item>
                 </el-col>
@@ -501,11 +550,57 @@
         </div>
       </template>
     </el-drawer>
+
+    <el-dialog
+      title="同步持仓快照"
+      v-model="syncDialogOpen"
+      width="720px"
+      append-to-body
+      destroy-on-close
+      class="sync-snapshot-dialog"
+    >
+      <el-alert
+        type="warning"
+        :closable="false"
+        show-icon
+        class="mb8"
+        title="只刷该产品持仓中的日返单；助力单跳过，已完成不碰。剩余天数、已激活、已累计、已发日返不改。"
+      />
+      <div class="sync-summary">
+        预计同步 <b>{{ syncPreview.wouldSync ?? 0 }}</b> 单
+        <template v-if="syncPreview.holdingCount != null">（持仓 {{ syncPreview.holdingCount }}）</template>
+        <template v-if="syncPreview.skippedAssist != null">，跳过助力 {{ syncPreview.skippedAssist }}</template>
+        <template v-if="syncPreview.skippedCompleted != null">，跳过已完成 {{ syncPreview.skippedCompleted }}</template>
+      </div>
+      <el-alert
+        v-for="(w, i) in (syncPreview.warnings || [])"
+        :key="'w' + i"
+        :title="String(w)"
+        type="info"
+        :closable="false"
+        show-icon
+        class="mb8"
+      />
+      <div v-if="syncDiffRows.length" class="sync-diff-wrap">
+        <div class="sync-diff-title">抽样差异（最多 {{ syncDiffRows.length }} 条字段）</div>
+        <el-table :data="syncDiffRows" size="small" max-height="360" border>
+          <el-table-column label="订单" prop="orderKey" min-width="120" show-overflow-tooltip />
+          <el-table-column label="字段" prop="field" width="140" show-overflow-tooltip />
+          <el-table-column label="当前" prop="from" min-width="120" show-overflow-tooltip />
+          <el-table-column label="同步为" prop="to" min-width="120" show-overflow-tooltip />
+        </el-table>
+      </div>
+      <p v-else class="field-tip">暂无抽样差异明细，确认后仍会同步上方预计单数</p>
+      <template #footer>
+        <el-button @click="syncDialogOpen = false">取 消</el-button>
+        <el-button type="primary" :loading="syncSubmitting" @click="confirmSyncOrderSnapshot">确认同步</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts" name="BizProduct">
-import { listProduct, getProduct, addProduct, updateProduct, delProduct, listProductCategoryOptions, listProductCardTemplateOptions, getWalletCreditByBiz, saveWalletCreditByBiz } from "@/api/biz"
+import { listProduct, getProduct, addProduct, updateProduct, delProduct, previewProductOrderSnapshot, syncProductOrderSnapshot, listProductCategoryOptions, listProductCardTemplateOptions, getWalletCreditByBiz, saveWalletCreditByBiz } from "@/api/biz"
 import WalletTypeSelect from "@/views/biz/components/WalletTypeSelect.vue"
 import { QuestionFilled } from "@element-plus/icons-vue"
 
@@ -573,14 +668,20 @@ function normalizeCardColors(target: Record<string, any>) {
 
 const productList = ref<any[]>([])
 const categoryOptions = ref<any[]>([])
-const templateOptions = ref<any[]>([])
 const relatedProductOptions = ref<any[]>([])
+const templateOptions = ref<any[]>([])
 const open = ref(false)
 const drawerTab = ref("biz")
 const loading = ref(true)
 const showSearch = ref(true)
 const total = ref(0)
 const title = ref("")
+const syncDialogOpen = ref(false)
+const syncPreviewLoading = ref(false)
+const syncSubmitting = ref(false)
+const syncTargetId = ref<number | undefined>()
+const syncPreview = ref<any>({})
+const syncDiffRows = ref<any[]>([])
 const data = reactive({
   form: {} as any,
   queryParams: { pageNum: 1, pageSize: 100, productName: undefined, currency: undefined, status: undefined, onSale: undefined, categoryId: undefined },
@@ -620,6 +721,14 @@ const data = reactive({
       },
       trigger: "change"
     }],
+    protectDays: [{
+      validator: (_: any, value: any, callback: any) => {
+        if (form.value.bizMode === "ASSIST" || form.value.incomeMode !== "PROTECT") return callback()
+        if (value == null || value === "" || Number(value) <= 0) return callback(new Error("请填写保护天数 N（须大于 0）"))
+        callback()
+      },
+      trigger: "blur"
+    }],
     templateId: [{ required: true, message: "请选择卡片模板", trigger: "change" }]
   }
 })
@@ -632,6 +741,12 @@ const showAssistCny = computed(() => {
 const showAssistUsdt = computed(() => {
   const m = String(form.value.assistGrantMode || "CNY").toUpperCase()
   return m === "USDT" || m === "MATCH" || m === "BOTH"
+})
+const incomeModeTip = computed(() => {
+  const m = String(form.value.incomeMode || "CREDIT").toUpperCase()
+  if (m === "ACCUMULATE") return "日返先记在订单上，满累计周期后按对档产品已激活份数手动结算进产品收益"
+  if (m === "PROTECT") return "前 N 天日返进产品收益；第 N+1～D 天已激活进产品收益、未激活进累计池；凑齐一拖二并对档条件满足后累计自动转入产品收益"
+  return "日返始终进入产品收益钱包"
 })
 const assistGrantModeTip = computed(() => {
   const m = String(form.value.assistGrantMode || "CNY").toUpperCase()
@@ -874,6 +989,7 @@ function reset() {
     principalReturnDays: undefined,
     durationDays: undefined,
     incomeMode: "CREDIT",
+    protectDays: undefined,
     accumulateCycleDays: 0,
     relatedProductId: undefined,
     templateId: undefined,
@@ -925,6 +1041,7 @@ function handleUpdate(row: any) {
     if (!form.value.assistGrantMode) form.value.assistGrantMode = "CNY"
     if (!form.value.incomeMode) form.value.incomeMode = "CREDIT"
     if (form.value.accumulateCycleDays == null) form.value.accumulateCycleDays = 0
+    if (form.value.protectDays == null) form.value.protectDays = undefined
     if (form.value.skipDetail == null || form.value.skipDetail === "") {
       form.value.skipDetail = form.value.skipDetailFlag === true ? "1" : "0"
     } else {
@@ -938,6 +1055,111 @@ function handleUpdate(row: any) {
     title.value = "修改产品"
   })
 }
+
+const FIELD_LABELS: Record<string, string> = {
+  productName: "产品名称",
+  dailyRebate: "日返",
+  dailyRebateCny: "日返CNY",
+  dailyRebateUsdt: "日返USDT",
+  durationDays: "总天数",
+  withdrawRequireHold: "提现指定",
+  unlockDirectNeed: "一拖二",
+  incomeMode: "入账方式",
+  accumulateCycleDays: "累计周期",
+  protectDays: "保护天数",
+  relatedProductId: "对档产品"
+}
+
+function formatDiffVal(v: any) {
+  if (v === null || v === undefined || v === "") return "—"
+  if (typeof v === "object") return JSON.stringify(v)
+  return String(v)
+}
+
+function flattenFieldDiffs(preview: any) {
+  const rows: any[] = []
+  const samples = preview?.fieldDiffs || preview?.samples || preview?.sampleDiffs || []
+  if (!Array.isArray(samples)) return rows
+  for (const sample of samples) {
+    if (!sample || typeof sample !== "object") continue
+    const orderKey = sample.orderNo || sample.orderId || sample.memberId || "—"
+    const nested = sample.diffs || sample.fieldDiffs || sample.changes || sample.fields
+    if (Array.isArray(nested)) {
+      for (const d of nested) {
+        if (!d) continue
+        const field = d.field || d.name || d.key || "—"
+        rows.push({
+          orderKey: String(orderKey),
+          field: FIELD_LABELS[field] || field,
+          from: formatDiffVal(d.from ?? d.oldValue ?? d.before),
+          to: formatDiffVal(d.to ?? d.newValue ?? d.after)
+        })
+      }
+      continue
+    }
+    if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+      for (const [field, diff] of Object.entries(nested as Record<string, any>)) {
+        const d: any = diff && typeof diff === "object" ? diff : { from: undefined, to: diff }
+        rows.push({
+          orderKey: String(orderKey),
+          field: FIELD_LABELS[field] || field,
+          from: formatDiffVal(d.from ?? d.oldValue ?? d.before ?? (Array.isArray(diff) ? diff[0] : undefined)),
+          to: formatDiffVal(d.to ?? d.newValue ?? d.after ?? (Array.isArray(diff) ? diff[1] : undefined))
+        })
+      }
+      continue
+    }
+    if (sample.field) {
+      rows.push({
+        orderKey: String(orderKey),
+        field: FIELD_LABELS[sample.field] || sample.field,
+        from: formatDiffVal(sample.from ?? sample.oldValue ?? sample.before),
+        to: formatDiffVal(sample.to ?? sample.newValue ?? sample.after)
+      })
+    }
+  }
+  return rows
+}
+
+function handleProductMore(command: string, row: any) {
+  if (command === "sync") handleSyncOrderSnapshot(row)
+  else if (command === "delete") handleDelete(row)
+}
+
+function handleSyncOrderSnapshot(row: any) {
+  const productId = row?.productId
+  if (!productId) return
+  syncTargetId.value = productId
+  syncPreviewLoading.value = true
+  previewProductOrderSnapshot(productId, 20).then((res: any) => {
+    const data = res?.data || {}
+    const wouldSync = Number(data.wouldSync ?? 0)
+    if (wouldSync <= 0) {
+      proxy.$modal.msgSuccess("持仓快照已与产品配置一致，无需同步")
+      return
+    }
+    syncPreview.value = data
+    syncDiffRows.value = flattenFieldDiffs(data)
+    syncDialogOpen.value = true
+  }).finally(() => {
+    syncPreviewLoading.value = false
+  })
+}
+
+function confirmSyncOrderSnapshot() {
+  const productId = syncTargetId.value
+  if (!productId) return
+  syncSubmitting.value = true
+  syncProductOrderSnapshot(productId).then((res: any) => {
+    const data = res?.data || {}
+    const n = data.synced ?? data.updated ?? data.wouldSync ?? syncPreview.value.wouldSync
+    proxy.$modal.msgSuccess(res?.msg || ("已同步 " + (n != null ? n : "") + " 单持仓快照"))
+    syncDialogOpen.value = false
+  }).finally(() => {
+    syncSubmitting.value = false
+  })
+}
+
 function submitForm() {
   proxy.$refs["formRef"].validate((valid: boolean, fields?: Record<string, any>) => {
     if (!valid) {
@@ -997,12 +1219,20 @@ function submitForm() {
       form.value.unlockDirectQty = 0
       form.value.unlockDelayHours = 0
       form.value.incomeMode = "CREDIT"
-      form.value.accumulateCycleDays = 0
+      form.value.protectDays = undefined
       form.value.relatedProductId = undefined
     } else {
-      form.value.incomeMode = form.value.incomeMode === "ACCUMULATE" ? "ACCUMULATE" : "CREDIT"
-      if (form.value.incomeMode !== "ACCUMULATE") {
-        form.value.accumulateCycleDays = 0
+      const incomeMode = String(form.value.incomeMode || "CREDIT").toUpperCase()
+      if (incomeMode === "PROTECT") {
+        form.value.incomeMode = "PROTECT"
+        form.value.protectDays = Number(form.value.protectDays || 0)
+      } else if (incomeMode === "ACCUMULATE") {
+        form.value.incomeMode = "ACCUMULATE"
+        form.value.protectDays = undefined
+        form.value.accumulateCycleDays = Number(form.value.accumulateCycleDays || 0)
+      } else {
+        form.value.incomeMode = "CREDIT"
+        form.value.protectDays = undefined
         form.value.relatedProductId = undefined
       }
       const mode = String(form.value.assistGrantMode || "CNY").toUpperCase()
@@ -1215,6 +1445,19 @@ loadCredit()
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+.sync-summary {
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--el-text-color-primary);
+}
+.sync-diff-wrap {
+  margin-top: 8px;
+}
+.sync-diff-title {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
 }
 .product-ops {
   display: inline-flex;
