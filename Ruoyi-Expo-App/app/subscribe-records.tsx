@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
@@ -8,6 +9,7 @@ import {
 } from 'react-native';
 
 import { Text } from '@/components/ui/AppText';
+import { CopyButton } from '@/components/ui/CopyButton';
 import { ApiError } from '@/api/request';
 import { fetchAppOrders, formatMoneyLabel, settleOrderAccumulate } from '@/api/app-trade';
 import type { AppOrderRecord } from '@/api/types';
@@ -18,7 +20,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { RefreshableScrollView } from '@/components/ui/RefreshableScrollView';
 import { images } from '@/constants/images';
 import { colors } from '@/theme/colors';
-import { modalError, modalSuccess } from '@/utils/toast';
+import { modalError, modalSuccess, toastSuccess } from '@/utils/toast';
 
 type RecordTab = 'all' | 'running' | 'expired';
 
@@ -105,8 +107,17 @@ function RecordCard({ item, onSettled }: { item: AppOrderRecord; onSettled: () =
   const isProtect = item.incomeMode === 'PROTECT';
   const showProtectPool = isProtect && item.accumulateVisible === true;
   const showAccumulateSettle = isAccumulate;
-  const unlockNeed = Math.max(0, item.unlockDirectQty || 0);
-  const unlockHave = Math.max(0, item.unlockDirectHave || 0);
+  const poolWindow = Math.max(0, (item.durationDays || 0) - (item.protectDays || 0));
+  const cycleTotal = isProtect
+    ? poolWindow || item.durationDays || item.accumulateCycleDays || 0
+    : item.accumulateCycleDays || 0;
+  const orderNo = (item.orderNo || String(item.orderId)).trim();
+
+  const onCopyOrderNo = async () => {
+    if (!orderNo) return;
+    await Clipboard.setStringAsync(orderNo);
+    toastSuccess('订单号已复制');
+  };
   const activateTone =
     item.activatedQty <= 0
       ? styles.activateIdle
@@ -142,23 +153,19 @@ function RecordCard({ item, onSettled }: { item: AppOrderRecord; onSettled: () =
         <Text style={styles.amount}>{formatMoneyLabel(item.amount, item.currency)}</Text>
       </View>
 
-      {unlockNeed > 0 ? (
-        <View style={[styles.row, styles.metaRow]}>
-          <Text style={styles.metaLabel}>一拖二直推进度</Text>
-          <Text style={styles.metaValue}>
-            {unlockHave}/{unlockNeed} 份激活 1 份
-          </Text>
+      <View style={[styles.row, styles.orderRow]}>
+        <Text style={styles.orderLabel}>订单号</Text>
+        <View style={styles.orderValue}>
+          <Pressable onPress={onCopyOrderNo} hitSlop={6} style={styles.orderNoHit}>
+            <Text style={styles.orderNo} numberOfLines={1}>
+              {orderNo}
+            </Text>
+          </Pressable>
+          <CopyButton value={orderNo} label="订单号" size={14} />
         </View>
-      ) : null}
+      </View>
 
-      {item.incomeReady ? (
-        <View style={[styles.row, styles.metaRow]}>
-          <Text style={styles.metaLabel}>今日日返</Text>
-          <Text style={styles.metaReady}>可进产品收益</Text>
-        </View>
-      ) : null}
-
-      {showAccumulateSettle ? (
+      {showAccumulateSettle || showProtectPool ? (
         <View style={styles.accumulateBox}>
           <View style={styles.row}>
             <Text style={styles.accLabel}>累计金额</Text>
@@ -169,11 +176,11 @@ function RecordCard({ item, onSettled }: { item: AppOrderRecord; onSettled: () =
           <View style={styles.row}>
             <Text style={styles.accLabel}>周期</Text>
             <Text style={styles.accHint}>
-              {item.accumulateDays || 0}/{item.accumulateCycleDays || 0} 天
+              {item.accumulateDays || 0}/{cycleTotal} 天
               {item.accumulatePaused ? ' · 已暂停' : ''}
             </Text>
           </View>
-          {item.canSettleAccumulate ? (
+          {showAccumulateSettle && item.canSettleAccumulate ? (
             <PrimaryButton
               title={
                 settling
@@ -187,20 +194,6 @@ function RecordCard({ item, onSettled }: { item: AppOrderRecord; onSettled: () =
               disabled={settling}
             />
           ) : null}
-        </View>
-      ) : null}
-
-      {showProtectPool ? (
-        <View style={styles.accumulateBox}>
-          <View style={styles.row}>
-            <Text style={styles.accLabel}>累计金额</Text>
-            <Text style={styles.accValue}>
-              {formatMoneyLabel(item.accumulatedAmount || 0, item.currency)}
-            </Text>
-          </View>
-          <Text style={styles.accTip}>
-            累计不可提现，凑齐一拖二后自动转入产品收益钱包。
-          </Text>
         </View>
       ) : null}
 
@@ -269,8 +262,26 @@ const styles = StyleSheet.create({
   midRow: {
     marginTop: 12,
   },
-  metaRow: {
+  orderRow: {
     marginTop: 8,
+  },
+  orderLabel: {
+    color: colors.muted,
+    fontSize: 12,
+  },
+  orderValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+    marginLeft: 12,
+  },
+  orderNoHit: {
+    flexShrink: 1,
+  },
+  orderNo: {
+    color: colors.muted,
+    fontSize: 12,
   },
   bottomRow: {
     marginTop: 14,
@@ -300,19 +311,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  metaLabel: {
-    color: 'rgba(180,200,230,0.7)',
-    fontSize: 12,
-  },
-  metaValue: {
-    color: colors.text,
-    fontSize: 12,
-  },
-  metaReady: {
-    color: '#6BE3A0',
-    fontSize: 12,
-    fontWeight: '600',
-  },
   accumulateBox: {
     marginTop: 12,
     marginHorizontal: 16,
@@ -334,11 +332,6 @@ const styles = StyleSheet.create({
     color: 'rgba(180,200,230,0.65)',
     fontSize: 11,
     flexShrink: 1,
-  },
-  accTip: {
-    color: 'rgba(180,200,230,0.65)',
-    fontSize: 11,
-    lineHeight: 16,
   },
   tag: {
     borderRadius: 8,

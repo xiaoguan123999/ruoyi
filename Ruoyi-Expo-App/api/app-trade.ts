@@ -172,12 +172,14 @@ function mapOrder(raw: unknown): AppOrderRecord | null {
   const unlockDirectHave = Math.max(0, Math.floor(toNumber(raw.unlockDirectHave, 0)));
   return {
     orderId,
+    orderNo: pickString(raw, ['orderNo'], '') || undefined,
     productId: pickNumber(raw, ['productId']) || undefined,
     productName: pickString(raw, ['productName', 'name'], '--'),
     planName: pickString(raw, ['planName', 'seriesName', 'plan', 'categoryName'], '--'),
     amount: pickNumber(raw, ['amount', 'price', 'payAmount']),
     currency: normalizeCurrency(raw.currency),
     quantity,
+    durationDays: Math.max(0, Math.floor(toNumber(raw.durationDays, 0))),
     activatedQty,
     status: mapped.status,
     statusLabel: mapped.statusLabel,

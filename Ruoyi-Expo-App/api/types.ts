@@ -323,6 +323,8 @@ export type AppCheckinInfo = {
 
 export type AppOrderRecord = {
   orderId: number;
+  /** 对外订单号 */
+  orderNo?: string;
   productId?: number;
   productName: string;
   planName?: string;
@@ -330,6 +332,8 @@ export type AppOrderRecord = {
   currency: string;
   /** 这单总份数 */
   quantity: number;
+  /** 收益天数 D */
+  durationDays?: number;
   /** 已激活份数 */
   activatedQty: number;
   status: string;
