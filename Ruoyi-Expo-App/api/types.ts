@@ -332,8 +332,6 @@ export type AppOrderRecord = {
   currency: string;
   /** 这单总份数 */
   quantity: number;
-  /** 收益天数 D */
-  durationDays?: number;
   /** 已激活份数 */
   activatedQty: number;
   status: string;

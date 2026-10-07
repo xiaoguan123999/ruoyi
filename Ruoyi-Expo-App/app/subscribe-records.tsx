@@ -107,10 +107,6 @@ function RecordCard({ item, onSettled }: { item: AppOrderRecord; onSettled: () =
   const isProtect = item.incomeMode === 'PROTECT';
   const showProtectPool = isProtect && item.accumulateVisible === true;
   const showAccumulateSettle = isAccumulate;
-  const poolWindow = Math.max(0, (item.durationDays || 0) - (item.protectDays || 0));
-  const cycleTotal = isProtect
-    ? poolWindow || item.durationDays || item.accumulateCycleDays || 0
-    : item.accumulateCycleDays || 0;
   const orderNo = (item.orderNo || String(item.orderId)).trim();
 
   const onCopyOrderNo = async () => {
@@ -173,13 +169,15 @@ function RecordCard({ item, onSettled }: { item: AppOrderRecord; onSettled: () =
               {formatMoneyLabel(item.accumulatedAmount || 0, item.currency)}
             </Text>
           </View>
-          <View style={styles.row}>
-            <Text style={styles.accLabel}>周期</Text>
-            <Text style={styles.accHint}>
-              {item.accumulateDays || 0}/{cycleTotal} 天
-              {item.accumulatePaused ? ' · 已暂停' : ''}
-            </Text>
-          </View>
+          {showAccumulateSettle ? (
+            <View style={styles.row}>
+              <Text style={styles.accLabel}>周期</Text>
+              <Text style={styles.accHint}>
+                {item.accumulateDays || 0}/{item.accumulateCycleDays || 0} 天
+                {item.accumulatePaused ? ' · 已暂停' : ''}
+              </Text>
+            </View>
+          ) : null}
           {showAccumulateSettle && item.canSettleAccumulate ? (
             <PrimaryButton
               title={

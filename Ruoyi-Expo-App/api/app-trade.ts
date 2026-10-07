@@ -179,7 +179,6 @@ function mapOrder(raw: unknown): AppOrderRecord | null {
     amount: pickNumber(raw, ['amount', 'price', 'payAmount']),
     currency: normalizeCurrency(raw.currency),
     quantity,
-    durationDays: Math.max(0, Math.floor(toNumber(raw.durationDays, 0))),
     activatedQty,
     status: mapped.status,
     statusLabel: mapped.statusLabel,
