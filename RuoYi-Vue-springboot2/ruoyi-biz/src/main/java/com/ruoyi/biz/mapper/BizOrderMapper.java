@@ -39,6 +39,8 @@ public interface BizOrderMapper
 
     int updateOrder(BizOrder order);
 
+    int clearOrderIncomeStart(@Param("orderId") Long orderId);
+
     /** 同步日返产品规则快照，不改剩余天数/累计现场/激活时间 */
     int updateOrderSnapshot(BizOrder order);
 

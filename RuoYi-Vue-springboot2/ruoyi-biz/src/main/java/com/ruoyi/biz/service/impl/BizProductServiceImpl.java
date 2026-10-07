@@ -598,7 +598,7 @@ public class BizProductServiceImpl implements IBizProductService
         }
         else
         {
-            result.getWarnings().add("日返持仓：同步规则快照后会按新一拖二重算激活（已激活不撤销）");
+            result.getWarnings().add("日返持仓：同步规则快照后会按新一拖二重算激活（含撤销不再达标的已激活份；已发日返不回扣）");
             result.getWarnings().add("保护期延长时，累计池中本应进保护期的金额会转入产品收益；缩短保护期不回扣");
             result.getWarnings().add("不改剩余天数、已发日返日期；日返金额变更只影响之后发放");
         }
@@ -735,7 +735,7 @@ public class BizProductServiceImpl implements IBizProductService
         if (nz(order.getUnlockDirectQty()) != target.unlockDirectQty
                 || nz(order.getUnlockDelayHours()) != target.unlockDelayHours)
         {
-            row.getWarnings().add("同步后将按新一拖二/等待小时重算未激活份，已激活不撤销");
+            row.getWarnings().add("同步后将按新一拖二/等待小时重算激活（不达标的已激活份会撤销；已发日返不回扣）");
         }
         boolean changed = !row.getFieldDiffs().isEmpty();
         row.setChanged(Boolean.valueOf(changed));
@@ -938,7 +938,7 @@ public class BizProductServiceImpl implements IBizProductService
         }
         else if ("unlockDirectQty".equals(field))
         {
-            row.getWarnings().add("一拖二比例变更后按新规则重算未激活份，已激活不撤销");
+            row.getWarnings().add("一拖二比例变更后按新规则重算激活，不达标的已激活份会撤销；已发日返不回扣");
         }
         else if ("unlockDelayHours".equals(field))
         {

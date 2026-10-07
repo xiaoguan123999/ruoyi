@@ -11,4 +11,7 @@ public interface BizOrderUnlockLotMapper
     int insertLot(BizOrderUnlockLot lot);
 
     int updateLot(BizOrderUnlockLot lot);
+
+    /** 撤销激活：清空 activate_time / income_start_time */
+    int clearLotActivate(@Param("lotId") Long lotId);
 }

@@ -1478,32 +1478,19 @@ public class BizOrderServiceImpl implements IBizOrderService
                     lotMapper.updateLot(lot);
                     newlyActivated += qtyOfLot(lot);
                 }
+                else if (!shouldActivate && lot.getActivateTime() != null)
+                {
+                    lotMapper.clearLotActivate(lot.getLotId());
+                    lot.setActivateTime(null);
+                    lot.setIncomeStartTime(null);
+                }
             }
             int unactivatedBefore = Math.max(0, oQty - prevActivated);
             if (newlyActivated > 0 && unactivatedBefore > 0)
             {
                 transferAccumulateOnActivate(order, newlyActivated, unactivatedBefore);
             }
-            if (activate > 0 && order.getIncomeStartTime() == null && !existing.isEmpty())
-            {
-                Date first = existing.get(0).getIncomeStartTime();
-                for (int i = 1; i < existing.size(); i++)
-                {
-                    Date start = existing.get(i).getIncomeStartTime();
-                    if (start != null && (first == null || start.before(first)))
-                    {
-                        first = start;
-                    }
-                }
-                if (first != null)
-                {
-                    BizOrder update = new BizOrder();
-                    update.setOrderId(order.getOrderId());
-                    update.setIncomeStartTime(first);
-                    orderMapper.updateOrder(update);
-                    order.setIncomeStartTime(first);
-                }
-            }
+            syncOrderIncomeStart(order, existing);
             existing.sort(new Comparator<BizOrderUnlockLot>()
             {
                 @Override
@@ -1523,10 +1510,11 @@ public class BizOrderServiceImpl implements IBizOrderService
             {
                 existing = new ArrayList<BizOrderUnlockLot>();
             }
-            Set<Integer> have = new HashSet<Integer>();
+            Map<Integer, BizOrderUnlockLot> byShare = new HashMap<Integer, BizOrderUnlockLot>();
             for (int i = 0; i < existing.size(); i++)
             {
-                have.add(Integer.valueOf(nz(existing.get(i).getShareNo())));
+                BizOrderUnlockLot row = existing.get(i);
+                byShare.put(Integer.valueOf(nz(row.getShareNo())), row);
             }
             boolean inherit = existing.isEmpty() && order.getLastRebateDate() != null;
             Date ownTime = order.getCreateTime() != null ? order.getCreateTime() : DateUtils.getNowDate();
@@ -1537,63 +1525,68 @@ public class BizOrderServiceImpl implements IBizOrderService
             {
                 inheritRemain = duration;
             }
-            for (int shareNo = 0; shareNo < activate; shareNo++)
+            int oQty = qtyOf(order);
+            for (int shareNo = 0; shareNo < oQty; shareNo++)
             {
-                if (have.contains(Integer.valueOf(shareNo)))
+                boolean shouldActivate = shareNo < activate;
+                Date activateTime = null;
+                if (shouldActivate)
                 {
-                    continue;
+                    activateTime = ownTime;
+                    if (orderNeed > 0 && startIndex >= 0)
+                    {
+                        Date reached = firstReachTime(tierDowns, (startIndex + shareNo + 1) * need);
+                        if (reached == null)
+                        {
+                            shouldActivate = false;
+                            activateTime = null;
+                        }
+                        else if (reached.after(ownTime))
+                        {
+                            activateTime = reached;
+                        }
+                    }
                 }
-                Date activateTime = ownTime;
-                if (orderNeed > 0 && startIndex >= 0)
+                BizOrderUnlockLot lot = byShare.get(Integer.valueOf(shareNo));
+                if (lot == null)
                 {
-                    Date reached = firstReachTime(tierDowns, (startIndex + shareNo + 1) * need);
-                    if (reached == null)
+                    if (!shouldActivate || activateTime == null)
                     {
                         continue;
                     }
-                    if (reached.after(ownTime))
+                    lot = new BizOrderUnlockLot();
+                    lot.setOrderId(order.getOrderId());
+                    lot.setShareNo(Integer.valueOf(shareNo));
+                    lot.setQty(Integer.valueOf(1));
+                    lot.setActivateTime(activateTime);
+                    lot.setIncomeStartTime(plusHours(activateTime, delay));
+                    if (inherit)
                     {
-                        activateTime = reached;
+                        lot.setRemainingDays(Integer.valueOf(inheritRemain));
+                        lot.setLastRebateDate(order.getLastRebateDate());
                     }
-                }
-                BizOrderUnlockLot lot = new BizOrderUnlockLot();
-                lot.setOrderId(order.getOrderId());
-                lot.setShareNo(Integer.valueOf(shareNo));
-                lot.setQty(Integer.valueOf(1));
-                lot.setActivateTime(activateTime);
-                lot.setIncomeStartTime(plusHours(activateTime, delay));
-                if (inherit)
-                {
-                    lot.setRemainingDays(Integer.valueOf(inheritRemain));
-                    lot.setLastRebateDate(order.getLastRebateDate());
-                }
-                else
-                {
-                    lot.setRemainingDays(Integer.valueOf(duration));
-                }
-                lotMapper.insertLot(lot);
-                existing.add(lot);
-            }
-            if (activate > 0 && order.getIncomeStartTime() == null && !existing.isEmpty())
-            {
-                Date first = existing.get(0).getIncomeStartTime();
-                for (int i = 1; i < existing.size(); i++)
-                {
-                    Date start = existing.get(i).getIncomeStartTime();
-                    if (start != null && (first == null || start.before(first)))
+                    else
                     {
-                        first = start;
+                        lot.setRemainingDays(Integer.valueOf(duration));
                     }
+                    lotMapper.insertLot(lot);
+                    existing.add(lot);
+                    byShare.put(Integer.valueOf(shareNo), lot);
                 }
-                if (first != null)
+                else if (shouldActivate && activateTime != null && lot.getActivateTime() == null)
                 {
-                    BizOrder update = new BizOrder();
-                    update.setOrderId(order.getOrderId());
-                    update.setIncomeStartTime(first);
-                    orderMapper.updateOrder(update);
-                    order.setIncomeStartTime(first);
+                    lot.setActivateTime(activateTime);
+                    lot.setIncomeStartTime(plusHours(activateTime, delay));
+                    lotMapper.updateLot(lot);
+                }
+                else if (!shouldActivate && lot.getActivateTime() != null)
+                {
+                    lotMapper.clearLotActivate(lot.getLotId());
+                    lot.setActivateTime(null);
+                    lot.setIncomeStartTime(null);
                 }
             }
+            syncOrderIncomeStart(order, existing);
             existing.sort(new Comparator<BizOrderUnlockLot>()
             {
                 @Override
@@ -1603,6 +1596,41 @@ public class BizOrderServiceImpl implements IBizOrderService
                 }
             });
             return existing;
+        }
+
+        /** 按当前 lot 激活情况回写订单 income_start_time；全部撤销则为 null */
+        private void syncOrderIncomeStart(BizOrder order, List<BizOrderUnlockLot> lots)
+        {
+            Date first = null;
+            if (lots != null)
+            {
+                for (int i = 0; i < lots.size(); i++)
+                {
+                    Date start = lots.get(i).getIncomeStartTime();
+                    if (start != null && (first == null || start.before(first)))
+                    {
+                        first = start;
+                    }
+                }
+            }
+            if (first == null)
+            {
+                if (order.getIncomeStartTime() != null)
+                {
+                    orderMapper.clearOrderIncomeStart(order.getOrderId());
+                    order.setIncomeStartTime(null);
+                }
+                return;
+            }
+            if (order.getIncomeStartTime() != null && first.equals(order.getIncomeStartTime()))
+            {
+                return;
+            }
+            BizOrder update = new BizOrder();
+            update.setOrderId(order.getOrderId());
+            update.setIncomeStartTime(first);
+            orderMapper.updateOrder(update);
+            order.setIncomeStartTime(first);
         }
 
         private long nzId(BizOrder order)

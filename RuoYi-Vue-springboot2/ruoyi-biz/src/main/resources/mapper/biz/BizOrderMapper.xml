@@ -204,6 +204,13 @@
         where order_id = #{orderId}
     </update>
 
+    <update id="clearOrderIncomeStart">
+        update biz_order
+        set income_start_time = null,
+            update_time = sysdate()
+        where order_id = #{orderId}
+    </update>
+
     <update id="updateOrderSnapshot" parameterType="BizOrder">
         update biz_order
         set product_name = #{productName},

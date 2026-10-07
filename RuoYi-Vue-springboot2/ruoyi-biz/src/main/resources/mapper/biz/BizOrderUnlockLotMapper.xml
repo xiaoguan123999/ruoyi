@@ -38,4 +38,12 @@
         </set>
         where lot_id = #{lotId}
     </update>
+
+    <update id="clearLotActivate">
+        update biz_order_unlock_lot
+        set activate_time = null,
+            income_start_time = null
+        where lot_id = #{lotId}
+    </update>
 </mapper>
+
