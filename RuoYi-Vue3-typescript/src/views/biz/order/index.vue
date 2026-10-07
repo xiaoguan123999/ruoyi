@@ -180,7 +180,7 @@
                 :data="rebatePageRows"
                 size="small"
                 border
-                height="100%"
+                :max-height="rebateTableMaxHeight"
                 class="rebate-table"
                 empty-text="暂无发放记录"
               >
@@ -297,6 +297,21 @@ function incomeModeText(mode: any) {
 function yesNo(v: any) {
   return String(v) === "1" ? "是" : "否"
 }
+
+function formatRebateDate(row: any) {
+  const raw = row?.rebateDate ?? row?.rebate_date
+  return proxy.parseTime(raw, "{y}-{m}-{d}") || "—"
+}
+function formatRebateTime(row: any) {
+  const raw = row?.createTime ?? row?.create_time
+  return proxy.parseTime(raw) || "—"
+}
+const rebateTableMaxHeight = computed(() => {
+  // 抽屉内固定可视高度，避免 height:100% 把表体压成 0
+  if (typeof window === "undefined") return 420
+  return Math.max(280, Math.min(560, window.innerHeight - 280))
+})
+
 function showAccumulate(row: any) {
   const m = String(row?.incomeMode || "").toUpperCase()
   return m === "ACCUMULATE" || m === "PROTECT"
@@ -327,11 +342,19 @@ function reloadDetail() {
   const orderId = detailOrderId.value
   if (!orderId) return
   detailLoading.value = true
-  Promise.all([getOrder(orderId), listOrderRebates(orderId)]).then(([orderRes, rebateRes]: any[]) => {
-    detail.value = orderRes?.data || {}
-    rebateList.value = Array.isArray(rebateRes?.data) ? rebateRes.data : []
+  Promise.allSettled([getOrder(orderId), listOrderRebates(orderId)]).then((results: any[]) => {
+    const orderRes = results[0]?.status === "fulfilled" ? results[0].value : null
+    const rebateRes = results[1]?.status === "fulfilled" ? results[1].value : null
+    if (orderRes) {
+      detail.value = orderRes.data || {}
+    }
+    const rows = rebateRes?.data
+    rebateList.value = Array.isArray(rows) ? rows : []
     const maxPage = Math.max(1, Math.ceil(rebateList.value.length / rebatePageSize) || 1)
     if (rebatePage.value > maxPage) rebatePage.value = maxPage
+    if (results[1]?.status === "rejected") {
+      proxy.$modal.msgError(results[1].reason?.message || "收益发放记录加载失败，请确认有订单查询权限")
+    }
   }).finally(() => {
     detailLoading.value = false
   })
@@ -406,8 +429,7 @@ getList()
   color: #606266;
 }
 .rebate-table {
-  flex: 1;
-  min-height: 0;
+  width: 100%;
 }
 .rebate-pager {
   margin-top: 10px;
