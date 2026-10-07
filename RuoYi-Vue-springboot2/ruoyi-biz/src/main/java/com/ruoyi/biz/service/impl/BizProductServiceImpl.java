@@ -1,6 +1,10 @@
 package com.ruoyi.biz.service.impl;
 
 import java.math.BigDecimal;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Calendar;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +26,7 @@ import com.ruoyi.biz.mapper.BizProductCardMetricMapper;
 import com.ruoyi.biz.mapper.BizProductCardTemplateMapper;
 import com.ruoyi.biz.mapper.BizProductCategoryMapper;
 import com.ruoyi.biz.mapper.BizProductMapper;
+import com.ruoyi.biz.service.IBizOrderService;
 import com.ruoyi.biz.service.IBizProductService;
 import com.ruoyi.biz.support.ProductCardMetricSupport;
 import com.ruoyi.common.exception.ServiceException;
@@ -44,6 +49,9 @@ public class BizProductServiceImpl implements IBizProductService
 
     @Autowired
     private BizOrderMapper orderMapper;
+
+    @Autowired
+    private IBizOrderService orderService;
 
     @Override
     public BizProduct selectProductById(Long productId)
@@ -551,16 +559,13 @@ public class BizProductServiceImpl implements IBizProductService
         return buildSnapshotSync(productId, Integer.valueOf(20), true);
     }
 
+
     private BizOrderSnapshotSyncResult buildSnapshotSync(Long productId, Integer sampleLimit, boolean apply)
     {
         BizProduct product = selectProductById(productId);
         if (product == null)
         {
             throw new ServiceException("产品不存在");
-        }
-        if (product.assistMode())
-        {
-            throw new ServiceException("助力产品不支持同步持仓快照");
         }
         int limit = sampleLimit == null ? 20 : sampleLimit.intValue();
         if (limit < 1)
@@ -585,27 +590,82 @@ public class BizProductServiceImpl implements IBizProductService
         result.setProductName(product.getProductName());
         result.setStatusFilter(BizConstants.ORDER_HOLDING);
         result.setSampleLimit(Integer.valueOf(limit));
-        result.getWarnings().add("只同步持仓中的日返单，助力单跳过");
-        result.getWarnings().add("不改剩余天数、已激活、已累计金额、已发日返；只影响之后发放");
+        if (product.assistMode())
+        {
+            result.getWarnings().add("助力产品：只同步提现指定、本金返还天数、助力值展示快照；不改价格、不补扣已发助力");
+            result.getWarnings().add("每人限购、发放模式改产品即可，不对持仓单做快照同步");
+            result.getWarnings().add("未退本订单会按「下单时间+新返还天数」重算到期时间；已退本不动");
+        }
+        else
+        {
+            result.getWarnings().add("日返持仓：同步规则快照后会按新一拖二重算激活（已激活不撤销）");
+            result.getWarnings().add("保护期延长时，累计池中本应进保护期的金额会转入产品收益；缩短保护期不回扣");
+            result.getWarnings().add("不改剩余天数、已发日返日期；日返金额变更只影响之后发放");
+        }
 
         int skipAssist = 0;
         int skipSame = 0;
         int wouldSync = 0;
         int synced = 0;
+        Set<String> unlockKeys = new HashSet<String>();
         for (int i = 0; i < list.size(); i++)
         {
             BizOrder order = list.get(i);
-            BizOrderSnapshotPreview row = diffOne(product, order);
-            if ("skip_assist".equals(row.getAction()))
+            BizOrderSnapshotPreview row;
+            if (product.assistMode())
             {
-                skipAssist++;
+                row = diffAssist(product, order);
             }
-            else if (Boolean.TRUE.equals(row.getChanged()))
+            else if (order.assistMode())
+            {
+                row = new BizOrderSnapshotPreview();
+                row.setOrderId(order.getOrderId());
+                row.setOrderNo(order.getOrderNo());
+                row.setMemberId(order.getMemberId());
+                row.setPhone(order.getPhone());
+                row.setChanged(Boolean.FALSE);
+                row.setAction("skip_assist");
+                row.getWarnings().add("日返产品下的助力单不参与本次同步");
+                skipAssist++;
+                if (result.getSample().size() < limit)
+                {
+                    result.getSample().add(row);
+                }
+                continue;
+            }
+            else
+            {
+                row = diffRebate(product, order);
+            }
+            if (Boolean.TRUE.equals(row.getChanged()))
             {
                 wouldSync++;
                 if (apply)
                 {
-                    applySnapshot(product, order);
+                    if (product.assistMode())
+                    {
+                        applyAssistSnapshot(product, order);
+                    }
+                    else
+                    {
+                        int oldProtect = nz(order.getProtectDays());
+                        SnapshotTarget target = rebateTargetOf(product, order);
+                        applyRebateSnapshot(product, order, target);
+                        if (BizConstants.INCOME_MODE_PROTECT.equals(target.incomeMode)
+                                && target.protectDays > oldProtect)
+                        {
+                            BigDecimal moved = orderService.correctProtectPoolAfterExtend(
+                                    order.getOrderId(), oldProtect, target.protectDays);
+                            if (moved != null && moved.compareTo(BigDecimal.ZERO) > 0)
+                            {
+                                row.getWarnings().add("保护期延长纠偏：累计池转入产品收益 " + moved.toPlainString());
+                            }
+                        }
+                        if (order.getMemberId() != null && order.getProductId() != null)
+                        {
+                            unlockKeys.add(order.getMemberId() + ":" + order.getProductId());
+                        }
+                    }
                     row.setAction("synced");
                     synced++;
                 }
@@ -617,6 +677,16 @@ public class BizProductServiceImpl implements IBizProductService
             if (result.getSample().size() < limit)
             {
                 result.getSample().add(row);
+            }
+        }
+        if (apply && !unlockKeys.isEmpty())
+        {
+            for (String key : unlockKeys)
+            {
+                int p = key.indexOf(':');
+                Long memberId = Long.valueOf(key.substring(0, p));
+                Long pid = Long.valueOf(key.substring(p + 1));
+                orderService.refreshUnlockForSnapshot(memberId, pid);
             }
         }
         result.setTotalMatched(Integer.valueOf(list.size()));
@@ -635,21 +705,14 @@ public class BizProductServiceImpl implements IBizProductService
         return result;
     }
 
-    private BizOrderSnapshotPreview diffOne(BizProduct product, BizOrder order)
+    private BizOrderSnapshotPreview diffRebate(BizProduct product, BizOrder order)
     {
         BizOrderSnapshotPreview row = new BizOrderSnapshotPreview();
         row.setOrderId(order.getOrderId());
         row.setOrderNo(order.getOrderNo());
         row.setMemberId(order.getMemberId());
         row.setPhone(order.getPhone());
-        if (order.assistMode())
-        {
-            row.setChanged(Boolean.FALSE);
-            row.setAction("skip_assist");
-            row.getWarnings().add("助力单首期不同步");
-            return row;
-        }
-        SnapshotTarget target = targetOf(product, order);
+        SnapshotTarget target = rebateTargetOf(product, order);
         addDiff(row, "productName", text(order.getProductName()), text(target.productName), false);
         addDiff(row, "dailyRebate", dec(order.getDailyRebate()), dec(target.dailyRebate), true);
         addDiff(row, "durationDays", num(order.getDurationDays()), num(target.durationDays), true);
@@ -658,17 +721,65 @@ public class BizProductServiceImpl implements IBizProductService
         addDiff(row, "unlockDelayHours", num(order.getUnlockDelayHours()), num(target.unlockDelayHours), true);
         addDiff(row, "incomeMode", text(normMode(order.getIncomeMode())), text(target.incomeMode), true);
         addDiff(row, "accumulateCycleDays", num(order.getAccumulateCycleDays()), num(target.accumulateCycleDays), false);
-        addDiff(row, "protectDays", num(order.getProtectDays()), num(target.protectDays), false);
+        addDiff(row, "protectDays", num(order.getProtectDays()), num(target.protectDays), true);
         addDiff(row, "relatedProductId", id(order.getRelatedProductId()), id(target.relatedProductId), true);
+        int oldProtect = nz(order.getProtectDays());
+        if (BizConstants.INCOME_MODE_PROTECT.equals(target.incomeMode) && target.protectDays > oldProtect)
+        {
+            BigDecimal excess = estimateProtectPoolExcess(order, target.protectDays);
+            if (excess.compareTo(BigDecimal.ZERO) > 0)
+            {
+                row.getWarnings().add("保护期延长后预计累计池转入产品收益 " + excess.toPlainString());
+            }
+        }
+        if (nz(order.getUnlockDirectQty()) != target.unlockDirectQty
+                || nz(order.getUnlockDelayHours()) != target.unlockDelayHours)
+        {
+            row.getWarnings().add("同步后将按新一拖二/等待小时重算未激活份，已激活不撤销");
+        }
         boolean changed = !row.getFieldDiffs().isEmpty();
         row.setChanged(Boolean.valueOf(changed));
         row.setAction(changed ? "would_sync" : "skip_same");
         return row;
     }
 
-    private void applySnapshot(BizProduct product, BizOrder order)
+    private BizOrderSnapshotPreview diffAssist(BizProduct product, BizOrder order)
     {
-        SnapshotTarget target = targetOf(product, order);
+        BizOrderSnapshotPreview row = new BizOrderSnapshotPreview();
+        row.setOrderId(order.getOrderId());
+        row.setOrderNo(order.getOrderNo());
+        row.setMemberId(order.getMemberId());
+        row.setPhone(order.getPhone());
+        if (!order.assistMode())
+        {
+            row.setChanged(Boolean.FALSE);
+            row.setAction("skip_same");
+            row.getWarnings().add("非助力单，跳过");
+            return row;
+        }
+        AssistSnapshotTarget target = assistTargetOf(product, order);
+        addDiff(row, "productName", text(order.getProductName()), text(target.productName), false);
+        addDiff(row, "withdrawRequired", text(nzWithdraw(order.getWithdrawRequired())), text(target.withdrawRequired), false);
+        addDiff(row, "assistValue", dec(order.getAssistValue()), dec(target.assistValue), true);
+        addDiff(row, "principalReturnDays", num(order.getPrincipalReturnDays()), num(target.principalReturnDays), true);
+        if (!"1".equals(order.getPrincipalReturned()))
+        {
+            addDiff(row, "principalReturnAt", text(formatTime(order.getPrincipalReturnAt())),
+                    text(formatTime(target.principalReturnAt)), true);
+        }
+        else
+        {
+            row.getWarnings().add("已退本，不改到期时间");
+        }
+        row.getWarnings().add("不同步价格；助力值只改展示快照，不补发不扣回");
+        boolean changed = !row.getFieldDiffs().isEmpty();
+        row.setChanged(Boolean.valueOf(changed));
+        row.setAction(changed ? "would_sync" : "skip_same");
+        return row;
+    }
+
+    private void applyRebateSnapshot(BizProduct product, BizOrder order, SnapshotTarget target)
+    {
         BizOrder patch = new BizOrder();
         patch.setOrderId(order.getOrderId());
         patch.setProductName(target.productName);
@@ -682,9 +793,33 @@ public class BizProductServiceImpl implements IBizProductService
         patch.setProtectDays(Integer.valueOf(target.protectDays));
         patch.setRelatedProductId(target.relatedProductId);
         orderMapper.updateOrderSnapshot(patch);
+        order.setProtectDays(Integer.valueOf(target.protectDays));
+        order.setIncomeMode(target.incomeMode);
+        order.setUnlockDirectQty(Integer.valueOf(target.unlockDirectQty));
+        order.setUnlockDelayHours(Integer.valueOf(target.unlockDelayHours));
     }
 
-    private SnapshotTarget targetOf(BizProduct product, BizOrder order)
+    private void applyAssistSnapshot(BizProduct product, BizOrder order)
+    {
+        AssistSnapshotTarget target = assistTargetOf(product, order);
+        BizOrder patch = new BizOrder();
+        patch.setOrderId(order.getOrderId());
+        patch.setProductName(target.productName);
+        patch.setWithdrawRequired(target.withdrawRequired);
+        patch.setAssistValue(target.assistValue);
+        patch.setPrincipalReturnDays(Integer.valueOf(target.principalReturnDays));
+        if ("1".equals(order.getPrincipalReturned()))
+        {
+            patch.setPrincipalReturnAt(order.getPrincipalReturnAt());
+        }
+        else
+        {
+            patch.setPrincipalReturnAt(target.principalReturnAt);
+        }
+        orderMapper.updateAssistOrderSnapshot(patch);
+    }
+
+    private SnapshotTarget rebateTargetOf(BizProduct product, BizOrder order)
     {
         SnapshotTarget target = new SnapshotTarget();
         target.productName = product.getProductName();
@@ -697,8 +832,7 @@ public class BizProductServiceImpl implements IBizProductService
         }
         target.dailyRebate = unit.multiply(new BigDecimal(qty));
         target.durationDays = nz(product.getDurationDays());
-        target.withdrawRequired = StringUtils.isEmpty(product.getWithdrawRequired())
-                ? "0" : product.getWithdrawRequired();
+        target.withdrawRequired = nzWithdraw(product.getWithdrawRequired());
         target.unlockDirectQty = nz(product.getUnlockDirectQty());
         target.unlockDelayHours = nz(product.getUnlockDelayHours());
         if (product.accumulateIncome())
@@ -723,6 +857,56 @@ public class BizProductServiceImpl implements IBizProductService
             target.relatedProductId = null;
         }
         return target;
+    }
+
+    private AssistSnapshotTarget assistTargetOf(BizProduct product, BizOrder order)
+    {
+        AssistSnapshotTarget target = new AssistSnapshotTarget();
+        target.productName = product.getProductName();
+        target.withdrawRequired = nzWithdraw(product.getWithdrawRequired());
+        int qty = order.getQuantity() == null || order.getQuantity().intValue() <= 0
+                ? 1 : order.getQuantity().intValue();
+        BigDecimal unit = product.assistValueOf(order.getCurrency());
+        if (unit == null)
+        {
+            unit = BigDecimal.ZERO;
+        }
+        target.assistValue = unit.multiply(new BigDecimal(qty));
+        int returnDays = nz(product.getPrincipalReturnDays());
+        if (returnDays <= 0)
+        {
+            returnDays = nz(order.getPrincipalReturnDays());
+        }
+        target.principalReturnDays = returnDays;
+        Date base = order.getCreateTime() != null ? order.getCreateTime() : new Date();
+        target.principalReturnAt = plusDays(base, returnDays);
+        return target;
+    }
+
+    private BigDecimal estimateProtectPoolExcess(BizOrder order, int newProtectDays)
+    {
+        BigDecimal pool = order.getAccumulatedAmount() == null ? BigDecimal.ZERO : order.getAccumulatedAmount();
+        if (pool.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            return BigDecimal.ZERO;
+        }
+        int duration = order.getDurationDays() == null ? 0 : order.getDurationDays().intValue();
+        int remain = nz(order.getRemainingDays());
+        int paidCount = duration > 0 ? Math.max(0, duration - remain) : 0;
+        int idealDays = Math.max(0, paidCount - newProtectDays);
+        BigDecimal daily = order.getDailyRebate() == null ? BigDecimal.ZERO : order.getDailyRebate();
+        // 未激活近似：整单日返 * 理想累计天数；已有激活时仍按池超额估算，执行时以订单服务为准
+        BigDecimal idealPool = daily.multiply(new BigDecimal(idealDays));
+        BigDecimal excess = pool.subtract(idealPool);
+        if (excess.compareTo(BigDecimal.ZERO) < 0)
+        {
+            return BigDecimal.ZERO;
+        }
+        if (excess.compareTo(pool) > 0)
+        {
+            return pool;
+        }
+        return excess;
     }
 
     private void addDiff(BizOrderSnapshotPreview row, String field, String before, String after, boolean warn)
@@ -762,11 +946,23 @@ public class BizProductServiceImpl implements IBizProductService
         }
         else if ("incomeMode".equals(field))
         {
-            row.getWarnings().add("入账方式变更不清理已累计金额，不自动转入钱包");
+            row.getWarnings().add("入账方式变更不自动清理历史累计；保护期延长会纠偏超额累计池");
+        }
+        else if ("protectDays".equals(field))
+        {
+            row.getWarnings().add("保护期延长将纠偏累计池；缩短只影响之后发放");
         }
         else if ("relatedProductId".equals(field))
         {
             row.getWarnings().add("对档产品变更不影响本单已消耗的对档份额");
+        }
+        else if ("assistValue".equals(field))
+        {
+            row.getWarnings().add("助力值只改订单展示，不补发不扣回钱包");
+        }
+        else if ("principalReturnDays".equals(field) || "principalReturnAt".equals(field))
+        {
+            row.getWarnings().add("未退本将重算到期时间；已退本不动");
         }
     }
 
@@ -777,6 +973,11 @@ public class BizProductServiceImpl implements IBizProductService
             return BizConstants.INCOME_MODE_CREDIT;
         }
         return mode.trim().toUpperCase();
+    }
+
+    private String nzWithdraw(String value)
+    {
+        return StringUtils.isEmpty(value) ? "0" : value;
     }
 
     private String text(String value)
@@ -799,6 +1000,24 @@ public class BizProductServiceImpl implements IBizProductService
         return (value == null ? BigDecimal.ZERO : value).stripTrailingZeros().toPlainString();
     }
 
+    private String formatTime(Date time)
+    {
+        if (time == null)
+        {
+            return "";
+        }
+        java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        return fmt.format(time);
+    }
+
+    private Date plusDays(Date time, int days)
+    {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(time == null ? new Date() : time);
+        calendar.add(Calendar.DAY_OF_MONTH, days);
+        return calendar.getTime();
+    }
+
     private int nz(Integer value)
     {
         return value == null ? 0 : value.intValue();
@@ -817,4 +1036,14 @@ public class BizProductServiceImpl implements IBizProductService
         private int protectDays;
         private Long relatedProductId;
     }
+
+    private static final class AssistSnapshotTarget
+    {
+        private String productName;
+        private String withdrawRequired;
+        private BigDecimal assistValue;
+        private int principalReturnDays;
+        private Date principalReturnAt;
+    }
+
 }

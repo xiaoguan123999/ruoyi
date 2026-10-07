@@ -220,4 +220,17 @@
         where order_id = #{orderId}
           and status = '0'
     </update>
+
+    <update id="updateAssistOrderSnapshot" parameterType="BizOrder">
+        update biz_order
+        set product_name = #{productName},
+            withdraw_required = #{withdrawRequired},
+            assist_value = #{assistValue},
+            principal_return_days = #{principalReturnDays},
+            principal_return_at = #{principalReturnAt},
+            update_time = sysdate()
+        where order_id = #{orderId}
+          and status = '0'
+          and biz_mode = 'ASSIST'
+    </update>
 </mapper>

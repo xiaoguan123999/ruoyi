@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.biz.domain.BizOrder;
+import com.ruoyi.biz.domain.BizRebateLog;
 import com.ruoyi.biz.service.IBizOrderService;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
@@ -31,6 +32,15 @@ public class BizOrderController extends BaseController
         startPage();
         List<BizOrder> list = orderService.selectOrderList(order);
         return getDataTable(list);
+    }
+
+    @ApiOperation("订单日返发放记录")
+    @PreAuthorize("@ss.hasPermi('biz:order:query')")
+    @GetMapping("/{orderId}/rebates")
+    public AjaxResult rebates(@PathVariable Long orderId)
+    {
+        List<BizRebateLog> list = orderService.selectRebateLogsByOrderId(orderId);
+        return success(list);
     }
 
     @ApiOperation("订单详情")

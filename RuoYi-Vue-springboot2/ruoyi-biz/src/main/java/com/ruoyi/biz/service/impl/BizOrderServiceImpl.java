@@ -91,6 +91,17 @@ public class BizOrderServiceImpl implements IBizOrderService
     }
 
     @Override
+    public List<BizRebateLog> selectRebateLogsByOrderId(Long orderId)
+    {
+        if (orderId == null)
+        {
+            return new ArrayList<BizRebateLog>();
+        }
+        List<BizRebateLog> list = rebateLogMapper.selectByOrderId(orderId);
+        return list == null ? new ArrayList<BizRebateLog>() : list;
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public BizOrder subscribe(Long memberId, Long productId, String payCurrency, String payPassword, Integer quantity)
     {
@@ -731,6 +742,87 @@ public class BizOrderServiceImpl implements IBizOrderService
         }
         orderMapper.updateOrder(patch);
         return selectOrderById(orderId);
+    }
+
+    @Override
+    public void refreshUnlockForSnapshot(Long memberId, Long productId)
+    {
+        refreshUnlock(memberId, productId, new UnlockSupport());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BigDecimal correctProtectPoolAfterExtend(Long orderId, int oldProtectDays, int newProtectDays)
+    {
+        if (orderId == null || newProtectDays <= oldProtectDays)
+        {
+            return BigDecimal.ZERO;
+        }
+        BizOrder order = orderMapper.selectOrderById(orderId);
+        if (order == null || !order.protectIncome())
+        {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal pool = order.getAccumulatedAmount() == null ? BigDecimal.ZERO : order.getAccumulatedAmount();
+        if (pool.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            return BigDecimal.ZERO;
+        }
+        int duration = order.getDurationDays() == null ? 0 : order.getDurationDays().intValue();
+        int remain = nz(order.getRemainingDays());
+        int paidCount = duration > 0 ? Math.max(0, duration - remain) : 0;
+        List<BizOrderUnlockLot> lots = lotMapper.selectByOrderId(orderId);
+        int unactivated = 0;
+        if (lots != null)
+        {
+            for (int i = 0; i < lots.size(); i++)
+            {
+                BizOrderUnlockLot lot = lots.get(i);
+                if (lot != null && lot.getActivateTime() == null)
+                {
+                    unactivated += qtyOfLot(lot);
+                }
+            }
+        }
+        else
+        {
+            unactivated = qtyOf(order);
+        }
+        int idealDays = Math.max(0, paidCount - newProtectDays);
+        BigDecimal unit = unitRebate(order);
+        BigDecimal idealPool = unit.multiply(new BigDecimal(unactivated)).multiply(new BigDecimal(idealDays));
+        BigDecimal excess = pool.subtract(idealPool);
+        if (excess.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            return BigDecimal.ZERO;
+        }
+        if (excess.compareTo(pool) > 0)
+        {
+            excess = pool;
+        }
+        String currency = StringUtils.isEmpty(order.getCurrency())
+                ? BizConstants.CURRENCY_CNY : order.getCurrency().toUpperCase();
+        walletService.credit(order.getMemberId(), currency, excess, BizConstants.BIZ_ACCUMULATE_SETTLE,
+                order.getOrderId(), "累计收益转入产品收益:" + order.getProductName(),
+                BizConstants.WALLET_PRODUCT);
+        BigDecimal remainPool = pool.subtract(excess);
+        if (remainPool.compareTo(BigDecimal.ZERO) < 0)
+        {
+            remainPool = BigDecimal.ZERO;
+        }
+        BizOrder patch = new BizOrder();
+        patch.setOrderId(orderId);
+        patch.setAccumulatedAmount(remainPool);
+        if (remainPool.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            patch.setAccumulateDays(Integer.valueOf(0));
+        }
+        else
+        {
+            patch.setAccumulateDays(Integer.valueOf(idealDays));
+        }
+        orderMapper.updateOrder(patch);
+        return excess;
     }
 
     /**

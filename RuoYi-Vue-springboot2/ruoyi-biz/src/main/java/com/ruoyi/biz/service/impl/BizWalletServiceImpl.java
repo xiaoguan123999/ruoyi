@@ -429,6 +429,7 @@ public class BizWalletServiceImpl implements IBizWalletService
         {
             remark = stripAdjustPrefix(remark);
         }
+        remark = sanitizeUserRemark(bizType, remark);
         String label = bizTypeLabel(bizType);
         if (BizConstants.BIZ_ADJUST.equals(bizType) && StringUtils.isNotEmpty(remark))
         {
@@ -459,6 +460,10 @@ public class BizWalletServiceImpl implements IBizWalletService
         if (BizConstants.BIZ_SUBSCRIBE.equals(bizType))
         {
             return stripPrefix(remark, "认购产品:", label);
+        }
+        if (BizConstants.BIZ_ACCUMULATE_SETTLE.equals(bizType))
+        {
+            return label;
         }
         if (BizConstants.BIZ_RECHARGE.equals(bizType))
         {
@@ -493,6 +498,31 @@ public class BizWalletServiceImpl implements IBizWalletService
             return remark;
         }
         return label;
+    }
+
+    /** App 资金明细备注：隐藏运维文案，统一成用户可读说明。 */
+    private String sanitizeUserRemark(String bizType, String remark)
+    {
+        if (StringUtils.isEmpty(remark))
+        {
+            return "";
+        }
+        String text = remark.trim();
+        if (text.contains("同步快照") || text.contains("保护期延长纠偏"))
+        {
+            int colon = Math.max(text.lastIndexOf(':'), text.lastIndexOf('：'));
+            String product = "";
+            if (colon >= 0 && colon + 1 < text.length())
+            {
+                product = text.substring(colon + 1).trim();
+            }
+            if (StringUtils.isNotEmpty(product))
+            {
+                return "累计收益转入产品收益:" + product;
+            }
+            return "累计收益转入产品收益";
+        }
+        return text;
     }
 
     private String stripAdjustPrefix(String remark)

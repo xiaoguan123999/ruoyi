@@ -12,4 +12,18 @@
         from biz_rebate_log
         where member_id = #{memberId} and currency = #{currency}
     </select>
+
+    <select id="selectByOrderId" resultType="BizRebateLog">
+        select rebate_id as rebateId,
+               order_id as orderId,
+               member_id as memberId,
+               currency,
+               amount,
+               rebate_date as rebateDate,
+               create_time as createTime
+        from biz_rebate_log
+        where order_id = #{orderId}
+        order by rebate_date desc, rebate_id desc
+    </select>
 </mapper>
+

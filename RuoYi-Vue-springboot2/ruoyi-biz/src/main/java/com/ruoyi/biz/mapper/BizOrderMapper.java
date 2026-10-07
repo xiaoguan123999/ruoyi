@@ -39,6 +39,9 @@ public interface BizOrderMapper
 
     int updateOrder(BizOrder order);
 
-    /** 同步产品规则快照，不改剩余天数/累计现场/激活时间 */
+    /** 同步日返产品规则快照，不改剩余天数/累计现场/激活时间 */
     int updateOrderSnapshot(BizOrder order);
+
+    /** 同步助力产品有限快照：提现指定/本金返还/助力值展示；不改价格 */
+    int updateAssistOrderSnapshot(BizOrder order);
 }
