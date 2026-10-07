@@ -619,6 +619,8 @@ const WALLET_BIZ_LABEL: Record<string, string> = {
   KYC_REWARD: '实名奖励',
   ASSIST_GRANT: '助力值发放',
   LOTTERY_ASSIST: '幸运抽奖',
+  ACCUMULATE_SETTLE: '累计结算',
+  PRINCIPAL_RETURN: '本金返还',
 };
 
 function isRawBizTypeCode(label: string, bizType: string): boolean {
@@ -652,6 +654,18 @@ function mapWalletLogTitle(raw: Record<string, unknown>, bizType: string): strin
   return remark || bizType || '交易';
 }
 
+
+function sanitizeWalletRemark(remark: string): string {
+  const text = (remark || '').trim();
+  if (!text) return '';
+  if (text.includes('同步快照') || text.includes('保护期延长纠偏')) {
+    const parts = text.split(/[:：]/);
+    const product = (parts[parts.length - 1] || '').trim();
+    return product ? `累计收益转入产品收益:${product}` : '累计收益转入产品收益';
+  }
+  return text;
+}
+
 function mapWalletLogItem(raw: unknown): AppWalletLogItem | null {
   if (!isRecord(raw)) {
     return null;
@@ -661,7 +675,7 @@ function mapWalletLogItem(raw: unknown): AppWalletLogItem | null {
   const currency = normalizeCurrency(raw.currency);
   const bizType = pickString(raw, ['bizType', 'type'], '').toUpperCase();
   const title = mapWalletLogTitle(raw, bizType);
-  const remark = pickString(raw, ['remark']);
+  const remark = sanitizeWalletRemark(pickString(raw, ['remark']));
   const createTime = formatDateTime(raw.createTime ?? raw.updateTime);
   if (!id && !createTime && !amount) {
     return null;
