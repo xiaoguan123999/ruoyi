@@ -28,6 +28,9 @@ public class BizPayAdapterFactory
     @Autowired
     private ArcticOceanAdapter arcticOceanAdapter;
 
+    @Autowired
+    private JinminAdapter jinminAdapter;
+
     public IBizPayAdapter getAdapter(BizPayProvider provider)
     {
         if (provider == null)
@@ -60,6 +63,10 @@ public class BizPayAdapterFactory
         if (BizConstants.PAY_FAMILY_ARCTIC.equals(family) || "arctic".equals(family) || "arcticocean".equals(family))
         {
             return arcticOceanAdapter;
+        }
+        if (BizConstants.PAY_FAMILY_JINMIN.equals(family) || "jinmin".equals(family) || "xing".equals(family))
+        {
+            return jinminAdapter;
         }
         throw new ServiceException("服务商 " + provider.getProviderName() + " 尚未接入真实网关");
     }

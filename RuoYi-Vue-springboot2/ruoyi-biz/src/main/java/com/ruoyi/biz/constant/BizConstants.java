@@ -314,6 +314,9 @@ public class BizConstants
     /** 北冰洋：/pay/newOrder，金额元，回调应答 ok */
     public static final String PAY_FAMILY_ARCTIC = "arctic";
 
+    /** 金民/星：/api/pay/create_order，金额分，回调应答 success，status 2/3 已付 */
+    public static final String PAY_FAMILY_JINMIN = "jinmin";
+
     /** 支付网关日志：出站调用 */
     public static final String PAY_GW_LOG_CALL = "CALL";
 
