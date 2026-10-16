@@ -11,11 +11,14 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.biz.api.AppCheckinResult;
 import com.ruoyi.biz.api.AppOrderResult;
 import com.ruoyi.biz.api.AppRechargeResult;
+import com.ruoyi.biz.api.AppWalletExchangeConfigResult;
+import com.ruoyi.biz.api.AppWalletExchangeResult;
 import com.ruoyi.biz.api.AppWalletResult;
 import com.ruoyi.biz.api.AppWithdrawResult;
 import com.ruoyi.biz.api.AppWithdrawRuleResult;
 import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.AppAmountBody;
+import com.ruoyi.biz.domain.AppWalletExchangeBody;
 import com.ruoyi.biz.domain.BizCheckin;
 import com.ruoyi.biz.domain.BizWithdrawRule;
 import com.ruoyi.biz.domain.BizOrder;
@@ -140,6 +143,27 @@ public class AppBizController extends BaseController
     public AppWalletResult wallet()
     {
         return AppWalletResult.ok(walletService.selectAppWalletCard(AppSecurityUtils.getMemberId()));
+    }
+
+    @ApiOperation(value = "钱包互转配置", notes = "返回 USDT/CNY 汇率及产品收益、推广收益可用余额。余额钱包不支持互转。")
+    @GetMapping({"/wallet/exchange/config", "/walletExchange/config"})
+    public AppWalletExchangeConfigResult walletExchangeConfig()
+    {
+        return AppWalletExchangeConfigResult.ok(walletService.getExchangeConfig(AppSecurityUtils.getMemberId()));
+    }
+
+    @ApiOperation(value = "钱包内币种互转", notes = "仅 PRODUCT/PROMO；同钱包 CNY与USDT，不可跨钱包。需支付密码。汇率取 biz.fx.usdtToCny。")
+    @PostMapping({"/wallet/exchange", "/walletExchange"})
+    public AppWalletExchangeResult walletExchange(@RequestBody AppWalletExchangeBody body)
+    {
+        if (body == null)
+        {
+            throw new ServiceException("请填写互转信息");
+        }
+        Long memberId = AppSecurityUtils.getMemberId();
+        memberService.assertPayPassword(memberId, body.getPayPassword());
+        return AppWalletExchangeResult.ok(walletService.exchangeWithinWallet(
+                memberId, body.getTypeCode(), body.getFromCurrency(), body.getAmount()));
     }
 
     @ApiOperation(value = "申请提现", notes = "提交后冻结余额，后台确认打款才扣掉。可传已保存的 accountId，或直接传 accountInfo。")

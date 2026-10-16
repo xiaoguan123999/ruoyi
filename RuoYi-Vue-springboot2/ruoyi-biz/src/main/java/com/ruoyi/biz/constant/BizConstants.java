@@ -124,6 +124,9 @@ public class BizConstants
 
     public static final String BIZ_ADJUST = "ADJUST";
 
+    /** 同钱包内币种互转（产品收益/推广收益 CNY与USDT） */
+    public static final String BIZ_WALLET_EXCHANGE = "WALLET_EXCHANGE";
+
     public static final String WALLET_BALANCE = "BALANCE";
 
     public static final String WALLET_PRODUCT = "PRODUCT";

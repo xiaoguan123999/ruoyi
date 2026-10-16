@@ -3,6 +3,8 @@ package com.ruoyi.biz.service;
 import java.math.BigDecimal;
 import java.util.List;
 import com.ruoyi.biz.api.AppWalletCard;
+import com.ruoyi.biz.api.AppWalletExchangeConfig;
+import com.ruoyi.biz.api.AppWalletExchangeData;
 import com.ruoyi.biz.api.AppWalletLogItem;
 import com.ruoyi.biz.domain.BizMember;
 import com.ruoyi.biz.domain.BizWallet;
@@ -42,4 +44,16 @@ public interface IBizWalletService
     AppWalletCard selectAppWalletCard(Long memberId);
 
     void fillAssetSummary(BizMember member);
+
+    /** 互转配置：汇率 + 产品/推广可用余额 */
+    AppWalletExchangeConfig getExchangeConfig(Long memberId);
+
+    /**
+     * 同钱包内 CNY/USDT 互转，仅 PRODUCT / PROMO。
+     * @param typeCode PRODUCT 或 PROMO
+     * @param fromCurrency 转出币种
+     * @param amount 转出金额
+     */
+    AppWalletExchangeData exchangeWithinWallet(Long memberId, String typeCode, String fromCurrency, java.math.BigDecimal amount);
 }
+

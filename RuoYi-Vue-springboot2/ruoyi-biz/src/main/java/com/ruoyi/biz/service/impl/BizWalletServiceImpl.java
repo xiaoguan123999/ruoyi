@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.biz.api.AppTypedWallet;
 import com.ruoyi.biz.api.AppWalletCard;
+import com.ruoyi.biz.api.AppWalletExchangeConfig;
+import com.ruoyi.biz.api.AppWalletExchangeData;
 import com.ruoyi.biz.api.AppWalletLogItem;
 import com.ruoyi.biz.api.AppWalletRow;
 import com.ruoyi.biz.constant.BizConstants;
@@ -24,6 +26,7 @@ import com.ruoyi.biz.mapper.BizMemberMapper;
 import com.ruoyi.biz.mapper.BizWalletLogMapper;
 import com.ruoyi.biz.mapper.BizWalletMapper;
 import com.ruoyi.biz.mapper.BizWalletTypeMapper;
+import com.ruoyi.biz.service.IBizConfigService;
 import com.ruoyi.biz.service.IBizWalletCreditRuleService;
 import com.ruoyi.biz.service.IBizWalletService;
 import com.ruoyi.biz.service.IBizWalletTypeService;
@@ -50,6 +53,9 @@ public class BizWalletServiceImpl implements IBizWalletService
 
     @Autowired
     private IBizWalletCreditRuleService creditRuleService;
+
+    @Autowired
+    private IBizConfigService configService;
 
     @Override
     public List<BizWallet> selectWalletsByMemberId(Long memberId)
@@ -264,6 +270,97 @@ public class BizWalletServiceImpl implements IBizWalletService
         return data;
     }
 
+
+    @Override
+    public AppWalletExchangeConfig getExchangeConfig(Long memberId)
+    {
+        initWallets(memberId);
+        AppWalletExchangeConfig cfg = new AppWalletExchangeConfig();
+        cfg.setUsdtToCny(configService.getUsdtToCnyRate());
+        cfg.setProductCny(availableOf(memberId, BizConstants.WALLET_PRODUCT, BizConstants.CURRENCY_CNY));
+        cfg.setProductUsdt(availableOf(memberId, BizConstants.WALLET_PRODUCT, BizConstants.CURRENCY_USDT));
+        cfg.setPromoCny(availableOf(memberId, BizConstants.WALLET_PROMO, BizConstants.CURRENCY_CNY));
+        cfg.setPromoUsdt(availableOf(memberId, BizConstants.WALLET_PROMO, BizConstants.CURRENCY_USDT));
+        return cfg;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AppWalletExchangeData exchangeWithinWallet(Long memberId, String typeCode, String fromCurrency, BigDecimal amount)
+    {
+        if (memberId == null)
+        {
+            throw new ServiceException("请先登录");
+        }
+        String code = typeCode == null ? "" : typeCode.trim().toUpperCase();
+        if (!BizConstants.WALLET_PRODUCT.equals(code) && !BizConstants.WALLET_PROMO.equals(code))
+        {
+            throw new ServiceException("仅支持产品收益或推广收益钱包互转");
+        }
+        String from = fromCurrency == null ? "" : fromCurrency.trim().toUpperCase();
+        if (!BizConstants.CURRENCY_CNY.equals(from) && !BizConstants.CURRENCY_USDT.equals(from))
+        {
+            throw new ServiceException("转出币种只能是 CNY 或 USDT");
+        }
+        String to = BizConstants.CURRENCY_CNY.equals(from) ? BizConstants.CURRENCY_USDT : BizConstants.CURRENCY_CNY;
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            throw new ServiceException("互转金额必须大于 0");
+        }
+        if (amount.scale() > 4)
+        {
+            amount = amount.setScale(4, RoundingMode.DOWN);
+        }
+        if (amount.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            throw new ServiceException("互转金额必须大于 0");
+        }
+        if (amount.compareTo(new BigDecimal("999999999999")) > 0)
+        {
+            throw new ServiceException("金额过大");
+        }
+        BigDecimal rate = configService.getUsdtToCnyRate();
+        if (rate == null || rate.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            throw new ServiceException("汇率未配置");
+        }
+        BigDecimal toAmount;
+        if (BizConstants.CURRENCY_CNY.equals(from))
+        {
+            toAmount = amount.divide(rate, 4, RoundingMode.DOWN);
+        }
+        else
+        {
+            toAmount = amount.multiply(rate).setScale(4, RoundingMode.DOWN);
+        }
+        if (toAmount.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            throw new ServiceException("换算后金额过小，请加大转出金额");
+        }
+        initWallets(memberId);
+        Long bizId = Long.valueOf(System.currentTimeMillis());
+        String walletName = BizConstants.WALLET_PRODUCT.equals(code) ? "产品收益" : "推广收益";
+        String remarkOut = walletName + "互转：转出 " + from + " -> " + to;
+        String remarkIn = walletName + "互转：转入 " + from + " -> " + to;
+        change(memberId, code, from, amount.negate(), BigDecimal.ZERO, BizConstants.BIZ_WALLET_EXCHANGE, bizId, remarkOut);
+        change(memberId, code, to, toAmount, BigDecimal.ZERO, BizConstants.BIZ_WALLET_EXCHANGE, bizId, remarkIn);
+
+        AppWalletExchangeData data = new AppWalletExchangeData();
+        data.setTypeCode(code);
+        data.setFromCurrency(from);
+        data.setToCurrency(to);
+        data.setFromAmount(amount);
+        data.setToAmount(toAmount);
+        data.setUsdtToCny(rate);
+        return data;
+    }
+
+    private BigDecimal availableOf(Long memberId, String typeCode, String currency)
+    {
+        BizWallet wallet = walletMapper.selectWallet(memberId, typeCode, currency);
+        return nvl(wallet == null ? null : wallet.getAvailable());
+    }
+
     @Override
     public void fillAssetSummary(BizMember member)
     {
@@ -407,6 +504,7 @@ public class BizWalletServiceImpl implements IBizWalletService
         }
         if (BizConstants.BIZ_RECHARGE.equals(bizType)
                 || BizConstants.BIZ_SUBSCRIBE.equals(bizType)
+                || BizConstants.BIZ_WALLET_EXCHANGE.equals(bizType)
                 || BizConstants.BIZ_WITHDRAW_FREEZE.equals(bizType)
                 || BizConstants.BIZ_WITHDRAW_SUCCESS.equals(bizType)
                 || BizConstants.BIZ_WITHDRAW_REJECT.equals(bizType))
@@ -484,6 +582,10 @@ public class BizWalletServiceImpl implements IBizWalletService
         if (BizConstants.BIZ_LEVEL_REWARD.equals(bizType))
         {
             return stripPrefix(remark, "等级奖励:", "等级奖励");
+        }
+        if (BizConstants.BIZ_WALLET_EXCHANGE.equals(bizType))
+        {
+            return "钱包互转";
         }
         if (BizConstants.BIZ_WITHDRAW_FREEZE.equals(bizType) || BizConstants.BIZ_WITHDRAW_SUCCESS.equals(bizType))
         {
@@ -627,6 +729,10 @@ public class BizWalletServiceImpl implements IBizWalletService
         if (BizConstants.BIZ_INVITE.equals(bizType))
         {
             return "推广奖励";
+        }
+        if (BizConstants.BIZ_WALLET_EXCHANGE.equals(bizType))
+        {
+            return "钱包互转";
         }
         if (BizConstants.BIZ_ADJUST.equals(bizType))
         {
