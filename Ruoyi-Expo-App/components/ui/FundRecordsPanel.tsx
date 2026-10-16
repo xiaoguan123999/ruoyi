@@ -186,10 +186,10 @@ export function FundRecordsPanel({
                     {[item.fee, item.arrival].filter(Boolean).join(' · ')}
                   </Text>
                 ) : null}
-                {item.remark ? <Text style={styles.remark}>备注：{item.remark}</Text> : null}
               </View>
               <Text style={styles.amount}>{item.amount}</Text>
             </View>
+            {item.remark ? <Text style={styles.remark}>备注：{item.remark}</Text> : null}
           </GlassCard>
         ))
       )}
@@ -265,10 +265,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   remark: {
-    marginTop: 6,
+    marginTop: 8,
     color: colors.muted,
     fontSize: 12,
     lineHeight: 18,
+    alignSelf: 'stretch',
+    width: '100%',
   },
   success: {
     color: '#6FCF97',
