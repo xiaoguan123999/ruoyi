@@ -296,6 +296,7 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.actions}>
                 <GradientPill title="充值" onPress={() => router.push('/recharge')} />
+                <GradientPill title="兑换" onPress={() => router.push('/wallet-exchange')} />
                 <GradientPill
                   title="提现"
                   onPress={() => {
@@ -561,14 +562,15 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: 14,
+    alignItems: 'stretch',
+    gap: 12,
     marginTop: 16,
   },
   pill: {
     flex: 1,
-    minHeight: 42,
+    minHeight: 40,
     paddingVertical: 8,
-    borderRadius: 21,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -583,7 +585,7 @@ const styles = StyleSheet.create({
   pillText: {
     color: colors.text,
     fontWeight: '700',
-    fontSize: 16,
+    fontSize: 15,
     zIndex: 1,
   },
   quickCard: {

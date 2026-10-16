@@ -11,7 +11,10 @@ import type {
     AppSubscribeBody,
     AppWallet,
     AppWalletLogItem,
-    AppWithdrawConfig,
+    AppWalletExchangeBody,
+  AppWalletExchangeConfig,
+  AppWalletExchangeResult,
+  AppWithdrawConfig,
 } from '@/api/types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -449,6 +452,63 @@ export async function applyAppWithdraw(body: AppAmountBody): Promise<string> {
   const res = await request('/app/withdraw', { method: 'POST', body });
   return res.msg || '提现申请已提交';
 }
+
+function mapWalletExchangeConfig(raw: unknown): AppWalletExchangeConfig | null {
+  if (!isRecord(raw)) {
+    return null;
+  }
+  return {
+    usdtToCny: pickNumber(raw, ['usdtToCny', 'rate', 'fxRate']),
+    productCny: pickNumber(raw, ['productCny']),
+    productUsdt: pickNumber(raw, ['productUsdt']),
+    promoCny: pickNumber(raw, ['promoCny']),
+    promoUsdt: pickNumber(raw, ['promoUsdt']),
+  };
+}
+
+/** GET /app/wallet/exchange/config */
+export async function fetchAppWalletExchangeConfig(): Promise<AppWalletExchangeConfig> {
+  const res = await request<unknown>('/app/wallet/exchange/config');
+  const root = extractDataRoot(res as Record<string, unknown>);
+  return (
+    mapWalletExchangeConfig(root) ??
+    mapWalletExchangeConfig(res) ?? {
+      usdtToCny: 6.25,
+      productCny: 0,
+      productUsdt: 0,
+      promoCny: 0,
+      promoUsdt: 0,
+    }
+  );
+}
+
+function mapWalletExchangeResult(raw: unknown): AppWalletExchangeResult | null {
+  if (!isRecord(raw)) {
+    return null;
+  }
+  return {
+    typeCode: pickString(raw, ['typeCode']),
+    fromCurrency: pickString(raw, ['fromCurrency']),
+    toCurrency: pickString(raw, ['toCurrency']),
+    fromAmount: pickNumber(raw, ['fromAmount']),
+    toAmount: pickNumber(raw, ['toAmount']),
+    usdtToCny: pickNumber(raw, ['usdtToCny']),
+  };
+}
+
+/** POST /app/wallet/exchange — 同钱包 CNY/USDT 兑换 */
+export async function applyAppWalletExchange(
+  body: AppWalletExchangeBody,
+): Promise<AppWalletExchangeResult> {
+  const res = await request<unknown>('/app/wallet/exchange', { method: 'POST', body });
+  const root = extractDataRoot(res as Record<string, unknown>);
+  const mapped = mapWalletExchangeResult(root) ?? mapWalletExchangeResult(res);
+  if (!mapped) {
+    throw new ApiError(res.msg || '兑换失败', Number(res.code) || 500);
+  }
+  return mapped;
+}
+
 
 /** 充值申请单：0 充值中 / 1 充值成功 / 2 充值失败 */
 function mapRechargeStatusLabel(status: string, statusLabel?: string): string {

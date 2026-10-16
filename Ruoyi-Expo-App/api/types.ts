@@ -285,6 +285,32 @@ export type AppWallet = {
   usdtAssistWallet: number;
 };
 
+/** GET /app/wallet/exchange/config */
+export type AppWalletExchangeConfig = {
+  usdtToCny: number;
+  productCny: number;
+  productUsdt: number;
+  promoCny: number;
+  promoUsdt: number;
+};
+
+/** POST /app/wallet/exchange */
+export type AppWalletExchangeBody = {
+  typeCode: 'PRODUCT' | 'PROMO';
+  fromCurrency: 'CNY' | 'USDT';
+  amount: number;
+  payPassword: string;
+};
+
+export type AppWalletExchangeResult = {
+  typeCode: string;
+  fromCurrency: string;
+  toCurrency: string;
+  fromAmount: number;
+  toAmount: number;
+  usdtToCny: number;
+};
+
 export type AppCheckinRecord = {
   checkinId?: number;
   checkinDate: string;

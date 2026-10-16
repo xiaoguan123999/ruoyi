@@ -23,6 +23,8 @@ type Props = {
   visible: boolean;
   mode?: PayPasswordMode;
   title?: string;
+  hintText?: string;
+  confirmLabelText?: string;
   submitting?: boolean;
   onCancel: () => void;
   onConfirm: (payPassword: string) => void;
@@ -32,6 +34,8 @@ export function PayPasswordModal({
   visible,
   mode = 'verify',
   title,
+  hintText,
+  confirmLabelText,
   submitting,
   onCancel,
   onConfirm,
@@ -45,10 +49,12 @@ export function PayPasswordModal({
 
   const isSet = mode === 'set';
   const resolvedTitle = title || (isSet ? '设置支付密码' : '请输入支付密码');
-  const hint = isSet
-    ? '检测到您尚未设置支付密码，请先设置后再认购'
-    : '为保障资金安全，认购前需验证支付密码';
-  const confirmLabel = isSet ? '确认设置' : '确认认购';
+  const hint =
+    hintText ||
+    (isSet
+      ? '检测到您尚未设置支付密码，请先设置后再操作'
+      : '为保障资金安全，操作前需验证支付密码');
+  const confirmLabel = confirmLabelText || (isSet ? '确认设置' : '确认');
   const canSubmit =
     payPassword.trim().length >= 4 &&
     (!isSet || payPassword.trim() === confirmPassword.trim());
