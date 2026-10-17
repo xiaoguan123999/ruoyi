@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.BizChainAddressBody;
 import com.ruoyi.biz.domain.BizGoogleConfig;
 import com.ruoyi.biz.domain.BizMember;
@@ -23,6 +24,7 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.poi.ExcelUtil;
+import com.ruoyi.framework.web.service.AppTokenService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
@@ -36,6 +38,9 @@ public class BizMemberController extends BaseController
 
     @Autowired
     private IBizGoogleAuthService googleAuthService;
+
+    @Autowired
+    private AppTokenService appTokenService;
 
     @ApiOperation("会员列表，testFlag=1 仅测试账号，testFlag=0 仅正式账号")
     @PreAuthorize("@ss.hasPermi('biz:member:list')")
@@ -109,6 +114,12 @@ public class BizMemberController extends BaseController
     {
         member.setUpdateBy(getUsername());
         memberService.updateMember(member);
+        if (BizConstants.STATUS_DISABLE.equals(member.getStatus()))
+        {
+            BizMember now = memberService.selectMemberById(member.getMemberId());
+            String phone = now == null ? member.getPhone() : now.getPhone();
+            appTokenService.kickByMember(member.getMemberId(), phone);
+        }
         return success();
     }
 

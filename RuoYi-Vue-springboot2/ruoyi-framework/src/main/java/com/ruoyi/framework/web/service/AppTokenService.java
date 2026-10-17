@@ -1,5 +1,6 @@
 package com.ruoyi.framework.web.service;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -130,6 +131,38 @@ public class AppTokenService
         {
             log.error("App logout failed: {}", e.getMessage());
         }
+    }
+
+    /** 停用账号时清掉该会员全部 App 登录态 */
+    public int kickByMember(Long memberId, String phone)
+    {
+        Collection<String> keys = redisCache.keys(CacheConstants.APP_LOGIN_TOKEN_KEY + "*");
+        if (keys == null || keys.isEmpty())
+        {
+            return 0;
+        }
+        int n = 0;
+        for (String key : keys)
+        {
+            Object cached = redisCache.getCacheObject(key);
+            if (!(cached instanceof AppLoginMember))
+            {
+                continue;
+            }
+            AppLoginMember row = (AppLoginMember) cached;
+            boolean hitMember = memberId != null && memberId.equals(row.getMemberId());
+            boolean hitPhone = StringUtils.isNotEmpty(phone) && phone.equals(row.getPhone());
+            if (hitMember || hitPhone)
+            {
+                redisCache.deleteObject(key);
+                n++;
+            }
+        }
+        if (n > 0)
+        {
+            log.info("kicked {} App token(s) memberId={} phone={}", Integer.valueOf(n), memberId, phone);
+        }
+        return n;
     }
 
     private Claims parseToken(String token)
