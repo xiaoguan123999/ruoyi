@@ -166,12 +166,11 @@ public class AppBizController extends BaseController
                 memberId, body.getTypeCode(), body.getFromCurrency(), body.getAmount()));
     }
 
-    @ApiOperation(value = "申请提现", notes = "提交后冻结余额，后台确认打款才扣掉。可传已保存的 accountId，或直接传 accountInfo。")
+    @ApiOperation(value = "申请充值（已关闭）", notes = "人工提交申请已关闭，请走线上通道 /app/pay/deposit 或链上 /app/chain/deposit。")
     @PostMapping("/recharge")
     public AppRechargeResult recharge(@RequestBody AppAmountBody body)
     {
-        String currency = body.getCurrency() == null ? BizConstants.CURRENCY_CNY : body.getCurrency();
-        return AppRechargeResult.ok(rechargeService.apply(AppSecurityUtils.getMemberId(), currency, body.getAmount(), body.getRemark()));
+        throw new ServiceException("人工充值已关闭，请使用在线充值");
     }
 
     @ApiOperation(value = "申请充值", notes = "只提交申请，后台审核通过才入账。")
