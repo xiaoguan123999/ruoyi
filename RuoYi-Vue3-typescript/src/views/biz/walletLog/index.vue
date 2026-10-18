@@ -114,6 +114,7 @@ const bizTypeOptions = [
   { value: "INVITE", label: "推广奖励" },
   { value: "ADJUST", label: "后台调账" },
   { value: "CHECKIN", label: "签到" },
+  { value: "WALLET_EXCHANGE", label: "钱包兑换" },
   { value: "KYC_REWARD", label: "实名注册奖励" },
   { value: "LEVEL_REWARD", label: "等级奖励" },
   { value: "WITHDRAW_FREEZE", label: "提现" },

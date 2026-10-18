@@ -565,6 +565,7 @@ const bizTypeMap: Record<string, { label: string; tagType: string }> = {
   COMMISSION: { label: '分佣', tagType: 'primary' },
   INVITE: { label: '邀请', tagType: 'success' },
   CHECKIN: { label: '签到', tagType: '' },
+  WALLET_EXCHANGE: { label: '钱包兑换', tagType: 'primary' },
   KYC_REWARD: { label: '实名奖励', tagType: 'info' },
   LEVEL_REWARD: { label: '等级奖励', tagType: 'info' },
   ADJUST: { label: '调账', tagType: 'warning' },
