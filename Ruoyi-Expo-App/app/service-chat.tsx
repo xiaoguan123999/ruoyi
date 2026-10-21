@@ -4,11 +4,15 @@ import { useKeyboardState } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 
 import { Text } from '@/components/ui/AppText';
+import { fetchAppProfile } from '@/api/app-auth';
 import { fetchAppServiceCenter } from '@/api/app-service';
+import { getAuthSnapshot } from '@/api/auth-state';
+import type { RuoyiUser } from '@/api/types';
 import { OnlineChatFrame } from '@/components/ui/OnlineChatFrame';
 import { useAuth } from '@/hooks/useAuth';
 import { useStableSafeBottom, useStableSafeTop } from '@/hooks/useStableSafeTop';
 import { resolveFallbackChatUrl, resolvePreferredChatUrl } from '@/utils/online-chat';
+import { getToken } from '@/utils/storage';
 
 function useWebKeyboardInset() {
   const [inset, setInset] = useState(0);
@@ -48,20 +52,32 @@ export default function ServiceChatScreen() {
   const top = useStableSafeTop();
   const bottom = useStableSafeBottom();
   const keyboardInset = useChatKeyboardInset();
-  const { user } = useAuth();
+  const { user, hydrated } = useAuth();
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('在线客服');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
     let alive = true;
+    setLoading(true);
+    setUrl('');
     void (async () => {
+      let visitor: RuoyiUser | null = user ?? getAuthSnapshot().user;
       try {
+        if (!visitor) {
+          const token = await getToken();
+          if (token) {
+            visitor = await fetchAppProfile().catch(() => getAuthSnapshot().user);
+          }
+        }
         const center = await fetchAppServiceCenter();
         if (!alive) {
           return;
         }
-        const next = resolvePreferredChatUrl(center?.channels ?? [], user);
+        const next = resolvePreferredChatUrl(center?.channels ?? [], visitor);
         setTitle(next.title);
         setUrl(next.url);
       } catch {
@@ -69,7 +85,7 @@ export default function ServiceChatScreen() {
           return;
         }
         setTitle('在线客服');
-        setUrl(resolveFallbackChatUrl(user));
+        setUrl(resolveFallbackChatUrl(visitor));
       } finally {
         if (alive) {
           setLoading(false);
@@ -79,7 +95,7 @@ export default function ServiceChatScreen() {
     return () => {
       alive = false;
     };
-  }, [user]);
+  }, [hydrated, user]);
 
   return (
     <View style={styles.root}>

@@ -22,24 +22,36 @@ export function pickOnlineChatChannel(channels: AppServiceChannel[]): AppService
   return channels.find((item) => isEmbeddableChatChannel(item)) ?? null;
 }
 
-/** 在后台跳转链接上补登录用户身份，不改 channelId / 域名 */
+/** 客服页「来源」，链接里已有 source 时不覆盖 */
+const CHAT_VISITOR_SOURCE = 'website_a';
+
+function setParamIfAbsent(params: URLSearchParams, key: string, value: string) {
+  if (value && !params.get(key)) {
+    params.set(key, value);
+  }
+}
+
+/**
+ * 在后台跳转链接上补访客参数，不改 site / channelId / 域名。
+ * 客服页展示认 name、phone、user_id、source；同时保留 userName、pid。
+ */
 export function withChatVisitorParams(url: string, user?: RuoyiUser | null): string {
-  if (!url || !user) {
+  if (!url) {
     return url;
   }
   try {
     const parsed = new URL(url);
-    const name = (user.realName || user.nickName || user.userName || '').trim();
-    const phone = (user.phone || '').trim();
-    if (name && !parsed.searchParams.get('userName')) {
-      parsed.searchParams.set('userName', name);
+    if (user) {
+      const name = (user.realName || user.nickName || user.userName || '').trim();
+      const phone = (user.phone || '').trim();
+      const userId = user.userId ? String(user.userId) : '';
+      setParamIfAbsent(parsed.searchParams, 'name', name);
+      setParamIfAbsent(parsed.searchParams, 'phone', phone);
+      setParamIfAbsent(parsed.searchParams, 'user_id', userId);
+      setParamIfAbsent(parsed.searchParams, 'userName', name);
+      setParamIfAbsent(parsed.searchParams, 'pid', userId);
     }
-    if (phone && !parsed.searchParams.get('phone')) {
-      parsed.searchParams.set('phone', phone);
-    }
-    if (user.userId && !parsed.searchParams.get('pid')) {
-      parsed.searchParams.set('pid', String(user.userId));
-    }
+    setParamIfAbsent(parsed.searchParams, 'source', CHAT_VISITOR_SOURCE);
     return parsed.toString();
   } catch {
     return url;
