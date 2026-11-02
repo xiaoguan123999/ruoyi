@@ -146,6 +146,33 @@ public class BizWalletServiceImpl implements IBizWalletService
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public BigDecimal debitUpTo(Long memberId, String typeCode, String currency, BigDecimal amount,
+            String bizType, Long bizId, String remark)
+    {
+        if (memberId == null || amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            return BigDecimal.ZERO;
+        }
+        String code = StringUtils.isEmpty(typeCode) ? BizConstants.WALLET_BALANCE : typeCode.trim().toUpperCase();
+        String unit = currency == null ? "" : currency.trim().toUpperCase();
+        initWallets(memberId);
+        BizWallet wallet = walletMapper.selectWalletForUpdate(memberId, code, unit);
+        if (wallet == null)
+        {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal available = nvl(wallet.getAvailable());
+        BigDecimal take = amount.compareTo(available) > 0 ? available : amount;
+        if (take.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            return BigDecimal.ZERO;
+        }
+        change(memberId, code, unit, take.negate(), BigDecimal.ZERO, bizType, bizId, remark);
+        return take;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void adjust(Long memberId, String typeCode, String currency, String direction, BigDecimal amount, String remark, String operator)
     {
         if (memberId == null)
@@ -559,6 +586,10 @@ public class BizWalletServiceImpl implements IBizWalletService
         {
             return stripPrefix(remark, "认购产品:", label);
         }
+        if (BizConstants.BIZ_SUBSCRIBE_CANCEL.equals(bizType))
+        {
+            return StringUtils.isEmpty(remark) ? label : remark;
+        }
         if (BizConstants.BIZ_ACCUMULATE_SETTLE.equals(bizType))
         {
             return label;
@@ -685,6 +716,10 @@ public class BizWalletServiceImpl implements IBizWalletService
         if (BizConstants.BIZ_SUBSCRIBE.equals(bizType))
         {
             return "认购";
+        }
+        if (BizConstants.BIZ_SUBSCRIBE_CANCEL.equals(bizType))
+        {
+            return "取消认购";
         }
         if (BizConstants.BIZ_RECHARGE.equals(bizType))
         {

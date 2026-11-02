@@ -144,6 +144,10 @@ export function listOrderRebates(orderId: number | string): Promise<AjaxResult<a
   return request({ url: '/biz/order/' + orderId + '/rebates', method: 'get' })
 }
 
+export function cancelOrder(orderId: number | string): Promise<AjaxResult<any>> {
+  return request({ url: '/biz/order/' + orderId + '/cancel', method: 'put' })
+}
+
 export function listCheckin(query: any): Promise<TableDataInfo<any[]>> {
   return request({ url: '/biz/checkin/list', method: 'get', params: query })
 }

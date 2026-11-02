@@ -14,4 +14,6 @@ public interface BizOrderUnlockLotMapper
 
     /** 撤销激活：清空 activate_time / income_start_time */
     int clearLotActivate(@Param("lotId") Long lotId);
+
+    int deleteByOrderId(@Param("orderId") Long orderId);
 }

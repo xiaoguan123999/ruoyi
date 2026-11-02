@@ -105,7 +105,7 @@ public class BizWalletCreditRuleServiceImpl implements IBizWalletCreditRuleServi
         {
             return BizConstants.WALLET_PROMO;
         }
-        if (BizConstants.BIZ_SUBSCRIBE.equals(key))
+        if (BizConstants.BIZ_SUBSCRIBE.equals(key) || BizConstants.BIZ_SUBSCRIBE_CANCEL.equals(key))
         {
             return BizConstants.WALLET_BALANCE;
         }

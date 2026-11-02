@@ -29,6 +29,10 @@ public interface IBizWalletService
 
     void debit(Long memberId, String currency, BigDecimal amount, String bizType, Long bizId, String remark);
 
+    /** 从指定钱包扣，最多扣到 0，返回实际扣到的金额 */
+    BigDecimal debitUpTo(Long memberId, String typeCode, String currency, BigDecimal amount,
+            String bizType, Long bizId, String remark);
+
     void adjust(Long memberId, String typeCode, String currency, String direction, BigDecimal amount, String remark, String operator);
 
     void freeze(Long memberId, String typeCode, String currency, BigDecimal amount, String bizType, Long bizId, String remark);

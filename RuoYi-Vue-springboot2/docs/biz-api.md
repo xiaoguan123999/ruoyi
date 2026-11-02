@@ -657,7 +657,7 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 `CNY` 扣人民币钱包、日返人民币；`USDT` 扣 USDT 钱包、日返 USDT。产品没配该币种价格会 500。`bizMode=REBATE`：每天 00:05 按订单币种打 `dailyRebate`，打满 `durationDays` 天结束。未到返利时间（一拖二未达标，或已激活但等待小时未到）当日不发、不扣剩余天数。`bizMode=ASSIST`：不进日返；即时发助力值；定时任务到期退本。
 
 `GET /app/orders?pageNum=1&pageSize=10` 我的订单。  
-订单 `status`：`0` 持仓中，`1` 已完成。**是否已激活看 `activateStatus`，是否开始返利看 `incomeReady`，不要用 `status==='1'` 当已激活**（`status=1` 是已完成）。订单带 `currency` 字段，以及所属产品系列：
+订单 `status`：`0` 持仓中，`1` 已完成，`2` 已取消。**是否已激活看 `activateStatus`，是否开始返利看 `incomeReady`，不要用 `status==='1'` 当已激活**（`status=1` 是已完成）。`canCancel=true` 时展示取消。订单带 `currency` 字段，以及所属产品系列：
 
 ```json
 {
@@ -714,9 +714,21 @@ App 产品是两层：**Tab 渲染系列卡片 → 点进去查该系列下的�
 | accumulateCycleDays | ACCUMULATE 累计周期快照，不要当保护天数展示 |
 | accumulatedAmount | ACCUMULATE：待结算累计。PROTECT：累计池（激活后自动转入） |
 | accumulateVisible | `true` 才在认购记录展示累计。ACCUMULATE 恒 true；PROTECT 保护期内 false |
-| canSettleAccumulate | 仅 ACCUMULATE 满周期且有对档份额时为 true。PROTECT / CREDIT 恒 false |
+| canSettleAccumulate | 仅 ACCUMULATE 满周期且有对档份额时为 true。PROTECT / CREDIT / 已取消 恒 false |
+| canCancel | `true` 时显示取消按钮。`status=2` 为 false |
+| status | `0` 持仓中 `1` 已完成 `2` 已取消 |
 
-`POST /app/orders/{orderId}/settleAccumulate`：**只给 ACCUMULATE**。满周期 + 对档已激活才成功。PROTECT 会返回「无需手动结算」，不要给这种单展示结算按钮。
+`POST /app/orders/{orderId}/cancel`
+
+用户取消认购。持仓中、已完成都可以取消；已取消再点会失败。必须带支付密码。
+
+```json
+{ "payPassword": "123456" }
+```
+
+取消后：本金退回余额钱包；本单已发的日返、累计转入、助力值从对应钱包扣回；本单三级认购返佣从上级推广钱包扣回；一拖二按取消后的直推份数重算，上级因此失效的 CREDIT 份已发日返一并追回。钱包余额不够时扣到 0，订单仍取消。限购份数不再计入已取消单。`status` 变为 `2`，`canCancel=false`，不再发日返、不退助力本金。
+
+`POST /app/orders/{orderId}/settleAccumulate`：**只给 ACCUMULATE**。满周期 + 对档已激活才成功。PROTECT 会返回「无需手动结算」，不要给这种单展示结算按钮。已取消订单不能结算。
 
 产品改了所属系列后，历史订单按**当前产品挂的系列**返回。新订单按当时产品配置写入一拖二快照；改产品只影响之后的新单。
 
@@ -1282,7 +1294,10 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | DELETE | `/biz/product/{ids}` | 删除产品 |
 | GET/POST/PUT/DELETE | `/biz/productCardTemplate` | 产品卡片模板 CRUD |
 | GET | `/biz/productCardTemplate/options` | 启用中的模板下拉 |
-| GET | `/biz/order/list` | 认购订单 |
+| GET | `/biz/order/list` | 认购订单。`status`：`0` 持仓中 `1` 已完成 `2` 已取消 |
+| GET | `/biz/order/{orderId}` | 订单详情 |
+| GET | `/biz/order/{orderId}/rebates` | 日返发放记录 |
+| PUT | `/biz/order/{orderId}/cancel` | 后台取消认购。权限 `biz:order:cancel`。不需要用户支付密码。效果与 App 取消相同：退本金、追回日返/累计/助力/三级返佣、回滚一拖二。已取消再点失败。`canCancel=false` 或 `status=2` 时按钮隐藏 |
 | GET | `/biz/checkin/list` | 签到记录 |
 | GET/PUT | `/biz/checkin/rule` | 签到规则（金额、连续天数、奖品、概率） |
 | GET/PUT | `/biz/promo/rule` | 注册推广规则。认购返佣：`teamEnabled` `teamRateL1/L2/L3`。充值返佣：`rechargeTeamEnabled` `rechargeTeamManualEnabled` `rechargeTeamRateL1/L2/L3`（总开关默认关；人工充值另开，默认不返，与认购独立） |

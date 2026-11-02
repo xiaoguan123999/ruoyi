@@ -31,6 +31,11 @@ public class BizRecharge extends BaseEntity
     @ApiModelProperty("手机号")
     private String phone;
 
+    /** 姓名 */
+    @Excel(name = "姓名")
+    @ApiModelProperty("姓名")
+    private String realName;
+
     /** 币种 */
     @Excel(name = "币种")
     @ApiModelProperty("币种")
@@ -108,6 +113,16 @@ public class BizRecharge extends BaseEntity
     public void setPhone(String phone)
     {
         this.phone = phone;
+    }
+
+    public String getRealName()
+    {
+        return realName;
+    }
+
+    public void setRealName(String realName)
+    {
+        this.realName = realName;
     }
 
     public String getCurrency()

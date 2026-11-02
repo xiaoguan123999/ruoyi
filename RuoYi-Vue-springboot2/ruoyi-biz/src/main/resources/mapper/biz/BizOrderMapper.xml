@@ -71,6 +71,10 @@
         where o.order_id = #{orderId}
     </select>
 
+    <select id="lockOrderById" resultType="int">
+        select count(1) from biz_order where order_id = #{orderId} for update
+    </select>
+
     <select id="selectOrderList" parameterType="BizOrder" resultMap="BizOrderResult">
         <include refid="selectOrderVo"/>
         <where>
@@ -105,11 +109,12 @@
     </select>
 
     <select id="countMemberOrders" resultType="int">
-        select count(1) from biz_order where member_id = #{memberId}
+        select count(1) from biz_order where member_id = #{memberId} and ifnull(status, '0') &lt;&gt; '2'
     </select>
 
     <select id="countMemberProductOrders" resultType="int">
-        select ifnull(sum(ifnull(quantity, 1)), 0) from biz_order where member_id = #{memberId} and product_id = #{productId}
+        select ifnull(sum(ifnull(quantity, 1)), 0) from biz_order
+        where member_id = #{memberId} and product_id = #{productId} and ifnull(status, '0') &lt;&gt; '2'
     </select>
 
     <select id="sumActivatedLotsByMemberProduct" resultType="int">
@@ -132,18 +137,21 @@
         <include refid="selectOrderVo"/>
         where o.product_id = #{productId}
           and m.parent_id = #{parentId}
+          and ifnull(o.status, '0') &lt;&gt; '2'
         order by o.create_time asc, o.order_id asc
     </select>
 
     <select id="selectDirectDownlineOrders" resultMap="BizOrderResult">
         <include refid="selectOrderVo"/>
         where m.parent_id = #{parentId}
+          and ifnull(o.status, '0') &lt;&gt; '2'
         order by o.create_time asc, o.order_id asc
     </select>
 
     <select id="countWithdrawRequiredOrders" resultType="int">
         select count(1) from biz_order
         where member_id = #{memberId} and withdraw_required = '1' and currency = #{currency}
+          and ifnull(status, '0') &lt;&gt; '2'
     </select>
 
     <select id="sumTeamOrderAmount" resultType="java.math.BigDecimal">
@@ -151,6 +159,7 @@
         from biz_order o
         inner join biz_member m on m.member_id = o.member_id
         where o.currency = #{currency}
+          and ifnull(o.status, '0') &lt;&gt; '2'
           and ifnull(m.test_flag, '0') = '0'
           and (
             (

@@ -15,4 +15,7 @@ public interface BizWalletLogMapper
     BigDecimal sumPromoIncome(@Param("memberId") Long memberId, @Param("currency") String currency);
 
     int insertWalletLog(BizWalletLog log);
+
+    /** 某业务单已入账净额（按会员/钱包/币种） */
+    List<BizWalletLog> selectNetCreditsByBizId(@Param("bizId") Long bizId, @Param("bizTypes") List<String> bizTypes);
 }

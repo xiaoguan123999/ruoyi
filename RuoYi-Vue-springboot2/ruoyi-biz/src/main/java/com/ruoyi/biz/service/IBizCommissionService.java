@@ -11,5 +11,8 @@ public interface IBizCommissionService
 
     void grantForSubscribe(BizOrder order);
 
+    /** 按认购单追回已发三级返佣，余额不够扣多少算多少 */
+    void clawbackForSubscribe(Long orderId);
+
     void grantForRecharge(BizRecharge recharge);
 }

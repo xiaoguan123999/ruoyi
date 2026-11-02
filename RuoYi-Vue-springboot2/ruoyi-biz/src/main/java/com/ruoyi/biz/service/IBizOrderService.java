@@ -14,6 +14,12 @@ public interface IBizOrderService
 
     BizOrder subscribe(Long memberId, Long productId, String currency, String payPassword, Integer quantity);
 
+    /** 用户取消认购：退本金，追回日返/累计/助力/返佣，回滚一拖二 */
+    BizOrder cancelSubscribe(Long memberId, Long orderId, String payPassword);
+
+    /** 后台取消认购，不校验支付密码 */
+    BizOrder cancelSubscribeByAdmin(Long orderId);
+
     int processDailyRebate();
 
     /** ASSIST 到期退本到 BALANCE */

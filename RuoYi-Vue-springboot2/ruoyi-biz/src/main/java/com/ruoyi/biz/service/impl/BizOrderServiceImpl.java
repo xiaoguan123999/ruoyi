@@ -22,10 +22,12 @@ import com.ruoyi.biz.domain.BizOrder;
 import com.ruoyi.biz.domain.BizOrderUnlockLot;
 import com.ruoyi.biz.domain.BizProduct;
 import com.ruoyi.biz.domain.BizRebateLog;
+import com.ruoyi.biz.domain.BizWalletLog;
 import com.ruoyi.biz.mapper.BizOrderMapper;
 import com.ruoyi.biz.mapper.BizOrderUnlockLotMapper;
 import com.ruoyi.biz.mapper.BizProductMapper;
 import com.ruoyi.biz.mapper.BizRebateLogMapper;
+import com.ruoyi.biz.mapper.BizWalletLogMapper;
 import com.ruoyi.biz.service.IBizCommissionService;
 import com.ruoyi.biz.service.IBizConfigService;
 import com.ruoyi.biz.service.IBizMemberService;
@@ -53,6 +55,9 @@ public class BizOrderServiceImpl implements IBizOrderService
 
     @Autowired
     private BizRebateLogMapper rebateLogMapper;
+
+    @Autowired
+    private BizWalletLogMapper walletLogMapper;
 
     @Autowired
     private IBizWalletService walletService;
@@ -294,6 +299,227 @@ public class BizOrderServiceImpl implements IBizOrderService
             refreshUnlock(member.getParentId(), productId, support);
         }
         return fillActivate(orderMapper.selectOrderById(order.getOrderId()), support);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BizOrder cancelSubscribe(Long memberId, Long orderId, String payPassword)
+    {
+        if (memberId == null || orderId == null)
+        {
+            throw new ServiceException("订单不存在");
+        }
+        memberService.assertPayPassword(memberId, payPassword);
+        orderMapper.lockOrderById(orderId);
+        BizOrder order = orderMapper.selectOrderById(orderId);
+        if (order == null || !memberId.equals(order.getMemberId()))
+        {
+            throw new ServiceException("订单不存在");
+        }
+        return executeCancel(order, "取消认购");
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BizOrder cancelSubscribeByAdmin(Long orderId)
+    {
+        if (orderId == null)
+        {
+            throw new ServiceException("订单不存在");
+        }
+        orderMapper.lockOrderById(orderId);
+        BizOrder order = orderMapper.selectOrderById(orderId);
+        if (order == null)
+        {
+            throw new ServiceException("订单不存在");
+        }
+        return executeCancel(order, "后台取消认购");
+    }
+
+    private BizOrder executeCancel(BizOrder order, String remarkTag)
+    {
+        if (order.cancelled())
+        {
+            throw new ServiceException("订单已取消");
+        }
+        Long memberId = order.getMemberId();
+        BizMember member = memberService.selectMemberById(memberId);
+        Long parentId = member == null ? null : member.getParentId();
+        Map<Long, BizOrderUnlockLot> parentLotsBefore = snapshotParentLots(parentId, order.getProductId());
+
+        clawOrderCredits(order, remarkTag);
+        commissionService.clawbackForSubscribe(order.getOrderId());
+        refundSubscribePrincipal(order, remarkTag);
+
+        BizOrder patch = new BizOrder();
+        patch.setOrderId(order.getOrderId());
+        patch.setStatus(BizConstants.ORDER_CANCELLED);
+        patch.setRemainingDays(Integer.valueOf(0));
+        patch.setAccumulatedAmount(BigDecimal.ZERO);
+        patch.setAccumulateDays(Integer.valueOf(0));
+        patch.setAccumulatePaused("1");
+        patch.setCanSettleAccumulate(Boolean.FALSE);
+        orderMapper.updateOrder(patch);
+        lotMapper.deleteByOrderId(order.getOrderId());
+
+        UnlockSupport support = new UnlockSupport();
+        refreshUnlock(memberId, order.getProductId(), support);
+        if (parentId != null)
+        {
+            refreshUnlock(parentId, order.getProductId(), support);
+            clawParentDeactivatedLots(parentId, order.getProductId(), parentLotsBefore, support);
+        }
+        memberService.refreshLevelAndUplines(memberId);
+        return selectOrderById(order.getOrderId());
+    }
+
+    private void clawOrderCredits(BizOrder order, String remarkTag)
+    {
+        List<String> types = new ArrayList<String>();
+        types.add(BizConstants.BIZ_REBATE);
+        types.add(BizConstants.BIZ_ACCUMULATE_SETTLE);
+        types.add(BizConstants.BIZ_ASSIST_GRANT);
+        List<BizWalletLog> rows = walletLogMapper.selectNetCreditsByBizId(order.getOrderId(), types);
+        if (rows == null)
+        {
+            return;
+        }
+        String tag = StringUtils.isEmpty(remarkTag) ? "取消认购" : remarkTag;
+        for (int i = 0; i < rows.size(); i++)
+        {
+            BizWalletLog row = rows.get(i);
+            if (row == null || row.getAmount() == null || row.getAmount().compareTo(BigDecimal.ZERO) <= 0)
+            {
+                continue;
+            }
+            walletService.debitUpTo(row.getMemberId(), row.getTypeCode(), row.getCurrency(), row.getAmount(),
+                    BizConstants.BIZ_SUBSCRIBE_CANCEL, order.getOrderId(),
+                    tag + "追回:" + nvlName(order.getProductName()));
+        }
+    }
+
+    private void refundSubscribePrincipal(BizOrder order, String remarkTag)
+    {
+        if (order.getPrice() == null || order.getPrice().compareTo(BigDecimal.ZERO) <= 0)
+        {
+            return;
+        }
+        if (order.assistMode() && "1".equals(order.getPrincipalReturned()))
+        {
+            return;
+        }
+        String tag = StringUtils.isEmpty(remarkTag) ? "取消认购" : remarkTag;
+        walletService.credit(order.getMemberId(), order.getCurrency(), order.getPrice(),
+                BizConstants.BIZ_SUBSCRIBE_CANCEL, order.getOrderId(),
+                tag + "退回:" + nvlName(order.getProductName()), BizConstants.WALLET_BALANCE);
+    }
+
+    private Map<Long, BizOrderUnlockLot> snapshotParentLots(Long parentId, Long productId)
+    {
+        Map<Long, BizOrderUnlockLot> map = new HashMap<Long, BizOrderUnlockLot>();
+        if (parentId == null || productId == null)
+        {
+            return map;
+        }
+        BizOrder query = new BizOrder();
+        query.setMemberId(parentId);
+        query.setProductId(productId);
+        List<BizOrder> list = orderMapper.selectOrderList(query);
+        if (list == null)
+        {
+            return map;
+        }
+        for (int i = 0; i < list.size(); i++)
+        {
+            BizOrder row = list.get(i);
+            if (row == null || row.cancelled())
+            {
+                continue;
+            }
+            List<BizOrderUnlockLot> lots = lotMapper.selectByOrderId(row.getOrderId());
+            if (lots == null)
+            {
+                continue;
+            }
+            for (int j = 0; j < lots.size(); j++)
+            {
+                BizOrderUnlockLot lot = lots.get(j);
+                if (lot != null && lot.getLotId() != null)
+                {
+                    map.put(lot.getLotId(), lot);
+                }
+            }
+        }
+        return map;
+    }
+
+    private void clawParentDeactivatedLots(Long parentId, Long productId,
+            Map<Long, BizOrderUnlockLot> before, UnlockSupport support)
+    {
+        if (parentId == null || productId == null || before == null || before.isEmpty())
+        {
+            return;
+        }
+        BizOrder query = new BizOrder();
+        query.setMemberId(parentId);
+        query.setProductId(productId);
+        List<BizOrder> list = orderMapper.selectOrderList(query);
+        if (list == null)
+        {
+            return;
+        }
+        for (int i = 0; i < list.size(); i++)
+        {
+            BizOrder parent = list.get(i);
+            if (parent == null || parent.cancelled() || parent.protectIncome())
+            {
+                continue;
+            }
+            List<BizOrderUnlockLot> after = support.lotsOf(parent.getOrderId());
+            if (after == null)
+            {
+                after = lotMapper.selectByOrderId(parent.getOrderId());
+            }
+            if (after == null)
+            {
+                continue;
+            }
+            BigDecimal unit = unitRebate(parent);
+            String currency = StringUtils.isEmpty(parent.getCurrency())
+                    ? BizConstants.CURRENCY_CNY : parent.getCurrency().toUpperCase();
+            int duration = parent.getDurationDays() == null ? 0 : parent.getDurationDays().intValue();
+            BigDecimal claw = BigDecimal.ZERO;
+            for (int j = 0; j < after.size(); j++)
+            {
+                BizOrderUnlockLot now = after.get(j);
+                if (now == null || now.getLotId() == null)
+                {
+                    continue;
+                }
+                BizOrderUnlockLot old = before.get(now.getLotId());
+                if (old == null || old.getActivateTime() == null || now.getActivateTime() != null)
+                {
+                    continue;
+                }
+                int paidDays = duration > 0 ? Math.max(0, duration - nz(old.getRemainingDays())) : 0;
+                if (paidDays <= 0)
+                {
+                    continue;
+                }
+                claw = claw.add(unit.multiply(new BigDecimal(qtyOfLot(old))).multiply(new BigDecimal(paidDays)));
+            }
+            if (claw.compareTo(BigDecimal.ZERO) > 0)
+            {
+                walletService.debitUpTo(parentId, BizConstants.WALLET_PRODUCT, currency, claw,
+                        BizConstants.BIZ_SUBSCRIBE_CANCEL, parent.getOrderId(),
+                        "取消认购回滚一拖二追回:" + nvlName(parent.getProductName()));
+            }
+        }
+    }
+
+    private String nvlName(String name)
+    {
+        return StringUtils.isEmpty(name) ? "产品" : name;
     }
 
     private void creditAssistGrants(Long memberId, BizProduct product, Long orderId,
@@ -649,6 +875,10 @@ public class BizOrderServiceImpl implements IBizOrderService
         {
             throw new ServiceException("订单不存在");
         }
+        if (order.cancelled())
+        {
+            throw new ServiceException("订单已取消");
+        }
         if (order.protectIncome())
         {
             throw new ServiceException("累计收益在一拖二激活后自动转入产品收益，无需手动结算");
@@ -891,6 +1121,17 @@ public class BizOrderServiceImpl implements IBizOrderService
         {
             return;
         }
+        order.setCanCancel(Boolean.valueOf(!order.cancelled()));
+        if (order.cancelled())
+        {
+            order.setCanSettleAccumulate(Boolean.FALSE);
+            order.setRelatedProductOwned(Boolean.FALSE);
+            order.setRelatedActivatedQty(Integer.valueOf(0));
+            order.setRelatedSlotsAvailable(Integer.valueOf(0));
+            order.setSettleableShares(Integer.valueOf(0));
+            order.setAccumulateVisible(Boolean.FALSE);
+            return;
+        }
         order.setProtectDays(Integer.valueOf(nz(order.getProtectDays())));
         if (order.protectIncome())
         {
@@ -959,6 +1200,19 @@ public class BizOrderServiceImpl implements IBizOrderService
         if (order == null)
         {
             return null;
+        }
+        order.setCanCancel(Boolean.valueOf(!order.cancelled()));
+        if (order.cancelled())
+        {
+            order.setUnlockDirectHave(Integer.valueOf(0));
+            order.setActivatedQty(Integer.valueOf(0));
+            order.setIncomeReadyQty(Integer.valueOf(0));
+            order.setActivateStatus("0");
+            order.setIncomeReady(Boolean.FALSE);
+            order.setIncomeStartTime(null);
+            order.setIncomeDailyRebate(BigDecimal.ZERO);
+            order.setCanSettleAccumulate(Boolean.FALSE);
+            return order;
         }
         UnlockPlan plan = support.plan(order.getMemberId(), order.getProductId());
         List<BizOrderUnlockLot> lots = plan == null ? null : plan.lotsByOrder.get(order.getOrderId());
@@ -1325,6 +1579,10 @@ public class BizOrderServiceImpl implements IBizOrderService
             for (int i = 0; i < holding.size(); i++)
             {
                 BizOrder row = holding.get(i);
+                if (row.cancelled())
+                {
+                    continue;
+                }
                 if (productId.equals(row.getProductId())
                         && (row.protectIncome() || BizConstants.ORDER_HOLDING.equals(row.getStatus())))
                 {
@@ -1336,6 +1594,10 @@ public class BizOrderServiceImpl implements IBizOrderService
             for (int i = 0; i < allDowns.size(); i++)
             {
                 BizOrder row = allDowns.get(i);
+                if (row.cancelled())
+                {
+                    continue;
+                }
                 if (productId.equals(row.getProductId()))
                 {
                     tierDowns.add(row);

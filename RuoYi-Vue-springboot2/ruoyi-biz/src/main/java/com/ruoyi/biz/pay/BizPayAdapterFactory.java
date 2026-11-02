@@ -31,6 +31,9 @@ public class BizPayAdapterFactory
     @Autowired
     private JinminAdapter jinminAdapter;
 
+    @Autowired
+    private BaileV2Adapter baileV2Adapter;
+
     public IBizPayAdapter getAdapter(BizPayProvider provider)
     {
         if (provider == null)
@@ -67,6 +70,10 @@ public class BizPayAdapterFactory
         if (BizConstants.PAY_FAMILY_JINMIN.equals(family) || "jinmin".equals(family) || "xing".equals(family))
         {
             return jinminAdapter;
+        }
+        if (BizConstants.PAY_FAMILY_BAILE2.equals(family) || "baile2".equals(family) || "bailelife".equals(family))
+        {
+            return baileV2Adapter;
         }
         throw new ServiceException("服务商 " + provider.getProviderName() + " 尚未接入真实网关");
     }

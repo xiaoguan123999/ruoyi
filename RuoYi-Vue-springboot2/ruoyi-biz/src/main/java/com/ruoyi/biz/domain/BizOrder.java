@@ -184,8 +184,11 @@ public class BizOrder extends BaseEntity
     private Integer unlockDirectHave;
 
     /** 状态 */
-    @ApiModelProperty("订单状态：0持仓中 1已完成")
+    @ApiModelProperty("订单状态：0持仓中 1已完成 2已取消")
     private String status;
+
+    @ApiModelProperty("用户是否可取消")
+    private Boolean canCancel;
 
     public Long getOrderId()
     {
@@ -466,6 +469,21 @@ public class BizOrder extends BaseEntity
     public void setStatus(String status)
     {
         this.status = status;
+    }
+
+    public Boolean getCanCancel()
+    {
+        return canCancel;
+    }
+
+    public void setCanCancel(Boolean canCancel)
+    {
+        this.canCancel = canCancel;
+    }
+
+    public boolean cancelled()
+    {
+        return "2".equals(status);
     }
 
 }

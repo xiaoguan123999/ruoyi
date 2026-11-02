@@ -8,6 +8,8 @@ public interface BizOrderMapper
 {
     BizOrder selectOrderById(Long orderId);
 
+    int lockOrderById(Long orderId);
+
     List<BizOrder> selectOrderList(BizOrder order);
 
     List<BizOrder> selectHoldingOrders();

@@ -10,4 +10,6 @@ public interface BizCommissionLogMapper
     int insertCommissionLog(BizCommissionLog log);
 
     int countByRechargeId(Long rechargeId);
+
+    List<BizCommissionLog> selectByOrderId(Long orderId);
 }

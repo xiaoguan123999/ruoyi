@@ -25,6 +25,7 @@
         <el-select v-model="queryParams.status" placeholder="状态" clearable style="width: 140px">
           <el-option label="持仓中" value="0" />
           <el-option label="已完成" value="1" />
+          <el-option label="已取消" value="2" />
         </el-select>
       </el-form-item>
       <el-form-item label="时间">
@@ -92,9 +93,16 @@
       <el-table-column label="申购时间" align="center" prop="createTime" width="170">
         <template #default="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="90" fixed="right">
+      <el-table-column label="操作" align="center" width="140" fixed="right">
         <template #default="scope">
           <el-button link type="primary" @click="openDetail(scope.row)">详情</el-button>
+          <el-button
+            v-if="scope.row.canCancel !== false && scope.row.status !== '2'"
+            v-hasPermi="['biz:order:cancel']"
+            link
+            type="danger"
+            @click="handleCancel(scope.row)"
+          >取消</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -210,6 +218,13 @@
       <template #footer>
         <div class="drawer-footer">
           <el-button @click="detailOpen = false">关 闭</el-button>
+          <el-button
+            v-if="detail.canCancel !== false && detail.status !== '2'"
+            v-hasPermi="['biz:order:cancel']"
+            type="danger"
+            :loading="cancelLoading"
+            @click="handleCancel(detail)"
+          >取消订单</el-button>
           <el-button type="primary" :loading="detailLoading" @click="reloadDetail">刷 新</el-button>
         </div>
       </template>
@@ -218,7 +233,7 @@
 </template>
 
 <script setup lang="ts" name="BizOrder">
-import { getOrder, listOrder, listOrderRebates, listProductCategoryOptions } from "@/api/biz"
+import { cancelOrder, getOrder, listOrder, listOrderRebates, listProductCategoryOptions } from "@/api/biz"
 
 const { proxy } = getCurrentInstance() as any
 const dataList = ref<any[]>([])
@@ -237,6 +252,7 @@ const detailOrderId = ref<number | string | null>(null)
 const detailTab = ref("order")
 const rebatePage = ref(1)
 const rebatePageSize = 20
+const cancelLoading = ref(false)
 
 const rebateSum = computed(() => {
   let sum = 0
@@ -267,12 +283,14 @@ function unlockProgress(row: any) {
 }
 function orderStatusText(row: any) {
   if (!row) return "—"
+  if (row.status === "2") return "已取消"
   if (row.status === "1") return "已完成"
   if (row.activateStatus === "1") return "收益中"
   return "未激活"
 }
 function orderStatusType(row: any) {
   if (!row) return "info"
+  if (row.status === "2") return "info"
   if (row.status === "1") return "success"
   if (row.activateStatus === "1") return "warning"
   return "info"
@@ -327,6 +345,23 @@ function getList() {
 }
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() { dateRange.value = []; proxy.resetForm("queryRef"); handleQuery() }
+
+function handleCancel(row: any) {
+  const orderId = row?.orderId
+  if (!orderId) return
+  proxy.$modal.confirm("取消后将退回本金，并追回该单已发的日返、累计收益、助力值和三级返佣。确定取消？").then(() => {
+    cancelLoading.value = true
+    return cancelOrder(orderId)
+  }).then(() => {
+    proxy.$modal.msgSuccess("已取消")
+    getList()
+    if (detailOpen.value && String(detailOrderId.value) === String(orderId)) {
+      reloadDetail()
+    }
+  }).catch(() => {}).finally(() => {
+    cancelLoading.value = false
+  })
+}
 
 function openDetail(row: any) {
   const orderId = row?.orderId

@@ -72,6 +72,20 @@
           )
     </select>
 
+    <select id="selectNetCreditsByBizId" resultMap="BizWalletLogResult">
+        select l.member_id, l.type_code, l.currency, ifnull(sum(l.amount), 0) as amount
+        from biz_wallet_log l
+        where l.biz_id = #{bizId}
+        <if test="bizTypes != null and bizTypes.size() &gt; 0">
+          and l.biz_type in
+          <foreach collection="bizTypes" item="item" open="(" separator="," close=")">
+            #{item}
+          </foreach>
+        </if>
+        group by l.member_id, l.type_code, l.currency
+        having ifnull(sum(l.amount), 0) &gt; 0
+    </select>
+
     <insert id="insertWalletLog" parameterType="BizWalletLog" useGeneratedKeys="true" keyProperty="logId">
         insert into biz_wallet_log (
             member_id, type_code, currency, biz_type, biz_id, amount,

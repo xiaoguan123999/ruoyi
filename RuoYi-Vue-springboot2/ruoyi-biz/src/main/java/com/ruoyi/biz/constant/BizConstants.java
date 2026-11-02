@@ -59,9 +59,15 @@ public class BizConstants
     /** 已完成 */
     public static final String ORDER_FINISHED = "1";
 
+    /** 用户取消 */
+    public static final String ORDER_CANCELLED = "2";
+
     public static final String BIZ_CHECKIN = "CHECKIN";
 
     public static final String BIZ_SUBSCRIBE = "SUBSCRIBE";
+
+    /** 用户取消认购：退本金 / 追回收益 */
+    public static final String BIZ_SUBSCRIBE_CANCEL = "SUBSCRIBE_CANCEL";
 
     public static final String BIZ_REBATE = "REBATE";
 
@@ -313,6 +319,9 @@ public class BizConstants
 
     /** 百乐：/api/createorder，成功 state=2 */
     public static final String PAY_FAMILY_BAILE = "baile";
+
+    /** 百乐新网关：/api/newOrder，金额元，回调 status=ok */
+    public static final String PAY_FAMILY_BAILE2 = "baile2";
 
     /** 北冰洋：/pay/newOrder，金额元，回调应答 ok */
     public static final String PAY_FAMILY_ARCTIC = "arctic";

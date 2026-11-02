@@ -6,6 +6,7 @@
         <id     property="rechargeId"   column="recharge_id"/>
         <result property="memberId"     column="member_id"/>
         <result property="phone"        column="phone"/>
+        <result property="realName"     column="real_name"/>
         <result property="currency"     column="currency"/>
         <result property="amount"       column="amount"/>
         <result property="status"       column="status"/>
@@ -20,7 +21,7 @@
     </resultMap>
 
     <select id="selectRechargeById" parameterType="Long" resultMap="BizRechargeResult">
-        select r.recharge_id, r.member_id, m.phone, r.currency, r.amount, r.status,
+        select r.recharge_id, r.member_id, m.phone, m.real_name, r.currency, r.amount, r.status,
                r.audit_by, r.audit_time, r.audit_remark, r.create_time, r.remark,
                r.pay_mode, r.channel_code, r.out_trade_no
         from biz_recharge r
@@ -29,7 +30,7 @@
     </select>
 
     <select id="selectRechargeList" parameterType="BizRecharge" resultMap="BizRechargeResult">
-        select r.recharge_id, r.member_id, m.phone, r.currency, r.amount, r.status,
+        select r.recharge_id, r.member_id, m.phone, m.real_name, r.currency, r.amount, r.status,
                r.audit_by, r.audit_time, r.audit_remark, r.create_time, r.remark,
                r.pay_mode, r.channel_code, r.out_trade_no
         from biz_recharge r

@@ -107,7 +107,7 @@ public class AppBizController extends BaseController
                 body.getProductId(), body.getCurrency(), body.getPayPassword(), body.getQuantity())));
     }
 
-    @ApiOperation(value = "我的认购订单", notes = "分页。status：0 持仓中，1 已完成。CREDIT 每天进产品收益；ACCUMULATE 订单累计后可点结算；PROTECT 保护期+累计池，accumulateVisible 控制是否展示累计，canSettleAccumulate 恒 false。")
+    @ApiOperation(value = "我的认购订单", notes = "分页。status：0 持仓中，1 已完成，2 已取消。CREDIT 每天进产品收益；ACCUMULATE 订单累计后可点结算；PROTECT 保护期+累计池，accumulateVisible 控制是否展示累计，canSettleAccumulate 恒 false。")
     @GetMapping("/orders")
     public TableDataInfo orders()
     {
@@ -128,6 +128,15 @@ public class AppBizController extends BaseController
             }
         }
         return table;
+    }
+
+    @ApiOperation(value = "取消认购", notes = "支付密码必填。持仓中、已完成都可取消。退本金，追回日返/累计/助力/三级返佣，回滚一拖二。已取消不可再取消。")
+    @PostMapping("/orders/{orderId}/cancel")
+    public AppOrderResult cancelOrder(@PathVariable Long orderId, @RequestBody(required = false) AppAmountBody body)
+    {
+        String payPassword = body == null ? null : body.getPayPassword();
+        return AppOrderResult.ok(fillSeriesCover(
+                orderService.cancelSubscribe(AppSecurityUtils.getMemberId(), orderId, payPassword)));
     }
 
     @ApiOperation(value = "结算订单累计", notes = "仅 ACCUMULATE：满累计周期且有对档激活份额后，把订单累计转入产品收益。PROTECT 会提示无需手动结算。")

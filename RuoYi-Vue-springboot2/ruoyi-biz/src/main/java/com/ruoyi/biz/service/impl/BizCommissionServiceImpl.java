@@ -15,6 +15,7 @@ import com.ruoyi.biz.mapper.BizCommissionLogMapper;
 import com.ruoyi.biz.service.IBizCommissionService;
 import com.ruoyi.biz.service.IBizConfigService;
 import com.ruoyi.biz.service.IBizMemberService;
+import com.ruoyi.biz.service.IBizWalletCreditRuleService;
 import com.ruoyi.biz.service.IBizWalletService;
 
 @Service
@@ -31,6 +32,9 @@ public class BizCommissionServiceImpl implements IBizCommissionService
 
     @Autowired
     private IBizMemberService memberService;
+
+    @Autowired
+    private IBizWalletCreditRuleService creditRuleService;
 
     @Override
     public List<BizCommissionLog> selectCommissionList(BizCommissionLog log)
@@ -52,6 +56,37 @@ public class BizCommissionServiceImpl implements IBizCommissionService
         }
         grantUpchain(order.getMemberId(), order.getCurrency(), order.getPrice(),
                 order.getOrderId(), null, "认购", true);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void clawbackForSubscribe(Long orderId)
+    {
+        if (orderId == null)
+        {
+            return;
+        }
+        List<BizCommissionLog> logs = commissionLogMapper.selectByOrderId(orderId);
+        if (logs == null || logs.isEmpty())
+        {
+            return;
+        }
+        String typeCode = creditRuleService.resolveTypeCode(BizConstants.BIZ_COMMISSION);
+        for (int i = 0; i < logs.size(); i++)
+        {
+            BizCommissionLog row = logs.get(i);
+            if (row == null || row.getToMemberId() == null)
+            {
+                continue;
+            }
+            BigDecimal amount = row.getAmount();
+            if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
+            {
+                continue;
+            }
+            walletService.debitUpTo(row.getToMemberId(), typeCode, row.getCurrency(), amount,
+                    BizConstants.BIZ_SUBSCRIBE_CANCEL, orderId, "取消认购追回团队" + row.getTeamLevel() + "级分佣");
+        }
     }
 
     @Override

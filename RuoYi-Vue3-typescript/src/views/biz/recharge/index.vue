@@ -56,6 +56,9 @@
       <el-table-column label="单号" align="center" prop="rechargeId" width="80" />
       <el-table-column label="会员ID" align="center" prop="memberId" width="90" />
       <el-table-column label="手机号" align="center" prop="phone" width="120" />
+      <el-table-column label="姓名" align="center" prop="realName" width="100">
+        <template #default="scope">{{ scope.row.realName || "—" }}</template>
+      </el-table-column>
       <el-table-column label="币种" align="center" prop="currency" width="80" />
       <el-table-column label="金额" align="center" prop="amount" width="110" />
       <el-table-column label="状态" align="center" prop="status" width="90">
