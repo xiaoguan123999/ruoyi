@@ -769,7 +769,7 @@ onBeforeUnmount(() => {
   transition: box-shadow 0.2s, transform 0.2s;
 
   &.tint {
-    background: linear-gradient(180deg, #f7fbff 0%, var(--el-bg-color) 72%);
+    background: linear-gradient(180deg, var(--el-fill-color-light) 0%, var(--el-bg-color) 72%);
   }
 
   &.clickable {
@@ -799,12 +799,12 @@ onBeforeUnmount(() => {
     font-size: 11px;
     padding: 1px 8px;
     border-radius: 999px;
-    color: #3d7eff;
-    background: #eaf2ff;
+    color: var(--el-color-primary);
+    background: var(--el-color-primary-light-9);
 
     &.stock {
-      color: #606266;
-      background: #eef0f3;
+      color: var(--el-text-color-secondary);
+      background: var(--el-fill-color);
     }
   }
 
