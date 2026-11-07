@@ -405,7 +405,7 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
     public String handleNotify(String providerCode, Map<String, String> payload, String rawBody, String clientIp)
     {
         long start = System.currentTimeMillis();
-        String outTradeNo = first(payload, "out_trade_no", "outTradeNo", "mchOrderNo", "mch_order_no");
+        String outTradeNo = "";
         String channelCode = "";
         Long memberId = null;
         String reply = null;
@@ -413,7 +413,6 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
         String err = null;
         PayChannelLog.in("notify", "provider=" + nvl(providerCode)
                 + " ip=" + nvl(clientIp)
-                + " outTradeNo=" + nvl(outTradeNo)
                 + " payload=" + nvl(rawBody));
         try
         {
@@ -432,6 +431,7 @@ public class BizOnlinePayServiceImpl implements IBizOnlinePayService
             {
                 throw new ServiceException("验签失败");
             }
+            outTradeNo = adapter.extractOutTradeNo(payload);
             if (StringUtils.isEmpty(outTradeNo))
             {
                 throw new ServiceException("缺少商户单号");

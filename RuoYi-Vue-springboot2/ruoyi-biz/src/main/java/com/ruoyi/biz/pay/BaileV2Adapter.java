@@ -82,6 +82,12 @@ public class BaileV2Adapter implements IBizPayAdapter
     }
 
     @Override
+    public String extractOutTradeNo(Map<String, String> payload)
+    {
+        return nvl(first(payload, "orderId", "outTradeNo", "out_trade_no"), "");
+    }
+
+    @Override
     public boolean isPaid(Map<String, String> payload)
     {
         if (payload == null)
