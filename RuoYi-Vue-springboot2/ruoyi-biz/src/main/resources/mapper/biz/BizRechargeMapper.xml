@@ -72,6 +72,18 @@
           )
     </select>
 
+    <select id="selectDownlinePassedRechargeSums" resultMap="BizRechargeResult">
+        select r.member_id, r.currency, ifnull(sum(r.amount), 0) as amount
+        from biz_recharge r
+        inner join biz_member m on m.member_id = r.member_id
+        where r.status = '1'
+          and (
+            m.ancestors = (select concat(ifnull(nullif(x.ancestors, ''), '0'), ',', x.member_id) from biz_member x where x.member_id = #{memberId})
+            or m.ancestors like concat((select concat(ifnull(nullif(x.ancestors, ''), '0'), ',', x.member_id) from biz_member x where x.member_id = #{memberId}), ',%')
+          )
+        group by r.member_id, r.currency
+    </select>
+
     <insert id="insertRecharge" parameterType="BizRecharge" useGeneratedKeys="true" keyProperty="rechargeId">
         insert into biz_recharge (member_id, currency, amount, status, create_time, remark, pay_mode, channel_code, out_trade_no)
         values (#{memberId}, #{currency}, #{amount}, #{status}, sysdate(), #{remark},

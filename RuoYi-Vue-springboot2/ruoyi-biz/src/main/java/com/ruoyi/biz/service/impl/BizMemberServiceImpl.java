@@ -1,12 +1,18 @@
 package com.ruoyi.biz.service.impl;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,6 +28,10 @@ import com.ruoyi.biz.domain.AppKycBody;
 import com.ruoyi.biz.domain.AppRegisterBody;
 import com.ruoyi.biz.domain.BizLevel;
 import com.ruoyi.biz.domain.BizMember;
+import com.ruoyi.biz.domain.BizMemberDownlineExportRow;
+import com.ruoyi.biz.domain.BizMemberDownlineExportSheet;
+import com.ruoyi.biz.domain.BizOrder;
+import com.ruoyi.biz.domain.BizRecharge;
 import com.ruoyi.biz.domain.BizTeamRelationPeer;
 import com.ruoyi.biz.domain.BizTeamRelationRow;
 import com.ruoyi.biz.domain.BizTeamTreeNode;
@@ -29,6 +39,7 @@ import com.ruoyi.biz.domain.BizTeamTreeSummary;
 import com.ruoyi.biz.domain.BizTeamOverview;
 import com.ruoyi.biz.mapper.BizCheckinMapper;
 import com.ruoyi.biz.mapper.BizMemberMapper;
+import com.ruoyi.biz.mapper.BizOrderMapper;
 import com.ruoyi.biz.mapper.BizRechargeMapper;
 import com.ruoyi.biz.service.IBizBlacklistService;
 import com.ruoyi.biz.service.IBizLevelRewardService;
@@ -71,6 +82,9 @@ public class BizMemberServiceImpl implements IBizMemberService
 
     @Autowired
     private BizRechargeMapper rechargeMapper;
+
+    @Autowired
+    private BizOrderMapper orderMapper;
 
     @Override
     public BizMember selectMemberById(Long memberId)
@@ -556,6 +570,228 @@ public class BizMemberServiceImpl implements IBizMemberService
             throw new ServiceException("支付密码长度必须为" + BizConstants.PAY_PASSWORD_MIN_LENGTH + "-"
                     + BizConstants.PAY_PASSWORD_MAX_LENGTH + "位");
         }
+    }
+
+
+    @Override
+    public BizMemberDownlineExportSheet buildDownlineExport(Long memberId)
+    {
+        if (memberId == null)
+        {
+            throw new ServiceException("请选择要导出下级的会员");
+        }
+        BizMember root = memberMapper.selectMemberCore(memberId);
+        if (root == null)
+        {
+            throw new ServiceException("会员不存在");
+        }
+        List<BizMember> members = memberMapper.selectDownlineExportMembers(memberId);
+        if (members == null)
+        {
+            members = new ArrayList<BizMember>();
+        }
+        List<BizOrder> orders = members.isEmpty() ? Collections.<BizOrder>emptyList()
+                : orderMapper.selectDownlineExportOrders(memberId);
+        List<BizRecharge> recharges = members.isEmpty() ? Collections.<BizRecharge>emptyList()
+                : rechargeMapper.selectDownlinePassedRechargeSums(memberId);
+
+        Set<Long> bought = new HashSet<Long>();
+        Map<Long, List<BizOrder>> ordersByMember = new HashMap<Long, List<BizOrder>>();
+        if (orders != null)
+        {
+            for (int i = 0; i < orders.size(); i++)
+            {
+                BizOrder order = orders.get(i);
+                if (order == null || order.getMemberId() == null)
+                {
+                    continue;
+                }
+                bought.add(order.getMemberId());
+                List<BizOrder> list = ordersByMember.get(order.getMemberId());
+                if (list == null)
+                {
+                    list = new ArrayList<BizOrder>();
+                    ordersByMember.put(order.getMemberId(), list);
+                }
+                list.add(order);
+            }
+        }
+
+        Map<Long, BigDecimal> cnyMap = new HashMap<Long, BigDecimal>();
+        Map<Long, BigDecimal> usdtMap = new HashMap<Long, BigDecimal>();
+        if (recharges != null)
+        {
+            for (int i = 0; i < recharges.size(); i++)
+            {
+                BizRecharge recharge = recharges.get(i);
+                if (recharge == null || recharge.getMemberId() == null)
+                {
+                    continue;
+                }
+                BigDecimal amount = nvl(recharge.getAmount());
+                if (BizConstants.CURRENCY_USDT.equals(recharge.getCurrency()))
+                {
+                    usdtMap.put(recharge.getMemberId(), nvl(usdtMap.get(recharge.getMemberId())).add(amount));
+                }
+                else
+                {
+                    cnyMap.put(recharge.getMemberId(), nvl(cnyMap.get(recharge.getMemberId())).add(amount));
+                }
+            }
+        }
+
+        Map<Long, List<BizMember>> childrenByParent = new HashMap<Long, List<BizMember>>();
+        for (int i = 0; i < members.size(); i++)
+        {
+            BizMember member = members.get(i);
+            if (member == null || member.getParentId() == null)
+            {
+                continue;
+            }
+            List<BizMember> kids = childrenByParent.get(member.getParentId());
+            if (kids == null)
+            {
+                kids = new ArrayList<BizMember>();
+                childrenByParent.put(member.getParentId(), kids);
+            }
+            kids.add(member);
+        }
+
+        Map<Long, Integer> downlineCount = new HashMap<Long, Integer>();
+        Map<Long, Integer> activateCount = new HashMap<Long, Integer>();
+        List<BizMember> byDepth = new ArrayList<BizMember>(members);
+        Collections.sort(byDepth, new Comparator<BizMember>()
+        {
+            @Override
+            public int compare(BizMember a, BizMember b)
+            {
+                int d = commaCount(b.getAncestors()) - commaCount(a.getAncestors());
+                if (d != 0)
+                {
+                    return d;
+                }
+                long aid = a.getMemberId() == null ? 0L : a.getMemberId().longValue();
+                long bid = b.getMemberId() == null ? 0L : b.getMemberId().longValue();
+                return Long.compare(aid, bid);
+            }
+        });
+        for (int i = 0; i < byDepth.size(); i++)
+        {
+            BizMember member = byDepth.get(i);
+            int down = 0;
+            int act = 0;
+            List<BizMember> kids = childrenByParent.get(member.getMemberId());
+            if (kids != null)
+            {
+                for (int k = 0; k < kids.size(); k++)
+                {
+                    BizMember child = kids.get(k);
+                    down += 1 + nvl(downlineCount.get(child.getMemberId()));
+                    if (bought.contains(child.getMemberId()))
+                    {
+                        act += 1;
+                    }
+                    act += nvl(activateCount.get(child.getMemberId()));
+                }
+            }
+            downlineCount.put(member.getMemberId(), Integer.valueOf(down));
+            activateCount.put(member.getMemberId(), Integer.valueOf(act));
+        }
+
+        BigDecimal totalCny = BigDecimal.ZERO;
+        BigDecimal totalUsdt = BigDecimal.ZERO;
+        List<BizMemberDownlineExportRow> rows = new ArrayList<BizMemberDownlineExportRow>();
+        for (int i = 0; i < members.size(); i++)
+        {
+            BizMember member = members.get(i);
+            BigDecimal cny = nvl(cnyMap.get(member.getMemberId()));
+            BigDecimal usdt = nvl(usdtMap.get(member.getMemberId()));
+            BizMemberDownlineExportRow row = new BizMemberDownlineExportRow();
+            row.setMemberId(member.getMemberId());
+            row.setPhone(member.getPhone());
+            row.setRealName(StringUtils.isEmpty(member.getRealName()) ? "--" : member.getRealName());
+            row.setDownlineCount(Integer.valueOf(nvl(downlineCount.get(member.getMemberId()))));
+            row.setActivatedCount(Integer.valueOf(nvl(activateCount.get(member.getMemberId()))));
+            row.setRechargeCny(cny);
+            row.setRechargeUsdt(usdt);
+            row.setProducts(formatDownlineProducts(ordersByMember.get(member.getMemberId())));
+            totalCny = totalCny.add(cny);
+            totalUsdt = totalUsdt.add(usdt);
+            rows.add(row);
+        }
+
+        String namePart = StringUtils.isEmpty(root.getRealName()) ? "" : (" " + root.getRealName());
+        String phone = root.getPhone() == null ? "" : root.getPhone();
+        String title = "下级导出 " + phone + namePart + " 共" + members.size() + "人 充值合计 CNY "
+                + moneyText(totalCny) + " / USDT " + moneyText(totalUsdt);
+        BizMemberDownlineExportSheet sheet = new BizMemberDownlineExportSheet();
+        sheet.setTitle(title);
+        sheet.setRows(rows);
+        return sheet;
+    }
+
+    private String formatDownlineProducts(List<BizOrder> orders)
+    {
+        if (orders == null || orders.isEmpty())
+        {
+            return "";
+        }
+        Map<String, ProductAgg> grouped = new LinkedHashMap<String, ProductAgg>();
+        for (int i = 0; i < orders.size(); i++)
+        {
+            BizOrder order = orders.get(i);
+            int qty = order.quantityOrOne();
+            int activated;
+            if (order.getUnlockDirectQty() == null || order.getUnlockDirectQty().intValue() <= 0)
+            {
+                activated = qty;
+            }
+            else
+            {
+                activated = nvl(order.getActivatedQty());
+                if (activated > qty)
+                {
+                    activated = qty;
+                }
+            }
+            int unactivated = qty - activated;
+            BigDecimal amount = nvl(order.getPrice()).multiply(BigDecimal.valueOf(qty));
+            String currency = order.getCurrency() == null ? "" : order.getCurrency();
+            String key = String.valueOf(order.getProductId()) + "|" + currency;
+            ProductAgg agg = grouped.get(key);
+            if (agg == null)
+            {
+                agg = new ProductAgg();
+                agg.name = StringUtils.isEmpty(order.getProductName()) ? "产品" : order.getProductName();
+                agg.currency = currency;
+                grouped.put(key, agg);
+            }
+            agg.qty += qty;
+            agg.activated += activated;
+            agg.unactivated += unactivated;
+            agg.amount = agg.amount.add(amount);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (ProductAgg agg : grouped.values())
+        {
+            if (sb.length() > 0)
+            {
+                sb.append("、");
+            }
+            sb.append(agg.name).append(" x").append(agg.qty).append("（");
+            if (StringUtils.isNotEmpty(agg.currency))
+            {
+                sb.append(agg.currency).append(" ");
+            }
+            sb.append(moneyText(agg.amount)).append("，已激活").append(agg.activated)
+                    .append("/未激活").append(agg.unactivated).append("）");
+        }
+        return sb.toString();
+    }
+
+    private String moneyText(BigDecimal value)
+    {
+        return nvl(value).setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
     }
 
     @Override
@@ -1120,5 +1356,15 @@ public class BizMemberServiceImpl implements IBizMemberService
         {
             return null;
         }
+    }
+
+    private static class ProductAgg
+    {
+        private String name;
+        private String currency;
+        private int qty;
+        private int activated;
+        private int unactivated;
+        private BigDecimal amount = BigDecimal.ZERO;
     }
 }

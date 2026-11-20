@@ -15,6 +15,8 @@ import com.ruoyi.biz.constant.BizConstants;
 import com.ruoyi.biz.domain.BizChainAddressBody;
 import com.ruoyi.biz.domain.BizGoogleConfig;
 import com.ruoyi.biz.domain.BizMember;
+import com.ruoyi.biz.domain.BizMemberDownlineExportRow;
+import com.ruoyi.biz.domain.BizMemberDownlineExportSheet;
 import com.ruoyi.biz.domain.BizRebindParentBody;
 import com.ruoyi.biz.service.IBizGoogleAuthService;
 import com.ruoyi.biz.service.IBizMemberService;
@@ -65,6 +67,17 @@ public class BizMemberController extends BaseController
         }
         ExcelUtil<BizMember> util = new ExcelUtil<BizMember>(BizMember.class);
         util.exportExcel(response, list, "会员");
+    }
+
+    @ApiOperation("导出整条下级（不含所选会员本人）。含测试/停用；充值为审核通过的本人金额；表头为导出会员充值合计")
+    @PreAuthorize("@ss.hasPermi('biz:member:list')")
+    @Log(title = "下级导出", businessType = BusinessType.EXPORT)
+    @PostMapping("/downline/export")
+    public void exportDownline(HttpServletResponse response, Long memberId)
+    {
+        BizMemberDownlineExportSheet sheet = memberService.buildDownlineExport(memberId);
+        ExcelUtil<BizMemberDownlineExportRow> util = new ExcelUtil<BizMemberDownlineExportRow>(BizMemberDownlineExportRow.class);
+        util.exportExcel(response, sheet.getRows(), "下级导出", sheet.getTitle());
     }
 
     @ApiOperation("App谷歌验证配置")

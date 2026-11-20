@@ -6,6 +6,7 @@ import com.ruoyi.biz.api.AppTeamLevelStats;
 import com.ruoyi.biz.domain.AppKycBody;
 import com.ruoyi.biz.domain.AppRegisterBody;
 import com.ruoyi.biz.domain.BizMember;
+import com.ruoyi.biz.domain.BizMemberDownlineExportSheet;
 import com.ruoyi.biz.domain.BizTeamRelationRow;
 import com.ruoyi.biz.domain.BizTeamTreeNode;
 import com.ruoyi.biz.domain.BizTeamTreeSummary;
@@ -60,6 +61,8 @@ public interface IBizMemberService
     BizTeamOverview selectAdminTeamOverview(Long memberId);
 
     List<BizTeamRelationRow> selectRecommendRelation(String keyword);
+
+    BizMemberDownlineExportSheet buildDownlineExport(Long memberId);
 
     void refreshLevel(Long memberId);
 

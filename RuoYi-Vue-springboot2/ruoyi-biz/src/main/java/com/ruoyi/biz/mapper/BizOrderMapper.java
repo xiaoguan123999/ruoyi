@@ -31,6 +31,8 @@ public interface BizOrderMapper
 
     List<BizOrder> selectDirectDownlineOrders(@Param("parentId") Long parentId);
 
+    List<BizOrder> selectDownlineExportOrders(@Param("memberId") Long memberId);
+
     int countWithdrawRequiredOrders(@Param("memberId") Long memberId, @Param("currency") String currency);
 
     java.math.BigDecimal sumTeamOrderAmount(@Param("memberId") Long memberId, @Param("currency") String currency,

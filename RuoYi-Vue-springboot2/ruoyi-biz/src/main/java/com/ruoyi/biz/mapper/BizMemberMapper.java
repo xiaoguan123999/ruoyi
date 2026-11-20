@@ -55,6 +55,8 @@ public interface BizMemberMapper
     List<BizMember> selectTeamMembers(@Param("memberId") Long memberId, @Param("teamLevel") Integer teamLevel,
             @Param("viewerDepth") Integer viewerDepth);
 
+    List<BizMember> selectDownlineExportMembers(@Param("memberId") Long memberId);
+
     List<AppTeamMemberItem> selectAppTeamMembers(@Param("memberId") Long memberId, @Param("teamLevel") Integer teamLevel,
             @Param("viewerDepth") int viewerDepth);
 

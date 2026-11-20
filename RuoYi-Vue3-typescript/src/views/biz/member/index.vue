@@ -77,6 +77,12 @@
       <el-col :span="1.5">
         <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['biz:member:list']">导出{{ selectedRows.length ? `（${selectedRows.length}）` : "" }}</el-button>
       </el-col>
+      <el-col :span="10">
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <MemberSelect v-model="downlineExportId" placeholder="选择要导出下级的会员" />
+          <el-button type="success" plain icon="Download" @click="handleExportDownline" v-hasPermi="['biz:member:list']">导出下级</el-button>
+        </div>
+      </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
@@ -352,6 +358,7 @@ const rebindRules = {
 const googleLoading = ref(false)
 const google = ref({ enabled: true, issuer: "App" })
 const selectedRows = ref<any[]>([])
+const downlineExportId = ref<number | undefined>()
 
 const data = reactive({
   form: {} as any,
@@ -509,6 +516,22 @@ function handleExport() {
   }
   const { pageNum, pageSize, ...q } = queryParams.value
   proxy.download("biz/member/export", q, `member_${new Date().getTime()}.xlsx`)
+}
+function resolveDownlineExportId() {
+  if (downlineExportId.value) return Number(downlineExportId.value)
+  if (queryParams.value.memberId) return Number(queryParams.value.memberId)
+  if (selectedRows.value.length === 1 && selectedRows.value[0].memberId != null) {
+    return Number(selectedRows.value[0].memberId)
+  }
+  return null
+}
+function handleExportDownline() {
+  const memberId = resolveDownlineExportId()
+  if (!memberId) {
+    proxy.$modal.msgWarning("请先选择要导出下级的会员")
+    return
+  }
+  proxy.download("biz/member/downline/export", { memberId }, `member_downline_${memberId}_${new Date().getTime()}.xlsx`)
 }
 function handleQuery() {
   queryParams.value.pageNum = 1

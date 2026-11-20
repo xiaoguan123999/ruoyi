@@ -1273,6 +1273,8 @@ R2_PUBLIC_URL=https://pub-xxxx.r2.dev
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/biz/member/list` | 会员列表，查询：phone、inviteCode、kycStatus、status、memberId |
+| POST | `/biz/member/export` | 导出当前筛选会员；传 `memberIds` 则只导出勾选行 |
+| POST | `/biz/member/downline/export` | 导出所选会员整条下级（不含本人）。表单 `memberId`。含测试/停用；充值为审核通过的本人 CNY/USDT；表头为导出会员充值合计；认购格 `产品A x2（CNY 2000，已激活1/未激活1）` |
 | GET | `/biz/member/{memberId}` | 会员详情 |
 | POST | `/biz/member` | 后台新增**顶级会员** `{phone, password}`，无上级，返回 `memberId`/`inviteCode` |
 | PUT | `/biz/member` | 改实名、身份证、状态、密码（密码留空不改） |

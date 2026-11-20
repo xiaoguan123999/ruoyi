@@ -247,6 +247,13 @@
         where parent_id = #{memberId} and kyc_status = '1' and ifnull(test_flag, '0') = '0'
     </select>
 
+    <select id="selectDownlineExportMembers" resultMap="BizMemberResult">
+        select m.member_id, m.phone, m.real_name, m.ancestors, m.parent_id, m.status, m.test_flag
+        from biz_member m
+        where <include refid="downlineById"><property name="alias" value="m"/></include>
+        order by m.member_id asc
+    </select>
+
     <!-- 下线弹窗列表：只查展示列。1 级走 parent_id，避免整棵树扫描。 -->
     <select id="selectTeamMembers" resultMap="BizMemberResult">
         select m.member_id, m.phone, m.real_name, m.kyc_status, m.parent_id, m.ancestors,

@@ -38,6 +38,7 @@
         <result property="relatedSlotsUsed"  column="related_slots_used"/>
         <result property="accumulateSettledShares" column="accumulate_settled_shares"/>
         <result property="unlockDirectQty"   column="unlock_direct_qty"/>
+        <result property="activatedQty"      column="activated_qty"/>
         <result property="unlockDelayHours"  column="unlock_delay_hours"/>
         <result property="incomeStartTime"   column="income_start_time"/>
         <result property="status"            column="status"/>
@@ -139,6 +140,21 @@
           and m.parent_id = #{parentId}
           and ifnull(o.status, '0') &lt;&gt; '2'
         order by o.create_time asc, o.order_id asc
+    </select>
+
+    <select id="selectDownlineExportOrders" resultMap="BizOrderResult">
+        select o.order_id, o.member_id, o.product_id, o.product_name, o.currency, o.price,
+               ifnull(o.quantity, 1) as quantity, o.unlock_direct_qty, o.status,
+               ifnull(sum(case when l.activate_time is not null then ifnull(l.qty, 1) else 0 end), 0) as activated_qty
+        from biz_order o
+        inner join biz_member m on m.member_id = o.member_id
+        left join biz_order_unlock_lot l on l.order_id = o.order_id
+        where ifnull(o.status, '0') &lt;&gt; '2'
+          and (
+            m.ancestors = (select concat(ifnull(nullif(x.ancestors, ''), '0'), ',', x.member_id) from biz_member x where x.member_id = #{memberId})
+            or m.ancestors like concat((select concat(ifnull(nullif(x.ancestors, ''), '0'), ',', x.member_id) from biz_member x where x.member_id = #{memberId}), ',%')
+          )
+        group by o.order_id
     </select>
 
     <select id="selectDirectDownlineOrders" resultMap="BizOrderResult">

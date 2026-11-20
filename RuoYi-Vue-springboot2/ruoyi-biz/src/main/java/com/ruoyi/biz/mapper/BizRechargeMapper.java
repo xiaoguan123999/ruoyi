@@ -17,6 +17,8 @@ public interface BizRechargeMapper
             @Param("includeSelf") boolean includeSelf, @Param("maxDepth") Integer maxDepth,
             @Param("viewerDepth") Integer viewerDepth);
 
+    List<BizRecharge> selectDownlinePassedRechargeSums(@Param("memberId") Long memberId);
+
     int insertRecharge(BizRecharge recharge);
 
     int updateRecharge(BizRecharge recharge);
