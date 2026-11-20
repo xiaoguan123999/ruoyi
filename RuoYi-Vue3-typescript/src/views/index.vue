@@ -557,6 +557,7 @@ const shortcuts = computed(() =>
 const bizTypeMap: Record<string, { label: string; tagType: string }> = {
   RECHARGE: { label: '充值', tagType: 'success' },
   SUBSCRIBE: { label: '认购', tagType: 'warning' },
+  SUBSCRIBE_CANCEL: { label: '取消认购', tagType: 'danger' },
   REBATE: { label: '日返', tagType: 'primary' },
   ASSIST_GRANT: { label: '助力值发放', tagType: 'success' },
   LOTTERY_ASSIST: { label: '抽奖助力值', tagType: 'success' },

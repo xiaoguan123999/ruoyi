@@ -105,6 +105,7 @@ function openAdjust() { adjustOpen.value = true }
 const bizTypeOptions = [
   { value: "RECHARGE", label: "充值" },
   { value: "SUBSCRIBE", label: "认购" },
+  { value: "SUBSCRIBE_CANCEL", label: "取消认购" },
   { value: "REBATE", label: "产品日返" },
   { value: "ASSIST_GRANT", label: "助力值发放" },
   { value: "LOTTERY_ASSIST", label: "抽奖助力值" },
